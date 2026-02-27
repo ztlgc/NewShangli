@@ -1,0 +1,151 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="880" viewBox="0 0 1200 880">
+  <rect x="0" y="0" width="1200" height="880" fill="#ffffff" />
+
+  <text x="40" y="56" font-family="'Noto Sans SC', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial" font-size="28" font-weight="700" fill="#111827">NewShangli 设计令牌图例</text>
+  <text x="40" y="84" font-family="'Noto Sans SC', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial" font-size="14" font-weight="400" fill="#6b7280">来自 prototype/*.html（Tailwind CDN + Font Awesome）</text>
+
+  <text x="40" y="130" font-family="'Noto Sans SC', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial" font-size="16" font-weight="700" fill="#111827">颜色（语义）</text>
+
+  <g transform="translate(40,150)">
+    <g>
+      <rect x="0" y="0" width="220" height="72" rx="12" fill="#312e81" />
+      <text x="16" y="30" font-family="'Noto Sans SC', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial" font-size="14" font-weight="600" fill="#ffffff">brand.primary</text>
+      <text x="16" y="54" font-family="'Noto Sans SC', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial" font-size="12" font-weight="400" fill="#e0e7ff">indigo-900 · #312e81</text>
+    </g>
+    <g transform="translate(240,0)">
+      <rect x="0" y="0" width="220" height="72" rx="12" fill="#4f46e5" />
+      <text x="16" y="30" font-family="'Noto Sans SC', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial" font-size="14" font-weight="600" fill="#ffffff">brand.secondary</text>
+      <text x="16" y="54" font-family="'Noto Sans SC', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial" font-size="12" font-weight="400" fill="#e0e7ff">indigo-600 · #4f46e5</text>
+    </g>
+    <g transform="translate(480,0)">
+      <rect x="0" y="0" width="220" height="72" rx="12" fill="#eef2ff" stroke="#e5e7eb" />
+      <text x="16" y="30" font-family="'Noto Sans SC', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial" font-size="14" font-weight="600" fill="#111827">surface.soft</text>
+      <text x="16" y="54" font-family="'Noto Sans SC', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial" font-size="12" font-weight="400" fill="#6b7280">indigo-50 · #eef2ff</text>
+    </g>
+  </g>
+
+  <g transform="translate(40,240)">
+    <g>
+      <rect x="0" y="0" width="220" height="72" rx="12" fill="#16a34a" />
+      <text x="16" y="30" font-family="'Noto Sans SC', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial" font-size="14" font-weight="600" fill="#ffffff">state.success</text>
+      <text x="16" y="54" font-family="'Noto Sans SC', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial" font-size="12" font-weight="400" fill="#dcfce7">green-600 · #16a34a</text>
+    </g>
+    <g transform="translate(240,0)">
+      <rect x="0" y="0" width="220" height="72" rx="12" fill="#ef4444" />
+      <text x="16" y="30" font-family="'Noto Sans SC', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial" font-size="14" font-weight="600" fill="#ffffff">state.danger</text>
+      <text x="16" y="54" font-family="'Noto Sans SC', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial" font-size="12" font-weight="400" fill="#fee2e2">red-500 · #ef4444</text>
+    </g>
+    <g transform="translate(480,0)">
+      <rect x="0" y="0" width="220" height="72" rx="12" fill="#f97316" />
+      <text x="16" y="30" font-family="'Noto Sans SC', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial" font-size="14" font-weight="600" fill="#ffffff">state.warning</text>
+      <text x="16" y="54" font-family="'Noto Sans SC', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial" font-size="12" font-weight="400" fill="#ffedd5">orange-500 · #f97316</text>
+    </g>
+  </g>
+
+  <text x="40" y="360" font-family="'Noto Sans SC', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial" font-size="16" font-weight="700" fill="#111827">颜色（中性）</text>
+  <g transform="translate(40,380)">
+    <g>
+      <rect x="0" y="0" width="130" height="56" rx="12" fill="#ffffff" stroke="#e5e7eb" />
+      <text x="16" y="34" font-family="'Noto Sans SC', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial" font-size="13" font-weight="600" fill="#111827">white</text>
+    </g>
+    <g transform="translate(150,0)">
+      <rect x="0" y="0" width="130" height="56" rx="12" fill="#f9fafb" stroke="#e5e7eb" />
+      <text x="16" y="34" font-family="'Noto Sans SC', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial" font-size="13" font-weight="600" fill="#111827">gray-50</text>
+    </g>
+    <g transform="translate(300,0)">
+      <rect x="0" y="0" width="130" height="56" rx="12" fill="#f3f4f6" />
+      <text x="16" y="34" font-family="'Noto Sans SC', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial" font-size="13" font-weight="600" fill="#111827">gray-100</text>
+    </g>
+    <g transform="translate(450,0)">
+      <rect x="0" y="0" width="130" height="56" rx="12" fill="#e5e7eb" />
+      <text x="16" y="34" font-family="'Noto Sans SC', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial" font-size="13" font-weight="600" fill="#111827">gray-200</text>
+    </g>
+    <g transform="translate(600,0)">
+      <rect x="0" y="0" width="130" height="56" rx="12" fill="#9ca3af" />
+      <text x="16" y="34" font-family="'Noto Sans SC', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial" font-size="13" font-weight="600" fill="#ffffff">gray-400</text>
+    </g>
+    <g transform="translate(750,0)">
+      <rect x="0" y="0" width="130" height="56" rx="12" fill="#4b5563" />
+      <text x="16" y="34" font-family="'Noto Sans SC', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial" font-size="13" font-weight="600" fill="#ffffff">gray-600</text>
+    </g>
+    <g transform="translate(900,0)">
+      <rect x="0" y="0" width="130" height="56" rx="12" fill="#111827" />
+      <text x="16" y="34" font-family="'Noto Sans SC', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial" font-size="13" font-weight="600" fill="#ffffff">gray-900</text>
+    </g>
+  </g>
+
+  <text x="40" y="492" font-family="'Noto Sans SC', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial" font-size="16" font-weight="700" fill="#111827">排版层级</text>
+  <g transform="translate(40,512)">
+    <rect x="0" y="0" width="560" height="190" rx="16" fill="#ffffff" stroke="#e5e7eb" />
+    <text x="20" y="48" font-family="'Noto Sans SC', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial" font-size="24" font-weight="700" fill="#111827">Headline 1 · 24</text>
+    <text x="20" y="84" font-family="'Noto Sans SC', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial" font-size="20" font-weight="700" fill="#111827">Headline 2 · 20</text>
+    <text x="20" y="114" font-family="'Noto Sans SC', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial" font-size="18" font-weight="700" fill="#111827">Headline 3 · 18</text>
+    <text x="20" y="144" font-family="'Noto Sans SC', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial" font-size="16" font-weight="500" fill="#111827">Body Medium · 16</text>
+    <text x="20" y="168" font-family="'Noto Sans SC', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial" font-size="14" font-weight="400" fill="#4b5563">Body Regular · 14</text>
+    <text x="20" y="186" font-family="'Noto Sans SC', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial" font-size="12" font-weight="400" fill="#9ca3af">Caption · 12</text>
+  </g>
+
+  <text x="640" y="492" font-family="'Noto Sans SC', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial" font-size="16" font-weight="700" fill="#111827">圆角与阴影</text>
+  <g transform="translate(640,512)">
+    <rect x="0" y="0" width="520" height="190" rx="16" fill="#ffffff" stroke="#e5e7eb" />
+    <g transform="translate(20,24)">
+      <rect x="0" y="0" width="120" height="64" rx="12" fill="#ffffff" stroke="#e5e7eb" />
+      <text x="0" y="92" font-family="'Noto Sans SC', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial" font-size="12" font-weight="600" fill="#111827">rounded-xl · 12</text>
+    </g>
+    <g transform="translate(170,24)">
+      <rect x="0" y="0" width="120" height="64" rx="16" fill="#ffffff" stroke="#e5e7eb" />
+      <text x="0" y="92" font-family="'Noto Sans SC', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial" font-size="12" font-weight="600" fill="#111827">rounded-2xl · 16</text>
+    </g>
+    <g transform="translate(320,24)">
+      <rect x="0" y="0" width="120" height="64" rx="24" fill="#ffffff" stroke="#e5e7eb" />
+      <text x="0" y="92" font-family="'Noto Sans SC', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial" font-size="12" font-weight="600" fill="#111827">rounded-3xl · 24</text>
+    </g>
+
+    <g transform="translate(20,118)">
+      <rect x="0" y="0" width="220" height="56" rx="16" fill="#ffffff" stroke="#e5e7eb" />
+      <path d="M0,56 C0,56 0,56 0,56" />
+      <text x="0" y="78" font-family="'Noto Sans SC', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial" font-size="12" font-weight="600" fill="#111827">shadow-sm</text>
+    </g>
+    <g transform="translate(260,118)">
+      <rect x="0" y="0" width="220" height="56" rx="16" fill="#ffffff" stroke="#e5e7eb" />
+      <text x="0" y="78" font-family="'Noto Sans SC', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial" font-size="12" font-weight="600" fill="#111827">shadow-lg / shadow-xl</text>
+    </g>
+  </g>
+
+  <text x="40" y="740" font-family="'Noto Sans SC', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial" font-size="16" font-weight="700" fill="#111827">间距（4px 网格）</text>
+  <g transform="translate(40,760)">
+    <rect x="0" y="0" width="1120" height="90" rx="16" fill="#ffffff" stroke="#e5e7eb" />
+    <g transform="translate(20,20)">
+      <rect x="0" y="0" width="4" height="20" fill="#312e81" />
+      <text x="0" y="52" font-family="'Noto Sans SC', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial" font-size="12" font-weight="600" fill="#111827">4</text>
+    </g>
+    <g transform="translate(80,20)">
+      <rect x="0" y="0" width="8" height="20" fill="#312e81" />
+      <text x="0" y="52" font-family="'Noto Sans SC', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial" font-size="12" font-weight="600" fill="#111827">8</text>
+    </g>
+    <g transform="translate(160,20)">
+      <rect x="0" y="0" width="12" height="20" fill="#312e81" />
+      <text x="0" y="52" font-family="'Noto Sans SC', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial" font-size="12" font-weight="600" fill="#111827">12</text>
+    </g>
+    <g transform="translate(260,20)">
+      <rect x="0" y="0" width="16" height="20" fill="#312e81" />
+      <text x="0" y="52" font-family="'Noto Sans SC', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial" font-size="12" font-weight="600" fill="#111827">16</text>
+    </g>
+    <g transform="translate(380,20)">
+      <rect x="0" y="0" width="24" height="20" fill="#312e81" />
+      <text x="0" y="52" font-family="'Noto Sans SC', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial" font-size="12" font-weight="600" fill="#111827">24</text>
+    </g>
+    <g transform="translate(520,20)">
+      <rect x="0" y="0" width="32" height="20" fill="#312e81" />
+      <text x="0" y="52" font-family="'Noto Sans SC', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial" font-size="12" font-weight="600" fill="#111827">32</text>
+    </g>
+    <g transform="translate(700,20)">
+      <rect x="0" y="0" width="48" height="20" fill="#312e81" />
+      <text x="0" y="52" font-family="'Noto Sans SC', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial" font-size="12" font-weight="600" fill="#111827">48</text>
+    </g>
+    <g transform="translate(920,20)">
+      <rect x="0" y="0" width="64" height="20" fill="#312e81" />
+      <text x="0" y="52" font-family="'Noto Sans SC', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial" font-size="12" font-weight="600" fill="#111827">64</text>
+    </g>
+  </g>
+</svg>

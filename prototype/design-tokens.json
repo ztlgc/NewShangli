@@ -1,0 +1,329 @@
+{
+  "meta": {
+    "name": "NewShangli Prototype Design Tokens",
+    "scope": "prototype",
+    "source": "prototype/*.html",
+    "framework": {
+      "css": "tailwindcss-cdn",
+      "icons": "font-awesome-6.4.0"
+    },
+    "version": "1.0.0"
+  },
+  "color": {
+    "palette": {
+      "base": {
+        "white": { "hex": "#ffffff" },
+        "black": { "hex": "#000000" }
+      },
+      "indigo": {
+        "50": { "tw": "indigo-50", "hex": "#eef2ff" },
+        "100": { "tw": "indigo-100", "hex": "#e0e7ff" },
+        "200": { "tw": "indigo-200", "hex": "#c7d2fe" },
+        "500": { "tw": "indigo-500", "hex": "#6366f1" },
+        "600": { "tw": "indigo-600", "hex": "#4f46e5" },
+        "700": { "tw": "indigo-700", "hex": "#4338ca" },
+        "800": { "tw": "indigo-800", "hex": "#3730a3" },
+        "900": { "tw": "indigo-900", "hex": "#312e81" }
+      },
+      "gray": {
+        "50": { "tw": "gray-50", "hex": "#f9fafb" },
+        "100": { "tw": "gray-100", "hex": "#f3f4f6" },
+        "200": { "tw": "gray-200", "hex": "#e5e7eb" },
+        "300": { "tw": "gray-300", "hex": "#d1d5db" },
+        "400": { "tw": "gray-400", "hex": "#9ca3af" },
+        "500": { "tw": "gray-500", "hex": "#6b7280" },
+        "600": { "tw": "gray-600", "hex": "#4b5563" },
+        "700": { "tw": "gray-700", "hex": "#374151" },
+        "800": { "tw": "gray-800", "hex": "#1f2937" },
+        "900": { "tw": "gray-900", "hex": "#111827" }
+      },
+      "green": {
+        "50": { "tw": "green-50", "hex": "#f0fdf4" },
+        "100": { "tw": "green-100", "hex": "#dcfce7" },
+        "500": { "tw": "green-500", "hex": "#22c55e" },
+        "600": { "tw": "green-600", "hex": "#16a34a" }
+      },
+      "red": {
+        "100": { "tw": "red-100", "hex": "#fee2e2" },
+        "500": { "tw": "red-500", "hex": "#ef4444" },
+        "600": { "tw": "red-600", "hex": "#dc2626" }
+      },
+      "blue": {
+        "50": { "tw": "blue-50", "hex": "#eff6ff" },
+        "500": { "tw": "blue-500", "hex": "#3b82f6" }
+      },
+      "purple": {
+        "50": { "tw": "purple-50", "hex": "#faf5ff" },
+        "100": { "tw": "purple-100", "hex": "#f3e8ff" },
+        "500": { "tw": "purple-500", "hex": "#a855f7" },
+        "600": { "tw": "purple-600", "hex": "#9333ea" }
+      },
+      "pink": {
+        "50": { "tw": "pink-50", "hex": "#fdf2f8" },
+        "100": { "tw": "pink-100", "hex": "#fce7f3" },
+        "500": { "tw": "pink-500", "hex": "#ec4899" },
+        "600": { "tw": "pink-600", "hex": "#db2777" }
+      },
+      "orange": {
+        "50": { "tw": "orange-50", "hex": "#fff7ed" },
+        "100": { "tw": "orange-100", "hex": "#ffedd5" },
+        "400": { "tw": "orange-400", "hex": "#fb923c" },
+        "500": { "tw": "orange-500", "hex": "#f97316" },
+        "600": { "tw": "orange-600", "hex": "#ea580c" }
+      },
+      "yellow": {
+        "500": { "tw": "yellow-500", "hex": "#eab308" }
+      }
+    },
+    "alpha": {
+      "white-10": { "tw": "white/10", "rgba": "rgba(255, 255, 255, 0.1)" },
+      "white-20": { "tw": "white/20", "rgba": "rgba(255, 255, 255, 0.2)" },
+      "black-30": { "tw": "black/30", "rgba": "rgba(0, 0, 0, 0.3)" },
+      "indigo-900-40": { "tw": "indigo-900/40", "rgba": "rgba(49, 46, 129, 0.4)" }
+    },
+    "semantic": {
+      "brand": {
+        "primary": { "tw": "indigo-900", "hex": "#312e81" },
+        "secondary": { "tw": "indigo-600", "hex": "#4f46e5" },
+        "soft": { "tw": "indigo-50", "hex": "#eef2ff" }
+      },
+      "surface": {
+        "app": { "tw": "gray-50", "hex": "#f9fafb" },
+        "card": { "tw": "white", "hex": "#ffffff" },
+        "raised": { "tw": "white", "hex": "#ffffff" },
+        "subtle": { "tw": "gray-100", "hex": "#f3f4f6" }
+      },
+      "text": {
+        "primary": { "tw": "gray-900", "hex": "#111827" },
+        "secondary": { "tw": "gray-600", "hex": "#4b5563" },
+        "tertiary": { "tw": "gray-500", "hex": "#6b7280" },
+        "muted": { "tw": "gray-400", "hex": "#9ca3af" },
+        "inverse": { "tw": "white", "hex": "#ffffff" },
+        "brand": { "tw": "indigo-900", "hex": "#312e81" }
+      },
+      "border": {
+        "default": { "tw": "gray-200", "hex": "#e5e7eb" },
+        "subtle": { "tw": "gray-100", "hex": "#f3f4f6" },
+        "divider": { "tw": "gray-50", "hex": "#f9fafb" },
+        "focus": { "tw": "indigo-600", "hex": "#4f46e5" }
+      },
+      "state": {
+        "success": { "tw": "green-600", "hex": "#16a34a" },
+        "success-soft": { "tw": "green-100", "hex": "#dcfce7" },
+        "danger": { "tw": "red-500", "hex": "#ef4444" },
+        "danger-strong": { "tw": "red-600", "hex": "#dc2626" },
+        "danger-soft": { "tw": "red-100", "hex": "#fee2e2" },
+        "warning": { "tw": "orange-500", "hex": "#f97316" },
+        "warning-soft": { "tw": "orange-100", "hex": "#ffedd5" },
+        "rank-1": { "tw": "yellow-500", "hex": "#eab308" }
+      },
+      "overlay": {
+        "scrim": { "tw": "black/30", "rgba": "rgba(0, 0, 0, 0.3)" }
+      },
+      "chart": {
+        "series-1": { "hex": "#312e81", "note": "indigo-900" },
+        "series-2": { "hex": "#4f46e5", "note": "indigo-600" },
+        "series-3": { "hex": "#e0e7ff", "note": "indigo-100" },
+        "bar-idle": { "hex": "#e0e7ff" },
+        "bar-active": { "hex": "#312e81" },
+        "bar-hover": { "hex": "#4338ca" }
+      }
+    }
+  },
+  "typography": {
+    "fontFamily": {
+      "sans": {
+        "primary": "'Noto Sans SC'",
+        "fallback": "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji', 'Segoe UI Emoji'"
+      }
+    },
+    "fontWeight": {
+      "regular": 400,
+      "medium": 500,
+      "semibold": 600,
+      "bold": 700
+    },
+    "fontSize": {
+      "10": { "px": 10, "tw": "text-[10px]" },
+      "12": { "px": 12, "tw": "text-xs" },
+      "14": { "px": 14, "tw": "text-sm" },
+      "16": { "px": 16, "tw": "text-base" },
+      "18": { "px": 18, "tw": "text-lg" },
+      "20": { "px": 20, "tw": "text-xl" },
+      "24": { "px": 24, "tw": "text-2xl" },
+      "30": { "px": 30, "tw": "text-3xl" },
+      "36": { "px": 36, "tw": "text-4xl" }
+    },
+    "letterSpacing": {
+      "normal": { "em": 0, "tw": "tracking-normal" },
+      "wide": { "em": 0.05, "tw": "tracking-wider" }
+    },
+    "lineHeight": {
+      "tight": { "tw": "leading-tight" },
+      "snug": { "tw": "leading-snug" },
+      "normal": { "tw": "leading-normal" }
+    },
+    "textStyle": {
+      "h1": { "fontSize": "24", "fontWeight": "bold", "color": "color.semantic.text.primary" },
+      "h2": { "fontSize": "20", "fontWeight": "bold", "color": "color.semantic.text.primary" },
+      "h3": { "fontSize": "18", "fontWeight": "bold", "color": "color.semantic.text.primary" },
+      "body": { "fontSize": "14", "fontWeight": "regular", "color": "color.semantic.text.secondary" },
+      "body-strong": { "fontSize": "16", "fontWeight": "medium", "color": "color.semantic.text.primary" },
+      "caption": { "fontSize": "12", "fontWeight": "regular", "color": "color.semantic.text.muted" },
+      "overline": { "fontSize": "10", "fontWeight": "regular", "letterSpacing": "wide", "color": "color.semantic.text.muted" }
+    }
+  },
+  "radius": {
+    "none": { "px": 0, "tw": "rounded-none" },
+    "sm": { "px": 2, "tw": "rounded-sm" },
+    "md": { "px": 6, "tw": "rounded-md" },
+    "lg": { "px": 8, "tw": "rounded-lg" },
+    "xl": { "px": 12, "tw": "rounded-xl" },
+    "2xl": { "px": 16, "tw": "rounded-2xl" },
+    "3xl": { "px": 24, "tw": "rounded-3xl" },
+    "pill": { "px": 9999, "tw": "rounded-full" },
+    "hero-bottom": { "px": 30, "tw": "rounded-b-[30px]" },
+    "iphone-frame": { "px": 55, "css": "border-radius: 55px" }
+  },
+  "shadow": {
+    "sm": { "tw": "shadow-sm", "css": "0 1px 2px 0 rgb(0 0 0 / 0.05)" },
+    "lg": { "tw": "shadow-lg", "css": "0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)" },
+    "xl": { "tw": "shadow-xl", "css": "0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)" },
+    "brand-soft": { "tw": "shadow-lg shadow-indigo-200", "note": "用于主按钮（组件页）" },
+    "brand-fab": { "tw": "shadow-xl shadow-indigo-900/40", "note": "用于 FAB（首页）" },
+    "iphone-frame": { "css": "0 0 0 12px #444, 0 0 0 14px #666, 0 20px 50px rgba(0, 0, 0, 0.5)" }
+  },
+  "space": {
+    "unit": { "px": 4, "note": "Tailwind spacing 基于 4px 网格" },
+    "0": { "px": 0, "tw": "0" },
+    "0_5": { "px": 2, "tw": "0.5" },
+    "1": { "px": 4, "tw": "1" },
+    "2": { "px": 8, "tw": "2" },
+    "3": { "px": 12, "tw": "3" },
+    "4": { "px": 16, "tw": "4" },
+    "5": { "px": 20, "tw": "5" },
+    "6": { "px": 24, "tw": "6" },
+    "8": { "px": 32, "tw": "8" },
+    "10": { "px": 40, "tw": "10" },
+    "12": { "px": 48, "tw": "12" },
+    "16": { "px": 64, "tw": "16" }
+  },
+  "size": {
+    "statusBarHeight": { "px": 47, "tw": "h-[47px]" },
+    "tabBarHeight": { "px": 83, "tw": "h-[83px]" },
+    "tapTargetMin": { "px": 44, "note": "按钮/图标区常见 36-56；建议最小 44" },
+    "iconButton": {
+      "md": { "px": 36, "tw": "w-9 h-9" },
+      "lg": { "px": 48, "tw": "w-12 h-12" }
+    },
+    "fab": { "px": 56, "tw": "w-14 h-14" },
+    "avatar": {
+      "sm": { "px": 32, "tw": "w-8 h-8" },
+      "md": { "px": 40, "tw": "w-10 h-10" },
+      "lg": { "px": 96, "tw": "w-24 h-24" }
+    }
+  },
+  "layout": {
+    "deviceFrame": {
+      "name": "iPhone 15 Pro (Prototype)",
+      "width": 393,
+      "height": 852
+    },
+    "page": {
+      "paddingX": { "tw": "px-4", "px": 16 },
+      "paddingY": { "tw": "py-3", "px": 12 },
+      "sectionGap": { "tw": "space-y-4", "px": 16 }
+    },
+    "grid": {
+      "app": { "columns": 1, "gutterPx": 0, "note": "页面主体为单列移动端布局" },
+      "cardOverview": { "columns": 2, "tw": "grid-cols-2 gap-3", "gutterPx": 12 },
+      "colorsSpec": { "columns": 4, "tw": "grid-cols-4 gap-2", "gutterPx": 8 }
+    },
+    "breakpoints": {
+      "sm": { "px": 640, "tw": "sm" },
+      "md": { "px": 768, "tw": "md" },
+      "lg": { "px": 1024, "tw": "lg" },
+      "xl": { "px": 1280, "tw": "xl" }
+    }
+  },
+  "motion": {
+    "easing": {
+      "standard": { "css": "cubic-bezier(0.4, 0, 0.2, 1)", "tw": "ease-in-out" },
+      "linear": { "css": "linear", "tw": "linear" }
+    },
+    "duration": {
+      "fast": { "ms": 150, "tw": "duration-150" },
+      "medium": { "ms": 300, "css": "0.3s", "note": "用于柱状图高度与画廊 hover 位移" }
+    },
+    "transition": {
+      "colors": { "tw": "transition-colors" },
+      "transform": { "tw": "transition-transform" },
+      "opacity": { "tw": "transition-opacity" }
+    }
+  },
+  "icon": {
+    "library": "Font Awesome",
+    "style": "solid",
+    "sizes": {
+      "xs": { "tw": "text-xs", "px": 12 },
+      "sm": { "tw": "text-sm", "px": 14 },
+      "md": { "tw": "text-base", "px": 16 },
+      "lg": { "tw": "text-lg", "px": 18 },
+      "xl": { "tw": "text-xl", "px": 20 },
+      "2xl": { "tw": "text-2xl", "px": 24 }
+    }
+  },
+  "imagery": {
+    "avatar": {
+      "shape": "circle",
+      "fit": "object-cover",
+      "border": { "tw": "border border-gray-100", "note": "用于列表头像" }
+    },
+    "illustration3d": {
+      "present": false
+    }
+  },
+  "a11y": {
+    "contrast": {
+      "target": {
+        "text": 4.5,
+        "largeText": 3
+      },
+      "notes": [
+        "原型中 gray-400/gray-500 常用于辅助文字；gray-400 在白底通常不满足 4.5:1，仅适合次要/非关键信息。",
+        "indigo-900/gray-900 在白底用于标题与关键数字，通常满足对比度要求。"
+      ]
+    },
+    "focus": {
+      "ring": { "tw": "ring-2 ring-offset-2 ring-indigo-500", "note": "在账簿主题色选择中出现" }
+    }
+  },
+  "darkMode": {
+    "enabledInPrototype": false,
+    "mappingRule": {
+      "surface": {
+        "app": { "from": "gray-50", "to": "gray-900" },
+        "card": { "from": "white", "to": "gray-800" }
+      },
+      "text": {
+        "primary": { "from": "gray-900", "to": "gray-100" },
+        "secondary": { "from": "gray-600", "to": "gray-300" },
+        "muted": { "from": "gray-400", "to": "gray-400" }
+      },
+      "border": {
+        "default": { "from": "gray-200", "to": "gray-700" }
+      },
+      "brand": {
+        "primary": { "from": "indigo-900", "to": "indigo-400" },
+        "secondary": { "from": "indigo-600", "to": "indigo-300" }
+      },
+      "state": {
+        "success": { "from": "green-600", "to": "green-400" },
+        "danger": { "from": "red-500", "to": "red-400" }
+      },
+      "overlay": {
+        "scrim": { "from": "black/30", "to": "black/60" }
+      }
+    }
+  }
+}

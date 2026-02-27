@@ -1,0 +1,1591 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NewShangli App Prototype Gallery</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: 'Noto Sans SC', sans-serif; }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .index-bar { font-size: 10px; line-height: 16px; }
+        .bar-container { height: 120px; display: flex; align-items: flex-end; gap: 8px; }
+        .bar { flex: 1; background: #E0E7FF; border-radius: 4px 4px 0 0; position: relative; transition: height 0.3s; }
+        .bar.active { background: #312E81; }
+        .bar:hover { background: #4338CA; }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen p-8">
+    <div class="max-w-7xl mx-auto">
+        <header class="mb-12 text-center">
+            <h1 class="text-4xl font-bold text-gray-800 mb-4">NewShangli 原型展示</h1>
+            <p class="text-gray-600">基于 iPhone 15 Pro 尺寸 (393x852) 的高保真原型设计</p>
+        </header>
+
+        <div class="space-y-16">
+            
+            <!-- Row 1: Record -->
+            <div class="flex flex-col gap-6">
+                <div class="flex items-center gap-4 border-b border-gray-200 pb-2">
+                    <span class="w-8 h-8 rounded-lg bg-indigo-900 text-white flex items-center justify-center font-bold">1</span>
+                    <h2 class="text-2xl font-bold text-gray-800">收支记录</h2>
+                </div>
+                <div class="grid grid-cols-3 gap-12 pb-8">
+                    <!-- Home -->
+                    <div class="flex flex-col items-center">
+                        <span class="mb-2 text-sm font-medium text-gray-500 bg-gray-100 px-3 py-1 rounded-full">一级页面</span>
+                        <h3 class="text-lg font-semibold mb-4 text-gray-800">首页</h3>
+                        <div class="w-[393px] h-[852px] rounded-2xl shadow-lg overflow-hidden bg-white relative">
+                            <div class="bg-gray-50 h-full flex flex-col overflow-hidden select-none">
+                                <div class="h-[47px] w-full bg-white flex justify-between items-center px-6 pt-2 text-sm font-medium z-50">
+                                    <span>9:41</span>
+                                    <div class="flex gap-2 text-xs">
+                                        <i class="fas fa-signal"></i>
+                                        <i class="fas fa-wifi"></i>
+                                        <i class="fas fa-battery-full text-lg"></i>
+                                    </div>
+                                </div>
+                                <header class="bg-white px-4 py-3 flex items-center justify-between sticky top-0 z-40 border-b border-gray-100 shadow-sm">
+                                    <h1 class="text-xl font-bold text-gray-900">尚礼</h1>
+                                    <div class="flex gap-4">
+                                        <button class="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-600">
+                                            <i class="fas fa-search"></i>
+                                        </button>
+                                        <button class="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-600">
+                                            <i class="fas fa-calendar-alt"></i>
+                                        </button>
+                                    </div>
+                                </header>
+                                <main class="flex-1 overflow-y-auto hide-scrollbar pb-24">
+                                    <div class="px-4 py-2 bg-gray-50 text-xs text-gray-500 font-medium sticky top-0">2026年2月</div>
+                                    <div class="bg-white border-t border-gray-100">
+                                        <div class="flex items-center px-4 py-3 border-b border-gray-50 active:bg-gray-50 transition-colors">
+                                            <img src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop" class="w-10 h-10 rounded-full object-cover mr-3 border border-gray-100">
+                                            <div class="flex-1">
+                                                <div class="flex justify-between items-baseline mb-0.5">
+                                                    <h3 class="text-gray-900 font-medium text-base">张伟</h3>
+                                                    <span class="text-green-600 font-semibold text-base">+2,000</span>
+                                                </div>
+                                                <div class="flex justify-between items-center text-xs text-gray-500">
+                                                    <span>结婚礼金 - 微信支付</span>
+                                                    <span>02-10</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-center px-4 py-3 border-b border-gray-50 active:bg-gray-50 transition-colors">
+                                            <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop" class="w-10 h-10 rounded-full object-cover mr-3 border border-gray-100">
+                                            <div class="flex-1">
+                                                <div class="flex justify-between items-baseline mb-0.5">
+                                                    <h3 class="text-gray-900 font-medium text-base">李娜</h3>
+                                                    <span class="text-red-500 font-semibold text-base">-800</span>
+                                                </div>
+                                                <div class="flex justify-between items-center text-xs text-gray-500">
+                                                    <span>孩子满月 - 现金</span>
+                                                    <span>02-08</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-center px-4 py-3 border-b border-gray-50 active:bg-gray-50 transition-colors">
+                                            <img src="https://images.unsplash.com/photo-1599566150163-29194dcaad36?w=100&h=100&fit=crop" class="w-10 h-10 rounded-full object-cover mr-3 border border-gray-100">
+                                            <div class="flex-1">
+                                                <div class="flex justify-between items-baseline mb-0.5">
+                                                    <h3 class="text-gray-900 font-medium text-base">王强</h3>
+                                                    <span class="text-red-500 font-semibold text-base">-1,200</span>
+                                                </div>
+                                                <div class="flex justify-between items-center text-xs text-gray-500">
+                                                    <span>乔迁之喜 - 支付宝</span>
+                                                    <span>02-05</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="px-4 py-2 bg-gray-50 text-xs text-gray-500 font-medium sticky top-0 mt-2">2026年1月</div>
+                                    <div class="bg-white">
+                                        <div class="flex items-center px-4 py-3 border-b border-gray-50 active:bg-gray-50 transition-colors">
+                                            <div class="w-10 h-10 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center mr-3 font-bold text-sm">赵</div>
+                                            <div class="flex-1">
+                                                <div class="flex justify-between items-baseline mb-0.5">
+                                                    <h3 class="text-gray-900 font-medium text-base">赵铁柱</h3>
+                                                    <span class="text-green-600 font-semibold text-base">+500</span>
+                                                </div>
+                                                <div class="flex justify-between items-center text-xs text-gray-500">
+                                                    <span>春节红包 - 微信</span>
+                                                    <span>01-24</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-center px-4 py-3 border-b border-gray-50 active:bg-gray-50 transition-colors">
+                                            <img src="https://images.unsplash.com/photo-1527980965255-d3b416303d12?w=100&h=100&fit=crop" class="w-10 h-10 rounded-full object-cover mr-3 border border-gray-100">
+                                            <div class="flex-1">
+                                                <div class="flex justify-between items-baseline mb-0.5">
+                                                    <h3 class="text-gray-900 font-medium text-base">刘洋</h3>
+                                                    <span class="text-green-600 font-semibold text-base">+1,000</span>
+                                                </div>
+                                                <div class="flex justify-between items-center text-xs text-gray-500">
+                                                    <span>公司年会 - 现金</span>
+                                                    <span>01-15</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="h-8"></div>
+                                </main>
+                                <button class="absolute bottom-24 right-4 w-14 h-14 bg-indigo-900 rounded-full shadow-xl shadow-indigo-900/40 text-white flex items-center justify-center text-2xl z-50 hover:scale-105 transition-transform">
+                                    <i class="fas fa-plus"></i>
+                                </button>
+                                <nav class="h-[83px] bg-white border-t border-gray-200 flex justify-around items-start pt-3 pb-8 absolute bottom-0 w-full z-50">
+                                    <div class="flex flex-col items-center text-indigo-900 w-16">
+                                        <i class="fas fa-book text-xl mb-1"></i>
+                                        <span class="text-[10px] font-medium">记录</span>
+                                    </div>
+                                    <div class="flex flex-col items-center text-gray-400 w-16 hover:text-indigo-900 transition-colors">
+                                        <i class="fas fa-user-friends text-xl mb-1"></i>
+                                        <span class="text-[10px] font-medium">关系</span>
+                                    </div>
+                                    <div class="flex flex-col items-center text-gray-400 w-16 hover:text-indigo-900 transition-colors">
+                                        <i class="fas fa-chart-pie text-xl mb-1"></i>
+                                        <span class="text-[10px] font-medium">统计</span>
+                                    </div>
+                                    <div class="flex flex-col items-center text-gray-400 w-16 hover:text-indigo-900 transition-colors">
+                                        <i class="fas fa-cog text-xl mb-1"></i>
+                                        <span class="text-[10px] font-medium">设置</span>
+                                    </div>
+                                </nav>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Add Record -->
+                    <div class="flex flex-col items-center">
+                        <span class="mb-2 text-sm font-medium text-gray-500 bg-gray-100 px-3 py-1 rounded-full">二级页面</span>
+                        <h3 class="text-lg font-semibold mb-4 text-gray-800">收支录入</h3>
+                        <div class="w-[393px] h-[852px] rounded-2xl shadow-lg overflow-hidden bg-white relative">
+                            <div class="bg-gray-50 h-full flex flex-col overflow-hidden select-none">
+                                <div class="h-[47px] w-full bg-white flex justify-between items-center px-6 pt-2 text-sm font-medium z-50">
+                                    <span>9:41</span>
+                                    <div class="flex gap-2 text-xs">
+                                        <i class="fas fa-signal"></i>
+                                        <i class="fas fa-wifi"></i>
+                                        <i class="fas fa-battery-full text-lg"></i>
+                                    </div>
+                                </div>
+                                <header class="bg-white px-4 py-3 flex items-center justify-between sticky top-0 z-40 border-b border-gray-100">
+                                    <button class="w-9 h-9 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-900">
+                                        <i class="fas fa-times text-lg"></i>
+                                    </button>
+                                    <h1 class="text-lg font-bold text-gray-900">记录收支</h1>
+                                    <button class="px-4 py-1.5 bg-indigo-900 text-white text-sm font-medium rounded-full shadow-sm hover:bg-indigo-800 transition-colors">
+                                        保存
+                                    </button>
+                                </header>
+                                <main class="flex-1 overflow-y-auto p-4 space-y-6">
+                                    <div class="bg-gray-200 p-1 rounded-xl flex font-medium text-sm">
+                                        <button class="flex-1 py-2 rounded-lg bg-white text-indigo-900 shadow-sm transition-all">收礼</button>
+                                        <button class="flex-1 py-2 rounded-lg text-gray-500 hover:text-gray-700 transition-all">送礼</button>
+                                    </div>
+                                    <div class="bg-white rounded-2xl p-4 shadow-sm">
+                                        <label class="text-xs text-gray-500 block mb-2">金额 (元)</label>
+                                        <div class="flex items-end border-b border-gray-100 pb-2">
+                                            <span class="text-3xl font-bold text-gray-900 mr-2">¥</span>
+                                            <input type="text" value="2,000" class="text-4xl font-bold text-gray-900 w-full outline-none bg-transparent placeholder-gray-300" placeholder="0.00">
+                                        </div>
+                                        <div class="flex gap-2 mt-3 overflow-x-auto hide-scrollbar">
+                                            <button class="px-3 py-1.5 bg-gray-50 text-gray-600 rounded-lg text-xs font-medium border border-gray-100 whitespace-nowrap">200</button>
+                                            <button class="px-3 py-1.5 bg-gray-50 text-gray-600 rounded-lg text-xs font-medium border border-gray-100 whitespace-nowrap">500</button>
+                                            <button class="px-3 py-1.5 bg-indigo-50 text-indigo-700 rounded-lg text-xs font-medium border border-indigo-100 whitespace-nowrap">1000</button>
+                                            <button class="px-3 py-1.5 bg-gray-50 text-gray-600 rounded-lg text-xs font-medium border border-gray-100 whitespace-nowrap">2000</button>
+                                            <button class="px-3 py-1.5 bg-gray-50 text-gray-600 rounded-lg text-xs font-medium border border-gray-100 whitespace-nowrap">5000</button>
+                                        </div>
+                                    </div>
+                                    <div class="bg-white rounded-2xl shadow-sm divide-y divide-gray-50">
+                                        <div class="flex items-center p-4">
+                                            <div class="w-8 h-8 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center mr-3">
+                                                <i class="fas fa-user text-sm"></i>
+                                            </div>
+                                            <div class="flex-1">
+                                                <label class="text-xs text-gray-500 block">关系人</label>
+                                                <div class="flex items-center justify-between">
+                                                    <span class="text-gray-900 font-medium">张伟</span>
+                                                    <i class="fas fa-chevron-right text-gray-300 text-xs"></i>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-center p-4">
+                                            <div class="w-8 h-8 rounded-full bg-orange-50 text-orange-500 flex items-center justify-center mr-3">
+                                                <i class="fas fa-gift text-sm"></i>
+                                            </div>
+                                            <div class="flex-1">
+                                                <label class="text-xs text-gray-500 block">事由</label>
+                                                <input type="text" value="结婚" class="w-full text-gray-900 font-medium outline-none placeholder-gray-300" placeholder="请输入事由">
+                                            </div>
+                                        </div>
+                                        <div class="flex items-center p-4">
+                                            <div class="w-8 h-8 rounded-full bg-blue-50 text-blue-500 flex items-center justify-center mr-3">
+                                                <i class="fas fa-calendar text-sm"></i>
+                                            </div>
+                                            <div class="flex-1">
+                                                <label class="text-xs text-gray-500 block">日期</label>
+                                                <div class="flex items-center justify-between">
+                                                    <span class="text-gray-900 font-medium">2026年2月12日 今天</span>
+                                                    <i class="fas fa-chevron-right text-gray-300 text-xs"></i>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-center p-4">
+                                            <div class="w-8 h-8 rounded-full bg-green-50 text-green-500 flex items-center justify-center mr-3">
+                                                <i class="fas fa-wallet text-sm"></i>
+                                            </div>
+                                            <div class="flex-1">
+                                                <label class="text-xs text-gray-500 block">支付方式</label>
+                                                <div class="flex items-center justify-between">
+                                                    <span class="text-gray-900 font-medium">微信支付</span>
+                                                    <i class="fas fa-chevron-right text-gray-300 text-xs"></i>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="bg-white rounded-2xl shadow-sm p-4">
+                                        <textarea class="w-full text-sm text-gray-700 placeholder-gray-400 outline-none resize-none mb-4" rows="3" placeholder="添加备注..."></textarea>
+                                        <div class="flex gap-3">
+                                            <div class="w-20 h-20 rounded-xl bg-gray-50 border border-dashed border-gray-300 flex flex-col items-center justify-center text-gray-400">
+                                                <i class="fas fa-camera mb-1"></i>
+                                                <span class="text-[10px]">添加图片</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </main>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Record Detail -->
+                    <div class="flex flex-col items-center">
+                        <span class="mb-2 text-sm font-medium text-gray-500 bg-gray-100 px-3 py-1 rounded-full">二级页面</span>
+                        <h3 class="text-lg font-semibold mb-4 text-gray-800">收支详情</h3>
+                        <div class="w-[393px] h-[852px] rounded-2xl shadow-lg overflow-hidden bg-white relative">
+                            <div class="bg-gray-50 h-full flex flex-col overflow-hidden select-none">
+                                <div class="h-[47px] w-full bg-white flex justify-between items-center px-6 pt-2 text-sm font-medium z-50">
+                                    <span>9:41</span>
+                                    <div class="flex gap-2 text-xs">
+                                        <i class="fas fa-signal"></i>
+                                        <i class="fas fa-wifi"></i>
+                                        <i class="fas fa-battery-full text-lg"></i>
+                                    </div>
+                                </div>
+                                <header class="bg-white px-4 py-3 flex items-center justify-between sticky top-0 z-40 border-b border-gray-100">
+                                    <button class="w-9 h-9 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-900">
+                                        <i class="fas fa-arrow-left text-lg"></i>
+                                    </button>
+                                    <h1 class="text-lg font-bold text-gray-900">记录详情</h1>
+                                    <button class="w-9 h-9 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-900">
+                                        <i class="fas fa-ellipsis-v"></i>
+                                    </button>
+                                </header>
+                                <main class="flex-1 overflow-y-auto p-4 pb-24">
+                                    <div class="bg-white rounded-3xl p-8 shadow-sm text-center mb-6 relative overflow-hidden">
+                                        <div class="absolute top-0 left-0 w-full h-2 bg-green-500"></div>
+                                        <p class="text-sm text-gray-500 mb-2">收礼金额</p>
+                                        <h2 class="text-4xl font-bold text-gray-900 mb-1">¥2,000.00</h2>
+                                        <div class="inline-flex items-center gap-1 bg-green-50 text-green-600 px-3 py-1 rounded-full text-xs font-medium mt-2">
+                                            <i class="fas fa-arrow-down"></i> 收入
+                                        </div>
+                                    </div>
+                                    <div class="bg-white rounded-2xl shadow-sm divide-y divide-gray-50">
+                                        <div class="flex items-center p-4">
+                                            <div class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center mr-4 text-gray-500">
+                                                <i class="fas fa-user"></i>
+                                            </div>
+                                            <div class="flex-1">
+                                                <p class="text-xs text-gray-400 mb-0.5">关系人</p>
+                                                <p class="text-sm font-medium text-gray-900">张伟</p>
+                                            </div>
+                                            <i class="fas fa-chevron-right text-gray-300 text-xs"></i>
+                                        </div>
+                                        <div class="flex items-center p-4">
+                                            <div class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center mr-4 text-gray-500">
+                                                <i class="fas fa-gift"></i>
+                                            </div>
+                                            <div class="flex-1">
+                                                <p class="text-xs text-gray-400 mb-0.5">事由</p>
+                                                <p class="text-sm font-medium text-gray-900">结婚礼金</p>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-center p-4">
+                                            <div class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center mr-4 text-gray-500">
+                                                <i class="fas fa-calendar-alt"></i>
+                                            </div>
+                                            <div class="flex-1">
+                                                <p class="text-xs text-gray-400 mb-0.5">时间</p>
+                                                <p class="text-sm font-medium text-gray-900">2026年2月10日 12:30</p>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-center p-4">
+                                            <div class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center mr-4 text-gray-500">
+                                                <i class="fas fa-wallet"></i>
+                                            </div>
+                                            <div class="flex-1">
+                                                <p class="text-xs text-gray-400 mb-0.5">支付方式</p>
+                                                <p class="text-sm font-medium text-gray-900">微信支付</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="mt-6">
+                                        <h3 class="text-xs font-bold text-gray-500 mb-3 ml-1 uppercase tracking-wider">备注</h3>
+                                        <div class="bg-white rounded-2xl p-4 shadow-sm">
+                                            <p class="text-sm text-gray-600 leading-relaxed">
+                                                这是张伟结婚时候随的份子钱，当时通过微信转账给他的。
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div class="mt-6">
+                                        <h3 class="text-xs font-bold text-gray-500 mb-3 ml-1 uppercase tracking-wider">附件</h3>
+                                        <div class="flex gap-3">
+                                            <div class="w-24 h-24 rounded-2xl bg-gray-200 overflow-hidden relative">
+                                                <img src="https://images.unsplash.com/photo-1511795409834-ef04bbd61622?w=150&h=150&fit=crop" class="w-full h-full object-cover">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </main>
+                                <div class="p-4 bg-white border-t border-gray-100 flex gap-3 z-50">
+                                    <button class="flex-1 py-3 rounded-xl bg-gray-50 text-red-500 font-medium text-sm flex items-center justify-center gap-2 hover:bg-red-50 transition-colors">
+                                        <i class="fas fa-trash-alt"></i> 删除
+                                    </button>
+                                    <button class="flex-1 py-3 rounded-xl bg-indigo-900 text-white font-medium text-sm flex items-center justify-center gap-2 shadow-lg shadow-indigo-200 hover:bg-indigo-800 transition-colors">
+                                        <i class="fas fa-pen"></i> 编辑
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Reminders (Linked from Home) -->
+                    <div class="flex flex-col items-center">
+                        <span class="mb-2 text-sm font-medium text-gray-500 bg-gray-100 px-3 py-1 rounded-full">功能模块</span>
+                        <h3 class="text-lg font-semibold mb-4 text-gray-800">事件提醒</h3>
+                        <div class="w-[393px] h-[852px] rounded-2xl shadow-lg overflow-hidden bg-white relative">
+                            <div class="bg-gray-50 h-full flex flex-col overflow-hidden select-none">
+                                <div class="h-[47px] w-full bg-white flex justify-between items-center px-6 pt-2 text-sm font-medium z-50">
+                                    <span>9:41</span>
+                                    <div class="flex gap-2 text-xs">
+                                        <i class="fas fa-signal"></i>
+                                        <i class="fas fa-wifi"></i>
+                                        <i class="fas fa-battery-full text-lg"></i>
+                                    </div>
+                                </div>
+                                <header class="bg-white px-4 py-3 flex items-center justify-between sticky top-0 z-40 border-b border-gray-100">
+                                    <h1 class="text-xl font-bold text-gray-900">提醒</h1>
+                                    <button class="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-600">
+                                        <i class="fas fa-plus"></i>
+                                    </button>
+                                </header>
+                                <div class="px-4 py-3 bg-white border-b border-gray-50 flex gap-4 overflow-x-auto hide-scrollbar">
+                                    <button class="bg-indigo-900 text-white px-4 py-1.5 rounded-full text-xs font-medium whitespace-nowrap shadow-sm shadow-indigo-200">全部</button>
+                                    <button class="bg-gray-100 text-gray-600 px-4 py-1.5 rounded-full text-xs font-medium whitespace-nowrap">生日</button>
+                                    <button class="bg-gray-100 text-gray-600 px-4 py-1.5 rounded-full text-xs font-medium whitespace-nowrap">回礼</button>
+                                    <button class="bg-gray-100 text-gray-600 px-4 py-1.5 rounded-full text-xs font-medium whitespace-nowrap">纪念日</button>
+                                </div>
+                                <main class="flex-1 overflow-y-auto hide-scrollbar pb-24 p-4 space-y-6">
+                                    <div>
+                                        <h2 class="text-xs font-bold text-gray-500 mb-3 ml-1 uppercase tracking-wider">本周</h2>
+                                        <div class="space-y-3">
+                                            <div class="bg-white p-4 rounded-2xl shadow-sm border-l-4 border-red-500 flex items-center">
+                                                <div class="flex-1">
+                                                    <div class="flex items-center gap-2 mb-1">
+                                                        <span class="bg-red-100 text-red-600 text-[10px] px-1.5 py-0.5 rounded font-bold">明天</span>
+                                                        <h3 class="font-bold text-gray-900">张伟 生日</h3>
+                                                    </div>
+                                                    <p class="text-xs text-gray-500">建议红包 ¥600</p>
+                                                </div>
+                                                <button class="w-8 h-8 rounded-full bg-green-50 text-green-600 flex items-center justify-center">
+                                                    <i class="fas fa-check text-xs"></i>
+                                                </button>
+                                            </div>
+                                            <div class="bg-white p-4 rounded-2xl shadow-sm border-l-4 border-orange-400 flex items-center">
+                                                <div class="flex-1">
+                                                    <div class="flex items-center gap-2 mb-1">
+                                                        <span class="bg-orange-100 text-orange-600 text-[10px] px-1.5 py-0.5 rounded font-bold">3天后</span>
+                                                        <h3 class="font-bold text-gray-900">李娜 孩子百日宴</h3>
+                                                    </div>
+                                                    <p class="text-xs text-gray-500">上次她送了 ¥800</p>
+                                                </div>
+                                                <button class="w-8 h-8 rounded-full bg-green-50 text-green-600 flex items-center justify-center">
+                                                    <i class="fas fa-check text-xs"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <h2 class="text-xs font-bold text-gray-500 mb-3 ml-1 uppercase tracking-wider">未来</h2>
+                                        <div class="space-y-3">
+                                            <div class="bg-white p-4 rounded-2xl shadow-sm flex items-center">
+                                                <div class="w-10 h-10 rounded-full bg-pink-50 text-pink-500 flex items-center justify-center mr-3">
+                                                    <i class="fas fa-heart"></i>
+                                                </div>
+                                                <div class="flex-1">
+                                                    <h3 class="font-bold text-gray-900 text-sm">结婚纪念日</h3>
+                                                    <p class="text-xs text-gray-500">2月28日 (16天后)</p>
+                                                </div>
+                                            </div>
+                                            <div class="bg-white p-4 rounded-2xl shadow-sm flex items-center">
+                                                <div class="w-10 h-10 rounded-full bg-blue-50 text-blue-500 flex items-center justify-center mr-3">
+                                                    <i class="fas fa-gift"></i>
+                                                </div>
+                                                <div class="flex-1">
+                                                    <h3 class="font-bold text-gray-900 text-sm">王强 乔迁</h3>
+                                                    <p class="text-xs text-gray-500">3月15日</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </main>
+                                <nav class="h-[83px] bg-white border-t border-gray-200 flex justify-around items-start pt-3 pb-8 absolute bottom-0 w-full z-50">
+                                    <div class="flex flex-col items-center text-gray-400 w-16 hover:text-indigo-900 transition-colors">
+                                        <i class="fas fa-book text-xl mb-1"></i>
+                                        <span class="text-[10px] font-medium">记录</span>
+                                    </div>
+                                    <div class="flex flex-col items-center text-gray-400 w-16 hover:text-indigo-900 transition-colors">
+                                        <i class="fas fa-user-friends text-xl mb-1"></i>
+                                        <span class="text-[10px] font-medium">关系</span>
+                                    </div>
+                                    <div class="flex flex-col items-center text-gray-400 w-16 hover:text-indigo-900 transition-colors">
+                                        <i class="fas fa-chart-pie text-xl mb-1"></i>
+                                        <span class="text-[10px] font-medium">统计</span>
+                                    </div>
+                                    <div class="flex flex-col items-center text-gray-400 w-16 hover:text-indigo-900 transition-colors">
+                                        <i class="fas fa-cog text-xl mb-1"></i>
+                                        <span class="text-[10px] font-medium">设置</span>
+                                    </div>
+                                </nav>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Row 2: People -->
+            <div class="flex flex-col gap-6">
+                <div class="flex items-center gap-4 border-b border-gray-200 pb-2">
+                    <span class="w-8 h-8 rounded-lg bg-indigo-900 text-white flex items-center justify-center font-bold">2</span>
+                    <h2 class="text-2xl font-bold text-gray-800">关系人管理</h2>
+                </div>
+                <div class="grid grid-cols-3 gap-12 pb-8">
+                    <!-- Person List -->
+                    <div class="flex flex-col items-center">
+                        <span class="mb-2 text-sm font-medium text-gray-500 bg-gray-100 px-3 py-1 rounded-full">一级页面</span>
+                        <h3 class="text-lg font-semibold mb-4 text-gray-800">列表页</h3>
+                        <div class="w-[393px] h-[852px] rounded-2xl shadow-lg overflow-hidden bg-white relative">
+                            <div class="bg-white h-full flex flex-col overflow-hidden select-none">
+                                <div class="h-[47px] w-full bg-white flex justify-between items-center px-6 pt-2 text-sm font-medium z-50">
+                                    <span>9:41</span>
+                                    <div class="flex gap-2 text-xs">
+                                        <i class="fas fa-signal"></i>
+                                        <i class="fas fa-wifi"></i>
+                                        <i class="fas fa-battery-full text-lg"></i>
+                                    </div>
+                                </div>
+                                <header class="bg-white px-4 py-3 flex items-center justify-between sticky top-0 z-40 border-b border-gray-100">
+                                    <h1 class="text-xl font-bold text-gray-900">关系人</h1>
+                                    <button class="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-600">
+                                        <i class="fas fa-user-plus"></i>
+                                    </button>
+                                </header>
+                                <div class="px-4 py-2 bg-white">
+                                    <div class="bg-gray-100 rounded-xl px-4 py-2 flex items-center text-gray-500 text-sm">
+                                        <i class="fas fa-search mr-2"></i>
+                                        <input type="text" placeholder="搜索姓名、手机号" class="bg-transparent w-full outline-none placeholder-gray-400">
+                                    </div>
+                                </div>
+                                <main class="flex-1 overflow-y-auto hide-scrollbar relative">
+                                    <div class="bg-gray-50 px-4 py-1 text-xs font-bold text-gray-500 sticky top-0">A</div>
+                                    <div class="bg-white">
+                                        <div class="flex items-center px-4 py-3 border-b border-gray-50 active:bg-gray-50 transition-colors">
+                                            <div class="w-10 h-10 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center mr-3 font-bold">阿</div>
+                                            <div class="flex-1">
+                                                <h3 class="text-gray-900 font-medium">阿强</h3>
+                                                <p class="text-xs text-gray-400">同事</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="bg-gray-50 px-4 py-1 text-xs font-bold text-gray-500 sticky top-0">L</div>
+                                    <div class="bg-white">
+                                        <div class="flex items-center px-4 py-3 border-b border-gray-50 active:bg-gray-50 transition-colors">
+                                            <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop" class="w-10 h-10 rounded-full object-cover mr-3 border border-gray-100">
+                                            <div class="flex-1">
+                                                <h3 class="text-gray-900 font-medium">李娜</h3>
+                                                <p class="text-xs text-gray-400">亲戚 - 表妹</p>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-center px-4 py-3 border-b border-gray-50 active:bg-gray-50 transition-colors">
+                                            <div class="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center mr-3 font-bold">李</div>
+                                            <div class="flex-1">
+                                                <h3 class="text-gray-900 font-medium">李建国</h3>
+                                                <p class="text-xs text-gray-400">长辈</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="bg-gray-50 px-4 py-1 text-xs font-bold text-gray-500 sticky top-0">W</div>
+                                    <div class="bg-white">
+                                        <div class="flex items-center px-4 py-3 border-b border-gray-50 active:bg-gray-50 transition-colors">
+                                            <img src="https://images.unsplash.com/photo-1599566150163-29194dcaad36?w=100&h=100&fit=crop" class="w-10 h-10 rounded-full object-cover mr-3 border border-gray-100">
+                                            <div class="flex-1">
+                                                <h3 class="text-gray-900 font-medium">王强</h3>
+                                                <p class="text-xs text-gray-400">同学</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="bg-gray-50 px-4 py-1 text-xs font-bold text-gray-500 sticky top-0">Z</div>
+                                    <div class="bg-white">
+                                        <div class="flex items-center px-4 py-3 border-b border-gray-50 active:bg-gray-50 transition-colors">
+                                            <img src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop" class="w-10 h-10 rounded-full object-cover mr-3 border border-gray-100">
+                                            <div class="flex-1">
+                                                <h3 class="text-gray-900 font-medium">张伟</h3>
+                                                <p class="text-xs text-gray-400">朋友</p>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-center px-4 py-3 border-b border-gray-50 active:bg-gray-50 transition-colors">
+                                            <div class="w-10 h-10 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center mr-3 font-bold">赵</div>
+                                            <div class="flex-1">
+                                                <h3 class="text-gray-900 font-medium">赵铁柱</h3>
+                                                <p class="text-xs text-gray-400">邻居</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="h-24"></div>
+                                    <div class="absolute right-1 top-1/2 transform -translate-y-1/2 flex flex-col items-center text-gray-400 index-bar z-30">
+                                        <span>A</span>
+                                        <span>B</span>
+                                        <span>C</span>
+                                        <span>D</span>
+                                        <span>E</span>
+                                        <span>F</span>
+                                        <span>G</span>
+                                        <span>H</span>
+                                        <span>I</span>
+                                        <span>J</span>
+                                        <span>K</span>
+                                        <span class="text-indigo-600 font-bold">L</span>
+                                        <span>M</span>
+                                        <span>N</span>
+                                        <span>O</span>
+                                        <span>P</span>
+                                        <span>Q</span>
+                                        <span>R</span>
+                                        <span>S</span>
+                                        <span>T</span>
+                                        <span>U</span>
+                                        <span>V</span>
+                                        <span class="text-indigo-600 font-bold">W</span>
+                                        <span>X</span>
+                                        <span>Y</span>
+                                        <span class="text-indigo-600 font-bold">Z</span>
+                                        <span>#</span>
+                                    </div>
+                                </main>
+                                <nav class="h-[83px] bg-white border-t border-gray-200 flex justify-around items-start pt-3 pb-8 absolute bottom-0 w-full z-50">
+                                    <div class="flex flex-col items-center text-gray-400 w-16 hover:text-indigo-900 transition-colors">
+                                        <i class="fas fa-book text-xl mb-1"></i>
+                                        <span class="text-[10px] font-medium">记录</span>
+                                    </div>
+                                    <div class="flex flex-col items-center text-indigo-900 w-16">
+                                        <i class="fas fa-user-friends text-xl mb-1"></i>
+                                        <span class="text-[10px] font-medium">关系</span>
+                                    </div>
+                                    <div class="flex flex-col items-center text-gray-400 w-16 hover:text-indigo-900 transition-colors">
+                                        <i class="fas fa-chart-pie text-xl mb-1"></i>
+                                        <span class="text-[10px] font-medium">统计</span>
+                                    </div>
+                                    <div class="flex flex-col items-center text-gray-400 w-16 hover:text-indigo-900 transition-colors">
+                                        <i class="fas fa-cog text-xl mb-1"></i>
+                                        <span class="text-[10px] font-medium">设置</span>
+                                    </div>
+                                </nav>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Person Detail -->
+                    <div class="flex flex-col items-center">
+                        <span class="mb-2 text-sm font-medium text-gray-500 bg-gray-100 px-3 py-1 rounded-full">二级页面</span>
+                        <h3 class="text-lg font-semibold mb-4 text-gray-800">详情页</h3>
+                        <div class="w-[393px] h-[852px] rounded-2xl shadow-lg overflow-hidden bg-white relative">
+                            <div class="bg-gray-50 h-full flex flex-col overflow-hidden select-none">
+                                <div class="h-[47px] w-full bg-indigo-900 flex justify-between items-center px-6 pt-2 text-sm font-medium z-50 text-white">
+                                    <span>9:41</span>
+                                    <div class="flex gap-2 text-xs">
+                                        <i class="fas fa-signal"></i>
+                                        <i class="fas fa-wifi"></i>
+                                        <i class="fas fa-battery-full text-lg"></i>
+                                    </div>
+                                </div>
+                                <header class="bg-indigo-900 px-4 py-3 flex items-center justify-between sticky top-0 z-40 text-white">
+                                    <button class="w-9 h-9 rounded-full hover:bg-white/10 flex items-center justify-center">
+                                        <i class="fas fa-arrow-left text-lg"></i>
+                                    </button>
+                                    <h1 class="text-lg font-bold">详情</h1>
+                                    <button class="w-9 h-9 rounded-full hover:bg-white/10 flex items-center justify-center">
+                                        <i class="fas fa-pen text-sm"></i>
+                                    </button>
+                                </header>
+                                <main class="flex-1 overflow-y-auto hide-scrollbar">
+                                    <div class="bg-indigo-900 pb-8 px-4 rounded-b-[30px] relative mb-12">
+                                        <div class="flex flex-col items-center">
+                                            <div class="w-24 h-24 rounded-full border-4 border-white shadow-lg overflow-hidden mb-3">
+                                                <img src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200&h=200&fit=crop" class="w-full h-full object-cover">
+                                            </div>
+                                            <h2 class="text-2xl font-bold text-white mb-1">张伟</h2>
+                                            <div class="flex items-center gap-2 text-indigo-200 text-sm">
+                                                <span class="bg-white/20 px-2 py-0.5 rounded text-xs">朋友</span>
+                                                <span>•</span>
+                                                <span>138 0013 8000</span>
+                                            </div>
+                                        </div>
+                                        <div class="absolute -bottom-8 left-4 right-4 bg-white rounded-2xl shadow-lg p-4 flex justify-between divide-x divide-gray-100">
+                                            <div class="flex-1 text-center">
+                                                <p class="text-xs text-gray-500 mb-1">收礼</p>
+                                                <p class="text-green-600 font-bold text-lg">¥2,000</p>
+                                            </div>
+                                            <div class="flex-1 text-center">
+                                                <p class="text-xs text-gray-500 mb-1">送礼</p>
+                                                <p class="text-red-500 font-bold text-lg">¥800</p>
+                                            </div>
+                                            <div class="flex-1 text-center">
+                                                <p class="text-xs text-gray-500 mb-1">差额</p>
+                                                <p class="text-indigo-600 font-bold text-lg">+1,200</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="px-4 mb-6">
+                                        <div class="bg-white rounded-2xl p-4 shadow-sm space-y-4">
+                                            <div class="flex items-center">
+                                                <div class="w-8 h-8 rounded-full bg-pink-50 text-pink-500 flex items-center justify-center mr-3">
+                                                    <i class="fas fa-birthday-cake text-sm"></i>
+                                                </div>
+                                                <div class="flex-1">
+                                                    <p class="text-xs text-gray-400">生日</p>
+                                                    <p class="text-sm text-gray-800 font-medium">1990年8月15日 (农历七月廿六)</p>
+                                                </div>
+                                                <span class="text-xs bg-pink-100 text-pink-600 px-2 py-1 rounded-full">5天后</span>
+                                            </div>
+                                            <div class="flex items-center">
+                                                <div class="w-8 h-8 rounded-full bg-gray-50 text-gray-500 flex items-center justify-center mr-3">
+                                                    <i class="fas fa-sticky-note text-sm"></i>
+                                                </div>
+                                                <div class="flex-1">
+                                                    <p class="text-xs text-gray-400">备注</p>
+                                                    <p class="text-sm text-gray-800">大学室友，喜欢喝茶</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="px-4 flex justify-between items-center mb-2">
+                                        <h3 class="font-bold text-gray-800">往来记录</h3>
+                                        <button class="text-xs text-indigo-600 font-medium">全部</button>
+                                    </div>
+                                    <div class="bg-white mx-4 rounded-2xl shadow-sm overflow-hidden mb-6">
+                                        <div class="flex items-center p-4 border-b border-gray-50">
+                                            <div class="w-10 h-10 rounded-full bg-green-100 text-green-600 flex items-center justify-center mr-3">
+                                                <i class="fas fa-gift"></i>
+                                            </div>
+                                            <div class="flex-1">
+                                                <div class="flex justify-between items-baseline mb-0.5">
+                                                    <h3 class="text-gray-900 font-medium text-sm">结婚礼金</h3>
+                                                    <span class="text-green-600 font-bold text-sm">+2,000</span>
+                                                </div>
+                                                <div class="flex justify-between items-center text-xs text-gray-400">
+                                                    <span>收礼 - 微信</span>
+                                                    <span>2026-02-10</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-center p-4 border-b border-gray-50">
+                                            <div class="w-10 h-10 rounded-full bg-red-100 text-red-600 flex items-center justify-center mr-3">
+                                                <i class="fas fa-hand-holding-heart"></i>
+                                            </div>
+                                            <div class="flex-1">
+                                                <div class="flex justify-between items-baseline mb-0.5">
+                                                    <h3 class="text-gray-900 font-medium text-sm">孩子满月</h3>
+                                                    <span class="text-red-500 font-bold text-sm">-800</span>
+                                                </div>
+                                                <div class="flex justify-between items-center text-xs text-gray-400">
+                                                    <span>送礼 - 现金</span>
+                                                    <span>2025-08-12</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-center p-4">
+                                            <div class="w-10 h-10 rounded-full bg-green-100 text-green-600 flex items-center justify-center mr-3">
+                                                <i class="fas fa-envelope-open-text"></i>
+                                            </div>
+                                            <div class="flex-1">
+                                                <div class="flex justify-between items-baseline mb-0.5">
+                                                    <h3 class="text-gray-900 font-medium text-sm">乔迁红包</h3>
+                                                    <span class="text-green-600 font-bold text-sm">+600</span>
+                                                </div>
+                                                <div class="flex justify-between items-center text-xs text-gray-400">
+                                                    <span>收礼 - 支付宝</span>
+                                                    <span>2024-12-01</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </main>
+                                <div class="p-4 bg-white border-t border-gray-100 flex gap-3">
+                                    <button class="flex-1 py-3 rounded-xl bg-indigo-50 text-indigo-700 font-medium text-sm flex items-center justify-center gap-2">
+                                        <i class="fas fa-bell"></i> 设提醒
+                                    </button>
+                                    <button class="flex-1 py-3 rounded-xl bg-indigo-900 text-white font-medium text-sm flex items-center justify-center gap-2 shadow-lg shadow-indigo-200">
+                                        <i class="fas fa-plus"></i> 记一笔
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Person Edit -->
+                    <div class="flex flex-col items-center">
+                        <span class="mb-2 text-sm font-medium text-gray-500 bg-gray-100 px-3 py-1 rounded-full">二级页面</span>
+                        <h3 class="text-lg font-semibold mb-4 text-gray-800">编辑/新增</h3>
+                        <div class="w-[393px] h-[852px] rounded-2xl shadow-lg overflow-hidden bg-white relative">
+                            <div class="bg-gray-50 h-full flex flex-col overflow-hidden select-none">
+                                <div class="h-[47px] w-full bg-white flex justify-between items-center px-6 pt-2 text-sm font-medium z-50">
+                                    <span>9:41</span>
+                                    <div class="flex gap-2 text-xs">
+                                        <i class="fas fa-signal"></i>
+                                        <i class="fas fa-wifi"></i>
+                                        <i class="fas fa-battery-full text-lg"></i>
+                                    </div>
+                                </div>
+                                <header class="bg-white px-4 py-3 flex items-center justify-between sticky top-0 z-40 border-b border-gray-100">
+                                    <button class="text-sm font-medium text-gray-500 px-2">取消</button>
+                                    <h1 class="text-lg font-bold text-gray-900">编辑关系人</h1>
+                                    <button class="px-4 py-1.5 bg-indigo-900 text-white text-sm font-medium rounded-full shadow-sm hover:bg-indigo-800 transition-colors">
+                                        保存
+                                    </button>
+                                </header>
+                                <main class="flex-1 overflow-y-auto p-4 pb-24 space-y-6">
+                                    <div class="flex flex-col items-center py-4">
+                                        <div class="w-24 h-24 rounded-full bg-gray-200 relative mb-3 border-4 border-white shadow-sm overflow-hidden group cursor-pointer">
+                                            <img src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200&h=200&fit=crop" class="w-full h-full object-cover">
+                                            <div class="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <i class="fas fa-camera text-white text-xl"></i>
+                                            </div>
+                                        </div>
+                                        <p class="text-xs text-indigo-600 font-medium">点击更换头像</p>
+                                    </div>
+                                    <div class="bg-white rounded-2xl shadow-sm divide-y divide-gray-50">
+                                        <div class="p-4">
+                                            <label class="text-xs text-gray-500 block mb-1">姓名 <span class="text-red-500">*</span></label>
+                                            <input type="text" value="张伟" class="w-full text-base text-gray-900 font-medium outline-none placeholder-gray-300">
+                                        </div>
+                                        <div class="p-4 flex items-center justify-between">
+                                            <div>
+                                                <label class="text-xs text-gray-500 block mb-1">关系类型</label>
+                                                <span class="text-base text-gray-900 font-medium">朋友</span>
+                                            </div>
+                                            <i class="fas fa-chevron-right text-gray-300 text-xs"></i>
+                                        </div>
+                                        <div class="p-4">
+                                            <label class="text-xs text-gray-500 block mb-1">手机号</label>
+                                            <input type="tel" value="138 0013 8000" class="w-full text-base text-gray-900 outline-none placeholder-gray-300">
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <h3 class="text-xs font-bold text-gray-500 mb-3 ml-1 uppercase tracking-wider">重要日期</h3>
+                                        <div class="bg-white rounded-2xl shadow-sm divide-y divide-gray-50">
+                                            <div class="flex items-center p-4">
+                                                <div class="w-8 h-8 rounded-full bg-pink-50 text-pink-500 flex items-center justify-center mr-3">
+                                                    <i class="fas fa-birthday-cake text-xs"></i>
+                                                </div>
+                                                <div class="flex-1">
+                                                    <p class="text-xs text-gray-400">生日</p>
+                                                    <p class="text-sm font-medium text-gray-900">1990-08-15 (农历七月廿六)</p>
+                                                </div>
+                                                <i class="fas fa-chevron-right text-gray-300 text-xs"></i>
+                                            </div>
+                                            <div class="flex items-center p-4">
+                                                <div class="w-8 h-8 rounded-full bg-blue-50 text-blue-500 flex items-center justify-center mr-3">
+                                                    <i class="fas fa-heart text-xs"></i>
+                                                </div>
+                                                <div class="flex-1">
+                                                    <p class="text-xs text-gray-400">纪念日</p>
+                                                    <p class="text-sm text-gray-400">未设置</p>
+                                                </div>
+                                                <i class="fas fa-chevron-right text-gray-300 text-xs"></i>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <h3 class="text-xs font-bold text-gray-500 mb-3 ml-1 uppercase tracking-wider">其他信息</h3>
+                                        <div class="bg-white rounded-2xl shadow-sm p-4">
+                                            <label class="text-xs text-gray-500 block mb-2">备注</label>
+                                            <textarea class="w-full text-sm text-gray-900 outline-none resize-none h-20" placeholder="添加备注...">大学室友，喜欢喝茶</textarea>
+                                        </div>
+                                    </div>
+                                    <button class="w-full py-3 rounded-xl bg-white text-red-500 font-medium text-sm shadow-sm border border-gray-100">
+                                        删除联系人
+                                    </button>
+                                </main>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Row 3: Stats -->
+            <div class="flex flex-col gap-6">
+                <div class="flex items-center gap-4 border-b border-gray-200 pb-2">
+                    <span class="w-8 h-8 rounded-lg bg-indigo-900 text-white flex items-center justify-center font-bold">3</span>
+                    <h2 class="text-2xl font-bold text-gray-800">统计分析</h2>
+                </div>
+                <div class="grid grid-cols-3 gap-12 pb-8">
+                    <!-- Stats -->
+                    <div class="flex flex-col items-center">
+                        <span class="mb-2 text-sm font-medium text-gray-500 bg-gray-100 px-3 py-1 rounded-full">一级页面</span>
+                        <h3 class="text-lg font-semibold mb-4 text-gray-800">图表页</h3>
+                        <div class="w-[393px] h-[852px] rounded-2xl shadow-lg overflow-hidden bg-white relative">
+                            <div class="bg-gray-50 h-full flex flex-col overflow-hidden select-none">
+                                <div class="h-[47px] w-full bg-white flex justify-between items-center px-6 pt-2 text-sm font-medium z-50">
+                                    <span>9:41</span>
+                                    <div class="flex gap-2 text-xs">
+                                        <i class="fas fa-signal"></i>
+                                        <i class="fas fa-wifi"></i>
+                                        <i class="fas fa-battery-full text-lg"></i>
+                                    </div>
+                                </div>
+                                <header class="bg-white px-4 py-3 flex items-center justify-between sticky top-0 z-40 border-b border-gray-100">
+                                    <h1 class="text-xl font-bold text-gray-900">统计分析</h1>
+                                    <button class="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-600">
+                                        <i class="fas fa-share-alt"></i>
+                                    </button>
+                                </header>
+                                <div class="bg-white px-4 pb-4 pt-2">
+                                    <div class="flex bg-gray-100 rounded-lg p-1 text-xs font-medium">
+                                        <button class="flex-1 py-1.5 rounded bg-white shadow-sm text-indigo-900">本年</button>
+                                        <button class="flex-1 py-1.5 rounded text-gray-500">半年</button>
+                                        <button class="flex-1 py-1.5 rounded text-gray-500">本月</button>
+                                    </div>
+                                </div>
+                                <main class="flex-1 overflow-y-auto hide-scrollbar pb-24 space-y-4 p-4">
+                                    <div class="grid grid-cols-2 gap-3">
+                                        <div class="bg-white p-4 rounded-2xl shadow-sm">
+                                            <div class="w-8 h-8 rounded-full bg-green-100 text-green-600 flex items-center justify-center mb-2">
+                                                <i class="fas fa-arrow-down text-sm"></i>
+                                            </div>
+                                            <p class="text-xs text-gray-400 mb-1">总收入</p>
+                                            <p class="text-xl font-bold text-gray-900">¥52,800</p>
+                                        </div>
+                                        <div class="bg-white p-4 rounded-2xl shadow-sm">
+                                            <div class="w-8 h-8 rounded-full bg-red-100 text-red-500 flex items-center justify-center mb-2">
+                                                <i class="fas fa-arrow-up text-sm"></i>
+                                            </div>
+                                            <p class="text-xs text-gray-400 mb-1">总支出</p>
+                                            <p class="text-xl font-bold text-gray-900">¥36,500</p>
+                                        </div>
+                                    </div>
+                                    <div class="bg-white p-5 rounded-2xl shadow-sm">
+                                        <div class="flex justify-between items-center mb-6">
+                                            <h3 class="font-bold text-gray-800">收支趋势</h3>
+                                            <div class="flex gap-2 text-[10px]">
+                                                <span class="flex items-center gap-1 text-gray-500"><div class="w-2 h-2 rounded-full bg-indigo-900"></div>收</span>
+                                                <span class="flex items-center gap-1 text-gray-500"><div class="w-2 h-2 rounded-full bg-gray-300"></div>支</span>
+                                            </div>
+                                        </div>
+                                        <div class="bar-container mb-2">
+                                            <div class="bar" style="height: 40%;"></div>
+                                            <div class="bar" style="height: 60%;"></div>
+                                            <div class="bar active" style="height: 80%;"></div>
+                                            <div class="bar" style="height: 50%;"></div>
+                                            <div class="bar" style="height: 30%;"></div>
+                                            <div class="bar" style="height: 70%;"></div>
+                                        </div>
+                                        <div class="flex justify-between text-[10px] text-gray-400 px-1">
+                                            <span>1月</span>
+                                            <span>2月</span>
+                                            <span>3月</span>
+                                            <span>4月</span>
+                                            <span>5月</span>
+                                            <span>6月</span>
+                                        </div>
+                                    </div>
+                                    <div class="bg-white p-5 rounded-2xl shadow-sm">
+                                        <h3 class="font-bold text-gray-800 mb-4">支出分类</h3>
+                                        <div class="flex items-center gap-6">
+                                            <div class="w-32 h-32 rounded-full relative" style="background: conic-gradient(#312E81 0% 45%, #4F46E5 45% 75%, #E0E7FF 75% 100%);">
+                                                <div class="absolute inset-4 bg-white rounded-full flex items-center justify-center flex-col">
+                                                    <span class="text-xs text-gray-400">总计</span>
+                                                    <span class="font-bold text-gray-900">3.6万</span>
+                                                </div>
+                                            </div>
+                                            <div class="flex-1 space-y-3">
+                                                <div class="flex items-center justify-between text-xs">
+                                                    <div class="flex items-center gap-2">
+                                                        <div class="w-2 h-2 rounded-full bg-indigo-900"></div>
+                                                        <span class="text-gray-600">婚礼</span>
+                                                    </div>
+                                                    <span class="font-medium">45%</span>
+                                                </div>
+                                                <div class="flex items-center justify-between text-xs">
+                                                    <div class="flex items-center gap-2">
+                                                        <div class="w-2 h-2 rounded-full bg-indigo-600"></div>
+                                                        <span class="text-gray-600">满月/生日</span>
+                                                    </div>
+                                                    <span class="font-medium">30%</span>
+                                                </div>
+                                                <div class="flex items-center justify-between text-xs">
+                                                    <div class="flex items-center gap-2">
+                                                        <div class="w-2 h-2 rounded-full bg-indigo-100"></div>
+                                                        <span class="text-gray-600">其他</span>
+                                                    </div>
+                                                    <span class="font-medium">25%</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="bg-white p-5 rounded-2xl shadow-sm">
+                                        <h3 class="font-bold text-gray-800 mb-4">人情榜单 (Top 5)</h3>
+                                        <div class="space-y-4">
+                                            <div class="flex items-center justify-between">
+                                                <div class="flex items-center gap-3">
+                                                    <span class="text-xs font-bold text-yellow-500 w-4">1</span>
+                                                    <img src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop" class="w-8 h-8 rounded-full">
+                                                    <span class="text-sm font-medium">张伟</span>
+                                                </div>
+                                                <span class="text-sm font-bold text-indigo-900">¥5,200</span>
+                                            </div>
+                                            <div class="flex items-center justify-between">
+                                                <div class="flex items-center gap-3">
+                                                    <span class="text-xs font-bold text-gray-400 w-4">2</span>
+                                                    <div class="w-8 h-8 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center font-bold text-xs">李</div>
+                                                    <span class="text-sm font-medium">李建国</span>
+                                                </div>
+                                                <span class="text-sm font-bold text-indigo-900">¥3,000</span>
+                                            </div>
+                                            <div class="flex items-center justify-between">
+                                                <div class="flex items-center gap-3">
+                                                    <span class="text-xs font-bold text-orange-400 w-4">3</span>
+                                                    <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop" class="w-8 h-8 rounded-full">
+                                                    <span class="text-sm font-medium">李娜</span>
+                                                </div>
+                                                <span class="text-sm font-bold text-indigo-900">¥1,800</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </main>
+                                <nav class="h-[83px] bg-white border-t border-gray-200 flex justify-around items-start pt-3 pb-8 absolute bottom-0 w-full z-50">
+                                    <div class="flex flex-col items-center text-gray-400 w-16 hover:text-indigo-900 transition-colors">
+                                        <i class="fas fa-book text-xl mb-1"></i>
+                                        <span class="text-[10px] font-medium">记录</span>
+                                    </div>
+                                    <div class="flex flex-col items-center text-gray-400 w-16 hover:text-indigo-900 transition-colors">
+                                        <i class="fas fa-user-friends text-xl mb-1"></i>
+                                        <span class="text-[10px] font-medium">关系</span>
+                                    </div>
+                                    <div class="flex flex-col items-center text-indigo-900 w-16">
+                                        <i class="fas fa-chart-pie text-xl mb-1"></i>
+                                        <span class="text-[10px] font-medium">统计</span>
+                                    </div>
+                                    <div class="flex flex-col items-center text-gray-400 w-16 hover:text-indigo-900 transition-colors">
+                                        <i class="fas fa-cog text-xl mb-1"></i>
+                                        <span class="text-[10px] font-medium">设置</span>
+                                    </div>
+                                </nav>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Row 4: Settings -->
+            <div class="flex flex-col gap-6">
+                <div class="flex items-center gap-4 border-b border-gray-200 pb-2">
+                    <span class="w-8 h-8 rounded-lg bg-indigo-900 text-white flex items-center justify-center font-bold">4</span>
+                    <h2 class="text-2xl font-bold text-gray-800">系统设置</h2>
+                </div>
+                <div class="grid grid-cols-3 gap-12 pb-8">
+                    <!-- Settings -->
+                    <div class="flex flex-col items-center">
+                        <span class="mb-2 text-sm font-medium text-gray-500 bg-gray-100 px-3 py-1 rounded-full">一级页面</span>
+                        <h3 class="text-lg font-semibold mb-4 text-gray-800">设置首页</h3>
+                        <div class="w-[393px] h-[852px] rounded-2xl shadow-lg overflow-hidden bg-white relative">
+                            <div class="bg-gray-50 h-full flex flex-col overflow-hidden select-none">
+                                <div class="h-[47px] w-full bg-white flex justify-between items-center px-6 pt-2 text-sm font-medium z-50">
+                                    <span>9:41</span>
+                                    <div class="flex gap-2 text-xs">
+                                        <i class="fas fa-signal"></i>
+                                        <i class="fas fa-wifi"></i>
+                                        <i class="fas fa-battery-full text-lg"></i>
+                                    </div>
+                                </div>
+                                <header class="bg-white px-4 py-3 flex items-center justify-between sticky top-0 z-40 border-b border-gray-100">
+                                    <h1 class="text-xl font-bold text-gray-900">设置</h1>
+                                </header>
+                                <main class="flex-1 overflow-y-auto p-4 space-y-6 pb-24">
+                                    <div class="bg-white rounded-2xl overflow-hidden shadow-sm">
+                                        <div class="p-4 flex items-center border-b border-gray-50">
+                                            <img src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop" class="w-14 h-14 rounded-full mr-4">
+                                            <div class="flex-1">
+                                                <h2 class="font-bold text-lg text-gray-900">用户_9527</h2>
+                                                <p class="text-xs text-gray-500">已登录</p>
+                                            </div>
+                                            <i class="fas fa-chevron-right text-gray-300 text-xs"></i>
+                                        </div>
+                                    </div>
+                                    <div class="bg-white rounded-2xl overflow-hidden shadow-sm">
+                                        <div class="flex items-center p-4 border-b border-gray-50 active:bg-gray-50 transition-colors">
+                                            <div class="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center mr-3">
+                                                <i class="fas fa-book text-sm"></i>
+                                            </div>
+                                            <div class="flex-1 text-sm font-medium text-gray-800">账簿管理</div>
+                                            <i class="fas fa-chevron-right text-gray-300 text-xs"></i>
+                                        </div>
+                                    </div>
+                                    <div class="bg-white rounded-2xl overflow-hidden shadow-sm">
+                                        <div class="flex items-center p-4 border-b border-gray-50 active:bg-gray-50 transition-colors">
+                                            <div class="w-8 h-8 rounded-lg bg-blue-50 text-blue-500 flex items-center justify-center mr-3">
+                                                <i class="fas fa-bell text-sm"></i>
+                                            </div>
+                                            <div class="flex-1 text-sm font-medium text-gray-800">通知提醒</div>
+                                            <i class="fas fa-chevron-right text-gray-300 text-xs"></i>
+                                        </div>
+                                        <div class="flex items-center p-4 border-b border-gray-50 active:bg-gray-50 transition-colors">
+                                            <div class="w-8 h-8 rounded-lg bg-green-50 text-green-500 flex items-center justify-center mr-3">
+                                                <i class="fas fa-shield-alt text-sm"></i>
+                                            </div>
+                                            <div class="flex-1 text-sm font-medium text-gray-800">隐私与安全</div>
+                                            <i class="fas fa-chevron-right text-gray-300 text-xs"></i>
+                                        </div>
+                                    </div>
+                                    <div class="bg-white rounded-2xl overflow-hidden shadow-sm">
+                                        <div class="flex items-center p-4 border-b border-gray-50 active:bg-gray-50 transition-colors">
+                                            <div class="w-8 h-8 rounded-lg bg-orange-50 text-orange-500 flex items-center justify-center mr-3">
+                                                <i class="fas fa-cloud-upload-alt text-sm"></i>
+                                            </div>
+                                            <div class="flex-1 text-sm font-medium text-gray-800">数据备份</div>
+                                            <i class="fas fa-chevron-right text-gray-300 text-xs"></i>
+                                        </div>
+                                        <div class="flex items-center p-4 border-b border-gray-50 active:bg-gray-50 transition-colors">
+                                            <div class="w-8 h-8 rounded-lg bg-purple-50 text-purple-500 flex items-center justify-center mr-3">
+                                                <i class="fas fa-file-export text-sm"></i>
+                                            </div>
+                                            <div class="flex-1 text-sm font-medium text-gray-800">导出数据 (Excel)</div>
+                                            <i class="fas fa-chevron-right text-gray-300 text-xs"></i>
+                                        </div>
+                                    </div>
+                                    <div class="bg-white rounded-2xl overflow-hidden shadow-sm">
+                                        <div class="flex items-center p-4 border-b border-gray-50 active:bg-gray-50 transition-colors">
+                                            <div class="w-8 h-8 rounded-lg bg-gray-100 text-gray-500 flex items-center justify-center mr-3">
+                                                <i class="fas fa-info-circle text-sm"></i>
+                                            </div>
+                                            <div class="flex-1 text-sm font-medium text-gray-800">关于尚礼</div>
+                                            <span class="text-xs text-gray-400 mr-2">v1.0.0</span>
+                                            <i class="fas fa-chevron-right text-gray-300 text-xs"></i>
+                                        </div>
+                                    </div>
+                                    <button class="w-full py-3 rounded-2xl bg-white text-red-500 font-medium text-sm shadow-sm active:bg-gray-50 transition-colors">
+                                        退出登录
+                                    </button>
+                                </main>
+                                <nav class="h-[83px] bg-white border-t border-gray-200 flex justify-around items-start pt-3 pb-8 absolute bottom-0 w-full z-50">
+                                    <div class="flex flex-col items-center text-gray-400 w-16 hover:text-indigo-900 transition-colors">
+                                        <i class="fas fa-book text-xl mb-1"></i>
+                                        <span class="text-[10px] font-medium">记录</span>
+                                    </div>
+                                    <div class="flex flex-col items-center text-gray-400 w-16 hover:text-indigo-900 transition-colors">
+                                        <i class="fas fa-user-friends text-xl mb-1"></i>
+                                        <span class="text-[10px] font-medium">关系</span>
+                                    </div>
+                                    <div class="flex flex-col items-center text-gray-400 w-16 hover:text-indigo-900 transition-colors">
+                                        <i class="fas fa-chart-pie text-xl mb-1"></i>
+                                        <span class="text-[10px] font-medium">统计</span>
+                                    </div>
+                                    <div class="flex flex-col items-center text-indigo-900 w-16">
+                                        <i class="fas fa-cog text-xl mb-1"></i>
+                                        <span class="text-[10px] font-medium">设置</span>
+                                    </div>
+                                </nav>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Data Backup -->
+                    <div class="flex flex-col items-center">
+                        <span class="mb-2 text-sm font-medium text-gray-500 bg-gray-100 px-3 py-1 rounded-full">二级页面</span>
+                        <h3 class="text-lg font-semibold mb-4 text-gray-800">数据备份</h3>
+                        <div class="w-[393px] h-[852px] rounded-2xl shadow-lg overflow-hidden bg-white relative">
+                            <div class="bg-gray-50 h-full flex flex-col overflow-hidden select-none">
+                                <div class="h-[47px] w-full bg-white flex justify-between items-center px-6 pt-2 text-sm font-medium z-50">
+                                    <span>9:41</span>
+                                    <div class="flex gap-2 text-xs">
+                                        <i class="fas fa-signal"></i>
+                                        <i class="fas fa-wifi"></i>
+                                        <i class="fas fa-battery-full text-lg"></i>
+                                    </div>
+                                </div>
+                                <header class="bg-white px-4 py-3 flex items-center justify-between sticky top-0 z-40 border-b border-gray-100">
+                                    <button class="w-9 h-9 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-900">
+                                        <i class="fas fa-arrow-left text-lg"></i>
+                                    </button>
+                                    <h1 class="text-lg font-bold text-gray-900">数据备份</h1>
+                                    <div class="w-9"></div>
+                                </header>
+                                <main class="flex-1 overflow-y-auto p-4 space-y-6">
+                                    <div class="bg-white rounded-2xl p-6 shadow-sm text-center">
+                                        <div class="w-20 h-20 rounded-full bg-green-50 text-green-500 flex items-center justify-center mx-auto mb-4">
+                                            <i class="fas fa-cloud-upload-alt text-3xl"></i>
+                                        </div>
+                                        <h2 class="font-bold text-lg text-gray-900 mb-1">云端备份已开启</h2>
+                                        <p class="text-sm text-gray-500 mb-6">上次备份：今天 09:30</p>
+                                        <button class="w-full py-3 rounded-xl bg-indigo-900 text-white font-medium text-sm shadow-lg shadow-indigo-200 active:scale-95 transition-transform">
+                                            立即备份
+                                        </button>
+                                    </div>
+                                    <div class="bg-white rounded-2xl overflow-hidden shadow-sm">
+                                        <div class="p-4 border-b border-gray-50 flex justify-between items-center">
+                                            <div>
+                                                <h3 class="font-medium text-gray-900 text-sm">自动备份</h3>
+                                                <p class="text-xs text-gray-400">仅在 Wi-Fi 环境下进行</p>
+                                            </div>
+                                            <div class="w-11 h-6 bg-green-500 rounded-full relative">
+                                                <div class="w-5 h-5 bg-white rounded-full absolute top-0.5 right-0.5 shadow-sm"></div>
+                                            </div>
+                                        </div>
+                                        <div class="p-4 border-b border-gray-50 flex justify-between items-center">
+                                            <div>
+                                                <h3 class="font-medium text-gray-900 text-sm">备份频率</h3>
+                                            </div>
+                                            <div class="flex items-center text-gray-500 text-sm">
+                                                <span>每天</span>
+                                                <i class="fas fa-chevron-right text-xs ml-2 text-gray-300"></i>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <h3 class="text-xs font-bold text-gray-500 mb-3 ml-1 uppercase tracking-wider">历史备份</h3>
+                                        <div class="bg-white rounded-2xl overflow-hidden shadow-sm">
+                                            <div class="p-4 border-b border-gray-50 flex items-center justify-between">
+                                                <div class="flex items-center">
+                                                    <div class="w-8 h-8 rounded-lg bg-gray-100 text-gray-500 flex items-center justify-center mr-3">
+                                                        <i class="fas fa-file-archive text-xs"></i>
+                                                    </div>
+                                                    <div>
+                                                        <p class="text-sm font-medium text-gray-900">自动备份</p>
+                                                        <p class="text-xs text-gray-400">2026-02-12 09:30 • 2.4 MB</p>
+                                                    </div>
+                                                </div>
+                                                <button class="text-indigo-600 text-xs font-medium px-3 py-1 bg-indigo-50 rounded-lg">恢复</button>
+                                            </div>
+                                            <div class="p-4 border-b border-gray-50 flex items-center justify-between">
+                                                <div class="flex items-center">
+                                                    <div class="w-8 h-8 rounded-lg bg-gray-100 text-gray-500 flex items-center justify-center mr-3">
+                                                        <i class="fas fa-file-archive text-xs"></i>
+                                                    </div>
+                                                    <div>
+                                                        <p class="text-sm font-medium text-gray-900">手动备份</p>
+                                                        <p class="text-xs text-gray-400">2026-02-10 18:20 • 2.3 MB</p>
+                                                    </div>
+                                                </div>
+                                                <button class="text-indigo-600 text-xs font-medium px-3 py-1 bg-indigo-50 rounded-lg">恢复</button>
+                                            </div>
+                                            <div class="p-4 flex items-center justify-between">
+                                                <div class="flex items-center">
+                                                    <div class="w-8 h-8 rounded-lg bg-gray-100 text-gray-500 flex items-center justify-center mr-3">
+                                                        <i class="fas fa-file-archive text-xs"></i>
+                                                    </div>
+                                                    <div>
+                                                        <p class="text-sm font-medium text-gray-900">自动备份</p>
+                                                        <p class="text-xs text-gray-400">2026-02-09 09:30 • 2.3 MB</p>
+                                                    </div>
+                                                </div>
+                                                <button class="text-indigo-600 text-xs font-medium px-3 py-1 bg-indigo-50 rounded-lg">恢复</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </main>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Data Export -->
+                    <div class="flex flex-col items-center">
+                        <span class="mb-2 text-sm font-medium text-gray-500 bg-gray-100 px-3 py-1 rounded-full">二级页面</span>
+                        <h3 class="text-lg font-semibold mb-4 text-gray-800">导出数据</h3>
+                        <div class="w-[393px] h-[852px] rounded-2xl shadow-lg overflow-hidden bg-white relative">
+                            <div class="bg-gray-50 h-full flex flex-col overflow-hidden select-none">
+                                <div class="h-[47px] w-full bg-white flex justify-between items-center px-6 pt-2 text-sm font-medium z-50">
+                                    <span>9:41</span>
+                                    <div class="flex gap-2 text-xs">
+                                        <i class="fas fa-signal"></i>
+                                        <i class="fas fa-wifi"></i>
+                                        <i class="fas fa-battery-full text-lg"></i>
+                                    </div>
+                                </div>
+                                <header class="bg-white px-4 py-3 flex items-center justify-between sticky top-0 z-40 border-b border-gray-100">
+                                    <button class="w-9 h-9 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-900">
+                                        <i class="fas fa-arrow-left text-lg"></i>
+                                    </button>
+                                    <h1 class="text-lg font-bold text-gray-900">导出数据</h1>
+                                    <div class="w-9"></div>
+                                </header>
+                                <main class="flex-1 overflow-y-auto p-4 space-y-6">
+                                    <div>
+                                        <h3 class="text-xs font-bold text-gray-500 mb-3 ml-1 uppercase tracking-wider">选择格式</h3>
+                                        <div class="grid grid-cols-2 gap-3">
+                                            <div class="bg-white p-4 rounded-2xl shadow-sm border-2 border-indigo-600 relative overflow-hidden">
+                                                <div class="absolute top-0 right-0 bg-indigo-600 text-white text-[10px] px-2 py-0.5 rounded-bl-lg">推荐</div>
+                                                <div class="w-10 h-10 rounded-lg bg-green-100 text-green-600 flex items-center justify-center mb-2">
+                                                    <i class="fas fa-file-excel text-lg"></i>
+                                                </div>
+                                                <p class="font-bold text-gray-900 text-sm">Excel</p>
+                                                <p class="text-xs text-gray-400 mt-1">适用于编辑和分析</p>
+                                            </div>
+                                            <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
+                                                <div class="w-10 h-10 rounded-lg bg-red-100 text-red-500 flex items-center justify-center mb-2">
+                                                    <i class="fas fa-file-pdf text-lg"></i>
+                                                </div>
+                                                <p class="font-bold text-gray-900 text-sm">PDF</p>
+                                                <p class="text-xs text-gray-400 mt-1">适用于打印和存档</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <h3 class="text-xs font-bold text-gray-500 mb-3 ml-1 uppercase tracking-wider">时间范围</h3>
+                                        <div class="bg-white rounded-2xl overflow-hidden shadow-sm">
+                                            <div class="p-4 border-b border-gray-50 flex justify-between items-center">
+                                                <span class="text-sm font-medium text-gray-900">开始日期</span>
+                                                <span class="text-sm text-gray-500">2025-01-01</span>
+                                            </div>
+                                            <div class="p-4 flex justify-between items-center">
+                                                <span class="text-sm font-medium text-gray-900">结束日期</span>
+                                                <span class="text-sm text-gray-500">2026-02-12</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <h3 class="text-xs font-bold text-gray-500 mb-3 ml-1 uppercase tracking-wider">导出内容</h3>
+                                        <div class="bg-white rounded-2xl overflow-hidden shadow-sm">
+                                            <div class="p-4 border-b border-gray-50 flex items-center">
+                                                <div class="w-5 h-5 rounded border-2 border-indigo-600 bg-indigo-600 flex items-center justify-center text-white text-xs mr-3">
+                                                    <i class="fas fa-check"></i>
+                                                </div>
+                                                <span class="text-sm font-medium text-gray-900">礼金收支记录</span>
+                                            </div>
+                                            <div class="p-4 border-b border-gray-50 flex items-center">
+                                                <div class="w-5 h-5 rounded border-2 border-indigo-600 bg-indigo-600 flex items-center justify-center text-white text-xs mr-3">
+                                                    <i class="fas fa-check"></i>
+                                                </div>
+                                                <span class="text-sm font-medium text-gray-900">关系人列表</span>
+                                            </div>
+                                            <div class="p-4 flex items-center">
+                                                <div class="w-5 h-5 rounded border-2 border-gray-300 mr-3"></div>
+                                                <span class="text-sm font-medium text-gray-900">包含图片附件</span>
+                                                <span class="ml-auto text-xs text-gray-400">文件可能较大</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="pt-4">
+                                        <button class="w-full py-3 rounded-xl bg-indigo-900 text-white font-medium text-sm shadow-lg shadow-indigo-200 active:scale-95 transition-transform flex items-center justify-center gap-2">
+                                            <i class="fas fa-download"></i>
+                                            导出文件
+                                        </button>
+                                        <p class="text-center text-xs text-gray-400 mt-3">导出后可分享至微信或保存到本地</p>
+                                    </div>
+                                </main>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Account Books -->
+                    <div class="flex flex-col items-center">
+                        <span class="mb-2 text-sm font-medium text-gray-500 bg-gray-100 px-3 py-1 rounded-full">二级页面</span>
+                        <h3 class="text-lg font-semibold mb-4 text-gray-800">账簿管理</h3>
+                        <div class="w-[393px] h-[852px] rounded-2xl shadow-lg overflow-hidden bg-white relative">
+                            <div class="bg-gray-50 h-full flex flex-col overflow-hidden select-none">
+                                <div class="h-[47px] w-full bg-white flex justify-between items-center px-6 pt-2 text-sm font-medium z-50">
+                                    <span>9:41</span>
+                                    <div class="flex gap-2 text-xs">
+                                        <i class="fas fa-signal"></i>
+                                        <i class="fas fa-wifi"></i>
+                                        <i class="fas fa-battery-full text-lg"></i>
+                                    </div>
+                                </div>
+                                <header class="bg-white px-4 py-3 flex items-center justify-between sticky top-0 z-40 border-b border-gray-100">
+                                    <button class="w-9 h-9 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-900">
+                                        <i class="fas fa-arrow-left text-lg"></i>
+                                    </button>
+                                    <h1 class="text-lg font-bold text-gray-900">账簿管理</h1>
+                                    <button class="w-9 h-9 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-900">
+                                        <i class="fas fa-plus"></i>
+                                    </button>
+                                </header>
+                                <main class="flex-1 overflow-y-auto p-4 space-y-4">
+                                    <div class="bg-white rounded-2xl p-4 shadow-sm border-2 border-indigo-600 relative overflow-hidden group">
+                                        <div class="absolute top-0 right-0 bg-indigo-600 text-white text-[10px] px-2 py-0.5 rounded-bl-lg">当前使用</div>
+                                        <div class="flex items-center mb-3">
+                                            <div class="w-12 h-12 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center mr-4 text-xl">
+                                                <i class="fas fa-home"></i>
+                                            </div>
+                                            <div>
+                                                <h3 class="font-bold text-gray-900 text-base">家庭日常</h3>
+                                                <p class="text-xs text-gray-400">记录生活中的人情往来</p>
+                                            </div>
+                                        </div>
+                                        <div class="flex justify-between items-center text-xs text-gray-500 border-t border-gray-50 pt-3">
+                                            <span>128 条记录</span>
+                                            <button class="text-indigo-600 font-medium px-2 py-1 rounded hover:bg-indigo-50">编辑</button>
+                                        </div>
+                                    </div>
+                                    <div class="bg-white rounded-2xl p-4 shadow-sm border border-transparent hover:border-gray-200 transition-colors">
+                                        <div class="flex items-center mb-3">
+                                            <div class="w-12 h-12 rounded-xl bg-pink-100 text-pink-500 flex items-center justify-center mr-4 text-xl">
+                                                <i class="fas fa-heart"></i>
+                                            </div>
+                                            <div>
+                                                <h3 class="font-bold text-gray-900 text-base">婚礼人情</h3>
+                                                <p class="text-xs text-gray-400">专用于记录婚礼相关礼金</p>
+                                            </div>
+                                        </div>
+                                        <div class="flex justify-between items-center text-xs text-gray-500 border-t border-gray-50 pt-3">
+                                            <span>356 条记录</span>
+                                            <div class="flex gap-2">
+                                                <button class="text-gray-400 font-medium px-2 py-1 rounded hover:bg-gray-50">切换</button>
+                                                <button class="text-indigo-600 font-medium px-2 py-1 rounded hover:bg-indigo-50">编辑</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="bg-white rounded-2xl p-4 shadow-sm border border-transparent hover:border-gray-200 transition-colors">
+                                        <div class="flex items-center mb-3">
+                                            <div class="w-12 h-12 rounded-xl bg-orange-100 text-orange-500 flex items-center justify-center mr-4 text-xl">
+                                                <i class="fas fa-briefcase"></i>
+                                            </div>
+                                            <div>
+                                                <h3 class="font-bold text-gray-900 text-base">商务往来</h3>
+                                                <p class="text-xs text-gray-400">工作伙伴与客户</p>
+                                            </div>
+                                        </div>
+                                        <div class="flex justify-between items-center text-xs text-gray-500 border-t border-gray-50 pt-3">
+                                            <span>42 条记录</span>
+                                            <div class="flex gap-2">
+                                                <button class="text-gray-400 font-medium px-2 py-1 rounded hover:bg-gray-50">切换</button>
+                                                <button class="text-indigo-600 font-medium px-2 py-1 rounded hover:bg-indigo-50">编辑</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </main>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Account Book Edit -->
+                    <div class="flex flex-col items-center">
+                        <span class="mb-2 text-sm font-medium text-gray-500 bg-gray-100 px-3 py-1 rounded-full">三级页面</span>
+                        <h3 class="text-lg font-semibold mb-4 text-gray-800">编辑账簿</h3>
+                        <div class="w-[393px] h-[852px] rounded-2xl shadow-lg overflow-hidden bg-white relative">
+                            <div class="bg-gray-50 h-full flex flex-col overflow-hidden select-none">
+                                <div class="h-[47px] w-full bg-white flex justify-between items-center px-6 pt-2 text-sm font-medium z-50">
+                                    <span>9:41</span>
+                                    <div class="flex gap-2 text-xs">
+                                        <i class="fas fa-signal"></i>
+                                        <i class="fas fa-wifi"></i>
+                                        <i class="fas fa-battery-full text-lg"></i>
+                                    </div>
+                                </div>
+                                <header class="bg-white px-4 py-3 flex items-center justify-between sticky top-0 z-40 border-b border-gray-100">
+                                    <button class="text-sm font-medium text-gray-500 px-2">取消</button>
+                                    <h1 class="text-lg font-bold text-gray-900">编辑账簿</h1>
+                                    <button class="px-4 py-1.5 bg-indigo-900 text-white text-sm font-medium rounded-full shadow-sm hover:bg-indigo-800 transition-colors">
+                                        保存
+                                    </button>
+                                </header>
+                                <main class="flex-1 overflow-y-auto p-4 space-y-6">
+                                    <div class="flex flex-col items-center py-4">
+                                        <div class="w-20 h-20 rounded-2xl bg-pink-100 text-pink-500 flex items-center justify-center text-3xl shadow-sm mb-3">
+                                            <i class="fas fa-heart"></i>
+                                        </div>
+                                        <p class="text-xs text-gray-400">预览图标样式</p>
+                                    </div>
+                                    <div class="bg-white rounded-2xl shadow-sm divide-y divide-gray-50">
+                                        <div class="p-4">
+                                            <label class="text-xs text-gray-500 block mb-1">账簿名称 <span class="text-red-500">*</span></label>
+                                            <input type="text" value="婚礼人情" class="w-full text-base text-gray-900 font-medium outline-none placeholder-gray-300">
+                                        </div>
+                                        <div class="p-4 flex items-center justify-between">
+                                            <div>
+                                                <label class="text-xs text-gray-500 block mb-1">场景类型</label>
+                                                <span class="text-base text-gray-900 font-medium">婚礼/宴请</span>
+                                            </div>
+                                            <i class="fas fa-chevron-right text-gray-300 text-xs"></i>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <h3 class="text-xs font-bold text-gray-500 mb-3 ml-1 uppercase tracking-wider">主题颜色</h3>
+                                        <div class="bg-white rounded-2xl p-4 shadow-sm">
+                                            <div class="flex justify-between gap-2">
+                                                <button class="w-8 h-8 rounded-full bg-indigo-500 ring-2 ring-offset-2 ring-indigo-500"></button>
+                                                <button class="w-8 h-8 rounded-full bg-pink-500"></button>
+                                                <button class="w-8 h-8 rounded-full bg-orange-500"></button>
+                                                <button class="w-8 h-8 rounded-full bg-green-500"></button>
+                                                <button class="w-8 h-8 rounded-full bg-blue-500"></button>
+                                                <button class="w-8 h-8 rounded-full bg-purple-500"></button>
+                                                <button class="w-8 h-8 rounded-full bg-gray-500"></button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="bg-white rounded-2xl shadow-sm p-4">
+                                        <label class="text-xs text-gray-500 block mb-2">备注</label>
+                                        <textarea class="w-full text-sm text-gray-900 outline-none resize-none h-20" placeholder="添加备注...">专用于记录婚礼相关礼金</textarea>
+                                    </div>
+                                    <div class="bg-white rounded-2xl p-4 shadow-sm flex items-center justify-between">
+                                        <div>
+                                            <h3 class="font-medium text-gray-900 text-sm">设为默认账簿</h3>
+                                            <p class="text-xs text-gray-400">打开应用时自动显示此账簿</p>
+                                        </div>
+                                        <div class="w-11 h-6 bg-gray-200 rounded-full relative cursor-pointer">
+                                            <div class="w-5 h-5 bg-white rounded-full absolute top-0.5 left-0.5 shadow-sm"></div>
+                                        </div>
+                                    </div>
+                                    <button class="w-full py-3 rounded-xl bg-white text-red-500 font-medium text-sm shadow-sm border border-gray-100">
+                                        删除账簿
+                                    </button>
+                                    <p class="text-center text-xs text-gray-400">删除账簿将同时删除其中的所有记录，且无法恢复。</p>
+                                </main>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Row 5: Design System -->
+            <div class="flex flex-col gap-6">
+                <div class="flex items-center gap-4 border-b border-gray-200 pb-2">
+                    <span class="w-8 h-8 rounded-lg bg-gray-800 text-white flex items-center justify-center font-bold">D</span>
+                    <h2 class="text-2xl font-bold text-gray-800">设计规范</h2>
+                </div>
+                <div class="grid grid-cols-3 gap-12 pb-8">
+                    <!-- Components -->
+                    <div class="flex flex-col items-center">
+                        <span class="mb-2 text-sm font-medium text-gray-500 bg-gray-100 px-3 py-1 rounded-full">UI Kit</span>
+                        <h3 class="text-lg font-semibold mb-4 text-gray-800">组件样式</h3>
+                        <div class="w-[393px] h-[852px] rounded-2xl shadow-lg overflow-hidden bg-white relative">
+                            <div class="bg-gray-50 h-full flex flex-col overflow-hidden select-none">
+                                <header class="bg-white px-4 py-3 flex items-center justify-between sticky top-0 z-40 border-b border-gray-100">
+                                    <h1 class="text-xl font-bold text-gray-900">UI 组件规范</h1>
+                                </header>
+                                <main class="flex-1 overflow-y-auto p-4 space-y-8 pb-24">
+                                    <section>
+                                        <h2 class="text-xs font-bold text-gray-500 mb-3 uppercase tracking-wider">色彩系统</h2>
+                                        <div class="grid grid-cols-4 gap-2 text-center text-[10px] text-gray-600">
+                                            <div>
+                                                <div class="h-12 rounded-lg bg-indigo-900 shadow-sm mb-1"></div>
+                                                <span>Primary</span>
+                                            </div>
+                                            <div>
+                                                <div class="h-12 rounded-lg bg-indigo-600 shadow-sm mb-1"></div>
+                                                <span>Secondary</span>
+                                            </div>
+                                            <div>
+                                                <div class="h-12 rounded-lg bg-indigo-50 shadow-sm mb-1"></div>
+                                                <span>Surface</span>
+                                            </div>
+                                            <div>
+                                                <div class="h-12 rounded-lg bg-red-500 shadow-sm mb-1"></div>
+                                                <span>Error</span>
+                                            </div>
+                                            <div>
+                                                <div class="h-12 rounded-lg bg-green-500 shadow-sm mb-1"></div>
+                                                <span>Success</span>
+                                            </div>
+                                            <div>
+                                                <div class="h-12 rounded-lg bg-gray-900 shadow-sm mb-1"></div>
+                                                <span>Text Main</span>
+                                            </div>
+                                            <div>
+                                                <div class="h-12 rounded-lg bg-gray-500 shadow-sm mb-1"></div>
+                                                <span>Text Sub</span>
+                                            </div>
+                                            <div>
+                                                <div class="h-12 rounded-lg bg-gray-100 shadow-sm mb-1"></div>
+                                                <span>Border</span>
+                                            </div>
+                                        </div>
+                                    </section>
+                                    <section>
+                                        <h2 class="text-xs font-bold text-gray-500 mb-3 uppercase tracking-wider">排版</h2>
+                                        <div class="bg-white p-4 rounded-2xl shadow-sm space-y-2">
+                                            <h1 class="text-2xl font-bold text-gray-900">Headline 1 (24px)</h1>
+                                            <h2 class="text-xl font-bold text-gray-900">Headline 2 (20px)</h2>
+                                            <h3 class="text-lg font-bold text-gray-900">Headline 3 (18px)</h3>
+                                            <p class="text-base font-medium text-gray-900">Body Medium (16px)</p>
+                                            <p class="text-sm text-gray-600">Body Regular (14px) - 主要正文内容，用于列表项描述、卡片内容等。</p>
+                                            <p class="text-xs text-gray-400">Caption (12px) - 辅助说明文字</p>
+                                            <p class="text-[10px] text-gray-400">Overline (10px) - 标签或微小提示</p>
+                                        </div>
+                                    </section>
+                                    <section>
+                                        <h2 class="text-xs font-bold text-gray-500 mb-3 uppercase tracking-wider">按钮</h2>
+                                        <div class="space-y-3">
+                                            <button class="w-full py-3 rounded-xl bg-indigo-900 text-white font-medium text-sm shadow-lg shadow-indigo-200 active:scale-95 transition-transform">
+                                                主要按钮 (Primary)
+                                            </button>
+                                            <button class="w-full py-3 rounded-xl bg-indigo-50 text-indigo-700 font-medium text-sm active:bg-indigo-100 transition-colors">
+                                                次要按钮 (Secondary)
+                                            </button>
+                                            <button class="w-full py-3 rounded-xl bg-white text-gray-700 font-medium text-sm border border-gray-200 shadow-sm active:bg-gray-50 transition-colors">
+                                                描边按钮 (Outline)
+                                            </button>
+                                            <div class="flex gap-4 justify-center">
+                                                <button class="w-12 h-12 rounded-full bg-indigo-900 text-white shadow-lg flex items-center justify-center text-xl">
+                                                    <i class="fas fa-plus"></i>
+                                                </button>
+                                                <button class="w-9 h-9 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center">
+                                                    <i class="fas fa-search"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </section>
+                                    <section>
+                                        <h2 class="text-xs font-bold text-gray-500 mb-3 uppercase tracking-wider">表单元素</h2>
+                                        <div class="bg-white p-4 rounded-2xl shadow-sm space-y-4">
+                                            <div>
+                                                <label class="text-xs text-gray-500 block mb-1">输入框标签</label>
+                                                <input type="text" placeholder="请输入内容" class="w-full text-sm text-gray-900 border-b border-gray-200 py-2 outline-none focus:border-indigo-600 transition-colors placeholder-gray-300">
+                                            </div>
+                                            <div class="flex items-center justify-between py-2 border-b border-gray-50">
+                                                <span class="text-sm font-medium text-gray-900">选项列表</span>
+                                                <div class="flex items-center text-gray-400">
+                                                    <span class="text-sm mr-2">已选择</span>
+                                                    <i class="fas fa-chevron-right text-xs"></i>
+                                                </div>
+                                            </div>
+                                            <div class="flex items-center justify-between py-2">
+                                                <span class="text-sm font-medium text-gray-900">开关选项</span>
+                                                <div class="w-11 h-6 bg-green-500 rounded-full relative cursor-pointer">
+                                                    <div class="w-5 h-5 bg-white rounded-full absolute top-0.5 right-0.5 shadow-sm"></div>
+                                                </div>
+                                            </div>
+                                            <div class="flex gap-2">
+                                                <span class="px-3 py-1 bg-indigo-900 text-white text-xs rounded-full">选中状态</span>
+                                                <span class="px-3 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">未选状态</span>
+                                            </div>
+                                        </div>
+                                    </section>
+                                    <section>
+                                        <h2 class="text-xs font-bold text-gray-500 mb-3 uppercase tracking-wider">卡片样式</h2>
+                                        <div class="bg-white p-4 rounded-2xl shadow-sm mb-3 flex items-center">
+                                            <div class="w-10 h-10 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center mr-3">
+                                                <i class="fas fa-star"></i>
+                                            </div>
+                                            <div class="flex-1">
+                                                <h3 class="font-bold text-gray-900 text-sm">列表项标题</h3>
+                                                <p class="text-xs text-gray-500">辅助说明文字</p>
+                                            </div>
+                                            <span class="text-sm font-bold text-gray-900">¥100</span>
+                                        </div>
+                                        <div class="bg-white p-4 rounded-2xl shadow-sm border-l-4 border-indigo-600">
+                                            <h3 class="font-bold text-gray-900 text-sm mb-1">信息卡片标题</h3>
+                                            <p class="text-xs text-gray-500">带有左侧装饰线的卡片，通常用于强调或状态展示。</p>
+                                        </div>
+                                    </section>
+                                </main>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</body>
+</html>

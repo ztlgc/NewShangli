@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Design Tokens 使用示例</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <style>
+      body { font-family: 'Noto Sans SC', sans-serif; }
+      .hide-scrollbar::-webkit-scrollbar { display: none; }
+      .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+  </head>
+  <body class="bg-gray-50 min-h-screen flex flex-col select-none">
+    <header class="bg-white px-4 py-3 flex items-center justify-between sticky top-0 z-40 border-b border-gray-100">
+      <h1 class="text-xl font-bold text-gray-900">Design Tokens 使用示例</h1>
+      <a href="design-tokens.json" class="text-sm font-medium text-indigo-600">design-tokens.json</a>
+    </header>
+
+    <main class="flex-1 overflow-y-auto hide-scrollbar p-4 space-y-6 pb-24">
+      <section class="bg-white rounded-2xl shadow-sm p-4 space-y-3">
+        <div class="flex items-center justify-between">
+          <div class="text-sm font-bold text-gray-900">语义颜色</div>
+          <div class="text-xs text-gray-400">brand / surface / text / state</div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div class="rounded-2xl p-4 bg-indigo-900 text-white">
+            <div class="text-xs text-indigo-100">brand.primary</div>
+            <div class="text-lg font-bold mt-1">indigo-900</div>
+          </div>
+          <div class="rounded-2xl p-4 bg-white border border-gray-200">
+            <div class="text-xs text-gray-400">surface.card</div>
+            <div class="text-lg font-bold mt-1 text-gray-900">white</div>
+          </div>
+          <div class="rounded-2xl p-4 bg-green-100 text-green-600">
+            <div class="text-xs text-green-600">state.success-soft</div>
+            <div class="text-lg font-bold mt-1">green-100</div>
+          </div>
+          <div class="rounded-2xl p-4 bg-red-100 text-red-600">
+            <div class="text-xs text-red-600">state.danger-soft</div>
+            <div class="text-lg font-bold mt-1">red-100</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="bg-white rounded-2xl shadow-sm p-4 space-y-3">
+        <div class="flex items-center justify-between">
+          <div class="text-sm font-bold text-gray-900">排版层级</div>
+          <div class="text-xs text-gray-400">H1/H2/H3/Body/Caption/Overline</div>
+        </div>
+        <div class="space-y-2">
+          <div class="text-2xl font-bold text-gray-900">Headline 1 (24)</div>
+          <div class="text-xl font-bold text-gray-900">Headline 2 (20)</div>
+          <div class="text-lg font-bold text-gray-900">Headline 3 (18)</div>
+          <div class="text-base font-medium text-gray-900">Body Medium (16)</div>
+          <div class="text-sm text-gray-600">Body Regular (14)</div>
+          <div class="text-xs text-gray-400">Caption (12)</div>
+          <div class="text-[10px] tracking-wider text-gray-400 uppercase">Overline (10)</div>
+        </div>
+      </section>
+
+      <section class="bg-white rounded-2xl shadow-sm p-4 space-y-3">
+        <div class="flex items-center justify-between">
+          <div class="text-sm font-bold text-gray-900">按钮与图标</div>
+          <div class="text-xs text-gray-400">radius=xl, shadow=brand</div>
+        </div>
+        <button class="w-full py-3 rounded-xl bg-indigo-900 text-white font-medium text-sm shadow-lg shadow-indigo-200 active:scale-95 transition-transform">
+          主要按钮 (Primary)
+        </button>
+        <button class="w-full py-3 rounded-xl bg-indigo-50 text-indigo-700 font-medium text-sm active:bg-indigo-100 transition-colors">
+          次要按钮 (Secondary)
+        </button>
+        <div class="flex gap-4 justify-center">
+          <button class="w-12 h-12 rounded-full bg-indigo-900 text-white shadow-lg flex items-center justify-center text-xl">
+            <i class="fas fa-plus"></i>
+          </button>
+          <button class="w-9 h-9 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center">
+            <i class="fas fa-search"></i>
+          </button>
+        </div>
+      </section>
+
+      <section class="bg-white rounded-2xl shadow-sm p-4 space-y-3">
+        <div class="flex items-center justify-between">
+          <div class="text-sm font-bold text-gray-900">列表项与状态</div>
+          <div class="text-xs text-gray-400">px-4 py-3, divider=gray-50</div>
+        </div>
+        <div class="rounded-2xl overflow-hidden border border-gray-100">
+          <div class="flex items-center px-4 py-3 border-b border-gray-50 active:bg-gray-50 transition-colors">
+            <div class="w-10 h-10 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center mr-3 font-bold text-sm">赵</div>
+            <div class="flex-1">
+              <div class="flex justify-between items-baseline mb-0.5">
+                <div class="text-gray-900 font-medium text-base">赵铁柱</div>
+                <div class="text-green-600 font-semibold text-base">+500</div>
+              </div>
+              <div class="flex justify-between items-center text-xs text-gray-500">
+                <div>春节红包 · 微信</div>
+                <div>01-24</div>
+              </div>
+            </div>
+          </div>
+          <div class="flex items-center px-4 py-3 active:bg-gray-50 transition-colors">
+            <div class="w-10 h-10 rounded-full bg-red-100 text-red-600 flex items-center justify-center mr-3">
+              <i class="fas fa-hand-holding-heart"></i>
+            </div>
+            <div class="flex-1">
+              <div class="flex justify-between items-baseline mb-0.5">
+                <div class="text-gray-900 font-medium text-base">孩子满月</div>
+                <div class="text-red-500 font-semibold text-base">-800</div>
+              </div>
+              <div class="flex justify-between items-center text-xs text-gray-500">
+                <div>送礼 · 现金</div>
+                <div>02-08</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <nav class="h-[83px] bg-white border-t border-gray-200 flex justify-around items-start pt-3 pb-8 sticky bottom-0 w-full">
+      <div class="flex flex-col items-center text-indigo-900 w-16">
+        <i class="fas fa-book text-xl mb-1"></i>
+        <span class="text-[10px] font-medium">记录</span>
+      </div>
+      <div class="flex flex-col items-center text-gray-400 w-16 hover:text-indigo-900 transition-colors">
+        <i class="fas fa-user-friends text-xl mb-1"></i>
+        <span class="text-[10px] font-medium">关系</span>
+      </div>
+      <div class="flex flex-col items-center text-gray-400 w-16 hover:text-indigo-900 transition-colors">
+        <i class="fas fa-chart-pie text-xl mb-1"></i>
+        <span class="text-[10px] font-medium">统计</span>
+      </div>
+      <div class="flex flex-col items-center text-gray-400 w-16 hover:text-indigo-900 transition-colors">
+        <i class="fas fa-cog text-xl mb-1"></i>
+        <span class="text-[10px] font-medium">设置</span>
+      </div>
+    </nav>
+  </body>
+</html>
