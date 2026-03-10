@@ -1,0 +1,47 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#312E81;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1E1B4B;stop-opacity:1" />
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="#000000" flood-opacity="0.25"/>
+    </filter>
+  </defs>
+
+  <!-- 背景 -->
+  <rect width="512" height="512" rx="115" fill="url(#bg-gradient)"/>
+
+  <!-- 礼物盒主体 -->
+  <g transform="translate(106, 140)">
+    <!-- 盒子下半部分 -->
+    <rect x="0" y="70" width="300" height="180" rx="16" fill="#EEF2FF" filter="url(#shadow)"/>
+    
+    <!-- 盒子盖子 -->
+    <rect x="-10" y="0" width="320" height="70" rx="12" fill="#FFFFFF" filter="url(#shadow)"/>
+    
+    <!-- 竖丝带 (下) -->
+    <rect x="125" y="70" width="50" height="180" fill="#EF4444"/>
+    
+    <!-- 竖丝带 (上) -->
+    <rect x="125" y="0" width="50" height="70" fill="#EF4444"/>
+    
+    <!-- 蝴蝶结 -->
+    <path d="M150 35 
+             C 150 35, 50 -45, 20 25 
+             C 10 55, 110 85, 150 35 Z" fill="#EF4444"/>
+    <path d="M150 35 
+             C 150 35, 250 -45, 280 25 
+             C 290 55, 190 85, 150 35 Z" fill="#EF4444"/>
+             
+    <!-- 中心结 -->
+    <circle cx="150" cy="35" r="18" fill="#B91C1C"/>
+    
+    <!-- 心形装饰 (在盒子正面) -->
+    <path transform="translate(150, 160) scale(1.5)" 
+          d="M0 -10 
+             C -20 -30, -40 -10, 0 20 
+             C 40 -10, 20 -30, 0 -10 Z" 
+          fill="#EF4444"/>
+  </g>
+</svg>

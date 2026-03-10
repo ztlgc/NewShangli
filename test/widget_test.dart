@@ -7,24 +7,50 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
-import 'package:newshangli/main.dart';
+import 'package:newshangli/ui/app.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  testWidgets('App opens record home page', (WidgetTester tester) async {
+    final oldOnError = FlutterError.onError;
+    FlutterError.onError = (details) {
+      final text = details.exceptionAsString();
+      if (text.contains('NetworkImageLoadException')) {
+        return;
+      }
+      oldOnError?.call(details);
+    };
+    addTearDown(() => FlutterError.onError = oldOnError);
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
-
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
+    await tester.pumpWidget(const NewShangliApp());
     await tester.pump();
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    expect(find.text('尚礼'), findsOneWidget);
+  });
+
+  testWidgets('Tap record row navigates to detail', (WidgetTester tester) async {
+    await tester.pumpWidget(const NewShangliApp());
+    await tester.pump();
+
+    await tester.tap(find.text('张伟'));
+    await tester.pumpAndSettle();
+    expect(find.text('记录详情'), findsOneWidget);
+
+    final backIcon = find.byWidgetPredicate(
+      (w) => w is FaIcon && w.icon == FontAwesomeIcons.arrowLeft,
+    );
+    await tester.tap(backIcon.first);
+    await tester.pumpAndSettle();
+    expect(find.text('尚礼'), findsOneWidget);
+  });
+
+  testWidgets('Dark mode still renders', (WidgetTester tester) async {
+    tester.binding.platformDispatcher.platformBrightnessTestValue = Brightness.dark;
+    addTearDown(() => tester.binding.platformDispatcher.clearPlatformBrightnessTestValue());
+
+    await tester.pumpWidget(const NewShangliApp());
+    await tester.pump();
+    expect(find.text('尚礼'), findsOneWidget);
   });
 }

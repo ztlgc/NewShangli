@@ -210,7 +210,7 @@
   },
   "size": {
     "statusBarHeight": { "px": 47, "tw": "h-[47px]" },
-    "tabBarHeight": { "px": 83, "tw": "h-[83px]" },
+    "tabBarHeight": { "px": 64, "tw": "h-[64px]" },
     "tapTargetMin": { "px": 44, "note": "按钮/图标区常见 36-56；建议最小 44" },
     "iconButton": {
       "md": { "px": 36, "tw": "w-9 h-9" },
