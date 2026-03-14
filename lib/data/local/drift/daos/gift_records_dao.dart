@@ -40,6 +40,29 @@ class GiftRecordsDao extends DatabaseAccessor<AppDatabase>
         .watch();
   }
 
+  /// 统计账簿的收入/支出/笔数。
+  Stream<Map<String, int>> watchStats(String bookId) {
+    // 这个实现比较粗暴，每次变动都全量统计。
+    // 如果数据量大，应该用 customSelect 或 selectOnly。
+    // 这里先用 watchAllInBook 然后在内存算，简单点。
+    return watchAllInBook(bookId).map((records) {
+      int income = 0;
+      int expense = 0;
+      for (final r in records) {
+        if (r.direction == '收入') {
+          income += r.amountCent;
+        } else {
+          expense += r.amountCent;
+        }
+      }
+      return {
+        'income': income,
+        'expense': expense,
+        'count': records.length,
+      };
+    });
+  }
+
   /// 账簿内联表查询：礼金记录 + 关系人。
   ///
   /// - 用于“账簿记录页面”展示：姓名、金额、收支方向、发生时间等。

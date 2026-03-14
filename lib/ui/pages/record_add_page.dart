@@ -15,6 +15,8 @@ import '../prototype_kit.dart';
 import 'person_list_page.dart';
 import 'reason_manage_page.dart';
 
+import '../../utils/date_util.dart';
+
 /// 页面：收支记录 - 收支录入
 /// 对照原型：prototype/index.html -> "收支录入"
 class RecordAddPage extends StatefulWidget {
@@ -1139,20 +1141,20 @@ String _formatAmountInput(int cent) {
 }
 
 String _formatDate(DateTime dt) {
-  final today = DateTime.now();
-  final baseToday = DateTime(today.year, today.month, today.day);
-  final base = DateTime(dt.year, dt.month, dt.day);
-  final diff = base.difference(baseToday).inDays;
-  String suffix;
+  final now = DateTime.now();
+  final today = DateTime(now.year, now.month, now.day);
+  final target = DateTime(dt.year, dt.month, dt.day);
+  final diff = target.difference(today).inDays;
+
+  String suffix = '';
   if (diff == 0) {
     suffix = ' 今天';
   } else if (diff == -1) {
     suffix = ' 昨天';
   } else if (diff == 1) {
     suffix = ' 明天';
-  } else {
-    suffix = '';
   }
-  return '${dt.year}年${dt.month}月${dt.day}日$suffix';
+
+  return '${DateUtil.format(dt)}$suffix';
 }
 

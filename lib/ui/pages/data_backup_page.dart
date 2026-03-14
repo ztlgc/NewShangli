@@ -10,6 +10,7 @@ import '../app_session.dart';
 import '../components.dart';
 import '../navigation.dart';
 import '../prototype_kit.dart';
+import '../../utils/date_util.dart';
 
 /// 页面：系统设置 - 数据备份
 /// 对照原型：prototype/index.html -> "数据备份"
@@ -38,7 +39,7 @@ class _CanvasState extends State<_Canvas> {
     webDavBaseUrl: '',
     webDavUsername: '',
     webDavPassword: '',
-    webDavRemoteDir: BackupConfig.defaultWebDavRemoteDir,
+    webDavRemoteDir: '',
     autoBackupEnabled: false,
     backupFrequency: BackupFrequency.daily,
   );
@@ -68,8 +69,8 @@ class _CanvasState extends State<_Canvas> {
       final last = await BackupStateStore.getLastBackup();
       final history = await BackupStateStore.getHistory();
       final remoteDirRaw = c.webDavRemoteDir.trim();
-      final normalizedRemoteDir = remoteDirRaw.isEmpty || !BackupConfig.isValidWebDavRemoteDir(remoteDirRaw)
-          ? BackupConfig.defaultWebDavRemoteDir
+      final normalizedRemoteDir = remoteDirRaw.isNotEmpty && !BackupConfig.isValidWebDavRemoteDir(remoteDirRaw)
+          ? ''
           : remoteDirRaw;
       if (!mounted) return;
       setState(() {
@@ -242,6 +243,19 @@ class _CanvasState extends State<_Canvas> {
       return;
     }
 
+    final remoteDirRaw = _config.webDavRemoteDir.trim();
+    if (remoteDirRaw.isNotEmpty && !BackupConfig.isValidWebDavRemoteDir(remoteDirRaw)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('远程目录格式不正确')),
+      );
+      return;
+    }
+    final nextConfig = _config.copyWith(webDavRemoteDir: BackupConfig.normalizeWebDavRemoteDir(remoteDirRaw));
+    if (nextConfig.webDavRemoteDir != _config.webDavRemoteDir) {
+      setState(() => _config = nextConfig);
+    }
+    await BackupConfig.save(nextConfig);
+
     setState(() {
       _backingUp = true;
       _progress = const BackupProgress(stage: BackupStage.packaging, message: '准备中…');
@@ -249,7 +263,7 @@ class _CanvasState extends State<_Canvas> {
     try {
       final service = DataBackupService();
       await service.run(
-        config: _config,
+        config: nextConfig,
         onProgress: (p) {
           if (!mounted) return;
           setState(() => _progress = p);
@@ -265,6 +279,21 @@ class _CanvasState extends State<_Canvas> {
       });
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('备份完成')),
+      );
+    } on WebDavException catch (e) {
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('备份失败'),
+          content: Text(e.message),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('确定'),
+            ),
+          ],
+        ),
       );
     } catch (e) {
       if (!mounted) return;
@@ -312,9 +341,25 @@ class _CanvasState extends State<_Canvas> {
     try {
       final r = await client.test();
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(r.message)),
-      );
+      if (r.ok) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(r.message)),
+        );
+      } else {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('连接失败'),
+            content: Text(r.message),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('确定'),
+              ),
+            ],
+          ),
+        );
+      }
     } finally {
       await client.close();
       if (mounted) setState(() => _testing = false);
@@ -553,7 +598,7 @@ class _CanvasState extends State<_Canvas> {
 
 String _formatBackupTime(DateTime d) {
   String two(int n) => n.toString().padLeft(2, '0');
-  return '${d.year}-${two(d.month)}-${two(d.day)} ${two(d.hour)}:${two(d.minute)}';
+  return '${DateUtil.format(d)} ${two(d.hour)}:${two(d.minute)}';
 }
 
 String _formatBackupSize(int bytes) {

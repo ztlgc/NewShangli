@@ -6,6 +6,7 @@ import '../app_scaffold.dart';
 import '../app_tokens.dart';
 import '../navigation.dart';
 import '../prototype_kit.dart';
+import '../../utils/date_util.dart';
 
 /// 页面：账簿记录
 ///
@@ -271,5 +272,5 @@ String _formatAmountCent(int cent) {
 /// 将时间格式化为 YYYY-MM-DD HH:mm。
 String _formatDateTime(DateTime dt) {
   String two(int n) => n.toString().padLeft(2, '0');
-  return '${dt.year}-${two(dt.month)}-${two(dt.day)} ${two(dt.hour)}:${two(dt.minute)}';
+  return '${DateUtil.format(dt)} ${two(dt.hour)}:${two(dt.minute)}';
 }

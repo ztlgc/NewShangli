@@ -12,15 +12,28 @@ enum RecordDirection { income, expense }
 /// - UI 原型层会用到“所属礼簿”的展示与筛选，因此这里提供一份轻量的内存态“礼簿表”。
 /// - 当记录未显式指定 bookId 时，统一按默认礼簿处理（见 [AppData.resolveBookId]）。
 class BookData {
-  BookData({
-    required this.id,
-    required this.name,
-    required this.createdAt,
-  });
+  BookData({required this.id, required this.name, required this.createdAt});
 
   final String id;
   final String name;
   final DateTime createdAt;
+
+  Map<String, Object?> toJson() => <String, Object?>{
+    'id': id,
+    'name': name,
+    'createdAt': createdAt.toIso8601String(),
+  };
+
+  static BookData fromJson(Object? json) {
+    final map = json is Map ? json : <String, Object?>{};
+    return BookData(
+      id: (map['id'] as String?) ?? '',
+      name: (map['name'] as String?) ?? '',
+      createdAt:
+          DateTime.tryParse((map['createdAt'] as String?) ?? '') ??
+          DateTime.fromMillisecondsSinceEpoch(0),
+    );
+  }
 }
 
 class PersonData {
@@ -31,6 +44,9 @@ class PersonData {
     this.phone,
     this.note,
     this.avatarUrl,
+    this.birthday,
+    this.isLunarBirthday = false,
+    this.birthdayReminder = false,
     required this.createdAt,
   });
 
@@ -40,7 +56,41 @@ class PersonData {
   final String? phone;
   final String? note;
   final String? avatarUrl;
+  final DateTime? birthday;
+  final bool isLunarBirthday;
+  final bool birthdayReminder;
   final DateTime createdAt;
+
+  Map<String, Object?> toJson() => <String, Object?>{
+    'id': id,
+    'name': name,
+    'relationship': relationship,
+    'phone': phone,
+    'note': note,
+    'avatarUrl': avatarUrl,
+    'birthday': birthday?.toIso8601String(),
+    'isLunarBirthday': isLunarBirthday,
+    'birthdayReminder': birthdayReminder,
+    'createdAt': createdAt.toIso8601String(),
+  };
+
+  static PersonData fromJson(Object? json) {
+    final map = json is Map ? json : <String, Object?>{};
+    return PersonData(
+      id: (map['id'] as String?) ?? '',
+      name: (map['name'] as String?) ?? '',
+      relationship: (map['relationship'] as String?) ?? '',
+      phone: map['phone'] as String?,
+      note: map['note'] as String?,
+      avatarUrl: map['avatarUrl'] as String?,
+      birthday: DateTime.tryParse((map['birthday'] as String?) ?? ''),
+      isLunarBirthday: (map['isLunarBirthday'] as bool?) ?? false,
+      birthdayReminder: (map['birthdayReminder'] as bool?) ?? false,
+      createdAt:
+          DateTime.tryParse((map['createdAt'] as String?) ?? '') ??
+          DateTime.fromMillisecondsSinceEpoch(0),
+    );
+  }
 }
 
 class RecordData {
@@ -69,6 +119,45 @@ class RecordData {
   final String paymentMethod;
   final DateTime occurredAt;
   final String? note;
+
+  Map<String, Object?> toJson() => <String, Object?>{
+    'id': id,
+    'bookId': bookId,
+    'personId': personId,
+    'personName': personName,
+    'personAvatarUrl': personAvatarUrl,
+    'direction': direction.name,
+    'amountCent': amountCent,
+    'eventName': eventName,
+    'paymentMethod': paymentMethod,
+    'occurredAt': occurredAt.toIso8601String(),
+    'note': note,
+  };
+
+  static RecordData fromJson(Object? json) {
+    final map = json is Map ? json : <String, Object?>{};
+    final directionRaw = (map['direction'] as String?) ?? '';
+    final direction = directionRaw == RecordDirection.expense.name
+        ? RecordDirection.expense
+        : RecordDirection.income;
+    final amountRaw = map['amountCent'];
+    final amount = amountRaw is num ? amountRaw.toInt() : 0;
+    return RecordData(
+      id: (map['id'] as String?) ?? '',
+      bookId: map['bookId'] as String?,
+      personId: (map['personId'] as String?) ?? '',
+      personName: (map['personName'] as String?) ?? '',
+      personAvatarUrl: map['personAvatarUrl'] as String?,
+      direction: direction,
+      amountCent: amount,
+      eventName: (map['eventName'] as String?) ?? '',
+      paymentMethod: (map['paymentMethod'] as String?) ?? '',
+      occurredAt:
+          DateTime.tryParse((map['occurredAt'] as String?) ?? '') ??
+          DateTime.fromMillisecondsSinceEpoch(0),
+      note: map['note'] as String?,
+    );
+  }
 }
 
 class ReasonData {
@@ -89,13 +178,13 @@ class ReasonData {
   final DateTime updatedAt;
 
   Map<String, Object?> toJson() => <String, Object?>{
-        'id': id,
-        'name': name,
-        'description': description,
-        'enabled': enabled,
-        'createdAt': createdAt.toIso8601String(),
-        'updatedAt': updatedAt.toIso8601String(),
-      };
+    'id': id,
+    'name': name,
+    'description': description,
+    'enabled': enabled,
+    'createdAt': createdAt.toIso8601String(),
+    'updatedAt': updatedAt.toIso8601String(),
+  };
 
   static ReasonData fromJson(Object? json) {
     final map = json is Map ? json : <String, Object?>{};
@@ -104,8 +193,12 @@ class ReasonData {
       name: (map['name'] as String?) ?? '',
       description: map['description'] as String?,
       enabled: (map['enabled'] as bool?) ?? true,
-      createdAt: DateTime.tryParse((map['createdAt'] as String?) ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0),
-      updatedAt: DateTime.tryParse((map['updatedAt'] as String?) ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0),
+      createdAt:
+          DateTime.tryParse((map['createdAt'] as String?) ?? '') ??
+          DateTime.fromMillisecondsSinceEpoch(0),
+      updatedAt:
+          DateTime.tryParse((map['updatedAt'] as String?) ?? '') ??
+          DateTime.fromMillisecondsSinceEpoch(0),
     );
   }
 }
@@ -124,19 +217,23 @@ class RelationTypeData {
   final DateTime updatedAt;
 
   Map<String, Object?> toJson() => <String, Object?>{
-        'id': id,
-        'name': name,
-        'createdAt': createdAt.toIso8601String(),
-        'updatedAt': updatedAt.toIso8601String(),
-      };
+    'id': id,
+    'name': name,
+    'createdAt': createdAt.toIso8601String(),
+    'updatedAt': updatedAt.toIso8601String(),
+  };
 
   static RelationTypeData fromJson(Object? json) {
     final map = json is Map ? json : <String, Object?>{};
     return RelationTypeData(
       id: (map['id'] as String?) ?? '',
       name: (map['name'] as String?) ?? '',
-      createdAt: DateTime.tryParse((map['createdAt'] as String?) ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0),
-      updatedAt: DateTime.tryParse((map['updatedAt'] as String?) ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0),
+      createdAt:
+          DateTime.tryParse((map['createdAt'] as String?) ?? '') ??
+          DateTime.fromMillisecondsSinceEpoch(0),
+      updatedAt:
+          DateTime.tryParse((map['updatedAt'] as String?) ?? '') ??
+          DateTime.fromMillisecondsSinceEpoch(0),
     );
   }
 }
@@ -161,14 +258,14 @@ class ContactRelationData {
   final DateTime updatedAt;
 
   Map<String, Object?> toJson() => <String, Object?>{
-        'id': id,
-        'personAId': personAId,
-        'personBId': personBId,
-        'typeId': typeId,
-        'note': note,
-        'createdAt': createdAt.toIso8601String(),
-        'updatedAt': updatedAt.toIso8601String(),
-      };
+    'id': id,
+    'personAId': personAId,
+    'personBId': personBId,
+    'typeId': typeId,
+    'note': note,
+    'createdAt': createdAt.toIso8601String(),
+    'updatedAt': updatedAt.toIso8601String(),
+  };
 
   static ContactRelationData fromJson(Object? json) {
     final map = json is Map ? json : <String, Object?>{};
@@ -178,8 +275,12 @@ class ContactRelationData {
       personBId: (map['personBId'] as String?) ?? '',
       typeId: (map['typeId'] as String?) ?? '',
       note: map['note'] as String?,
-      createdAt: DateTime.tryParse((map['createdAt'] as String?) ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0),
-      updatedAt: DateTime.tryParse((map['updatedAt'] as String?) ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0),
+      createdAt:
+          DateTime.tryParse((map['createdAt'] as String?) ?? '') ??
+          DateTime.fromMillisecondsSinceEpoch(0),
+      updatedAt:
+          DateTime.tryParse((map['updatedAt'] as String?) ?? '') ??
+          DateTime.fromMillisecondsSinceEpoch(0),
     );
   }
 }
@@ -188,8 +289,7 @@ class AppData extends ChangeNotifier {
   AppData() {
     _seed();
     _prefsFuture = SharedPreferences.getInstance();
-    _bootstrapReasons();
-    _bootstrapContactRelations();
+    _initFuture = _initialize();
   }
 
   /// 系统预设的默认礼簿 ID。
@@ -205,8 +305,11 @@ class AppData extends ChangeNotifier {
   static const String _kReasonsKey = 'reasons_v1';
   static const String _kRelationTypesKey = 'relation_types_v1';
   static const String _kContactRelationsKey = 'contact_relations_v1';
+  static const String _kCoreStateKey = 'app_core_state_v1';
 
   late final Future<SharedPreferences> _prefsFuture;
+  late final Future<void> _initFuture;
+  Future<void> _persistQueue = Future<void>.value();
 
   final List<BookData> _books = [];
   final List<PersonData> _persons = [];
@@ -230,13 +333,23 @@ class AppData extends ChangeNotifier {
   List<RecordData> get records => List.unmodifiable(_records);
   List<RecordData> get trashedRecords => List.unmodifiable(_trashedRecords);
   List<ReasonData> get reasons => List.unmodifiable(_reasons);
-  List<ReasonData> get enabledReasons => List.unmodifiable(_reasons.where((e) => e.enabled));
+  List<ReasonData> get enabledReasons =>
+      List.unmodifiable(_reasons.where((e) => e.enabled));
   bool get reasonsReady => _reasonsReady;
   String? get reasonsLoadError => _reasonsLoadError;
   List<RelationTypeData> get relationTypes => List.unmodifiable(_relationTypes);
-  List<ContactRelationData> get contactRelations => List.unmodifiable(_contactRelations);
+  List<ContactRelationData> get contactRelations =>
+      List.unmodifiable(_contactRelations);
   bool get relationsReady => _relationsReady;
   String? get relationsLoadError => _relationsLoadError;
+  Future<void> get ready => _initFuture;
+  Future<void> flushPendingWrites() => _persistQueue;
+
+  Future<void> _initialize() async {
+    await _bootstrapCoreData();
+    await _bootstrapReasons();
+    await _bootstrapContactRelations();
+  }
 
   /// 将“记录的 bookId”标准化为可用值：
   /// - 为 null 或空串时，返回系统默认礼簿 [defaultBookId]
@@ -258,6 +371,28 @@ class AppData extends ChangeNotifier {
     return defaultBookName;
   }
 
+  /// 检查手机号是否已存在（排除指定 ID 的联系人）
+  bool isPhoneExists(String phone, {String? excludeId}) {
+    String clean(String s) {
+      var d = s.replaceAll(RegExp(r'\D'), '');
+      if (d.startsWith('86') && d.length == 13) {
+        d = d.substring(2);
+      }
+      return d;
+    }
+
+    final target = clean(phone);
+    if (target.isEmpty) return false;
+
+    bool match(String? p) {
+      if (p == null) return false;
+      return clean(p) == target;
+    }
+
+    return _persons.any((p) => p.id != excludeId && match(p.phone)) ||
+        _trashedPersons.any((p) => p.id != excludeId && match(p.phone));
+  }
+
   PersonData? findPerson(String id) {
     for (final p in _persons) {
       if (p.id == id) return p;
@@ -274,6 +409,9 @@ class AppData extends ChangeNotifier {
     String? phone,
     String? note,
     String? avatarUrl,
+    DateTime? birthday,
+    bool isLunarBirthday = false,
+    bool birthdayReminder = false,
   }) {
     final trimmedName = name.trim();
     if (trimmedName.isEmpty) {
@@ -289,9 +427,13 @@ class AppData extends ChangeNotifier {
         phone: phone?.trim().isEmpty == true ? null : phone?.trim(),
         note: note?.trim().isEmpty == true ? null : note?.trim(),
         avatarUrl: avatarUrl?.trim().isEmpty == true ? null : avatarUrl?.trim(),
+        birthday: birthday,
+        isLunarBirthday: isLunarBirthday,
+        birthdayReminder: birthdayReminder,
         createdAt: now,
       ),
     );
+    _persistCoreDataSoon();
     notifyListeners();
   }
 
@@ -302,6 +444,9 @@ class AppData extends ChangeNotifier {
     String? phone,
     String? note,
     String? avatarUrl,
+    DateTime? birthday,
+    bool isLunarBirthday = false,
+    bool birthdayReminder = false,
   }) {
     final trimmedName = name.trim();
     if (trimmedName.isEmpty) {
@@ -320,10 +465,15 @@ class AppData extends ChangeNotifier {
     final updated = PersonData(
       id: old.id,
       name: trimmedName,
-      relationship: relationship.trim().isEmpty ? old.relationship : relationship.trim(),
+      relationship: relationship.trim().isEmpty
+          ? old.relationship
+          : relationship.trim(),
       phone: phone?.trim().isEmpty == true ? null : phone?.trim(),
       note: note?.trim().isEmpty == true ? null : note?.trim(),
       avatarUrl: avatarUrl?.trim().isEmpty == true ? null : avatarUrl?.trim(),
+      birthday: birthday,
+      isLunarBirthday: isLunarBirthday,
+      birthdayReminder: birthdayReminder,
       createdAt: old.createdAt,
     );
     if (inTrash) {
@@ -333,6 +483,7 @@ class AppData extends ChangeNotifier {
     }
 
     _updateRecordsForPerson(updated);
+    _persistCoreDataSoon();
     notifyListeners();
   }
 
@@ -424,6 +575,7 @@ class AppData extends ChangeNotifier {
       ),
     );
     _records.sort((a, b) => b.occurredAt.compareTo(a.occurredAt));
+    _persistCoreDataSoon();
     notifyListeners();
   }
 
@@ -469,6 +621,7 @@ class AppData extends ChangeNotifier {
       note: note?.trim().isEmpty == true ? null : note?.trim(),
     );
     _records.sort((a, b) => b.occurredAt.compareTo(a.occurredAt));
+    _persistCoreDataSoon();
     notifyListeners();
   }
 
@@ -476,6 +629,7 @@ class AppData extends ChangeNotifier {
     final index = _persons.indexWhere((e) => e.id == id);
     if (index < 0) return;
     _trashedPersons.insert(0, _persons.removeAt(index));
+    _persistCoreDataSoon();
     notifyListeners();
   }
 
@@ -483,11 +637,13 @@ class AppData extends ChangeNotifier {
     final index = _trashedPersons.indexWhere((e) => e.id == id);
     if (index < 0) return;
     _persons.insert(0, _trashedPersons.removeAt(index));
+    _persistCoreDataSoon();
     notifyListeners();
   }
 
   void purgePerson(String id) {
     _trashedPersons.removeWhere((e) => e.id == id);
+    _persistCoreDataSoon();
     notifyListeners();
   }
 
@@ -495,6 +651,7 @@ class AppData extends ChangeNotifier {
     final index = _records.indexWhere((e) => e.id == id);
     if (index < 0) return;
     _trashedRecords.insert(0, _records.removeAt(index));
+    _persistCoreDataSoon();
     notifyListeners();
   }
 
@@ -509,6 +666,7 @@ class AppData extends ChangeNotifier {
     });
     if (moved.isEmpty) return;
     _trashedRecords.insertAll(0, moved);
+    _persistCoreDataSoon();
     notifyListeners();
   }
 
@@ -516,12 +674,108 @@ class AppData extends ChangeNotifier {
     final index = _trashedRecords.indexWhere((e) => e.id == id);
     if (index < 0) return;
     _records.insert(0, _trashedRecords.removeAt(index));
+    _persistCoreDataSoon();
     notifyListeners();
   }
 
   void purgeRecord(String id) {
     _trashedRecords.removeWhere((e) => e.id == id);
+    _persistCoreDataSoon();
     notifyListeners();
+  }
+
+  Future<void> _bootstrapCoreData() async {
+    try {
+      final prefs = await _prefsFuture;
+      final raw = prefs.getString(_kCoreStateKey);
+      if (raw == null || raw.trim().isEmpty) {
+        await _persistCoreData();
+        return;
+      }
+      final decoded = jsonDecode(raw);
+      final map = decoded is Map ? decoded : <String, Object?>{};
+      final booksRaw = map['books'];
+      final personsRaw = map['persons'];
+      final trashedPersonsRaw = map['trashedPersons'];
+      final recordsRaw = map['records'];
+      final trashedRecordsRaw = map['trashedRecords'];
+
+      final loadedBooks = booksRaw is List
+          ? booksRaw
+                .map(BookData.fromJson)
+                .where((e) => e.id.isNotEmpty && e.name.isNotEmpty)
+                .toList()
+          : <BookData>[];
+      final loadedPersons = personsRaw is List
+          ? personsRaw
+                .map(PersonData.fromJson)
+                .where((e) => e.id.isNotEmpty && e.name.isNotEmpty)
+                .toList()
+          : <PersonData>[];
+      final loadedTrashedPersons = trashedPersonsRaw is List
+          ? trashedPersonsRaw
+                .map(PersonData.fromJson)
+                .where((e) => e.id.isNotEmpty && e.name.isNotEmpty)
+                .toList()
+          : <PersonData>[];
+      final loadedRecords = recordsRaw is List
+          ? recordsRaw
+                .map(RecordData.fromJson)
+                .where((e) => e.id.isNotEmpty && e.personId.isNotEmpty)
+                .toList()
+          : <RecordData>[];
+      final loadedTrashedRecords = trashedRecordsRaw is List
+          ? trashedRecordsRaw
+                .map(RecordData.fromJson)
+                .where((e) => e.id.isNotEmpty && e.personId.isNotEmpty)
+                .toList()
+          : <RecordData>[];
+
+      if (loadedBooks.isEmpty) {
+        await _persistCoreData();
+        return;
+      }
+
+      _books
+        ..clear()
+        ..addAll(loadedBooks);
+      _persons
+        ..clear()
+        ..addAll(loadedPersons);
+      _trashedPersons
+        ..clear()
+        ..addAll(loadedTrashedPersons);
+      _records
+        ..clear()
+        ..addAll(loadedRecords);
+      _trashedRecords
+        ..clear()
+        ..addAll(loadedTrashedRecords);
+      _records.sort((a, b) => b.occurredAt.compareTo(a.occurredAt));
+      _trashedRecords.sort((a, b) => b.occurredAt.compareTo(a.occurredAt));
+    } catch (_) {
+      await _persistCoreData();
+    } finally {
+      notifyListeners();
+    }
+  }
+
+  void _persistCoreDataSoon() {
+    _persistQueue = _persistQueue
+        .then((_) => _persistCoreData())
+        .catchError((_) {});
+  }
+
+  Future<void> _persistCoreData() async {
+    final prefs = await _prefsFuture;
+    final payload = <String, Object?>{
+      'books': _books.map((e) => e.toJson()).toList(),
+      'persons': _persons.map((e) => e.toJson()).toList(),
+      'trashedPersons': _trashedPersons.map((e) => e.toJson()).toList(),
+      'records': _records.map((e) => e.toJson()).toList(),
+      'trashedRecords': _trashedRecords.map((e) => e.toJson()).toList(),
+    };
+    await prefs.setString(_kCoreStateKey, jsonEncode(payload));
   }
 
   ReasonData? findReason(String id) {
@@ -564,7 +818,10 @@ class AppData extends ChangeNotifier {
     await _persistReasons();
   }
 
-  Future<void> setReasonEnabled({required String id, required bool enabled}) async {
+  Future<void> setReasonEnabled({
+    required String id,
+    required bool enabled,
+  }) async {
     final idx = _reasons.indexWhere((e) => e.id == id);
     if (idx < 0) return;
     final old = _reasons[idx];
@@ -585,15 +842,14 @@ class AppData extends ChangeNotifier {
     await _persistReasons();
   }
 
-  Future<void> createReason({
-    required String name,
-    String? description,
-  }) async {
+  Future<void> createReason({required String name, String? description}) async {
     final trimmed = name.trim();
     if (trimmed.isEmpty) {
       throw ArgumentError.value(name, 'name', '不能为空');
     }
-    final exists = _reasons.any((e) => e.name.trim().toLowerCase() == trimmed.toLowerCase());
+    final exists = _reasons.any(
+      (e) => e.name.trim().toLowerCase() == trimmed.toLowerCase(),
+    );
     if (exists) {
       throw ArgumentError.value(name, 'name', '已存在同名事由');
     }
@@ -603,7 +859,9 @@ class AppData extends ChangeNotifier {
       ReasonData(
         id: _newId('reason'),
         name: trimmed,
-        description: description?.trim().isEmpty == true ? null : description?.trim(),
+        description: description?.trim().isEmpty == true
+            ? null
+            : description?.trim(),
         enabled: true,
         createdAt: now,
         updatedAt: now,
@@ -624,7 +882,9 @@ class AppData extends ChangeNotifier {
     if (trimmed.isEmpty) {
       throw ArgumentError.value(name, 'name', '不能为空');
     }
-    final exists = _reasons.any((e) => e.id != id && e.name.trim().toLowerCase() == trimmed.toLowerCase());
+    final exists = _reasons.any(
+      (e) => e.id != id && e.name.trim().toLowerCase() == trimmed.toLowerCase(),
+    );
     if (exists) {
       throw ArgumentError.value(name, 'name', '已存在同名事由');
     }
@@ -632,7 +892,9 @@ class AppData extends ChangeNotifier {
     _reasons[idx] = ReasonData(
       id: old.id,
       name: trimmed,
-      description: description?.trim().isEmpty == true ? null : description?.trim(),
+      description: description?.trim().isEmpty == true
+          ? null
+          : description?.trim(),
       enabled: old.enabled,
       createdAt: old.createdAt,
       updatedAt: DateTime.now(),
@@ -664,7 +926,9 @@ class AppData extends ChangeNotifier {
   Future<void> createRelationType({required String name}) async {
     final trimmed = name.trim();
     if (trimmed.isEmpty) throw ArgumentError.value(name, 'name', '不能为空');
-    final exists = _relationTypes.any((e) => e.name.trim().toLowerCase() == trimmed.toLowerCase());
+    final exists = _relationTypes.any(
+      (e) => e.name.trim().toLowerCase() == trimmed.toLowerCase(),
+    );
     if (exists) throw ArgumentError.value(name, 'name', '已存在同名关系类型');
     final now = DateTime.now();
     _relationTypes.insert(
@@ -680,12 +944,17 @@ class AppData extends ChangeNotifier {
     await _persistRelationTypes();
   }
 
-  Future<void> updateRelationType({required String id, required String name}) async {
+  Future<void> updateRelationType({
+    required String id,
+    required String name,
+  }) async {
     final idx = _relationTypes.indexWhere((e) => e.id == id);
     if (idx < 0) return;
     final trimmed = name.trim();
     if (trimmed.isEmpty) throw ArgumentError.value(name, 'name', '不能为空');
-    final exists = _relationTypes.any((e) => e.id != id && e.name.trim().toLowerCase() == trimmed.toLowerCase());
+    final exists = _relationTypes.any(
+      (e) => e.id != id && e.name.trim().toLowerCase() == trimmed.toLowerCase(),
+    );
     if (exists) throw ArgumentError.value(name, 'name', '已存在同名关系类型');
     final old = _relationTypes[idx];
     _relationTypes[idx] = RelationTypeData(
@@ -716,10 +985,14 @@ class AppData extends ChangeNotifier {
     final b = personBId.trim();
     if (a.isEmpty || b.isEmpty) throw ArgumentError('联系人不能为空');
     if (a == b) throw ArgumentError('两个联系人不能相同');
-    if (findPerson(a) == null || findPerson(b) == null) throw ArgumentError('联系人不存在');
+    if (findPerson(a) == null || findPerson(b) == null) {
+      throw ArgumentError('联系人不存在');
+    }
     if (findRelationType(typeId) == null) throw ArgumentError('关系类型不存在');
     final key = _pairKey(a, b, typeId);
-    final exists = _contactRelations.any((e) => _pairKey(e.personAId, e.personBId, e.typeId) == key);
+    final exists = _contactRelations.any(
+      (e) => _pairKey(e.personAId, e.personBId, e.typeId) == key,
+    );
     if (exists) throw ArgumentError('该关系已存在');
     final now = DateTime.now();
     _contactRelations.insert(
@@ -751,10 +1024,14 @@ class AppData extends ChangeNotifier {
     final b = personBId.trim();
     if (a.isEmpty || b.isEmpty) throw ArgumentError('联系人不能为空');
     if (a == b) throw ArgumentError('两个联系人不能相同');
-    if (findPerson(a) == null || findPerson(b) == null) throw ArgumentError('联系人不存在');
+    if (findPerson(a) == null || findPerson(b) == null) {
+      throw ArgumentError('联系人不存在');
+    }
     if (findRelationType(typeId) == null) throw ArgumentError('关系类型不存在');
     final key = _pairKey(a, b, typeId);
-    final exists = _contactRelations.any((e) => e.id != id && _pairKey(e.personAId, e.personBId, e.typeId) == key);
+    final exists = _contactRelations.any(
+      (e) => e.id != id && _pairKey(e.personAId, e.personBId, e.typeId) == key,
+    );
     if (exists) throw ArgumentError('该关系已存在');
     final old = _contactRelations[idx];
     _contactRelations[idx] = ContactRelationData(
@@ -788,7 +1065,11 @@ class AppData extends ChangeNotifier {
         final list = decoded is List ? decoded : const <Object?>[];
         _reasons
           ..clear()
-          ..addAll(list.map(ReasonData.fromJson).where((e) => e.id.isNotEmpty && e.name.isNotEmpty));
+          ..addAll(
+            list
+                .map(ReasonData.fromJson)
+                .where((e) => e.id.isNotEmpty && e.name.isNotEmpty),
+          );
         _reasons.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
         if (_reasons.isEmpty) {
           _seedReasons();
@@ -875,7 +1156,11 @@ class AppData extends ChangeNotifier {
         final list = decoded is List ? decoded : const <Object?>[];
         _relationTypes
           ..clear()
-          ..addAll(list.map(RelationTypeData.fromJson).where((e) => e.id.isNotEmpty && e.name.isNotEmpty));
+          ..addAll(
+            list
+                .map(RelationTypeData.fromJson)
+                .where((e) => e.id.isNotEmpty && e.name.isNotEmpty),
+          );
         _relationTypes.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
         if (_relationTypes.isEmpty) {
           _seedRelationTypes();
@@ -894,7 +1179,13 @@ class AppData extends ChangeNotifier {
           ..addAll(
             list
                 .map(ContactRelationData.fromJson)
-                .where((e) => e.id.isNotEmpty && e.personAId.isNotEmpty && e.personBId.isNotEmpty && e.typeId.isNotEmpty),
+                .where(
+                  (e) =>
+                      e.id.isNotEmpty &&
+                      e.personAId.isNotEmpty &&
+                      e.personBId.isNotEmpty &&
+                      e.typeId.isNotEmpty,
+                ),
           );
         _contactRelations.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
         if (_contactRelations.isEmpty) {
@@ -942,43 +1233,47 @@ class AppData extends ChangeNotifier {
       return null;
     }
 
-    final friend = typeIdByName('朋友') ?? (_relationTypes.isEmpty ? _newId('reltype') : _relationTypes.first.id);
-    final colleague = typeIdByName('同事') ?? (_relationTypes.isEmpty ? _newId('reltype') : _relationTypes.first.id);
-    final relative = typeIdByName('亲戚') ?? (_relationTypes.isEmpty ? _newId('reltype') : _relationTypes.first.id);
+    final friend =
+        typeIdByName('朋友') ??
+        (_relationTypes.isEmpty ? _newId('reltype') : _relationTypes.first.id);
+    final colleague =
+        typeIdByName('同事') ??
+        (_relationTypes.isEmpty ? _newId('reltype') : _relationTypes.first.id);
+    final relative =
+        typeIdByName('亲戚') ??
+        (_relationTypes.isEmpty ? _newId('reltype') : _relationTypes.first.id);
 
     _contactRelations
       ..clear()
-      ..addAll(
-        [
-          ContactRelationData(
-            id: _newId('rel'),
-            personAId: 'p_zhangwei',
-            personBId: 'p_wangqiang',
-            typeId: friend,
-            note: '同学时期认识',
-            createdAt: now,
-            updatedAt: now,
-          ),
-          ContactRelationData(
-            id: _newId('rel'),
-            personAId: 'p_aliang',
-            personBId: 'p_wangqiang',
-            typeId: colleague,
-            note: null,
-            createdAt: now,
-            updatedAt: now,
-          ),
-          ContactRelationData(
-            id: _newId('rel'),
-            personAId: 'p_lina',
-            personBId: 'p_lianguo',
-            typeId: relative,
-            note: '家里长辈',
-            createdAt: now,
-            updatedAt: now,
-          ),
-        ],
-      );
+      ..addAll([
+        ContactRelationData(
+          id: _newId('rel'),
+          personAId: 'p_zhangwei',
+          personBId: 'p_wangqiang',
+          typeId: friend,
+          note: '同学时期认识',
+          createdAt: now,
+          updatedAt: now,
+        ),
+        ContactRelationData(
+          id: _newId('rel'),
+          personAId: 'p_aliang',
+          personBId: 'p_wangqiang',
+          typeId: colleague,
+          note: null,
+          createdAt: now,
+          updatedAt: now,
+        ),
+        ContactRelationData(
+          id: _newId('rel'),
+          personAId: 'p_lina',
+          personBId: 'p_lianguo',
+          typeId: relative,
+          note: '家里长辈',
+          createdAt: now,
+          updatedAt: now,
+        ),
+      ]);
   }
 
   Future<void> _persistRelationTypes() async {
@@ -1023,7 +1318,8 @@ class AppData extends ChangeNotifier {
         relationship: '朋友',
         phone: '13800000001',
         note: '大学室友，喜欢喝茶',
-        avatarUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop',
+        avatarUrl:
+            'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop',
         createdAt: now.subtract(const Duration(days: 320)),
       ),
       PersonData(
@@ -1032,7 +1328,8 @@ class AppData extends ChangeNotifier {
         relationship: '亲戚 - 表妹',
         phone: '13800000002',
         note: null,
-        avatarUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop',
+        avatarUrl:
+            'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop',
         createdAt: now.subtract(const Duration(days: 280)),
       ),
       PersonData(
@@ -1041,7 +1338,8 @@ class AppData extends ChangeNotifier {
         relationship: '同学',
         phone: '13800000003',
         note: null,
-        avatarUrl: 'https://images.unsplash.com/photo-1599566150163-29194dcaad36?w=100&h=100&fit=crop',
+        avatarUrl:
+            'https://images.unsplash.com/photo-1599566150163-29194dcaad36?w=100&h=100&fit=crop',
         createdAt: now.subtract(const Duration(days: 210)),
       ),
       PersonData(
@@ -1162,11 +1460,8 @@ class AppData extends ChangeNotifier {
 }
 
 class AppDataScope extends InheritedNotifier<AppData> {
-  const AppDataScope({
-    super.key,
-    required AppData data,
-    required super.child,
-  }) : super(notifier: data);
+  const AppDataScope({super.key, required AppData data, required super.child})
+    : super(notifier: data);
 
   static AppData of(BuildContext context) {
     final scope = context.dependOnInheritedWidgetOfExactType<AppDataScope>();

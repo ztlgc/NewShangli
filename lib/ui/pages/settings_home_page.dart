@@ -15,6 +15,7 @@ import 'reminders_page.dart';
 import 'person_list_page.dart';
 import 'record_home_page.dart';
 import 'reason_manage_page.dart';
+import 'reminder_type_settings_page.dart';
 import 'stats_page.dart';
 import 'contact_relation_manage_page.dart';
 import 'recycle_bin_page.dart';
@@ -94,6 +95,13 @@ class _Canvas extends StatelessWidget {
                     icon: FontAwesomeIcons.bell,
                     title: '通知提醒',
                     onTap: () => AppNav.push(context, const RemindersPage(), requiresLogin: true),
+                  ),
+                  _SettingRow(
+                    iconBg: AppColors.indigo50,
+                    iconFg: AppColors.indigo700,
+                    icon: FontAwesomeIcons.listCheck,
+                    title: '提醒类型设置',
+                    onTap: () => AppNav.push(context, const ReminderTypeSettingsPage(), requiresLogin: true),
                   ),
                   _SettingRow(
                     iconBg: AppColors.green50,

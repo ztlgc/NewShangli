@@ -1282,6 +1282,19 @@ class $EventRemindersTable extends EventReminders
     requiredDuringInsert: false,
     $customConstraints: 'NULL REFERENCES person(person_id) ON DELETE SET NULL',
   );
+  static const VerificationMeta _relationPersonIdsMeta = const VerificationMeta(
+    'relationPersonIds',
+  );
+  @override
+  late final GeneratedColumn<String> relationPersonIds =
+      GeneratedColumn<String>(
+        'relation_person_ids',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        defaultValue: const Constant('[]'),
+      );
   static const VerificationMeta _reminderTypeMeta = const VerificationMeta(
     'reminderType',
   );
@@ -1400,6 +1413,7 @@ class $EventRemindersTable extends EventReminders
     reminderId,
     bookId,
     personId,
+    relationPersonIds,
     reminderType,
     title,
     targetDate,
@@ -1441,6 +1455,15 @@ class $EventRemindersTable extends EventReminders
       context.handle(
         _personIdMeta,
         personId.isAcceptableOrUnknown(data['person_id']!, _personIdMeta),
+      );
+    }
+    if (data.containsKey('relation_person_ids')) {
+      context.handle(
+        _relationPersonIdsMeta,
+        relationPersonIds.isAcceptableOrUnknown(
+          data['relation_person_ids']!,
+          _relationPersonIdsMeta,
+        ),
       );
     }
     if (data.containsKey('reminder_type')) {
@@ -1535,6 +1558,10 @@ class $EventRemindersTable extends EventReminders
         DriftSqlType.string,
         data['${effectivePrefix}person_id'],
       ),
+      relationPersonIds: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}relation_person_ids'],
+      )!,
       reminderType: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}reminder_type'],
@@ -1588,6 +1615,7 @@ class EventReminder extends DataClass implements Insertable<EventReminder> {
   final String reminderId;
   final String bookId;
   final String? personId;
+  final String relationPersonIds;
   final String reminderType;
 
   /// 提醒标题（UI 展示用）。
@@ -1608,6 +1636,7 @@ class EventReminder extends DataClass implements Insertable<EventReminder> {
     required this.reminderId,
     required this.bookId,
     this.personId,
+    required this.relationPersonIds,
     required this.reminderType,
     required this.title,
     required this.targetDate,
@@ -1627,6 +1656,7 @@ class EventReminder extends DataClass implements Insertable<EventReminder> {
     if (!nullToAbsent || personId != null) {
       map['person_id'] = Variable<String>(personId);
     }
+    map['relation_person_ids'] = Variable<String>(relationPersonIds);
     map['reminder_type'] = Variable<String>(reminderType);
     map['title'] = Variable<String>(title);
     map['target_date'] = Variable<String>(targetDate);
@@ -1649,6 +1679,7 @@ class EventReminder extends DataClass implements Insertable<EventReminder> {
       personId: personId == null && nullToAbsent
           ? const Value.absent()
           : Value(personId),
+      relationPersonIds: Value(relationPersonIds),
       reminderType: Value(reminderType),
       title: Value(title),
       targetDate: Value(targetDate),
@@ -1671,6 +1702,7 @@ class EventReminder extends DataClass implements Insertable<EventReminder> {
       reminderId: serializer.fromJson<String>(json['reminderId']),
       bookId: serializer.fromJson<String>(json['bookId']),
       personId: serializer.fromJson<String?>(json['personId']),
+      relationPersonIds: serializer.fromJson<String>(json['relationPersonIds']),
       reminderType: serializer.fromJson<String>(json['reminderType']),
       title: serializer.fromJson<String>(json['title']),
       targetDate: serializer.fromJson<String>(json['targetDate']),
@@ -1690,6 +1722,7 @@ class EventReminder extends DataClass implements Insertable<EventReminder> {
       'reminderId': serializer.toJson<String>(reminderId),
       'bookId': serializer.toJson<String>(bookId),
       'personId': serializer.toJson<String?>(personId),
+      'relationPersonIds': serializer.toJson<String>(relationPersonIds),
       'reminderType': serializer.toJson<String>(reminderType),
       'title': serializer.toJson<String>(title),
       'targetDate': serializer.toJson<String>(targetDate),
@@ -1707,6 +1740,7 @@ class EventReminder extends DataClass implements Insertable<EventReminder> {
     String? reminderId,
     String? bookId,
     Value<String?> personId = const Value.absent(),
+    String? relationPersonIds,
     String? reminderType,
     String? title,
     String? targetDate,
@@ -1721,6 +1755,7 @@ class EventReminder extends DataClass implements Insertable<EventReminder> {
     reminderId: reminderId ?? this.reminderId,
     bookId: bookId ?? this.bookId,
     personId: personId.present ? personId.value : this.personId,
+    relationPersonIds: relationPersonIds ?? this.relationPersonIds,
     reminderType: reminderType ?? this.reminderType,
     title: title ?? this.title,
     targetDate: targetDate ?? this.targetDate,
@@ -1739,6 +1774,9 @@ class EventReminder extends DataClass implements Insertable<EventReminder> {
           : this.reminderId,
       bookId: data.bookId.present ? data.bookId.value : this.bookId,
       personId: data.personId.present ? data.personId.value : this.personId,
+      relationPersonIds: data.relationPersonIds.present
+          ? data.relationPersonIds.value
+          : this.relationPersonIds,
       reminderType: data.reminderType.present
           ? data.reminderType.value
           : this.reminderType,
@@ -1764,6 +1802,7 @@ class EventReminder extends DataClass implements Insertable<EventReminder> {
           ..write('reminderId: $reminderId, ')
           ..write('bookId: $bookId, ')
           ..write('personId: $personId, ')
+          ..write('relationPersonIds: $relationPersonIds, ')
           ..write('reminderType: $reminderType, ')
           ..write('title: $title, ')
           ..write('targetDate: $targetDate, ')
@@ -1783,6 +1822,7 @@ class EventReminder extends DataClass implements Insertable<EventReminder> {
     reminderId,
     bookId,
     personId,
+    relationPersonIds,
     reminderType,
     title,
     targetDate,
@@ -1801,6 +1841,7 @@ class EventReminder extends DataClass implements Insertable<EventReminder> {
           other.reminderId == this.reminderId &&
           other.bookId == this.bookId &&
           other.personId == this.personId &&
+          other.relationPersonIds == this.relationPersonIds &&
           other.reminderType == this.reminderType &&
           other.title == this.title &&
           other.targetDate == this.targetDate &&
@@ -1817,6 +1858,7 @@ class EventRemindersCompanion extends UpdateCompanion<EventReminder> {
   final Value<String> reminderId;
   final Value<String> bookId;
   final Value<String?> personId;
+  final Value<String> relationPersonIds;
   final Value<String> reminderType;
   final Value<String> title;
   final Value<String> targetDate;
@@ -1832,6 +1874,7 @@ class EventRemindersCompanion extends UpdateCompanion<EventReminder> {
     this.reminderId = const Value.absent(),
     this.bookId = const Value.absent(),
     this.personId = const Value.absent(),
+    this.relationPersonIds = const Value.absent(),
     this.reminderType = const Value.absent(),
     this.title = const Value.absent(),
     this.targetDate = const Value.absent(),
@@ -1848,6 +1891,7 @@ class EventRemindersCompanion extends UpdateCompanion<EventReminder> {
     this.reminderId = const Value.absent(),
     required String bookId,
     this.personId = const Value.absent(),
+    this.relationPersonIds = const Value.absent(),
     this.reminderType = const Value.absent(),
     this.title = const Value.absent(),
     required String targetDate,
@@ -1868,6 +1912,7 @@ class EventRemindersCompanion extends UpdateCompanion<EventReminder> {
     Expression<String>? reminderId,
     Expression<String>? bookId,
     Expression<String>? personId,
+    Expression<String>? relationPersonIds,
     Expression<String>? reminderType,
     Expression<String>? title,
     Expression<String>? targetDate,
@@ -1884,6 +1929,7 @@ class EventRemindersCompanion extends UpdateCompanion<EventReminder> {
       if (reminderId != null) 'reminder_id': reminderId,
       if (bookId != null) 'book_id': bookId,
       if (personId != null) 'person_id': personId,
+      if (relationPersonIds != null) 'relation_person_ids': relationPersonIds,
       if (reminderType != null) 'reminder_type': reminderType,
       if (title != null) 'title': title,
       if (targetDate != null) 'target_date': targetDate,
@@ -1902,6 +1948,7 @@ class EventRemindersCompanion extends UpdateCompanion<EventReminder> {
     Value<String>? reminderId,
     Value<String>? bookId,
     Value<String?>? personId,
+    Value<String>? relationPersonIds,
     Value<String>? reminderType,
     Value<String>? title,
     Value<String>? targetDate,
@@ -1918,6 +1965,7 @@ class EventRemindersCompanion extends UpdateCompanion<EventReminder> {
       reminderId: reminderId ?? this.reminderId,
       bookId: bookId ?? this.bookId,
       personId: personId ?? this.personId,
+      relationPersonIds: relationPersonIds ?? this.relationPersonIds,
       reminderType: reminderType ?? this.reminderType,
       title: title ?? this.title,
       targetDate: targetDate ?? this.targetDate,
@@ -1943,6 +1991,9 @@ class EventRemindersCompanion extends UpdateCompanion<EventReminder> {
     }
     if (personId.present) {
       map['person_id'] = Variable<String>(personId.value);
+    }
+    if (relationPersonIds.present) {
+      map['relation_person_ids'] = Variable<String>(relationPersonIds.value);
     }
     if (reminderType.present) {
       map['reminder_type'] = Variable<String>(reminderType.value);
@@ -1986,6 +2037,7 @@ class EventRemindersCompanion extends UpdateCompanion<EventReminder> {
           ..write('reminderId: $reminderId, ')
           ..write('bookId: $bookId, ')
           ..write('personId: $personId, ')
+          ..write('relationPersonIds: $relationPersonIds, ')
           ..write('reminderType: $reminderType, ')
           ..write('title: $title, ')
           ..write('targetDate: $targetDate, ')
@@ -2822,6 +2874,418 @@ class GiftRecordsCompanion extends UpdateCompanion<GiftRecord> {
           ..write('paymentMethod: $paymentMethod, ')
           ..write('note: $note, ')
           ..write('attachments: $attachments, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $ReminderTypesTable extends ReminderTypes
+    with TableInfo<$ReminderTypesTable, ReminderType> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ReminderTypesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _typeIdMeta = const VerificationMeta('typeId');
+  @override
+  late final GeneratedColumn<String> typeId = GeneratedColumn<String>(
+    'type_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    clientDefault: () => const Uuid().v4(),
+  );
+  static const VerificationMeta _bookIdMeta = const VerificationMeta('bookId');
+  @override
+  late final GeneratedColumn<String> bookId = GeneratedColumn<String>(
+    'book_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints:
+        'NOT NULL REFERENCES account_book(book_id) ON DELETE CASCADE',
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _isCustomMeta = const VerificationMeta(
+    'isCustom',
+  );
+  @override
+  late final GeneratedColumn<bool> isCustom = GeneratedColumn<bool>(
+    'is_custom',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_custom" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<int> createdAt = GeneratedColumn<int>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL',
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<int> updatedAt = GeneratedColumn<int>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL',
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    typeId,
+    bookId,
+    name,
+    isCustom,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'reminder_type';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ReminderType> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('type_id')) {
+      context.handle(
+        _typeIdMeta,
+        typeId.isAcceptableOrUnknown(data['type_id']!, _typeIdMeta),
+      );
+    }
+    if (data.containsKey('book_id')) {
+      context.handle(
+        _bookIdMeta,
+        bookId.isAcceptableOrUnknown(data['book_id']!, _bookIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_bookIdMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('is_custom')) {
+      context.handle(
+        _isCustomMeta,
+        isCustom.isAcceptableOrUnknown(data['is_custom']!, _isCustomMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {typeId};
+  @override
+  ReminderType map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ReminderType(
+      typeId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}type_id'],
+      )!,
+      bookId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}book_id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      isCustom: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_custom'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $ReminderTypesTable createAlias(String alias) {
+    return $ReminderTypesTable(attachedDatabase, alias);
+  }
+}
+
+class ReminderType extends DataClass implements Insertable<ReminderType> {
+  final String typeId;
+  final String bookId;
+  final String name;
+  final bool isCustom;
+  final int createdAt;
+  final int updatedAt;
+  const ReminderType({
+    required this.typeId,
+    required this.bookId,
+    required this.name,
+    required this.isCustom,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['type_id'] = Variable<String>(typeId);
+    map['book_id'] = Variable<String>(bookId);
+    map['name'] = Variable<String>(name);
+    map['is_custom'] = Variable<bool>(isCustom);
+    map['created_at'] = Variable<int>(createdAt);
+    map['updated_at'] = Variable<int>(updatedAt);
+    return map;
+  }
+
+  ReminderTypesCompanion toCompanion(bool nullToAbsent) {
+    return ReminderTypesCompanion(
+      typeId: Value(typeId),
+      bookId: Value(bookId),
+      name: Value(name),
+      isCustom: Value(isCustom),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory ReminderType.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ReminderType(
+      typeId: serializer.fromJson<String>(json['typeId']),
+      bookId: serializer.fromJson<String>(json['bookId']),
+      name: serializer.fromJson<String>(json['name']),
+      isCustom: serializer.fromJson<bool>(json['isCustom']),
+      createdAt: serializer.fromJson<int>(json['createdAt']),
+      updatedAt: serializer.fromJson<int>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'typeId': serializer.toJson<String>(typeId),
+      'bookId': serializer.toJson<String>(bookId),
+      'name': serializer.toJson<String>(name),
+      'isCustom': serializer.toJson<bool>(isCustom),
+      'createdAt': serializer.toJson<int>(createdAt),
+      'updatedAt': serializer.toJson<int>(updatedAt),
+    };
+  }
+
+  ReminderType copyWith({
+    String? typeId,
+    String? bookId,
+    String? name,
+    bool? isCustom,
+    int? createdAt,
+    int? updatedAt,
+  }) => ReminderType(
+    typeId: typeId ?? this.typeId,
+    bookId: bookId ?? this.bookId,
+    name: name ?? this.name,
+    isCustom: isCustom ?? this.isCustom,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  ReminderType copyWithCompanion(ReminderTypesCompanion data) {
+    return ReminderType(
+      typeId: data.typeId.present ? data.typeId.value : this.typeId,
+      bookId: data.bookId.present ? data.bookId.value : this.bookId,
+      name: data.name.present ? data.name.value : this.name,
+      isCustom: data.isCustom.present ? data.isCustom.value : this.isCustom,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ReminderType(')
+          ..write('typeId: $typeId, ')
+          ..write('bookId: $bookId, ')
+          ..write('name: $name, ')
+          ..write('isCustom: $isCustom, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(typeId, bookId, name, isCustom, createdAt, updatedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ReminderType &&
+          other.typeId == this.typeId &&
+          other.bookId == this.bookId &&
+          other.name == this.name &&
+          other.isCustom == this.isCustom &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class ReminderTypesCompanion extends UpdateCompanion<ReminderType> {
+  final Value<String> typeId;
+  final Value<String> bookId;
+  final Value<String> name;
+  final Value<bool> isCustom;
+  final Value<int> createdAt;
+  final Value<int> updatedAt;
+  final Value<int> rowid;
+  const ReminderTypesCompanion({
+    this.typeId = const Value.absent(),
+    this.bookId = const Value.absent(),
+    this.name = const Value.absent(),
+    this.isCustom = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  ReminderTypesCompanion.insert({
+    this.typeId = const Value.absent(),
+    required String bookId,
+    required String name,
+    this.isCustom = const Value.absent(),
+    required int createdAt,
+    required int updatedAt,
+    this.rowid = const Value.absent(),
+  }) : bookId = Value(bookId),
+       name = Value(name),
+       createdAt = Value(createdAt),
+       updatedAt = Value(updatedAt);
+  static Insertable<ReminderType> custom({
+    Expression<String>? typeId,
+    Expression<String>? bookId,
+    Expression<String>? name,
+    Expression<bool>? isCustom,
+    Expression<int>? createdAt,
+    Expression<int>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (typeId != null) 'type_id': typeId,
+      if (bookId != null) 'book_id': bookId,
+      if (name != null) 'name': name,
+      if (isCustom != null) 'is_custom': isCustom,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  ReminderTypesCompanion copyWith({
+    Value<String>? typeId,
+    Value<String>? bookId,
+    Value<String>? name,
+    Value<bool>? isCustom,
+    Value<int>? createdAt,
+    Value<int>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return ReminderTypesCompanion(
+      typeId: typeId ?? this.typeId,
+      bookId: bookId ?? this.bookId,
+      name: name ?? this.name,
+      isCustom: isCustom ?? this.isCustom,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (typeId.present) {
+      map['type_id'] = Variable<String>(typeId.value);
+    }
+    if (bookId.present) {
+      map['book_id'] = Variable<String>(bookId.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (isCustom.present) {
+      map['is_custom'] = Variable<bool>(isCustom.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<int>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<int>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ReminderTypesCompanion(')
+          ..write('typeId: $typeId, ')
+          ..write('bookId: $bookId, ')
+          ..write('name: $name, ')
+          ..write('isCustom: $isCustom, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('rowid: $rowid')
@@ -4002,6 +4466,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $PersonsTable persons = $PersonsTable(this);
   late final $EventRemindersTable eventReminders = $EventRemindersTable(this);
   late final $GiftRecordsTable giftRecords = $GiftRecordsTable(this);
+  late final $ReminderTypesTable reminderTypes = $ReminderTypesTable(this);
   late final $DataImportJobsTable dataImportJobs = $DataImportJobsTable(this);
   late final AccountBooksDao accountBooksDao = AccountBooksDao(
     this as AppDatabase,
@@ -4011,6 +4476,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     this as AppDatabase,
   );
   late final EventRemindersDao eventRemindersDao = EventRemindersDao(
+    this as AppDatabase,
+  );
+  late final ReminderTypesDao reminderTypesDao = ReminderTypesDao(
     this as AppDatabase,
   );
   late final DataImportJobsDao dataImportJobsDao = DataImportJobsDao(
@@ -4025,6 +4493,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     persons,
     eventReminders,
     giftRecords,
+    reminderTypes,
     dataImportJobs,
   ];
   @override
@@ -4070,6 +4539,13 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         limitUpdateKind: UpdateKind.delete,
       ),
       result: [TableUpdate('gift_record', kind: UpdateKind.update)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'account_book',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('reminder_type', kind: UpdateKind.delete)],
     ),
     WritePropagation(
       on: TableUpdateQuery.onTableName(
@@ -4167,6 +4643,27 @@ final class $$AccountBooksTableReferences
         );
 
     final cache = $_typedResult.readTableOrNull(_giftRecordsRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<$ReminderTypesTable, List<ReminderType>>
+  _reminderTypesRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.reminderTypes,
+    aliasName: $_aliasNameGenerator(
+      db.accountBooks.bookId,
+      db.reminderTypes.bookId,
+    ),
+  );
+
+  $$ReminderTypesTableProcessedTableManager get reminderTypesRefs {
+    final manager = $$ReminderTypesTableTableManager($_db, $_db.reminderTypes)
+        .filter(
+          (f) => f.bookId.bookId.sqlEquals($_itemColumn<String>('book_id')!),
+        );
+
+    final cache = $_typedResult.readTableOrNull(_reminderTypesRefsTable($_db));
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: cache),
     );
@@ -4314,6 +4811,31 @@ class $$AccountBooksTableFilterComposer
           }) => $$GiftRecordsTableFilterComposer(
             $db: $db,
             $table: $db.giftRecords,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> reminderTypesRefs(
+    Expression<bool> Function($$ReminderTypesTableFilterComposer f) f,
+  ) {
+    final $$ReminderTypesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.bookId,
+      referencedTable: $db.reminderTypes,
+      getReferencedColumn: (t) => t.bookId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ReminderTypesTableFilterComposer(
+            $db: $db,
+            $table: $db.reminderTypes,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -4521,6 +5043,31 @@ class $$AccountBooksTableAnnotationComposer
     return f(composer);
   }
 
+  Expression<T> reminderTypesRefs<T extends Object>(
+    Expression<T> Function($$ReminderTypesTableAnnotationComposer a) f,
+  ) {
+    final $$ReminderTypesTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.bookId,
+      referencedTable: $db.reminderTypes,
+      getReferencedColumn: (t) => t.bookId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ReminderTypesTableAnnotationComposer(
+            $db: $db,
+            $table: $db.reminderTypes,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
   Expression<T> dataImportJobsRefs<T extends Object>(
     Expression<T> Function($$DataImportJobsTableAnnotationComposer a) f,
   ) {
@@ -4564,6 +5111,7 @@ class $$AccountBooksTableTableManager
             bool personsRefs,
             bool eventRemindersRefs,
             bool giftRecordsRefs,
+            bool reminderTypesRefs,
             bool dataImportJobsRefs,
           })
         > {
@@ -4639,6 +5187,7 @@ class $$AccountBooksTableTableManager
                 personsRefs = false,
                 eventRemindersRefs = false,
                 giftRecordsRefs = false,
+                reminderTypesRefs = false,
                 dataImportJobsRefs = false,
               }) {
                 return PrefetchHooks(
@@ -4647,6 +5196,7 @@ class $$AccountBooksTableTableManager
                     if (personsRefs) db.persons,
                     if (eventRemindersRefs) db.eventReminders,
                     if (giftRecordsRefs) db.giftRecords,
+                    if (reminderTypesRefs) db.reminderTypes,
                     if (dataImportJobsRefs) db.dataImportJobs,
                   ],
                   addJoins: null,
@@ -4715,6 +5265,27 @@ class $$AccountBooksTableTableManager
                               ),
                           typedResults: items,
                         ),
+                      if (reminderTypesRefs)
+                        await $_getPrefetchedData<
+                          AccountBook,
+                          $AccountBooksTable,
+                          ReminderType
+                        >(
+                          currentTable: table,
+                          referencedTable: $$AccountBooksTableReferences
+                              ._reminderTypesRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$AccountBooksTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).reminderTypesRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.bookId == item.bookId,
+                              ),
+                          typedResults: items,
+                        ),
                       if (dataImportJobsRefs)
                         await $_getPrefetchedData<
                           AccountBook,
@@ -4760,6 +5331,7 @@ typedef $$AccountBooksTableProcessedTableManager =
         bool personsRefs,
         bool eventRemindersRefs,
         bool giftRecordsRefs,
+        bool reminderTypesRefs,
         bool dataImportJobsRefs,
       })
     >;
@@ -5408,6 +5980,7 @@ typedef $$EventRemindersTableCreateCompanionBuilder =
       Value<String> reminderId,
       required String bookId,
       Value<String?> personId,
+      Value<String> relationPersonIds,
       Value<String> reminderType,
       Value<String> title,
       required String targetDate,
@@ -5425,6 +5998,7 @@ typedef $$EventRemindersTableUpdateCompanionBuilder =
       Value<String> reminderId,
       Value<String> bookId,
       Value<String?> personId,
+      Value<String> relationPersonIds,
       Value<String> reminderType,
       Value<String> title,
       Value<String> targetDate,
@@ -5519,6 +6093,11 @@ class $$EventRemindersTableFilterComposer
   });
   ColumnFilters<String> get reminderId => $composableBuilder(
     column: $table.reminderId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get relationPersonIds => $composableBuilder(
+    column: $table.relationPersonIds,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -5658,6 +6237,11 @@ class $$EventRemindersTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get relationPersonIds => $composableBuilder(
+    column: $table.relationPersonIds,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get reminderType => $composableBuilder(
     column: $table.reminderType,
     builder: (column) => ColumnOrderings(column),
@@ -5766,6 +6350,11 @@ class $$EventRemindersTableAnnotationComposer
   });
   GeneratedColumn<String> get reminderId => $composableBuilder(
     column: $table.reminderId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get relationPersonIds => $composableBuilder(
+    column: $table.relationPersonIds,
     builder: (column) => column,
   );
 
@@ -5914,6 +6503,7 @@ class $$EventRemindersTableTableManager
                 Value<String> reminderId = const Value.absent(),
                 Value<String> bookId = const Value.absent(),
                 Value<String?> personId = const Value.absent(),
+                Value<String> relationPersonIds = const Value.absent(),
                 Value<String> reminderType = const Value.absent(),
                 Value<String> title = const Value.absent(),
                 Value<String> targetDate = const Value.absent(),
@@ -5929,6 +6519,7 @@ class $$EventRemindersTableTableManager
                 reminderId: reminderId,
                 bookId: bookId,
                 personId: personId,
+                relationPersonIds: relationPersonIds,
                 reminderType: reminderType,
                 title: title,
                 targetDate: targetDate,
@@ -5946,6 +6537,7 @@ class $$EventRemindersTableTableManager
                 Value<String> reminderId = const Value.absent(),
                 required String bookId,
                 Value<String?> personId = const Value.absent(),
+                Value<String> relationPersonIds = const Value.absent(),
                 Value<String> reminderType = const Value.absent(),
                 Value<String> title = const Value.absent(),
                 required String targetDate,
@@ -5961,6 +6553,7 @@ class $$EventRemindersTableTableManager
                 reminderId: reminderId,
                 bookId: bookId,
                 personId: personId,
+                relationPersonIds: relationPersonIds,
                 reminderType: reminderType,
                 title: title,
                 targetDate: targetDate,
@@ -6768,6 +7361,348 @@ typedef $$GiftRecordsTableProcessedTableManager =
       GiftRecord,
       PrefetchHooks Function({bool bookId, bool personId, bool reminderId})
     >;
+typedef $$ReminderTypesTableCreateCompanionBuilder =
+    ReminderTypesCompanion Function({
+      Value<String> typeId,
+      required String bookId,
+      required String name,
+      Value<bool> isCustom,
+      required int createdAt,
+      required int updatedAt,
+      Value<int> rowid,
+    });
+typedef $$ReminderTypesTableUpdateCompanionBuilder =
+    ReminderTypesCompanion Function({
+      Value<String> typeId,
+      Value<String> bookId,
+      Value<String> name,
+      Value<bool> isCustom,
+      Value<int> createdAt,
+      Value<int> updatedAt,
+      Value<int> rowid,
+    });
+
+final class $$ReminderTypesTableReferences
+    extends BaseReferences<_$AppDatabase, $ReminderTypesTable, ReminderType> {
+  $$ReminderTypesTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $AccountBooksTable _bookIdTable(_$AppDatabase db) =>
+      db.accountBooks.createAlias(
+        $_aliasNameGenerator(db.reminderTypes.bookId, db.accountBooks.bookId),
+      );
+
+  $$AccountBooksTableProcessedTableManager get bookId {
+    final $_column = $_itemColumn<String>('book_id')!;
+
+    final manager = $$AccountBooksTableTableManager(
+      $_db,
+      $_db.accountBooks,
+    ).filter((f) => f.bookId.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_bookIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$ReminderTypesTableFilterComposer
+    extends Composer<_$AppDatabase, $ReminderTypesTable> {
+  $$ReminderTypesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get typeId => $composableBuilder(
+    column: $table.typeId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isCustom => $composableBuilder(
+    column: $table.isCustom,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$AccountBooksTableFilterComposer get bookId {
+    final $$AccountBooksTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.bookId,
+      referencedTable: $db.accountBooks,
+      getReferencedColumn: (t) => t.bookId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$AccountBooksTableFilterComposer(
+            $db: $db,
+            $table: $db.accountBooks,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$ReminderTypesTableOrderingComposer
+    extends Composer<_$AppDatabase, $ReminderTypesTable> {
+  $$ReminderTypesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get typeId => $composableBuilder(
+    column: $table.typeId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isCustom => $composableBuilder(
+    column: $table.isCustom,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$AccountBooksTableOrderingComposer get bookId {
+    final $$AccountBooksTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.bookId,
+      referencedTable: $db.accountBooks,
+      getReferencedColumn: (t) => t.bookId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$AccountBooksTableOrderingComposer(
+            $db: $db,
+            $table: $db.accountBooks,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$ReminderTypesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ReminderTypesTable> {
+  $$ReminderTypesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get typeId =>
+      $composableBuilder(column: $table.typeId, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<bool> get isCustom =>
+      $composableBuilder(column: $table.isCustom, builder: (column) => column);
+
+  GeneratedColumn<int> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<int> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  $$AccountBooksTableAnnotationComposer get bookId {
+    final $$AccountBooksTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.bookId,
+      referencedTable: $db.accountBooks,
+      getReferencedColumn: (t) => t.bookId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$AccountBooksTableAnnotationComposer(
+            $db: $db,
+            $table: $db.accountBooks,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$ReminderTypesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $ReminderTypesTable,
+          ReminderType,
+          $$ReminderTypesTableFilterComposer,
+          $$ReminderTypesTableOrderingComposer,
+          $$ReminderTypesTableAnnotationComposer,
+          $$ReminderTypesTableCreateCompanionBuilder,
+          $$ReminderTypesTableUpdateCompanionBuilder,
+          (ReminderType, $$ReminderTypesTableReferences),
+          ReminderType,
+          PrefetchHooks Function({bool bookId})
+        > {
+  $$ReminderTypesTableTableManager(_$AppDatabase db, $ReminderTypesTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ReminderTypesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ReminderTypesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ReminderTypesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> typeId = const Value.absent(),
+                Value<String> bookId = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<bool> isCustom = const Value.absent(),
+                Value<int> createdAt = const Value.absent(),
+                Value<int> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ReminderTypesCompanion(
+                typeId: typeId,
+                bookId: bookId,
+                name: name,
+                isCustom: isCustom,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                Value<String> typeId = const Value.absent(),
+                required String bookId,
+                required String name,
+                Value<bool> isCustom = const Value.absent(),
+                required int createdAt,
+                required int updatedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => ReminderTypesCompanion.insert(
+                typeId: typeId,
+                bookId: bookId,
+                name: name,
+                isCustom: isCustom,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$ReminderTypesTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({bookId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (bookId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.bookId,
+                                referencedTable: $$ReminderTypesTableReferences
+                                    ._bookIdTable(db),
+                                referencedColumn: $$ReminderTypesTableReferences
+                                    ._bookIdTable(db)
+                                    .bookId,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$ReminderTypesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $ReminderTypesTable,
+      ReminderType,
+      $$ReminderTypesTableFilterComposer,
+      $$ReminderTypesTableOrderingComposer,
+      $$ReminderTypesTableAnnotationComposer,
+      $$ReminderTypesTableCreateCompanionBuilder,
+      $$ReminderTypesTableUpdateCompanionBuilder,
+      (ReminderType, $$ReminderTypesTableReferences),
+      ReminderType,
+      PrefetchHooks Function({bool bookId})
+    >;
 typedef $$DataImportJobsTableCreateCompanionBuilder =
     DataImportJobsCompanion Function({
       Value<String> jobId,
@@ -7430,6 +8365,8 @@ class $AppDatabaseManager {
       $$EventRemindersTableTableManager(_db, _db.eventReminders);
   $$GiftRecordsTableTableManager get giftRecords =>
       $$GiftRecordsTableTableManager(_db, _db.giftRecords);
+  $$ReminderTypesTableTableManager get reminderTypes =>
+      $$ReminderTypesTableTableManager(_db, _db.reminderTypes);
   $$DataImportJobsTableTableManager get dataImportJobs =>
       $$DataImportJobsTableTableManager(_db, _db.dataImportJobs);
 }
@@ -7504,6 +8441,21 @@ class EventRemindersDaoManager {
         _db.attachedDatabase,
         _db.eventReminders,
       );
+}
+
+mixin _$ReminderTypesDaoMixin on DatabaseAccessor<AppDatabase> {
+  $AccountBooksTable get accountBooks => attachedDatabase.accountBooks;
+  $ReminderTypesTable get reminderTypes => attachedDatabase.reminderTypes;
+  ReminderTypesDaoManager get managers => ReminderTypesDaoManager(this);
+}
+
+class ReminderTypesDaoManager {
+  final _$ReminderTypesDaoMixin _db;
+  ReminderTypesDaoManager(this._db);
+  $$AccountBooksTableTableManager get accountBooks =>
+      $$AccountBooksTableTableManager(_db.attachedDatabase, _db.accountBooks);
+  $$ReminderTypesTableTableManager get reminderTypes =>
+      $$ReminderTypesTableTableManager(_db.attachedDatabase, _db.reminderTypes);
 }
 
 mixin _$DataImportJobsDaoMixin on DatabaseAccessor<AppDatabase> {

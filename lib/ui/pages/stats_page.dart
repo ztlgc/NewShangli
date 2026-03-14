@@ -13,6 +13,7 @@ import '../lunar_date_picker.dart';
 import '../navigation.dart';
 import '../prototype_kit.dart';
 import '../stats/stats_view_model.dart';
+import '../../utils/date_util.dart';
 import '../../stats/stats_db.dart';
 import '../../stats/stats_models.dart';
 import '../../stats/stats_repository.dart';
@@ -1439,7 +1440,7 @@ class _MetricSegment extends StatelessWidget {
 }
 
 String _fmtCnDate(DateTime dt) {
-  return '${dt.year}年${dt.month.toString().padLeft(2, '0')}月${dt.day.toString().padLeft(2, '0')}日';
+  return DateUtil.format(dt);
 }
 
 String _fmtDotDate(DateTime dt) {

@@ -1,295 +1,608 @@
-<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>收支统计 - NewShangli</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        indigo: {
-                            50: '#eef2ff',
-                            100: '#e0e7ff',
-                            200: '#c7d2fe',
-                            500: '#6366f1',
-                            600: '#4f46e5',
-                            700: '#4338ca',
-                            800: '#3730a3',
-                            900: '#312e81',
-                        },
-                        gray: {
-                            50: '#f9fafb',
-                            100: '#f3f4f6',
-                            200: '#e5e7eb',
-                            300: '#d1d5db',
-                            400: '#9ca3af',
-                            500: '#6b7280',
-                            600: '#4b5563',
-                            700: '#374151',
-                            800: '#1f2937',
-                            900: '#111827',
-                        },
-                        brand: {
-                            primary: '#312e81',
-                            secondary: '#4f46e5',
-                            soft: '#eef2ff',
-                        }
-                    },
-                    fontFamily: {
-                        sans: ['"Noto Sans SC"', 'system-ui', '-apple-system', 'sans-serif'],
-                    },
-                    borderRadius: {
-                        'xl': '12px',
-                        '2xl': '16px',
-                        '3xl': '24px',
-                    },
-                    boxShadow: {
-                        'brand-soft': '0 10px 15px -3px rgba(199, 210, 254, 0.5)',
+{
+  "version": "2.8",
+  "children": [
+    {
+      "type": "frame",
+      "id": "Bx5Qu",
+      "x": 0,
+      "y": 0,
+      "name": "Stats Page",
+      "width": 393,
+      "height": 852,
+      "fill": "#f9fafb",
+      "layout": "vertical",
+      "children": [
+        {
+          "type": "frame",
+          "id": "ghJJn",
+          "name": "Top Bar",
+          "width": "fill_container",
+          "height": 56,
+          "fill": "#ffffff",
+          "padding": [
+            0,
+            16
+          ],
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "Ea61o",
+              "name": "tabContainer",
+              "width": "fill_container",
+              "gap": 10,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "o7QXB",
+                  "name": "Tab/Active",
+                  "fill": "#4f46e5",
+                  "cornerRadius": 10,
+                  "padding": [
+                    8,
+                    14
+                  ],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "LoxMS",
+                      "fill": "#ffffff",
+                      "content": "月统计",
+                      "fontFamily": "Inter",
+                      "fontSize": 16,
+                      "fontWeight": "medium"
                     }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "xOYxB",
+                  "name": "Tab/Inactive",
+                  "padding": [
+                    8,
+                    14
+                  ],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "6fSWy",
+                      "fill": "#4b5563",
+                      "content": "年统计",
+                      "fontFamily": "Inter",
+                      "fontSize": 16,
+                      "fontWeight": "medium"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "n2X83",
+                  "name": "Tab/Inactive",
+                  "padding": [
+                    8,
+                    14
+                  ],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "08YLL",
+                      "fill": "#4b5563",
+                      "content": "自定义",
+                      "fontFamily": "Inter",
+                      "fontSize": 16,
+                      "fontWeight": "medium"
+                    }
+                  ]
                 }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "MGECP",
+              "name": "Menu Button",
+              "width": 36,
+              "height": 36,
+              "fill": "#f3f4f6",
+              "cornerRadius": 18,
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon_font",
+                  "id": "X8FxB",
+                  "width": 18,
+                  "height": 18,
+                  "iconFontName": "more_vert",
+                  "iconFontFamily": "Material Symbols Sharp",
+                  "fill": "#4b5563"
+                }
+              ]
             }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "rlMpN",
+          "name": "Sub Header",
+          "width": "fill_container",
+          "fill": "#ffffff",
+          "padding": [
+            10,
+            16,
+            12,
+            16
+          ],
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "text",
+              "id": "eBReT",
+              "fill": "#111827",
+              "content": "2026",
+              "fontFamily": "Inter",
+              "fontSize": 25,
+              "fontWeight": "bold"
+            },
+            {
+              "type": "frame",
+              "id": "TYG52",
+              "name": "monthChips",
+              "gap": 10,
+              "padding": [
+                0,
+                0,
+                0,
+                10
+              ],
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "No5Qf",
+                  "name": "activeChip",
+                  "fill": "#4f46e5",
+                  "cornerRadius": 10,
+                  "padding": [
+                    8,
+                    14
+                  ],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "CvaDR",
+                      "fill": "#ffffff",
+                      "content": "本月",
+                      "fontFamily": "Inter",
+                      "fontSize": 16,
+                      "fontWeight": "medium"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "kmvtV",
+                  "name": "chip2",
+                  "padding": [
+                    8,
+                    14
+                  ],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "jxGts",
+                      "fill": "#9ca3af",
+                      "content": "2月",
+                      "fontFamily": "Inter",
+                      "fontSize": 16,
+                      "fontWeight": "medium"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "gw8SK",
+                  "name": "chip3",
+                  "padding": [
+                    8,
+                    14
+                  ],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "wXqFO",
+                      "fill": "#9ca3af",
+                      "content": "1月",
+                      "fontFamily": "Inter",
+                      "fontSize": 16,
+                      "fontWeight": "medium"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "Nmf8i",
+                  "name": "chip3",
+                  "width": "fit_content(51)",
+                  "height": "fit_content(39)",
+                  "padding": [
+                    8,
+                    14
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "OIK36",
+                  "name": "chip3",
+                  "padding": [
+                    8,
+                    14
+                  ],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "J7MJD",
+                      "fill": "#9ca3af",
+                      "content": "1月",
+                      "fontFamily": "Inter",
+                      "fontSize": 16,
+                      "fontWeight": "medium"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "QFyGu",
+          "name": "Main Content",
+          "clip": true,
+          "width": "fill_container",
+          "height": "fill_container",
+          "layout": "vertical",
+          "gap": 16,
+          "padding": 16,
+          "children": [
+            {
+              "type": "text",
+              "id": "mmuEZ",
+              "fill": "#9ca3af",
+              "content": "1月",
+              "fontFamily": "Inter",
+              "fontSize": 16,
+              "fontWeight": "medium"
+            },
+            {
+              "type": "frame",
+              "id": "p81dR",
+              "name": "KPI Card",
+              "width": "fill_container",
+              "fill": "#ffffff",
+              "cornerRadius": 16,
+              "effect": {
+                "type": "shadow",
+                "shadowType": "outer",
+                "color": "#00000010",
+                "offset": {
+                  "x": 0,
+                  "y": 1
+                },
+                "blur": 2
+              },
+              "layout": "vertical",
+              "padding": 16,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "VDNqY",
+                  "name": "kpiHeader",
+                  "width": "fill_container",
+                  "padding": [
+                    0,
+                    0,
+                    16,
+                    0
+                  ],
+                  "justifyContent": "space_between",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "bWPjF",
+                      "fill": "#6b7280",
+                      "content": "2026-03-01 至 2026-03-31",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "p8imv",
+                      "fill": "#4f46e5",
+                      "content": "展开详情",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "medium"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "1GG1D",
+                  "name": "expArea",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "padding": [
+                    0,
+                    0,
+                    16,
+                    0
+                  ],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "Q7X1X",
+                      "fill": "#9ca3af",
+                      "content": "本月支出",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "Iow7L",
+                      "fill": "#111827",
+                      "content": "¥ 8,560.00",
+                      "fontFamily": "Inter",
+                      "fontSize": 24,
+                      "fontWeight": "bold"
+                    },
+                    {
+                      "type": "ellipse",
+                      "id": "ForSk",
+                      "fill": "#CCCCCC",
+                      "width": 23,
+                      "height": 27
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "ZLSWG",
+              "name": "Trend Card",
+              "width": "fill_container",
+              "fill": "#ffffff",
+              "cornerRadius": 16,
+              "effect": {
+                "type": "shadow",
+                "shadowType": "outer",
+                "color": "#00000010",
+                "offset": {
+                  "x": 0,
+                  "y": 1
+                },
+                "blur": 2
+              },
+              "layout": "vertical",
+              "padding": 16,
+              "justifyContent": "space_between",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "ebQnf",
+                  "fill": "#111827",
+                  "content": "支出趋势",
+                  "fontFamily": "Inter",
+                  "fontSize": 16,
+                  "fontWeight": "bold"
+                },
+                {
+                  "type": "frame",
+                  "id": "pYffO",
+                  "name": "Chart Area",
+                  "width": "fill_container",
+                  "height": 100,
+                  "fill": "#fcfdfe"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "lno6n",
+              "name": "Ranking Card",
+              "width": "fill_container",
+              "fill": "#ffffff",
+              "cornerRadius": 16,
+              "effect": {
+                "type": "shadow",
+                "shadowType": "outer",
+                "color": "#00000010",
+                "offset": {
+                  "x": 0,
+                  "y": 1
+                },
+                "blur": 2
+              },
+              "layout": "vertical",
+              "padding": 16,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "kyTtG",
+                  "fill": "#111827",
+                  "content": "支出排行",
+                  "fontFamily": "Inter",
+                  "fontSize": 16,
+                  "fontWeight": "bold"
+                },
+                {
+                  "type": "frame",
+                  "id": "WlBzi",
+                  "name": "item1",
+                  "width": "fill_container",
+                  "gap": 12,
+                  "padding": [
+                    8,
+                    0
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "T6VK5",
+                      "width": 32,
+                      "height": 32,
+                      "fill": "#fffbeb",
+                      "cornerRadius": 16,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "4SxTR",
+                          "fill": "#d97706",
+                          "content": "1",
+                          "fontFamily": "Inter",
+                          "fontSize": 12,
+                          "fontWeight": "bold"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "bU9aN",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 4,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "xTKgG",
+                          "fill": "#111827",
+                          "content": "张晓明 ¥ 2,000.00",
+                          "fontFamily": "Inter",
+                          "fontSize": 14,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "lSWi6",
+          "name": "Bottom Nav",
+          "width": "fill_container",
+          "height": 83,
+          "fill": "#ffffff",
+          "padding": [
+            12,
+            0
+          ],
+          "justifyContent": "space_around",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "AW8Zy",
+              "layout": "vertical",
+              "gap": 4,
+              "padding": [
+                0,
+                12
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon_font",
+                  "id": "6lIIJ",
+                  "width": 24,
+                  "height": 24,
+                  "iconFontName": "note_sticky",
+                  "iconFontFamily": "Material Symbols Sharp",
+                  "fill": "#9ca3af"
+                },
+                {
+                  "type": "text",
+                  "id": "34lQm",
+                  "fill": "#9ca3af",
+                  "content": "记录",
+                  "fontFamily": "Inter",
+                  "fontSize": 10,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "LmGcE",
+              "layout": "vertical",
+              "gap": 4,
+              "padding": [
+                0,
+                12
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon_font",
+                  "id": "FEWlk",
+                  "width": 24,
+                  "height": 24,
+                  "iconFontName": "chart_pie",
+                  "iconFontFamily": "Material Symbols Sharp",
+                  "fill": "#4f46e5"
+                },
+                {
+                  "type": "text",
+                  "id": "XMmWU",
+                  "fill": "#4f46e5",
+                  "content": "统计",
+                  "fontFamily": "Inter",
+                  "fontSize": 10,
+                  "fontWeight": "bold"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "wBwjd",
+              "layout": "vertical",
+              "gap": 4,
+              "padding": [
+                0,
+                12
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon_font",
+                  "id": "ec2Fp",
+                  "width": 24,
+                  "height": 24,
+                  "iconFontName": "settings",
+                  "iconFontFamily": "Material Symbols Sharp",
+                  "fill": "#9ca3af"
+                },
+                {
+                  "type": "text",
+                  "id": "bMgP5",
+                  "fill": "#9ca3af",
+                  "content": "设置",
+                  "fontFamily": "Inter",
+                  "fontSize": 10,
+                  "fontWeight": "normal"
+                }
+              ]
+            }
+          ]
         }
-    </script>
-    <style>
-        body {
-            font-family: 'Noto Sans SC', sans-serif;
-            background-color: #f9fafb;
-            -webkit-tap-highlight-color: transparent;
-        }
-        .safe-area-bottom {
-            padding-bottom: env(safe-area-inset-bottom);
-        }
-        .no-scrollbar::-webkit-scrollbar {
-            display: none;
-        }
-        /* 模拟 Flutter 的惯性滚动 */
-        .scroll-container {
-            -webkit-overflow-scrolling: touch;
-        }
-        /* 简单动画 */
-        .tab-active-bg {
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        /* 图表渐变模拟 */
-        .chart-gradient {
-            background: linear-gradient(180deg, rgba(79, 70, 229, 0.1) 0%, rgba(79, 70, 229, 0) 100%);
-        }
-    </style>
-</head>
-<body class="flex flex-col h-screen max-w-[393px] mx-auto bg-gray-50 text-gray-900 border-x border-gray-200 shadow-2xl relative overflow-hidden">
-
-    <!-- 顶部状态栏占位 -->
-    <div class="h-[47px] w-full bg-white flex items-center px-6 justify-between text-xs font-medium">
-        <span>9:41</span>
-        <div class="flex gap-1.5 items-center">
-            <i class="fa-solid fa-signal"></i>
-            <i class="fa-solid fa-wifi"></i>
-            <i class="fa-solid fa-battery-full text-sm"></i>
-        </div>
-    </div>
-
-    <!-- 顶部导航栏 (TopBar) -->
-    <header class="bg-white px-4 py-2.5 flex items-center justify-between border-b border-gray-100">
-        <div class="flex-1 flex gap-2.5 overflow-x-auto no-scrollbar scroll-container">
-            <button class="bg-indigo-600 text-white px-3.5 py-2 rounded-[10px] text-base font-medium whitespace-nowrap tab-active-bg">月统计</button>
-            <button class="bg-transparent text-gray-600 px-3.5 py-2 rounded-[10px] text-base font-medium whitespace-nowrap">年统计</button>
-            <button class="bg-transparent text-gray-600 px-3.5 py-2 rounded-[10px] text-base font-medium whitespace-nowrap">自定义</button>
-        </div>
-        <button class="ml-2 w-9 h-9 flex items-center justify-center rounded-full bg-gray-100 text-gray-600">
-            <i class="fa-solid fa-ellipsis-vertical text-sm"></i>
-        </button>
-    </header>
-
-    <!-- 月份选择器 (SubHeader) -->
-    <section class="bg-white px-4 py-2.5 flex items-center border-b border-gray-50 overflow-hidden">
-        <span class="text-lg font-bold mr-2.5">2026</span>
-        <div class="flex-1 flex gap-2.5 overflow-x-auto no-scrollbar scroll-container">
-            <div class="bg-indigo-600 text-white px-3.5 py-2 rounded-[10px] text-base font-medium whitespace-nowrap">本月</div>
-            <div class="bg-transparent text-gray-400 px-3.5 py-2 rounded-[10px] text-base font-medium whitespace-nowrap">2月</div>
-            <div class="bg-transparent text-gray-400 px-3.5 py-2 rounded-[10px] text-base font-medium whitespace-nowrap">1月</div>
-            <div class="bg-transparent text-gray-400 px-3.5 py-2 rounded-[10px] text-base font-medium whitespace-nowrap">12月</div>
-        </div>
-    </section>
-
-    <!-- 主体内容区域 -->
-    <main class="flex-1 overflow-y-auto px-4 py-4 space-y-4 no-scrollbar scroll-container pb-32">
-        
-        <!-- KPI 概览卡片 (KpiSummaryCard) -->
-        <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-            <div class="flex items-center justify-between mb-4">
-                <span class="text-sm text-gray-500">2026-03-01 至 2026-03-31</span>
-                <button class="text-indigo-600 text-xs font-medium">展开详情 <i class="fa-solid fa-chevron-down ml-0.5 scale-75"></i></button>
-            </div>
-            
-            <div class="flex gap-4 mb-2">
-                <div class="flex-1">
-                    <p class="text-xs text-gray-400 mb-1">本月支出</p>
-                    <p class="text-2xl font-bold text-gray-900 tracking-tight">¥ 8,560.00</p>
-                    <div class="flex items-center mt-1.5">
-                        <span class="text-[10px] font-medium text-red-500 bg-red-50 px-1.5 py-0.5 rounded-md">
-                            <i class="fa-solid fa-arrow-trend-up mr-0.5"></i> 12.5%
-                        </span>
-                        <span class="text-[10px] text-gray-400 ml-1.5">较上月</span>
-                    </div>
-                </div>
-            </div>
-
-            <div class="flex gap-8 border-t border-gray-50 pt-4 mt-2">
-                <div class="flex-1">
-                    <p class="text-xs text-gray-400 mb-1">本月收入</p>
-                    <p class="text-lg font-bold text-gray-900 leading-tight">¥ 12,000.00</p>
-                    <p class="text-[10px] text-gray-400 mt-1">较上月 <span class="text-green-500">+8.2%</span></p>
-                </div>
-                <div class="flex-1">
-                    <p class="text-xs text-gray-400 mb-1">本月结余</p>
-                    <p class="text-lg font-bold text-indigo-600 leading-tight">¥ 3,440.00</p>
-                    <p class="text-[10px] text-gray-400 mt-1">较上月 <span class="text-red-500">-2.1%</span></p>
-                </div>
-            </div>
-        </div>
-
-        <!-- 支出趋势图 (TrendLineCard) -->
-        <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-            <h3 class="text-base font-bold text-gray-900 mb-4">支出趋势</h3>
-            <div class="h-32 w-full relative">
-                <!-- 模拟趋势线 (SVG) -->
-                <svg viewBox="0 0 100 40" preserveAspectRatio="none" class="w-full h-full">
-                    <defs>
-                        <linearGradient id="grad" x1="0%" y1="0%" x2="0%" y2="100%">
-                            <stop offset="0%" style="stop-color:#4f46e5;stop-opacity:0.2" />
-                            <stop offset="100%" style="stop-color:#4f46e5;stop-opacity:0" />
-                        </linearGradient>
-                    </defs>
-                    <path d="M0,35 Q10,30 20,25 T40,28 T60,15 T80,20 T100,5" fill="none" stroke="#4f46e5" stroke-width="2" vector-effect="non-scaling-stroke" />
-                    <path d="M0,35 Q10,30 20,25 T40,28 T60,15 T80,20 T100,5 V40 H0 Z" fill="url(#grad)" />
-                    <!-- 关键点 -->
-                    <circle cx="60" cy="15" r="1.5" fill="white" stroke="#4f46e5" stroke-width="1.5" />
-                </svg>
-                <!-- 横轴标签 -->
-                <div class="flex justify-between mt-2 text-[10px] text-gray-400">
-                    <span>03-01</span>
-                    <span>03-10</span>
-                    <span>03-20</span>
-                    <span>今天</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- 分类占比 (CategoryCard) -->
-        <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-            <div class="flex items-center justify-between mb-4">
-                <h3 class="text-base font-bold text-gray-900">支出分类</h3>
-                <div class="flex bg-gray-100 p-0.5 rounded-lg">
-                    <button class="bg-white text-gray-900 text-[10px] font-bold px-2.5 py-1 rounded-md shadow-sm">支出</button>
-                    <button class="text-gray-500 text-[10px] font-medium px-2.5 py-1">收入</button>
-                </div>
-            </div>
-            
-            <div class="flex items-center gap-6">
-                <!-- 环形图模拟 -->
-                <div class="relative w-24 h-24">
-                    <svg class="w-full h-full transform -rotate-90">
-                        <circle cx="48" cy="48" r="40" stroke="#f3f4f6" stroke-width="12" fill="transparent" />
-                        <circle cx="48" cy="48" r="40" stroke="#4f46e5" stroke-width="12" fill="transparent" stroke-dasharray="251.2" stroke-dashoffset="100" />
-                        <circle cx="48" cy="48" r="40" stroke="#312e81" stroke-width="12" fill="transparent" stroke-dasharray="251.2" stroke-dashoffset="200" />
-                    </svg>
-                    <div class="absolute inset-0 flex flex-col items-center justify-center">
-                        <span class="text-xs font-bold text-gray-900">¥ 8.5k</span>
-                    </div>
-                </div>
-                <!-- 列表 -->
-                <div class="flex-1 space-y-2.5">
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center gap-2">
-                            <span class="w-2 h-2 rounded-full bg-indigo-600"></span>
-                            <span class="text-xs text-gray-600">人情礼金</span>
-                        </div>
-                        <span class="text-xs font-medium text-gray-900">65%</span>
-                    </div>
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center gap-2">
-                            <span class="w-2 h-2 rounded-full bg-indigo-900"></span>
-                            <span class="text-xs text-gray-600">生活消费</span>
-                        </div>
-                        <span class="text-xs font-medium text-gray-900">25%</span>
-                    </div>
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center gap-2">
-                            <span class="w-2 h-2 rounded-full bg-gray-200"></span>
-                            <span class="text-xs text-gray-600">其他</span>
-                        </div>
-                        <span class="text-xs font-medium text-gray-900">10%</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- 消费排行榜 (TopCard) -->
-        <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-            <h3 class="text-base font-bold text-gray-900 mb-4">支出排行</h3>
-            <div class="space-y-4">
-                <div class="flex items-center gap-3">
-                    <div class="w-8 h-8 rounded-full bg-yellow-50 flex items-center justify-center text-yellow-600 font-bold text-sm">1</div>
-                    <div class="flex-1">
-                        <div class="flex justify-between mb-1">
-                            <span class="text-sm font-medium text-gray-900">张晓明</span>
-                            <span class="text-sm font-bold text-gray-900">¥ 2,000.00</span>
-                        </div>
-                        <div class="h-1.5 w-full bg-gray-50 rounded-full overflow-hidden">
-                            <div class="h-full bg-yellow-400" style="width: 80%"></div>
-                        </div>
-                    </div>
-                </div>
-                <div class="flex items-center gap-3">
-                    <div class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 font-bold text-sm">2</div>
-                    <div class="flex-1">
-                        <div class="flex justify-between mb-1">
-                            <span class="text-sm font-medium text-gray-900">陈丽华</span>
-                            <span class="text-sm font-bold text-gray-900">¥ 1,200.00</span>
-                        </div>
-                        <div class="h-1.5 w-full bg-gray-50 rounded-full overflow-hidden">
-                            <div class="h-full bg-gray-400" style="width: 50%"></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-    </main>
-
-    <!-- 底部导航 (PrototypeBottomNav) -->
-    <nav class="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-100 py-3 px-6 flex items-center justify-between safe-area-bottom shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
-        <div class="flex flex-col items-center gap-1 opacity-40">
-            <i class="fa-solid fa-note-sticky text-xl"></i>
-            <span class="text-[10px] font-medium">记录</span>
-        </div>
-        <div class="flex flex-col items-center gap-1 opacity-40">
-            <i class="fa-solid fa-address-book text-xl"></i>
-            <span class="text-[10px] font-medium">联系人</span>
-        </div>
-        <div class="flex flex-col items-center gap-1 text-indigo-600">
-            <i class="fa-solid fa-chart-pie text-xl"></i>
-            <span class="text-[10px] font-bold">统计</span>
-        </div>
-        <div class="flex flex-col items-center gap-1 opacity-40">
-            <i class="fa-solid fa-gear text-xl"></i>
-            <span class="text-[10px] font-medium">设置</span>
-        </div>
-    </nav>
-
-    <!-- 右下角 FAB (浮动按钮模拟) -->
-    <div class="absolute bottom-24 right-4">
-        <button class="w-14 h-14 bg-indigo-900 text-white rounded-full flex items-center justify-center shadow-brand-fab text-2xl">
-            <i class="fa-solid fa-plus"></i>
-        </button>
-    </div>
-
-</body>
-</html>
+      ]
+    }
+  ]
+}

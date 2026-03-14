@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:lunar/lunar.dart';
 
 import '../app_tokens.dart';
 import '../app_scaffold.dart';
@@ -10,6 +11,7 @@ import '../contact_avatar.dart';
 import '../components.dart';
 import '../navigation.dart';
 import '../prototype_kit.dart';
+import '../lunar_date_picker.dart';
 
 /// 页面：关系人管理 - 编辑/新增
 /// 对照原型：prototype/index.html -> "编辑/新增"
@@ -22,9 +24,9 @@ class PersonEditPage extends StatefulWidget {
   State<PersonEditPage> createState() => _PersonEditPageState();
 }
 
-class _PersonEditPageState extends State<PersonEditPage> {
-  static const int _kNoteMaxLen = 200;
+const int _kNoteMaxLen = 500;
 
+class _PersonEditPageState extends State<PersonEditPage> {
   final TextEditingController _nameCtrl = TextEditingController();
   final TextEditingController _phoneCtrl = TextEditingController();
   final TextEditingController _noteCtrl = TextEditingController();
@@ -37,6 +39,9 @@ class _PersonEditPageState extends State<PersonEditPage> {
   bool _saving = false;
   String _relationship = '';
   String? _avatarUrl;
+  DateTime? _birthday;
+  bool _isLunarBirthday = false;
+  bool _birthdayReminder = false;
 
   bool _nameEditing = false;
   bool _phoneEditing = false;
@@ -50,15 +55,8 @@ class _PersonEditPageState extends State<PersonEditPage> {
   String _savedPhone = '';
   String _savedNote = '';
 
-  Timer? _nameDebounce;
-  Timer? _phoneDebounce;
-  Timer? _noteDebounce;
-
   @override
   void dispose() {
-    _nameDebounce?.cancel();
-    _phoneDebounce?.cancel();
-    _noteDebounce?.cancel();
     _nameCtrl.dispose();
     _phoneCtrl.dispose();
     _noteCtrl.dispose();
@@ -82,6 +80,9 @@ class _PersonEditPageState extends State<PersonEditPage> {
     _savedPhone = _phoneCtrl.text.trim();
     _savedNote = _noteCtrl.text.trim();
     _avatarUrl = person?.avatarUrl;
+    _birthday = person?.birthday;
+    _isLunarBirthday = person?.isLunarBirthday ?? false;
+    _birthdayReminder = person?.birthdayReminder ?? false;
     if (person != null) {
       _relationship = person.relationship;
     } else {
@@ -184,6 +185,12 @@ class _PersonEditPageState extends State<PersonEditPage> {
                   onPhoneChanged: _saving ? null : (v) => _onPhoneChanged(data, v),
                   onPhoneSubmitted: _saving ? null : () => _commitPhone(data),
                   onPhoneFocusChange: _saving ? null : (hasFocus) => _onPhoneFocusChange(data, hasFocus),
+                  birthday: _birthday,
+                  isLunarBirthday: _isLunarBirthday,
+                  birthdayReminder: _birthdayReminder,
+                  onPickBirthday: _saving ? null : _pickBirthday,
+                  onLunarBirthdayChanged: _saving ? null : (v) => setState(() => _isLunarBirthday = v),
+                  onBirthdayReminderChanged: _saving ? null : (v) => setState(() => _birthdayReminder = v),
                 ),
                 const SizedBox(height: 24),
                 const _SectionOverline(title: '其他信息'),
@@ -219,7 +226,7 @@ class _PersonEditPageState extends State<PersonEditPage> {
       _noteEditing = false;
     });
 
-    if (!_validateAll()) {
+    if (!_validateAll(data)) {
       _toast(context, '请修正后再保存');
       return;
     }
@@ -236,6 +243,9 @@ class _PersonEditPageState extends State<PersonEditPage> {
           phone: phone.isEmpty ? null : phone,
           note: note.isEmpty ? null : note,
           avatarUrl: _avatarUrl,
+          birthday: _birthday,
+          isLunarBirthday: _isLunarBirthday,
+          birthdayReminder: _birthdayReminder,
         );
       } else {
         data.updatePerson(
@@ -245,6 +255,9 @@ class _PersonEditPageState extends State<PersonEditPage> {
           phone: phone.isEmpty ? null : phone,
           note: note.isEmpty ? null : note,
           avatarUrl: _avatarUrl,
+          birthday: _birthday,
+          isLunarBirthday: _isLunarBirthday,
+          birthdayReminder: _birthdayReminder,
         );
       }
       if (!mounted) return;
@@ -260,9 +273,9 @@ class _PersonEditPageState extends State<PersonEditPage> {
     }
   }
 
-  bool _validateAll() {
+  bool _validateAll(AppData data) {
     final nameErr = _validateName(_nameCtrl.text);
-    final phoneErr = _validatePhone(_phoneCtrl.text);
+    final phoneErr = _validatePhone(data, _phoneCtrl.text);
     final noteErr = _validateNote(_noteCtrl.text);
     final ok = nameErr == null && phoneErr == null && noteErr == null;
     setState(() {
@@ -274,11 +287,15 @@ class _PersonEditPageState extends State<PersonEditPage> {
   }
 
   String? _validateName(String raw) {
-    if (raw.trim().isEmpty) return '姓名不能为空';
+    final trimmed = raw.trim();
+    if (trimmed.isEmpty) return '姓名不能为空';
+    if (trimmed.characters.length < 2 || trimmed.characters.length > 20) {
+      return '姓名长度需为2-20个字符';
+    }
     return null;
   }
 
-  String? _validatePhone(String raw) {
+  String? _validatePhone(AppData data, String raw) {
     final trimmed = raw.trim();
     if (trimmed.isEmpty) return null;
 
@@ -286,9 +303,15 @@ class _PersonEditPageState extends State<PersonEditPage> {
     if (digits.startsWith('86') && digits.length == 13) {
       digits = digits.substring(2);
     }
+    // 支持 +86 或纯数字，简单的正则校验
     if (!RegExp(r'^1[3-9]\d{9}$').hasMatch(digits)) {
       return '手机号格式不正确';
     }
+    
+    if (data.isPhoneExists(digits, excludeId: widget.personId)) {
+      return '该手机号已存在';
+    }
+    
     return null;
   }
 
@@ -307,59 +330,38 @@ class _PersonEditPageState extends State<PersonEditPage> {
       _phoneEditing = field == _InlineEditField.phone;
       _noteEditing = field == _InlineEditField.note;
     });
-    switch (field) {
-      case _InlineEditField.name:
-        _nameFocus.requestFocus();
-        break;
-      case _InlineEditField.phone:
-        _phoneFocus.requestFocus();
-        break;
-      case _InlineEditField.note:
-        _noteFocus.requestFocus();
-        break;
-    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      switch (field) {
+        case _InlineEditField.name:
+          _nameFocus.requestFocus();
+          break;
+        case _InlineEditField.phone:
+          _phoneFocus.requestFocus();
+          break;
+        case _InlineEditField.note:
+          _noteFocus.requestFocus();
+          break;
+      }
+    });
   }
 
   void _onNameChanged(AppData data, String v) {
-    _nameDebounce?.cancel();
     setState(() {
       _nameError = _validateName(v);
     });
-    if (_nameError != null) return;
-    _scheduleNameSave(data);
   }
 
   void _onPhoneChanged(AppData data, String v) {
-    _phoneDebounce?.cancel();
     setState(() {
-      _phoneError = _validatePhone(v);
+      _phoneError = _validatePhone(data, v);
     });
-    if (_phoneError != null) return;
-    _schedulePhoneSave(data);
   }
 
   void _onNoteChanged(AppData data, String v) {
-    _noteDebounce?.cancel();
     setState(() {
       _noteError = _validateNote(v);
     });
-    if (_noteError != null) return;
-    _scheduleNoteSave(data);
-  }
-
-  void _scheduleNameSave(AppData data) {
-    _nameDebounce?.cancel();
-    _nameDebounce = Timer(const Duration(milliseconds: 450), () => _saveInlineField(data, _InlineEditField.name));
-  }
-
-  void _schedulePhoneSave(AppData data) {
-    _phoneDebounce?.cancel();
-    _phoneDebounce = Timer(const Duration(milliseconds: 450), () => _saveInlineField(data, _InlineEditField.phone));
-  }
-
-  void _scheduleNoteSave(AppData data) {
-    _noteDebounce?.cancel();
-    _noteDebounce = Timer(const Duration(milliseconds: 450), () => _saveInlineField(data, _InlineEditField.note));
   }
 
   void _onNameFocusChange(AppData data, bool hasFocus) {
@@ -381,7 +383,6 @@ class _PersonEditPageState extends State<PersonEditPage> {
   }
 
   void _commitName(AppData data) {
-    _nameDebounce?.cancel();
     final err = _validateName(_nameCtrl.text);
     setState(() {
       _nameError = err;
@@ -395,8 +396,7 @@ class _PersonEditPageState extends State<PersonEditPage> {
   }
 
   void _commitPhone(AppData data) {
-    _phoneDebounce?.cancel();
-    final err = _validatePhone(_phoneCtrl.text);
+    final err = _validatePhone(data, _phoneCtrl.text);
     setState(() {
       _phoneError = err;
       if (err == null) _phoneEditing = false;
@@ -409,7 +409,6 @@ class _PersonEditPageState extends State<PersonEditPage> {
   }
 
   void _commitNote(AppData data) {
-    _noteDebounce?.cancel();
     final err = _validateNote(_noteCtrl.text);
     setState(() {
       _noteError = err;
@@ -430,7 +429,7 @@ class _PersonEditPageState extends State<PersonEditPage> {
     final note = (field == _InlineEditField.note ? _noteCtrl.text : _savedNote).trim();
 
     final nameErr = _validateName(name);
-    final phoneErr = field == _InlineEditField.phone ? _validatePhone(phone) : null;
+    final phoneErr = field == _InlineEditField.phone ? _validatePhone(data, phone) : null;
     final noteErr = field == _InlineEditField.note ? _validateNote(note) : null;
 
     if (nameErr != null || phoneErr != null || noteErr != null) {
@@ -457,6 +456,9 @@ class _PersonEditPageState extends State<PersonEditPage> {
         phone: phone.isEmpty ? null : phone,
         note: note.isEmpty ? null : note,
         avatarUrl: _avatarUrl,
+        birthday: _birthday,
+        isLunarBirthday: _isLunarBirthday,
+        birthdayReminder: _birthdayReminder,
       );
       if (field == _InlineEditField.name) _savedName = name;
       if (field == _InlineEditField.phone) _savedPhone = phone;
@@ -565,6 +567,23 @@ class _PersonEditPageState extends State<PersonEditPage> {
                             ],
                           ),
                         ),
+                      PrototypePressableRow(
+                        onTap: () => Navigator.of(context).pop('__custom__'),
+                        child: Row(
+                          children: [
+                            const FaIcon(FontAwesomeIcons.plus, size: 14, color: AppColors.blue600),
+                            const SizedBox(width: 8),
+                            Text(
+                              '自定义...',
+                              style: AppTypography.base(
+                                fontSize: 14,
+                                fontWeight: AppTypography.medium,
+                                color: AppColors.blue600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -575,7 +594,56 @@ class _PersonEditPageState extends State<PersonEditPage> {
       },
     );
     if (picked == null) return;
-    setState(() => _relationship = picked);
+    if (picked == '__custom__') {
+      _inputCustomRelationship(data);
+    } else {
+      setState(() => _relationship = picked);
+    }
+  }
+
+  Future<void> _inputCustomRelationship(AppData data) async {
+    final ctrl = TextEditingController();
+    final ok = await showDialog<String>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('自定义关系类型'),
+          content: TextField(
+            controller: ctrl,
+            autofocus: true,
+            decoration: const InputDecoration(hintText: '请输入关系名称'),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('取消')),
+            TextButton(
+              onPressed: () {
+                final text = ctrl.text.trim();
+                if (text.isNotEmpty) Navigator.pop(context, text);
+              },
+              child: const Text('确定'),
+            ),
+          ],
+        );
+      },
+    );
+    if (ok != null && ok.isNotEmpty) {
+      try {
+        await data.createRelationType(name: ok);
+      } catch (_) {}
+      setState(() => _relationship = ok);
+    }
+  }
+
+  Future<void> _pickBirthday() async {
+    final picked = await showLunarDatePicker(
+      context: context,
+      initialDate: _birthday,
+      firstDate: DateTime(1900),
+      lastDate: DateTime.now(),
+    );
+    if (picked != null) {
+      setState(() => _birthday = picked);
+    }
   }
 
   void _toast(BuildContext context, String message) {
@@ -664,6 +732,12 @@ class _BasicInfoCard extends StatelessWidget {
     required this.onPhoneChanged,
     required this.onPhoneSubmitted,
     required this.onPhoneFocusChange,
+    required this.birthday,
+    required this.isLunarBirthday,
+    required this.birthdayReminder,
+    required this.onPickBirthday,
+    required this.onLunarBirthdayChanged,
+    required this.onBirthdayReminderChanged,
   });
 
   final TextEditingController nameCtrl;
@@ -685,6 +759,12 @@ class _BasicInfoCard extends StatelessWidget {
   final ValueChanged<String>? onPhoneChanged;
   final VoidCallback? onPhoneSubmitted;
   final ValueChanged<bool>? onPhoneFocusChange;
+  final DateTime? birthday;
+  final bool isLunarBirthday;
+  final bool birthdayReminder;
+  final VoidCallback? onPickBirthday;
+  final ValueChanged<bool>? onLunarBirthdayChanged;
+  final ValueChanged<bool>? onBirthdayReminderChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -737,7 +817,16 @@ class _BasicInfoCard extends StatelessWidget {
             onFocusChange: onPhoneFocusChange,
             keyboardType: TextInputType.phone,
             textInputAction: TextInputAction.done,
-            borderBottom: false,
+            borderBottom: true,
+          ),
+          const PrototypeDivider(color: AppColors.borderDivider),
+          _BirthdayRow(
+            birthday: birthday,
+            isLunar: isLunarBirthday,
+            reminder: birthdayReminder,
+            onTap: onPickBirthday,
+            onLunarChanged: onLunarBirthdayChanged,
+            onReminderChanged: onBirthdayReminderChanged,
           ),
         ],
       ),
@@ -823,7 +912,6 @@ class _NoteCard extends StatelessWidget {
                       )
                     else
                       Focus(
-                        focusNode: noteFocus,
                         onFocusChange: onNoteFocusChange,
                         child: TextField(
                           controller: noteCtrl,
@@ -851,6 +939,23 @@ class _NoteCard extends StatelessWidget {
                             border: InputBorder.none,
                             enabledBorder: InputBorder.none,
                             focusedBorder: InputBorder.none,
+                          ),
+                        ),
+                      ),
+                    if (noteEditing)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Align(
+                          alignment: Alignment.centerRight,
+                          child: Text(
+                            '${noteCtrl.text.length}/$_kNoteMaxLen',
+                            style: AppTypography.base(
+                              fontSize: 11,
+                              fontWeight: AppTypography.regular,
+                              color: noteCtrl.text.length > _kNoteMaxLen
+                                  ? AppColors.stateDangerStrong
+                                  : AppColors.textTertiary,
+                            ),
                           ),
                         ),
                       ),
@@ -1048,7 +1153,6 @@ class _InlineEditableRow extends StatelessWidget {
                     )
                   else
                     Focus(
-                      focusNode: focusNode,
                       onFocusChange: onFocusChange,
                       child: TextField(
                         controller: controller,
@@ -1100,12 +1204,184 @@ class _InlineEditableRow extends StatelessWidget {
   }
 }
 
-String _formatPhone(String raw) {
+  String _formatPhone(String raw) {
   final digits = raw.replaceAll(RegExp(r'\s+'), '');
   if (digits.isEmpty) return '未设置';
   if (digits.length == 11) {
     return '${digits.substring(0, 3)} ${digits.substring(3, 7)} ${digits.substring(7)}';
   }
   return raw;
+}
+
+class _BirthdayRow extends StatelessWidget {
+  const _BirthdayRow({
+    required this.birthday,
+    required this.isLunar,
+    required this.reminder,
+    required this.onTap,
+    required this.onLunarChanged,
+    required this.onReminderChanged,
+  });
+
+  final DateTime? birthday;
+  final bool isLunar;
+  final bool reminder;
+  final VoidCallback? onTap;
+  final ValueChanged<bool>? onLunarChanged;
+  final ValueChanged<bool>? onReminderChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    String display = '未设置';
+    String? ageInfo;
+
+    if (birthday != null) {
+      if (isLunar) {
+        final lunar = Lunar.fromDate(birthday!);
+        display = '农历 ${lunar.getMonthInChinese()}月${lunar.getDayInChinese()}';
+      } else {
+        display = '${birthday!.year}-${birthday!.month.toString().padLeft(2, '0')}-${birthday!.day.toString().padLeft(2, '0')}';
+      }
+
+      // Calculate age
+      final now = DateTime.now();
+      var age = now.year - birthday!.year;
+      if (now.month < birthday!.month || (now.month == birthday!.month && now.day < birthday!.day)) {
+        age--;
+      }
+      if (age >= 0) {
+        ageInfo = '$age岁';
+      }
+    }
+
+    return PrototypePressableRow(
+      onTap: onTap,
+      borderBottom: false,
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '生日',
+                      style: AppTypography.base(
+                        fontSize: 12,
+                        fontWeight: AppTypography.regular,
+                        color: AppColors.textTertiary,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Text(
+                          display,
+                          style: AppTypography.base(
+                            fontSize: 16,
+                            fontWeight: AppTypography.regular,
+                            color: birthday == null ? AppColors.textMuted : AppColors.textPrimary,
+                          ),
+                        ),
+                        if (ageInfo != null) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                            decoration: BoxDecoration(
+                              color: AppColors.indigo50,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              ageInfo,
+                              style: AppTypography.base(
+                                fontSize: 11,
+                                fontWeight: AppTypography.medium,
+                                color: AppColors.indigo600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const FaIcon(FontAwesomeIcons.chevronRight, size: 10, color: AppColors.gray300),
+            ],
+          ),
+          if (birthday != null) ...[
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                _SwitchItem(label: '农历', value: isLunar, onChanged: onLunarChanged),
+                const SizedBox(width: 24),
+                _SwitchItem(label: '生日提醒', value: reminder, onChanged: onReminderChanged),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _SwitchItem extends StatelessWidget {
+  const _SwitchItem({required this.label, required this.value, required this.onChanged});
+
+  final String label;
+  final bool value;
+  final ValueChanged<bool>? onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onChanged == null ? null : () => onChanged!(!value),
+      behavior: HitTestBehavior.opaque,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: 36,
+            height: 20,
+            child: Stack(
+              children: [
+                Container(
+                  decoration: BoxDecoration(
+                    color: value ? AppColors.brandPrimary : AppColors.gray200,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                ),
+                AnimatedAlign(
+                  duration: const Duration(milliseconds: 200),
+                  curve: Curves.easeInOut,
+                  alignment: value ? Alignment.centerRight : Alignment.centerLeft,
+                  child: Container(
+                    width: 16,
+                    height: 16,
+                    margin: const EdgeInsets.all(2),
+                    decoration: const BoxDecoration(
+                      color: AppColors.white,
+                      shape: BoxShape.circle,
+                      boxShadow: AppShadows.sm,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            label,
+            style: AppTypography.base(
+              fontSize: 14,
+              fontWeight: AppTypography.regular,
+              color: AppColors.textPrimary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 

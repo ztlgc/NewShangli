@@ -12,6 +12,7 @@ import 'person_edit_page.dart';
 import 'record_add_page.dart';
 import 'record_detail_page.dart';
 import 'reminders_page.dart';
+import '../../utils/date_util.dart';
 
 /// 页面：关系人管理 - 详情页
 /// 对照原型：prototype/index.html -> "详情页"
@@ -343,7 +344,7 @@ class _InfoCards extends StatelessWidget {
               iconFg: AppColors.pink500,
               icon: FontAwesomeIcons.cakeCandles,
               label: '生日',
-              value: '1990年8月15日 (农历七月廿六)',
+              value: '1990年08月15日 (七月廿六)',
               trailing: _Badge(text: '5天后', bg: AppColors.pink100, fg: AppColors.pink600),
             ),
             const SizedBox(height: 16),
@@ -489,7 +490,7 @@ class _RecordsCard extends StatelessWidget {
         boxShadow: AppShadows.sm,
       ),
       child: Column(
-        children: const [
+        children: [
           _RecordRow(
             iconBg: AppColors.green100,
             iconFg: AppColors.green600,
@@ -498,9 +499,9 @@ class _RecordsCard extends StatelessWidget {
             amount: '+2,000',
             amountColor: AppColors.green600,
             subtitleLeft: '收礼 - 微信',
-            subtitleRight: '2026-02-10',
+            subtitleRight: DateUtil.format(DateTime(2026, 2, 10)),
           ),
-          PrototypeDivider(color: AppColors.borderDivider),
+          const PrototypeDivider(color: AppColors.borderDivider),
           _RecordRow(
             iconBg: AppColors.red100,
             iconFg: AppColors.red600,
@@ -509,9 +510,9 @@ class _RecordsCard extends StatelessWidget {
             amount: '-800',
             amountColor: AppColors.red500,
             subtitleLeft: '送礼 - 现金',
-            subtitleRight: '2025-08-12',
+            subtitleRight: DateUtil.format(DateTime(2025, 8, 12)),
           ),
-          PrototypeDivider(color: AppColors.borderDivider),
+          const PrototypeDivider(color: AppColors.borderDivider),
           _RecordRow(
             iconBg: AppColors.green100,
             iconFg: AppColors.green600,
@@ -520,7 +521,7 @@ class _RecordsCard extends StatelessWidget {
             amount: '+600',
             amountColor: AppColors.green600,
             subtitleLeft: '收礼 - 支付宝',
-            subtitleRight: '2024-12-01',
+            subtitleRight: DateUtil.format(DateTime(2024, 12, 1)),
             borderBottom: false,
           ),
         ],

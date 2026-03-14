@@ -167,7 +167,7 @@ class BackupConfig {
 
   static String normalizeWebDavRemoteDir(String value) {
     final trimmed = value.trim();
-    if (trimmed.isEmpty) return defaultWebDavRemoteDir;
+    if (trimmed.isEmpty) return '';
     return trimmed;
   }
 
@@ -184,7 +184,7 @@ class BackupConfig {
     final remoteDirRaw = (prefs.getString(_kWebDavRemoteDirKey) ?? '').trim();
     final normalizedRemoteDir = isValidWebDavRemoteDir(remoteDirRaw)
         ? normalizeWebDavRemoteDir(remoteDirRaw)
-        : defaultWebDavRemoteDir;
+        : '';
     return BackupConfig(
       webDavEnabled: prefs.getBool(_kWebDavEnabledKey) ?? false,
       webDavBaseUrl: (prefs.getString(_kWebDavBaseUrlKey) ?? '').trim(),
@@ -199,7 +199,7 @@ class BackupConfig {
   static Future<void> save(BackupConfig config) async {
     final prefs = await SharedPreferences.getInstance();
     final remoteDirRaw = config.webDavRemoteDir.trim();
-    final normalizedRemoteDir = isValidWebDavRemoteDir(remoteDirRaw) ? normalizeWebDavRemoteDir(remoteDirRaw) : defaultWebDavRemoteDir;
+    final normalizedRemoteDir = isValidWebDavRemoteDir(remoteDirRaw) ? normalizeWebDavRemoteDir(remoteDirRaw) : '';
     await prefs.setBool(_kWebDavEnabledKey, config.webDavEnabled);
     await prefs.setString(_kWebDavBaseUrlKey, config.webDavBaseUrl.trim());
     await prefs.setString(_kWebDavUsernameKey, config.webDavUsername.trim());

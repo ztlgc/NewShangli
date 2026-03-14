@@ -203,6 +203,9 @@ class EventReminders extends Table {
         'NULL REFERENCES person(person_id) ON DELETE SET NULL',
       )();
 
+  TextColumn get relationPersonIds =>
+      text().named('relation_person_ids').withDefault(const Constant('[]'))();
+
   TextColumn get reminderType => text()
       .named('reminder_type')
       .withDefault(const Constant('自定义'))
@@ -251,6 +254,28 @@ class EventReminders extends Table {
 
   @override
   Set<Column> get primaryKey => {reminderId};
+}
+
+class ReminderTypes extends Table {
+  @override
+  String get tableName => 'reminder_type';
+
+  TextColumn get typeId => text().named('type_id').clientDefault(() => const Uuid().v4())();
+
+  TextColumn get bookId => text()
+      .named('book_id')
+      .customConstraint(
+        'NOT NULL REFERENCES account_book(book_id) ON DELETE CASCADE',
+      )();
+
+  TextColumn get name => text().named('name')();
+  BoolColumn get isCustom => boolean().named('is_custom').withDefault(const Constant(false))();
+
+  IntColumn get createdAt => integer().named('created_at').customConstraint('NOT NULL')();
+  IntColumn get updatedAt => integer().named('updated_at').customConstraint('NOT NULL')();
+
+  @override
+  Set<Column> get primaryKey => {typeId};
 }
 
 class DataImportJobs extends Table {

@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:dotted_border/dotted_border.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:file_picker/file_picker.dart';
@@ -19,19 +21,23 @@ import '../navigation.dart';
 import '../prototype_kit.dart';
 
 class DataImportPage extends StatelessWidget {
-  const DataImportPage({super.key});
+  const DataImportPage({super.key, this.initialBookId});
+
+  final String? initialBookId;
 
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
       backgroundColor: AppColors.surfaceApp,
-      body: const _Canvas(),
+      body: _Canvas(initialBookId: initialBookId),
     );
   }
 }
 
 class _Canvas extends StatefulWidget {
-  const _Canvas();
+  const _Canvas({this.initialBookId});
+
+  final String? initialBookId;
 
   @override
   State<_Canvas> createState() => _CanvasState();
@@ -78,7 +84,9 @@ class _CanvasState extends State<_Canvas> {
     super.initState();
     _db = AppDatabase();
     _importService = DataImportService(db: _db);
-    _bookIdFuture = _defaultBookService.ensureDefaultBookId(_db);
+    _bookIdFuture = widget.initialBookId == null
+        ? _defaultBookService.ensureDefaultBookId(_db)
+        : Future<String>.value(widget.initialBookId!);
   }
 
   @override
@@ -288,6 +296,113 @@ class _CanvasState extends State<_Canvas> {
     } catch (_) {}
   }
 
+  Future<void> _importFromClipboard() async {
+    final data = await Clipboard.getData('text/plain');
+    final raw = (data?.text ?? '').trim();
+    if (raw.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('剪贴板为空')),
+      );
+      return;
+    }
+    final bookId = await _bookIdFuture;
+    if (!mounted) return;
+
+    final lines = raw
+        .split(RegExp(r'\r?\n'))
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toList();
+    if (lines.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('未识别到有效内容')),
+      );
+      return;
+    }
+
+    final persons = await (_db.select(_db.persons)..where((t) => t.bookId.equals(bookId))).get();
+    final personByName = <String, Person>{
+      for (final p in persons) p.name.trim(): p,
+    };
+
+    final now = DateTime.now();
+    final dayStart = DateTime(now.year, now.month, now.day).millisecondsSinceEpoch;
+    final dayEnd = DateTime(now.year, now.month, now.day, 23, 59, 59, 999).millisecondsSinceEpoch;
+    final existingRecords = await _db.giftRecordsDao.listInRange(
+      bookId: bookId,
+      startAt: dayStart,
+      endAt: dayEnd,
+    );
+
+    var success = 0;
+    var skipped = 0;
+    var failed = 0;
+    final linePattern = RegExp(r'^\s*([^\s,，\t]+)\s*[,，\t ]+\s*([+-]?\d+(?:\.\d{1,2})?)\s*$');
+
+    for (final line in lines) {
+      final m = linePattern.firstMatch(line);
+      if (m == null) {
+        failed++;
+        continue;
+      }
+      final name = (m.group(1) ?? '').trim();
+      final amountText = (m.group(2) ?? '').trim();
+      final amount = double.tryParse(amountText);
+      if (name.isEmpty || amount == null || amount <= 0) {
+        failed++;
+        continue;
+      }
+      final amountCent = (amount * 100).round();
+
+      var person = personByName[name];
+      if (person == null) {
+        final personId = await _db.personsDao.insertOne(
+          PersonsCompanion.insert(
+            bookId: bookId,
+            name: name,
+            createdAt: DateTime.now().millisecondsSinceEpoch,
+            updatedAt: DateTime.now().millisecondsSinceEpoch,
+          ),
+        );
+        person = await _db.personsDao.findById(personId);
+        if (person == null) {
+          failed++;
+          continue;
+        }
+        personByName[name] = person;
+      }
+
+      final duplicate = existingRecords.any(
+        (r) => r.personId == person!.personId && r.amountCent == amountCent && r.direction == '收入',
+      );
+      if (duplicate) {
+        skipped++;
+        continue;
+      }
+
+      await _db.giftRecordsDao.insertOne(
+        GiftRecordsCompanion.insert(
+          bookId: bookId,
+          personId: person.personId,
+          amountCent: amountCent,
+          direction: const Value('收入'),
+          eventName: const Value('粘贴导入'),
+          occurredAt: DateTime.now().millisecondsSinceEpoch,
+          paymentMethod: const Value('未设置'),
+          createdAt: DateTime.now().millisecondsSinceEpoch,
+          updatedAt: DateTime.now().millisecondsSinceEpoch,
+        ),
+      );
+      success++;
+    }
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('粘贴导入完成：成功$success，跳过$skipped，失败$failed')),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -354,6 +469,14 @@ class _CanvasState extends State<_Canvas> {
                           ),
                         ),
                       ],
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: PrototypeSecondaryButton(
+                        label: '粘贴板导入',
+                        onTap: _importFromClipboard,
+                      ),
                     ),
                   ],
                 ),

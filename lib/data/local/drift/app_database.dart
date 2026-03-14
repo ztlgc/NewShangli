@@ -14,6 +14,7 @@ part 'daos/account_books_dao.dart';
 part 'daos/persons_dao.dart';
 part 'daos/gift_records_dao.dart';
 part 'daos/event_reminders_dao.dart';
+part 'daos/reminder_types_dao.dart';
 part 'daos/data_import_jobs_dao.dart';
 
 /// 应用主数据库（Drift）。
@@ -27,6 +28,7 @@ part 'daos/data_import_jobs_dao.dart';
     Persons,
     GiftRecords,
     EventReminders,
+    ReminderTypes,
     DataImportJobs,
   ],
   daos: [
@@ -34,6 +36,7 @@ part 'daos/data_import_jobs_dao.dart';
     PersonsDao,
     GiftRecordsDao,
     EventRemindersDao,
+    ReminderTypesDao,
     DataImportJobsDao,
   ],
 )
@@ -47,7 +50,7 @@ class AppDatabase extends _$AppDatabase {
   ///
   /// 版本升级时在 [migration] 中补齐迁移逻辑，并同步单元测试。
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 6;
 
   /// 统一注入迁移策略：
   /// - onCreate：创建所有表与索引
@@ -96,6 +99,12 @@ class AppDatabase extends _$AppDatabase {
           }
           if (from < 4) {
             await m.addColumn(eventReminders, eventReminders.title as GeneratedColumn<Object>);
+          }
+          if (from < 5) {
+            await m.addColumn(eventReminders, eventReminders.relationPersonIds as GeneratedColumn<Object>);
+          }
+          if (from < 6) {
+            await m.createTable(reminderTypes);
           }
         },
         beforeOpen: (details) async {

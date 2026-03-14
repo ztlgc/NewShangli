@@ -7,6 +7,7 @@ import '../app_scaffold.dart';
 import '../components.dart';
 import '../navigation.dart';
 import '../prototype_kit.dart';
+import '../../utils/date_util.dart';
 import 'person_detail_page.dart';
 import 'record_add_page.dart';
 
@@ -518,11 +519,8 @@ String _formatCurrency(int cent) {
 }
 
 String _formatDateTime(DateTime dt) {
-  final y = dt.year.toString();
-  final m = dt.month.toString();
-  final d = dt.day.toString();
   final hh = dt.hour.toString().padLeft(2, '0');
   final mm = dt.minute.toString().padLeft(2, '0');
-  return '$y年$m月$d日 $hh:$mm';
+  return '${DateUtil.format(dt)} $hh:$mm';
 }
 

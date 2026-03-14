@@ -17,6 +17,7 @@ import '../components.dart';
 import '../lunar_date_picker.dart';
 import '../navigation.dart';
 import '../prototype_kit.dart';
+import '../../utils/date_util.dart';
 
 /// 页面：系统设置 - 导出数据
 /// 对照原型：prototype/index.html -> "导出数据"
@@ -95,7 +96,7 @@ class _CanvasState extends State<_Canvas> {
                     children: [
                       _SettingRow(
                         label: '日期范围',
-                        value: _allTime ? '所有时间' : '${_formatDate(_start)} - ${_formatDate(_end)}',
+                        value: _allTime ? '所有时间' : '${_formatDate(_start)}\n${_formatDate(_end)}',
                         onTap: _exporting ? null : () => _pickDateRange(data),
                       ),
                       _SettingRow(
@@ -193,8 +194,7 @@ class _CanvasState extends State<_Canvas> {
   }
 
   String _formatDate(DateTime d) {
-    String two(int n) => n.toString().padLeft(2, '0');
-    return '${d.year}-${two(d.month)}-${two(d.day)}';
+    return DateUtil.format(d);
   }
 
   String _formatLabel(DataExportFormat f) {
@@ -515,7 +515,7 @@ class _SettingRow extends StatelessWidget {
                     const SizedBox(height: 6),
                     Text(
                       subtitle!,
-                      maxLines: 1,
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: AppTypography.base(
                         fontSize: 12,

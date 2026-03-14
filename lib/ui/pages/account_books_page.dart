@@ -9,8 +9,8 @@ import '../app_tokens.dart';
 import '../app_scaffold.dart';
 import '../navigation.dart';
 import '../prototype_kit.dart';
+import 'account_book_detail_page.dart';
 import 'account_book_edit_page.dart';
-import 'account_book_records_page.dart';
 
 /// 页面：系统设置 - 账簿管理
 /// 对照原型：prototype/index.html -> "账簿管理"
@@ -40,14 +40,15 @@ class _CanvasState extends State<_Canvas> {
   }
 
   Future<void> _openBook(AccountBook book) async {
-    final recordsBookId = (book.isDefault == 1) ? AppData.defaultBookId : book.bookId;
+    // 之前逻辑是直接跳去记录页，现在改为跳转详情页
+    // 如果是默认账簿，通常用户也想看详情，或者直接看记录？
+    // 按照常规交互，点击账簿卡片应进入该账簿的详情或主页
+    // 这里改为进入详情页，详情页再提供“查看记录”入口可能更合理，
+    // 但根据现有逻辑，AccountBookRecordsPage 似乎是查看记录列表。
+    // 为了满足“账簿详情页”的需求，我们将入口指向 AccountBookDetailPage
     AppNav.push(
       context,
-      AccountBookRecordsPage(
-        bookId: recordsBookId,
-        bookName: book.name,
-        isDefaultBook: book.isDefault == 1,
-      ),
+      AccountBookDetailPage(bookId: book.bookId),
       requiresLogin: true,
     );
   }
@@ -248,6 +249,23 @@ class _BookCardDb extends StatelessWidget {
                               color: AppColors.textMuted,
                             ),
                             overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: AppColors.indigo50,
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: Text(
+                              '事由：${book.reasonType}',
+                              style: AppTypography.base(
+                                fontSize: 11,
+                                fontWeight: AppTypography.medium,
+                                color: AppColors.indigo700,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
                         ],
                       ),

@@ -6,6 +6,12 @@ class AccountBooksDao extends DatabaseAccessor<AppDatabase>
     with _$AccountBooksDaoMixin {
   AccountBooksDao(super.db);
 
+  /// 监听单个账簿变化。
+  Stream<AccountBook> watchBook(String bookId) {
+    return (select(accountBooks)..where((t) => t.bookId.equals(bookId)))
+        .watchSingle();
+  }
+
   /// 查询所有账簿（按创建时间倒序）。
   Stream<List<AccountBook>> watchAll() {
     return (select(accountBooks)

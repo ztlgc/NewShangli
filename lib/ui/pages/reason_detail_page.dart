@@ -7,6 +7,7 @@ import '../app_scaffold.dart';
 import '../components.dart';
 import '../navigation.dart';
 import '../prototype_kit.dart';
+import '../../utils/date_util.dart';
 
 class ReasonDetailPage extends StatefulWidget {
   const ReasonDetailPage({
@@ -322,7 +323,7 @@ class _ReasonDetailPageState extends State<ReasonDetailPage> {
 
   String _formatTime(DateTime dt) {
     String two(int v) => v < 10 ? '0$v' : '$v';
-    return '${dt.year}-${two(dt.month)}-${two(dt.day)} ${two(dt.hour)}:${two(dt.minute)}';
+    return '${DateUtil.format(dt)} ${two(dt.hour)}:${two(dt.minute)}';
   }
 }
 

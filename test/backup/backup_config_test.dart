@@ -5,7 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  test('BackupConfig 默认远程目录与新增字段持久化', () async {
+  test('BackupConfig 空远程目录与新增字段持久化', () async {
     SharedPreferences.setMockInitialValues(<String, Object>{});
     const config = BackupConfig(
       webDavEnabled: true,
@@ -18,7 +18,7 @@ void main() {
     );
     await BackupConfig.save(config);
     final loaded = await BackupConfig.load();
-    expect(loaded.webDavRemoteDir, BackupConfig.defaultWebDavRemoteDir);
+    expect(loaded.webDavRemoteDir, '');
     expect(loaded.autoBackupEnabled, true);
     expect(loaded.backupFrequency, BackupFrequency.weekly);
   });
@@ -30,6 +30,6 @@ void main() {
     expect(BackupConfig.isValidWebDavRemoteDir('backup//newshangli'), false);
     expect(BackupConfig.isValidWebDavRemoteDir('backup/../newshangli'), false);
     expect(BackupConfig.isValidWebDavRemoteDir('backup\\newshangli'), false);
-    expect(BackupConfig.normalizeWebDavRemoteDir(''), BackupConfig.defaultWebDavRemoteDir);
+    expect(BackupConfig.normalizeWebDavRemoteDir(''), '');
   });
 }

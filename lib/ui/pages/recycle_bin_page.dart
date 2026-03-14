@@ -7,6 +7,7 @@ import '../app_tokens.dart';
 import '../components.dart';
 import '../navigation.dart';
 import '../prototype_kit.dart';
+import '../../utils/date_util.dart';
 
 class RecycleBinPage extends StatelessWidget {
   const RecycleBinPage({super.key});
@@ -203,8 +204,7 @@ class _TrashedRecordRow extends StatelessWidget {
     final amountText = _formatSignedAmount(record.direction, record.amountCent);
     final amountColor = record.direction == RecordDirection.income ? AppColors.green600 : AppColors.red500;
     final subtitle = '${record.eventName} - ${record.paymentMethod}';
-    final dateText =
-        '${record.occurredAt.year}-${record.occurredAt.month.toString().padLeft(2, '0')}-${record.occurredAt.day.toString().padLeft(2, '0')}';
+    final dateText = DateUtil.format(record.occurredAt);
 
     return PrototypePressableRow(
       onTap: null,

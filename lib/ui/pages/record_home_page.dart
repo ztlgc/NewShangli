@@ -4,10 +4,10 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../app_data.dart';
 import '../app_tokens.dart';
 import '../app_scaffold.dart';
-import '../contact_avatar.dart';
 import '../components.dart';
 import '../navigation.dart';
 import '../prototype_kit.dart';
+import '../widgets/record_list_row.dart';
 import 'person_list_page.dart';
 import 'record_add_page.dart';
 import 'record_detail_page.dart';
@@ -260,8 +260,7 @@ class _CanvasState extends State<_Canvas> {
             child: Column(
               children: [
                 for (var j = 0; j < monthRecords.length; j++)
-                  _RecordRow(
-                    id: monthRecords[j].id,
+                  RecordListRow(
                     avatarUrl: monthRecords[j].personAvatarUrl,
                     name: monthRecords[j].personName,
                     direction: monthRecords[j].direction,
@@ -361,150 +360,5 @@ class _SimpleHeaderDelegate extends SliverPersistentHeaderDelegate {
       child != oldDelegate.child;
 }
 
-class _RecordRow extends StatelessWidget {
-  const _RecordRow({
-    required this.id,
-    required this.avatarUrl,
-    required this.name,
-    required this.direction,
-    required this.amountCent,
-    required this.subtitle,
-    required this.occurredAt,
-    required this.selectionMode,
-    required this.selected,
-    required this.onTap,
-    required this.onLongPress,
-    this.borderBottom = true,
-  });
-
-  final String id;
-  final String? avatarUrl;
-  final String name;
-  final RecordDirection direction;
-  final int amountCent;
-  final String subtitle;
-  final DateTime occurredAt;
-  final bool selectionMode;
-  final bool selected;
-  final VoidCallback onTap;
-  final VoidCallback onLongPress;
-  final bool borderBottom;
-
-  @override
-  Widget build(BuildContext context) {
-    final amountText = _formatSignedAmount(direction, amountCent);
-    final amountColor = direction == RecordDirection.income ? AppColors.green600 : AppColors.red500;
-    final dateText = '${occurredAt.month.toString().padLeft(2, '0')}-${occurredAt.day.toString().padLeft(2, '0')}';
-
-    return PrototypePressableRow(
-      onTap: onTap,
-      onLongPress: onLongPress,
-      borderBottom: borderBottom,
-      pressedColor: selectionMode ? AppColors.indigo50 : AppColors.gray50,
-      enablePressedFeedback: !selectionMode,
-      child: Row(
-        children: [
-          if (selectionMode) ...[
-            _SelectDot(selected: selected),
-            const SizedBox(width: 10),
-          ],
-          ContactAvatar(
-            name: name,
-            avatarUrl: avatarUrl,
-            size: 40,
-            shape: ContactAvatarShape.circle,
-            border: Border.all(color: AppColors.gray100, width: 1),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        name,
-                        style: AppTypography.base(
-                          fontSize: 16,
-                          fontWeight: AppTypography.medium,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                    ),
-                    Text(
-                      amountText,
-                      style: AppTypography.base(
-                        fontSize: 16,
-                        fontWeight: AppTypography.semibold,
-                        color: amountColor,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 2),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        subtitle,
-                        style: AppTypography.base(
-                          fontSize: 12,
-                          fontWeight: AppTypography.regular,
-                          color: AppColors.textTertiary,
-                        ),
-                      ),
-                    ),
-                    Text(
-                      dateText,
-                      style: AppTypography.base(
-                        fontSize: 12,
-                        fontWeight: AppTypography.regular,
-                        color: AppColors.textTertiary,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  String _formatSignedAmount(RecordDirection direction, int cent) {
-    final sign = direction == RecordDirection.income ? '+' : '-';
-    final absCent = cent.abs();
-    final yuan = (absCent / 100).toStringAsFixed(2);
-    final parts = yuan.split('.');
-    final intPart = parts[0];
-    final fracPart = parts[1];
-    final grouped = intPart.replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (m) => ',');
-    return '$sign$grouped.$fracPart';
-  }
-
-}
-
-class _SelectDot extends StatelessWidget {
-  const _SelectDot({required this.selected});
-
-  final bool selected;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 22,
-      height: 22,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: selected ? AppColors.indigo600 : Colors.transparent,
-        border: Border.all(color: selected ? AppColors.indigo600 : AppColors.gray300, width: 1.5),
-      ),
-      alignment: Alignment.center,
-      child: selected ? const FaIcon(FontAwesomeIcons.check, size: 12, color: AppColors.white) : null,
-    );
-  }
-}
 
 

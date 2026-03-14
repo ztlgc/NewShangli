@@ -12,7 +12,21 @@ class WebDavClient {
     Duration connectTimeout = const Duration(seconds: 15),
     Duration requestTimeout = const Duration(minutes: 5),
   })  : _connectTimeout = connectTimeout,
-        _requestTimeout = requestTimeout;
+        _requestTimeout = requestTimeout {
+    _client.authenticate = (Uri url, String scheme, String? realm) async {
+      if (scheme.toLowerCase() == 'basic') {
+        _client.addCredentials(
+            url, realm ?? '', HttpClientBasicCredentials(username, password));
+        return true;
+      }
+      if (scheme.toLowerCase() == 'digest') {
+        _client.addCredentials(
+            url, realm ?? '', HttpClientDigestCredentials(username, password));
+        return true;
+      }
+      return false;
+    };
+  }
 
   final Uri baseUrl;
   final String username;
@@ -41,28 +55,46 @@ class WebDavClient {
 
   Future<WebDavTestResult> test() async {
     final uri = baseUrl;
-    HttpClientResponse? resp;
     try {
-      final req = await _open('OPTIONS', uri);
-      resp = await req.close().timeout(_requestTimeout);
-      final status = resp.statusCode;
-      if (status == 401 || status == 403) {
+      final propfindStatus = await _requestStatus(
+        'PROPFIND',
+        uri,
+        headers: <String, String>{
+          'Depth': '0',
+          HttpHeaders.contentTypeHeader: 'application/xml; charset=utf-8',
+        },
+        body: utf8.encode(
+          '<?xml version="1.0" encoding="utf-8"?><d:propfind xmlns:d="DAV:"><d:prop><d:displayname/></d:prop></d:propfind>',
+        ),
+      );
+      if (propfindStatus == 401) {
         return const WebDavTestResult(ok: false, message: '鉴权失败，请检查用户名/密码');
       }
-      if (status >= 200 && status < 300) {
+      if (propfindStatus == 403) {
+        return const WebDavTestResult(ok: false, message: '账号已认证，但目录权限不足');
+      }
+      if (propfindStatus == 200 || propfindStatus == 207) {
         return const WebDavTestResult(ok: true, message: '连接成功');
       }
-      return WebDavTestResult(ok: false, message: '服务器响应异常：HTTP $status');
+      if (propfindStatus == 405) {
+        return const WebDavTestResult(
+          ok: false,
+          message: '连接失败：该地址不支持 WebDAV 操作 (HTTP 405)。\n请检查服务器地址是否正确（例如是否遗漏了 /dav、/webdav 等后缀）。',
+        );
+      }
+      if (propfindStatus == 404) {
+        return const WebDavTestResult(
+          ok: false,
+          message: '连接失败：路径不存在 (HTTP 404)。\n请检查服务器地址是否正确。',
+        );
+      }
+      return WebDavTestResult(ok: false, message: '服务器响应异常：HTTP $propfindStatus');
     } on SocketException catch (e) {
       return WebDavTestResult(ok: false, message: '网络错误：$e');
     } on TimeoutException {
       return const WebDavTestResult(ok: false, message: '请求超时，请检查地址或网络');
     } catch (e) {
       return WebDavTestResult(ok: false, message: '连接失败：$e');
-    } finally {
-      try {
-        await resp?.drain<void>();
-      } catch (_) {}
     }
   }
 
@@ -105,8 +137,14 @@ class WebDavClient {
     final resp = await req.close().timeout(_requestTimeout);
     await resp.drain<void>();
     final status = resp.statusCode;
-    if (status == 401 || status == 403) {
+    if (status == 401) {
       throw const WebDavException('鉴权失败，请检查用户名/密码');
+    }
+    if (status == 403) {
+      throw WebDavException('账号已认证，但无目录写入权限（$remotePath）');
+    }
+    if (status == 405) {
+      throw const WebDavException('上传失败：HTTP 405 (Method Not Allowed)。\n通常是 WebDAV 地址填写错误（例如填写了网页查看地址），请检查服务器设置。');
     }
     if (status < 200 || status >= 300) {
       throw WebDavException('上传失败：HTTP $status');
@@ -122,6 +160,25 @@ class WebDavClient {
     return req;
   }
 
+  Future<int> _requestStatus(
+    String method,
+    Uri uri, {
+    Map<String, String>? headers,
+    List<int>? body,
+  }) async {
+    final req = await _open(method, uri);
+    if (headers != null) {
+      headers.forEach((key, value) => req.headers.set(key, value));
+    }
+    if (body != null && body.isNotEmpty) {
+      req.headers.contentLength = body.length;
+      req.add(body);
+    }
+    final resp = await req.close().timeout(_requestTimeout);
+    await resp.drain<void>();
+    return resp.statusCode;
+  }
+
   Future<void> _mkcol(String relativeDir) async {
     final dirPath = relativeDir.endsWith('/') ? relativeDir : '$relativeDir/';
     final uri = resolvePath(dirPath);
@@ -132,8 +189,11 @@ class WebDavClient {
     if (status == 201) return;
     if (status == 405) return;
     if (status == 301 || status == 302 || status == 307 || status == 308) return;
-    if (status == 401 || status == 403) {
+    if (status == 401) {
       throw const WebDavException('鉴权失败，请检查用户名/密码');
+    }
+    if (status == 403) {
+      throw const WebDavException('账号已认证，但目录权限不足');
     }
     if (status == 409) {
       throw WebDavException('创建目录失败：上级目录不存在（$relativeDir）');
@@ -158,4 +218,3 @@ class WebDavException implements Exception {
   @override
   String toString() => message;
 }
-
