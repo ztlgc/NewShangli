@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
+import '../../data/local/drift/app_database.dart';
 import '../app_data.dart';
+import '../app_database_scope.dart';
 import '../app_tokens.dart';
 import '../app_scaffold.dart';
 import '../components.dart';
@@ -34,35 +36,69 @@ class _Canvas extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    return FutureBuilder<_RecordView?>(
+      future: _loadRecord(context),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        final view = snapshot.data;
+        if (view == null) {
+          return _buildNotFound(context);
+        }
+        return _buildLoaded(context, view);
+      },
+    );
+  }
+
+  Future<_RecordView?> _loadRecord(BuildContext context) async {
+    final fromDb = await _loadFromDb(context);
+    if (fromDb != null) return fromDb;
+    return _loadFromAppData(context);
+  }
+
+  _RecordView? _loadFromAppData(BuildContext context) {
     final data = AppDataScope.of(context);
     final record = data.findRecord(recordId);
-    if (record == null) {
-      return Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: const BoxDecoration(
-              color: AppColors.white,
-              border: Border(bottom: BorderSide(color: AppColors.gray100, width: 1)),
-            ),
-            child: Row(
-              children: [
-                PrototypeIconButton(
-                  icon: const FaIcon(FontAwesomeIcons.arrowLeft, size: 18),
-                  backgroundColor: Colors.transparent,
-                  foregroundColor: AppColors.textPrimary,
-                  onPressed: () => AppNav.pop(context),
-                ),
-                const Expanded(child: Center(child: Text('记录详情'))),
-                const SizedBox(width: 36, height: 36),
-              ],
-            ),
-          ),
-          const Expanded(child: Center(child: Text('记录不存在'))),
-        ],
-      );
-    }
+    if (record == null) return null;
+    return _RecordView(
+      personId: record.personId,
+      personName: record.personName,
+      direction: record.direction,
+      amountCent: record.amountCent,
+      eventName: record.eventName,
+      paymentMethod: record.paymentMethod,
+      occurredAt: record.occurredAt,
+      note: record.note,
+      bookName: data.resolveBookName(record.bookId),
+    );
+  }
 
+  Future<_RecordView?> _loadFromDb(BuildContext context) async {
+    try {
+      final db = AppDatabaseScope.maybeOf(context);
+      if (db == null) return null;
+      final GiftRecord? record = await db.giftRecordsDao.findById(recordId);
+      if (record == null) return null;
+      final Person? person = await db.personsDao.findById(record.personId);
+      final AccountBook? book = await db.accountBooksDao.findById(record.bookId);
+      return _RecordView(
+        personId: record.personId,
+        personName: person?.name ?? '未知联系人',
+        direction: record.direction == '支出' ? RecordDirection.expense : RecordDirection.income,
+        amountCent: record.amountCent,
+        eventName: record.eventName ?? '未设置事由',
+        paymentMethod: record.paymentMethod ?? '未设置',
+        occurredAt: DateTime.fromMillisecondsSinceEpoch(record.occurredAt),
+        note: record.note,
+        bookName: book?.name ?? '未知账簿',
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Widget _buildLoaded(BuildContext context, _RecordView record) {
     return Column(
       children: [
         Container(
@@ -138,6 +174,57 @@ class _Canvas extends StatelessWidget {
       ],
     );
   }
+
+  Widget _buildNotFound(BuildContext context) {
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: const BoxDecoration(
+            color: AppColors.white,
+            border: Border(bottom: BorderSide(color: AppColors.gray100, width: 1)),
+          ),
+          child: Row(
+            children: [
+              PrototypeIconButton(
+                icon: const FaIcon(FontAwesomeIcons.arrowLeft, size: 18),
+                backgroundColor: Colors.transparent,
+                foregroundColor: AppColors.textPrimary,
+                onPressed: () => AppNav.pop(context),
+              ),
+              const Expanded(child: Center(child: Text('记录详情'))),
+              const SizedBox(width: 36, height: 36),
+            ],
+          ),
+        ),
+        const Expanded(child: Center(child: Text('记录不存在'))),
+      ],
+    );
+  }
+}
+
+class _RecordView {
+  const _RecordView({
+    required this.personId,
+    required this.personName,
+    required this.direction,
+    required this.amountCent,
+    required this.eventName,
+    required this.paymentMethod,
+    required this.occurredAt,
+    required this.note,
+    required this.bookName,
+  });
+
+  final String personId;
+  final String personName;
+  final RecordDirection direction;
+  final int amountCent;
+  final String eventName;
+  final String paymentMethod;
+  final DateTime occurredAt;
+  final String? note;
+  final String bookName;
 }
 
 class _AmountSummaryCard extends StatelessWidget {
@@ -240,12 +327,10 @@ class _AmountSummaryCard extends StatelessWidget {
 class _DetailInfoCard extends StatelessWidget {
   const _DetailInfoCard({required this.record});
 
-  final RecordData record;
+  final _RecordView record;
 
   @override
   Widget build(BuildContext context) {
-    final data = AppDataScope.of(context);
-    final bookName = data.resolveBookName(record.bookId);
     return Container(
       decoration: const BoxDecoration(
         color: AppColors.white,
@@ -283,7 +368,7 @@ class _DetailInfoCard extends StatelessWidget {
           _InfoRow(
             icon: FontAwesomeIcons.book,
             title: '所属礼簿',
-            value: bookName,
+            value: record.bookName,
             borderBottom: false,
           ),
         ],

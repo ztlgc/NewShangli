@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
+import '../../data/local/drift/app_database.dart';
 import '../app_data.dart';
+import '../app_database_scope.dart';
 import '../app_tokens.dart';
 import '../app_scaffold.dart';
 import '../components.dart';
@@ -39,10 +42,12 @@ class _Canvas extends StatefulWidget {
 class _CanvasState extends State<_Canvas> {
   bool _selectionMode = false;
   final Set<String> _selectedRecordIds = <String>{};
+  List<String> _allVisibleRecordIds = const <String>[];
   final TextEditingController _searchController = TextEditingController();
   String _keyword = '';
 
   void _enterSelection(String firstId) {
+    HapticFeedback.lightImpact();
     setState(() {
       _selectionMode = true;
       _selectedRecordIds
@@ -59,6 +64,7 @@ class _CanvasState extends State<_Canvas> {
   }
 
   void _toggleSelection(String id) {
+    HapticFeedback.selectionClick();
     setState(() {
       if (_selectedRecordIds.contains(id)) {
         _selectedRecordIds.remove(id);
@@ -77,7 +83,7 @@ class _CanvasState extends State<_Canvas> {
     super.dispose();
   }
 
-  Future<void> _confirmBatchDelete(AppData data) async {
+  Future<void> _confirmBatchDelete(AppDatabase db) async {
     if (_selectedRecordIds.isEmpty) return;
     final ok = await showDialog<bool>(
       context: context,
@@ -87,22 +93,25 @@ class _CanvasState extends State<_Canvas> {
           content: Text('确认删除 ${_selectedRecordIds.length} 条记录？删除后将进入回收站。'),
           actions: [
             TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('取消')),
-            TextButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('删除')),
+            TextButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('永久删除')),
           ],
         );
       },
     );
     if (ok != true) return;
-    data.trashRecords(_selectedRecordIds);
-    _exitSelection();
+    final ids = _selectedRecordIds.toList(growable: false);
+    for (final id in ids) {
+      await db.giftRecordsDao.deleteById(id);
+    }
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('已移入回收站')));
+    _exitSelection();
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('已删除选中记录')));
   }
 
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.paddingOf(context).bottom;
-    final data = AppDataScope.of(context);
+    final db = AppDatabaseScope.of(context);
 
     return Stack(
       children: [
@@ -117,27 +126,21 @@ class _CanvasState extends State<_Canvas> {
               ),
               child: Row(
                 children: [
-                  if (_selectionMode) ...[
-                    PrototypeIconButton(
-                      icon: const FaIcon(FontAwesomeIcons.xmark, size: 18),
-                      backgroundColor: AppColors.gray100,
-                      foregroundColor: AppColors.textSecondary,
-                      onPressed: _exitSelection,
-                    ),
-                    const SizedBox(width: 12),
-                    Text('已选择 ${_selectedRecordIds.length}', style: AppTypography.h2().copyWith(fontSize: 20)),
-                  ] else ...[
-                    Text('尚礼', style: AppTypography.h2().copyWith(fontSize: 20)),
-                  ],
+                  Text('尚礼', style: AppTypography.h2().copyWith(fontSize: 20)),
                   const Spacer(),
-                  if (_selectionMode) ...[
-                    PrototypeIconButton(
-                      icon: const FaIcon(FontAwesomeIcons.trashCan, size: 16),
-                      backgroundColor: AppColors.red100,
-                      foregroundColor: AppColors.red600,
-                      onPressed: () => _confirmBatchDelete(data),
-                    ),
-                  ] else ...[
+                  if (_selectionMode)
+                    PressableScale(
+                      onTap: _exitSelection,
+                      child: Text(
+                        '取消',
+                        style: AppTypography.base(
+                          fontSize: 14,
+                          fontWeight: AppTypography.medium,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    )
+                  else ...[
                     PrototypeIconButton(
                       icon: const FaIcon(FontAwesomeIcons.bell, size: 16),
                       backgroundColor: AppColors.gray100,
@@ -148,44 +151,69 @@ class _CanvasState extends State<_Canvas> {
                 ],
               ),
             ),
-            if (!_selectionMode)
-              Container(
-                color: AppColors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: PrototypeSearchField(
-                  controller: _searchController,
-                  hintText: '搜索姓名、事由、备注',
-                  onChanged: (v) => setState(() => _keyword = v),
-                ),
+            Container(
+              color: AppColors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: PrototypeSearchField(
+                controller: _searchController,
+                hintText: '搜索姓名、事由、备注',
+                onChanged: (v) => setState(() => _keyword = v),
               ),
+            ),
             Expanded(
-              child: CustomScrollView(
-                physics: const BouncingScrollPhysics(),
-                slivers: [
-                  ..._buildRecordSlivers(data),
-                  const SliverToBoxAdapter(child: SizedBox(height: 32)),
-                  const SliverPadding(padding: EdgeInsets.only(bottom: 96)),
-                ],
+              child: StreamBuilder<List<GiftRecordWithPerson>>(
+                stream: db.giftRecordsDao.watchAllWithPersonInAllBooks(),
+                builder: (context, snapshot) {
+                  final records = _toRecordDataList(snapshot.data ?? const <GiftRecordWithPerson>[]);
+                  return CustomScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    slivers: [
+                      ..._buildRecordSlivers(records),
+                      const SliverToBoxAdapter(child: SizedBox(height: 32)),
+                      const SliverPadding(padding: EdgeInsets.only(bottom: 96)),
+                    ],
+                  );
+                },
               ),
             ),
-            PrototypeBottomNav(
-              activeIndex: 0,
-              onTap: (index) {
-                if (index == 0) return;
-                if (index == 1) {
-                  AppNav.replaceRoot(context, const PersonListPage());
-                  return;
-                }
-                if (index == 2) {
-                  AppNav.replaceRoot(context, const StatsPage());
-                  return;
-                }
-                if (index == 3) {
-                  AppNav.replaceRoot(context, const SettingsHomePage());
-                  return;
-                }
-              },
-            ),
+            if (_selectionMode)
+              _RecordMultiSelectBar(
+                selectedCount: _selectedRecordIds.length,
+                allCount: _allVisibleRecordIds.length,
+                onToggleSelectAll: () {
+                  HapticFeedback.selectionClick();
+                  setState(() {
+                    if (_selectedRecordIds.length == _allVisibleRecordIds.length) {
+                      _selectedRecordIds.clear();
+                      _selectionMode = false;
+                    } else {
+                      _selectedRecordIds
+                        ..clear()
+                        ..addAll(_allVisibleRecordIds);
+                    }
+                  });
+                },
+                onDelete: () => _confirmBatchDelete(db),
+              )
+            else
+              PrototypeBottomNav(
+                activeIndex: 0,
+                onTap: (index) {
+                  if (index == 0) return;
+                  if (index == 1) {
+                    AppNav.replaceRoot(context, const PersonListPage());
+                    return;
+                  }
+                  if (index == 2) {
+                    AppNav.replaceRoot(context, const StatsPage());
+                    return;
+                  }
+                  if (index == 3) {
+                    AppNav.replaceRoot(context, const SettingsHomePage());
+                    return;
+                  }
+                },
+              ),
           ],
         ),
         if (!_selectionMode)
@@ -212,11 +240,31 @@ class _CanvasState extends State<_Canvas> {
     );
   }
 
-  List<Widget> _buildRecordSlivers(AppData data) {
+  List<RecordData> _toRecordDataList(List<GiftRecordWithPerson> rows) {
+    return rows
+        .map(
+          (row) => RecordData(
+            id: row.record.recordId,
+            bookId: row.record.bookId,
+            personId: row.person.personId,
+            personName: row.person.name,
+            personAvatarUrl: row.person.avatarUri,
+            direction: row.record.direction == '支出' ? RecordDirection.expense : RecordDirection.income,
+            amountCent: row.record.amountCent,
+            eventName: (row.record.eventName ?? '').trim().isEmpty ? '未设置' : row.record.eventName!.trim(),
+            paymentMethod: (row.record.paymentMethod ?? '').trim().isEmpty ? '未设置' : row.record.paymentMethod!.trim(),
+            occurredAt: DateTime.fromMillisecondsSinceEpoch(row.record.occurredAt),
+            note: row.record.note,
+          ),
+        )
+        .toList();
+  }
+
+  List<Widget> _buildRecordSlivers(List<RecordData> sourceRecords) {
     final trimmed = _keyword.trim();
     final records = trimmed.isEmpty
-        ? data.records
-        : data.records.where((r) {
+        ? sourceRecords
+        : sourceRecords.where((r) {
             final kw = trimmed.toLowerCase();
             return r.personName.toLowerCase().contains(kw) ||
                 r.eventName.toLowerCase().contains(kw) ||
@@ -269,6 +317,7 @@ class _CanvasState extends State<_Canvas> {
                     occurredAt: monthRecords[j].occurredAt,
                     selectionMode: _selectionMode,
                     selected: _selectedRecordIds.contains(monthRecords[j].id),
+                    fadeDuration: const Duration(milliseconds: 250),
                     borderBottom: j != monthRecords.length - 1,
                     onTap: () {
                       if (_selectionMode) {
@@ -284,6 +333,7 @@ class _CanvasState extends State<_Canvas> {
                       }
                       _enterSelection(monthRecords[j].id);
                     },
+                    onSelectionToggle: () => _toggleSelection(monthRecords[j].id),
                   ),
               ],
             ),
@@ -291,6 +341,7 @@ class _CanvasState extends State<_Canvas> {
         ),
       );
     }
+    _allVisibleRecordIds = records.map((r) => r.id).toList(growable: false);
     return slivers;
   }
 }
@@ -361,4 +412,92 @@ class _SimpleHeaderDelegate extends SliverPersistentHeaderDelegate {
 }
 
 
+class _RecordMultiSelectBar extends StatelessWidget {
+  const _RecordMultiSelectBar({
+    required this.selectedCount,
+    required this.allCount,
+    required this.onToggleSelectAll,
+    required this.onDelete,
+  });
 
+  final int selectedCount;
+  final int allCount;
+  final VoidCallback onToggleSelectAll;
+  final VoidCallback onDelete;
+
+  static const double _barHeight = AppTokens.tabBarHeight;
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.paddingOf(context).bottom;
+    final canDelete = selectedCount > 0;
+    final allSelected = allCount > 0 && selectedCount == allCount;
+    return Container(
+      height: _barHeight + bottomInset,
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        border: const Border(top: BorderSide(color: AppColors.borderDefault, width: 1)),
+        boxShadow: AppShadows.sm,
+      ),
+      child: Padding(
+        padding: EdgeInsets.only(left: 12, right: 12, bottom: bottomInset),
+        child: SizedBox(
+          height: _barHeight,
+          child: Row(
+            children: [
+              PressableScale(
+                onTap: onToggleSelectAll,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: AppColors.gray100,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    allSelected ? '取消全选' : '全选',
+                    style: AppTypography.base(
+                      fontSize: 13,
+                      fontWeight: AppTypography.medium,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  '已选择$selectedCount项',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTypography.base(
+                    fontSize: 15,
+                    fontWeight: AppTypography.medium,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ),
+              PressableScale(
+                onTap: canDelete ? onDelete : null,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: canDelete ? AppColors.stateDanger : AppColors.gray200,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    '删除',
+                    style: AppTypography.base(
+                      fontSize: 13,
+                      fontWeight: AppTypography.medium,
+                      color: AppColors.white,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}

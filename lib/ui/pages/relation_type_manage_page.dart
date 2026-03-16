@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import '../app_data.dart';
-import '../app_tokens.dart';
 import '../app_scaffold.dart';
+import '../app_tokens.dart';
 import '../components.dart';
 import '../navigation.dart';
 import '../prototype_kit.dart';
@@ -28,10 +28,50 @@ class _Canvas extends StatefulWidget {
 }
 
 class _CanvasState extends State<_Canvas> {
+  final TextEditingController _searchCtrl = TextEditingController();
+  String _keyword = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _searchCtrl.addListener(_onSearchChanged);
+  }
+
+  @override
+  void dispose() {
+    _searchCtrl
+      ..removeListener(_onSearchChanged)
+      ..dispose();
+    super.dispose();
+  }
+
+  void _onSearchChanged() {
+    final next = _searchCtrl.text.trim();
+    if (next == _keyword) return;
+    setState(() => _keyword = next);
+  }
+
   @override
   Widget build(BuildContext context) {
     final data = AppDataScope.of(context);
     final types = data.relationTypes.toList()..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+    final relationCountByTypeId = <String, int>{};
+    for (final relation in data.contactRelations) {
+      relationCountByTypeId.update(relation.typeId, (v) => v + 1, ifAbsent: () => 1);
+    }
+    final personCountByRelationName = <String, int>{};
+    var categorizedContacts = 0;
+    for (final person in data.persons) {
+      final relation = person.relationship.trim();
+      if (relation.isEmpty) continue;
+      categorizedContacts += 1;
+      final key = relation.toLowerCase();
+      personCountByRelationName.update(key, (v) => v + 1, ifAbsent: () => 1);
+    }
+    final filter = _keyword.toLowerCase();
+    final visibleTypes = filter.isEmpty
+        ? types
+        : types.where((e) => e.name.toLowerCase().contains(filter)).toList();
 
     return Column(
       children: [
@@ -51,7 +91,7 @@ class _CanvasState extends State<_Canvas> {
                 radius: 12,
               ),
               const SizedBox(width: 12),
-              Expanded(child: Text('关系类型', style: AppTypography.h2().copyWith(fontSize: 20))),
+              Expanded(child: Text('管理关系类型', style: AppTypography.h2().copyWith(fontSize: 20))),
               PrototypeIconButton(
                 icon: const FaIcon(FontAwesomeIcons.plus, size: 16),
                 backgroundColor: AppColors.gray100,
@@ -67,34 +107,117 @@ class _CanvasState extends State<_Canvas> {
             physics: const BouncingScrollPhysics(),
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
             children: [
-              PrototypeCard(
-                padding: EdgeInsets.zero,
-                child: Column(
-                  children: [
-                    if (types.isEmpty)
-                      Padding(
-                        padding: const EdgeInsets.all(24),
-                        child: Text(
-                          '暂无类型，点击右上角添加',
-                          style: AppTypography.base(
-                            fontSize: 14,
-                            fontWeight: AppTypography.medium,
-                            color: AppColors.textMuted,
-                          ),
-                        ),
-                      )
-                    else
-                      for (var i = 0; i < types.length; i++)
-                        _TypeRow(
-                          type: types[i],
-                          used: data.contactRelations.any((e) => e.typeId == types[i].id),
-                          borderBottom: i != types.length - 1,
-                          onTap: () => _openEditor(context, data, types[i]),
-                          onLongPress: () => _confirmDelete(context, data, types[i]),
-                        ),
-                  ],
+              Container(
+                decoration: BoxDecoration(
+                  color: AppColors.white,
+                  borderRadius: AppRadii.brXl,
+                  border: Border.all(color: AppColors.borderDefault, width: 1),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
+                child: TextField(
+                  controller: _searchCtrl,
+                  style: AppTypography.base(
+                    fontSize: 14,
+                    fontWeight: AppTypography.medium,
+                    color: AppColors.textPrimary,
+                  ),
+                  decoration: InputDecoration(
+                    border: InputBorder.none,
+                    hintText: '搜索关系类型...',
+                    hintStyle: AppTypography.base(
+                      fontSize: 14,
+                      fontWeight: AppTypography.regular,
+                      color: AppColors.textMuted,
+                    ),
+                    icon: const FaIcon(
+                      FontAwesomeIcons.magnifyingGlass,
+                      size: 14,
+                      color: AppColors.gray400,
+                    ),
+                  ),
                 ),
               ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: _StatCard(
+                      title: '总类型',
+                      value: '${types.length}',
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: _StatCard(
+                      title: '已分类联系人',
+                      value: '$categorizedContacts',
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 2),
+                child: Text(
+                  '所有类别',
+                  style: AppTypography.base(
+                    fontSize: 12,
+                    fontWeight: AppTypography.semibold,
+                    color: AppColors.textTertiary,
+                    letterSpacing: 1.2,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              if (types.isEmpty)
+                PrototypeCard(
+                  child: Center(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 18),
+                      child: Text(
+                        '暂无类型，点击右上角添加',
+                        style: AppTypography.base(
+                          fontSize: 14,
+                          fontWeight: AppTypography.medium,
+                          color: AppColors.textMuted,
+                        ),
+                      ),
+                    ),
+                  ),
+                )
+              else if (visibleTypes.isEmpty)
+                PrototypeCard(
+                  child: Center(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 18),
+                      child: Text(
+                        '没有找到匹配的关系类型',
+                        style: AppTypography.base(
+                          fontSize: 14,
+                          fontWeight: AppTypography.medium,
+                          color: AppColors.textMuted,
+                        ),
+                      ),
+                    ),
+                  ),
+                )
+              else
+                for (var i = 0; i < visibleTypes.length; i++) ...[
+                  _TypeRow(
+                    type: visibleTypes[i],
+                    contactCount:
+                        personCountByRelationName[visibleTypes[i].name.trim().toLowerCase()] ?? 0,
+                    relationCount: relationCountByTypeId[visibleTypes[i].id] ?? 0,
+                    onTap: () => _openEditor(context, data, visibleTypes[i]),
+                    onLongPress: () => _confirmDelete(
+                      context,
+                      data,
+                      visibleTypes[i],
+                      personCountByRelationName[visibleTypes[i].name.trim().toLowerCase()] ?? 0,
+                    ),
+                  ),
+                  if (i != visibleTypes.length - 1) const SizedBox(height: 10),
+                ],
             ],
           ),
         ),
@@ -245,7 +368,18 @@ class _CanvasState extends State<_Canvas> {
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('已保存')));
   }
 
-  Future<void> _confirmDelete(BuildContext context, AppData data, RelationTypeData type) async {
+  Future<void> _confirmDelete(
+    BuildContext context,
+    AppData data,
+    RelationTypeData type,
+    int contactCount,
+  ) async {
+    if (contactCount > 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('该类型已被 $contactCount 个联系人使用，无法删除')),
+      );
+      return;
+    }
     final ok = await showDialog<bool>(
       context: context,
       builder: (context) {
@@ -271,64 +405,181 @@ class _CanvasState extends State<_Canvas> {
   }
 }
 
-class _TypeRow extends StatelessWidget {
-  const _TypeRow({
-    required this.type,
-    required this.used,
-    required this.onTap,
-    required this.onLongPress,
-    this.borderBottom = true,
+class _StatCard extends StatelessWidget {
+  const _StatCard({
+    required this.title,
+    required this.value,
   });
 
-  final RelationTypeData type;
-  final bool used;
-  final VoidCallback onTap;
-  final VoidCallback onLongPress;
-  final bool borderBottom;
+  final String title;
+  final String value;
 
   @override
   Widget build(BuildContext context) {
-    return PrototypePressableRow(
-      onTap: onTap,
-      onLongPress: onLongPress,
-      borderBottom: borderBottom,
-      child: Row(
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppColors.gray100,
+        borderRadius: AppRadii.brXl,
+        border: Border.all(color: AppColors.borderDefault, width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(color: AppColors.indigo50, borderRadius: BorderRadius.circular(8)),
-            alignment: Alignment.center,
-            child: const FaIcon(FontAwesomeIcons.tag, size: 14, color: AppColors.indigo700),
+          Text(
+            title,
+            style: AppTypography.base(
+              fontSize: 11,
+              fontWeight: AppTypography.semibold,
+              color: AppColors.textTertiary,
+              letterSpacing: 1,
+            ),
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: AppTypography.base(
+              fontSize: 22,
+              fontWeight: AppTypography.bold,
+              color: AppColors.textPrimary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TypeRow extends StatelessWidget {
+  const _TypeRow({
+    required this.type,
+    required this.onTap,
+    required this.onLongPress,
+    required this.contactCount,
+    required this.relationCount,
+  });
+
+  final RelationTypeData type;
+  final VoidCallback onTap;
+  final VoidCallback onLongPress;
+  final int contactCount;
+  final int relationCount;
+
+  @override
+  Widget build(BuildContext context) {
+    final pair = _palette(type.name);
+    final icon = _icon(type.name);
+    final usageText = contactCount > 0
+        ? '$contactCount 个联系人'
+        : relationCount > 0
+            ? '$relationCount 条联系人关系'
+            : '未使用';
+    return Material(
+      color: AppColors.white,
+      borderRadius: AppRadii.brXl,
+      child: InkWell(
+        onTap: onTap,
+        onLongPress: onLongPress,
+        borderRadius: AppRadii.brXl,
+        child: Ink(
+          decoration: BoxDecoration(
+            borderRadius: AppRadii.brXl,
+            border: Border.all(color: AppColors.borderDefault, width: 1),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            child: Row(
               children: [
-                Text(
-                  type.name,
-                  style: AppTypography.base(
-                    fontSize: 14,
-                    fontWeight: AppTypography.medium,
-                    color: AppColors.textPrimary,
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: pair.$1,
+                    borderRadius: AppRadii.brLg,
+                  ),
+                  alignment: Alignment.center,
+                  child: FaIcon(
+                    icon,
+                    size: 18,
+                    color: pair.$2,
                   ),
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  used ? '使用中' : '未使用',
-                  style: AppTypography.base(
-                    fontSize: 12,
-                    fontWeight: AppTypography.regular,
-                    color: used ? AppColors.textSecondary : AppColors.textMuted,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        type.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTypography.base(
+                          fontSize: 16,
+                          fontWeight: AppTypography.bold,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        usageText,
+                        style: AppTypography.base(
+                          fontSize: 12,
+                          fontWeight: AppTypography.regular,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
                   ),
+                ),
+                InkResponse(
+                  radius: 18,
+                  onTap: onTap,
+                  child: const Padding(
+                    padding: EdgeInsets.all(6),
+                    child: FaIcon(
+                      FontAwesomeIcons.penToSquare,
+                      size: 14,
+                      color: AppColors.gray500,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 2),
+                const FaIcon(
+                  FontAwesomeIcons.chevronRight,
+                  size: 12,
+                  color: AppColors.gray300,
                 ),
               ],
             ),
           ),
-          const FaIcon(FontAwesomeIcons.chevronRight, size: 10, color: AppColors.gray300),
-        ],
+        ),
       ),
     );
+  }
+
+  (Color, Color) _palette(String seed) {
+    final list = <(Color, Color)>[
+      (AppColors.blue100, AppColors.blue600),
+      (AppColors.orange100, AppColors.orange600),
+      (AppColors.purple100, AppColors.purple600),
+      (AppColors.green100, AppColors.green600),
+      (AppColors.pink100, AppColors.pink600),
+      (AppColors.indigo100, AppColors.indigo700),
+    ];
+    final idx = seed.hashCode.abs() % list.length;
+    return list[idx];
+  }
+
+  IconData _icon(String seed) {
+    final list = <IconData>[
+      FontAwesomeIcons.userGroup,
+      FontAwesomeIcons.briefcase,
+      FontAwesomeIcons.house,
+      FontAwesomeIcons.graduationCap,
+      FontAwesomeIcons.handshake,
+      FontAwesomeIcons.tags,
+    ];
+    final idx = seed.hashCode.abs() % list.length;
+    return list[idx];
   }
 }

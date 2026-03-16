@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
-import '../app_data.dart';
+import '../../data/local/drift/app_database.dart';
+import '../app_database_scope.dart';
 import '../app_scaffold.dart';
 import '../app_tokens.dart';
 import '../navigation.dart';
@@ -60,10 +61,10 @@ class _CanvasState extends State<_Canvas> {
 
   @override
   Widget build(BuildContext context) {
-    final data = AppDataScope.of(context);
-    final List<RecordData> list = widget.isDefaultBook
-        ? data.records
-        : data.records.where((r) => data.resolveBookId(r.bookId) == widget.bookId).toList();
+    final db = AppDatabaseScope.of(context);
+    final stream = widget.isDefaultBook
+        ? db.giftRecordsDao.watchAllWithPersonInAllBooks()
+        : db.giftRecordsDao.watchAllWithPersonInBook(widget.bookId);
 
     return Column(
       children: [
@@ -72,8 +73,12 @@ class _CanvasState extends State<_Canvas> {
           onBack: () => AppNav.pop(context),
         ),
         Expanded(
-          child: list.isEmpty
-              ? Center(
+          child: StreamBuilder<List<GiftRecordWithPerson>>(
+            stream: stream,
+            builder: (context, snapshot) {
+              final list = snapshot.data ?? const <GiftRecordWithPerson>[];
+              if (list.isEmpty) {
+                return Center(
                   child: Text(
                     widget.isDefaultBook ? '暂无记录' : '该账簿暂无记录',
                     style: AppTypography.base(
@@ -82,19 +87,19 @@ class _CanvasState extends State<_Canvas> {
                       color: AppColors.textSecondary,
                     ),
                   ),
-                )
-              : ListView.separated(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-                  itemCount: list.length,
-                  separatorBuilder: (context, index) => const SizedBox(height: 12),
-                  itemBuilder: (context, i) {
-                    final item = list[i];
-                    return _RecordCard(
-                      record: item,
-                      relationship: data.findPerson(item.personId)?.relationship,
-                    );
-                  },
-                ),
+                );
+              }
+              return ListView.separated(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+                itemCount: list.length,
+                separatorBuilder: (context, index) => const SizedBox(height: 12),
+                itemBuilder: (context, i) {
+                  final item = list[i];
+                  return _RecordCard(record: item.record, person: item.person);
+                },
+              );
+            },
+          ),
         ),
       ],
     );
@@ -149,19 +154,19 @@ class _TopBar extends StatelessWidget {
 class _RecordCard extends StatelessWidget {
   const _RecordCard({
     required this.record,
-    required this.relationship,
+    required this.person,
   });
 
-  final RecordData record;
-  final String? relationship;
+  final GiftRecord record;
+  final Person person;
 
   @override
   Widget build(BuildContext context) {
-    final isIncome = record.direction == RecordDirection.income;
+    final isIncome = record.direction != '支出';
     final amountText = _formatAmountCent(record.amountCent);
-    final timeText = _formatDateTime(record.occurredAt);
-    final title = record.eventName.trim().isEmpty ? '礼金往来' : record.eventName.trim();
-    final relationText = (relationship ?? '').trim().isEmpty ? '其他' : relationship!.trim();
+    final timeText = _formatDateTime(DateTime.fromMillisecondsSinceEpoch(record.occurredAt));
+    final title = (record.eventName ?? '').trim().isEmpty ? '礼金往来' : record.eventName!.trim();
+    final relationText = person.relationshipType.trim().isEmpty ? '其他' : person.relationshipType.trim();
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -196,7 +201,7 @@ class _RecordCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      record.personName,
+                      person.name,
                       style: AppTypography.base(
                         fontSize: 16,
                         fontWeight: AppTypography.bold,

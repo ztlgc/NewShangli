@@ -50,7 +50,7 @@ class AppDatabase extends _$AppDatabase {
   ///
   /// 版本升级时在 [migration] 中补齐迁移逻辑，并同步单元测试。
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   /// 统一注入迁移策略：
   /// - onCreate：创建所有表与索引
@@ -105,6 +105,23 @@ class AppDatabase extends _$AppDatabase {
           }
           if (from < 6) {
             await m.createTable(reminderTypes);
+          }
+          if (from < 7) {
+            Future<void> addDeletedAtIfNeeded(String tableName) async {
+              final tableExistsRows = await customSelect(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name=?;",
+                variables: [Variable<String>(tableName)],
+              ).get();
+              if (tableExistsRows.isEmpty) return;
+              final cols = await customSelect('PRAGMA table_info($tableName);').get();
+              final hasDeletedAt = cols.any((e) => (e.data['name'] as String?) == 'deleted_at');
+              if (hasDeletedAt) return;
+              await customStatement('ALTER TABLE $tableName ADD COLUMN deleted_at INTEGER;');
+            }
+
+            await addDeletedAtIfNeeded('account_book');
+            await addDeletedAtIfNeeded('person');
+            await addDeletedAtIfNeeded('gift_record');
           }
         },
         beforeOpen: (details) async {

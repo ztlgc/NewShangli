@@ -5,16 +5,38 @@ part of '../app_database.dart';
 class PersonsDao extends DatabaseAccessor<AppDatabase> with _$PersonsDaoMixin {
   PersonsDao(super.db);
 
+  Stream<List<Person>> watchAllInAllBooks() {
+    return (select(persons)
+          ..where((t) => t.deletedAt.isNull())
+          ..orderBy([(t) => OrderingTerm.asc(t.name)]))
+        .watch();
+  }
+
   Stream<List<Person>> watchAllInBook(String bookId) {
     return (select(persons)
           ..where((t) => t.bookId.equals(bookId))
+          ..where((t) => t.deletedAt.isNull())
           ..orderBy([(t) => OrderingTerm.asc(t.name)]))
         .watch();
   }
 
   Future<Person?> findById(String personId) {
+    return (select(persons)
+          ..where((t) => t.personId.equals(personId))
+          ..where((t) => t.deletedAt.isNull()))
+        .getSingleOrNull();
+  }
+
+  Future<Person?> findByIdAny(String personId) {
     return (select(persons)..where((t) => t.personId.equals(personId)))
         .getSingleOrNull();
+  }
+
+  Stream<List<Person>> watchDeleted() {
+    return (select(persons)
+          ..where((t) => t.deletedAt.isNotNull())
+          ..orderBy([(t) => OrderingTerm.desc(t.deletedAt), (t) => OrderingTerm.asc(t.name)]))
+        .watch();
   }
 
   Future<String> insertOne(PersonsCompanion companion) async {
@@ -40,6 +62,26 @@ class PersonsDao extends DatabaseAccessor<AppDatabase> with _$PersonsDaoMixin {
   }
 
   Future<int> deleteById(String personId) {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    return (update(persons)..where((t) => t.personId.equals(personId))).write(
+      PersonsCompanion(
+        deletedAt: Value(now),
+        updatedAt: Value(now),
+      ),
+    );
+  }
+
+  Future<int> restoreById(String personId) {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    return (update(persons)..where((t) => t.personId.equals(personId))).write(
+      PersonsCompanion(
+        deletedAt: const Value(null),
+        updatedAt: Value(now),
+      ),
+    );
+  }
+
+  Future<int> purgeById(String personId) {
     return (delete(persons)..where((t) => t.personId.equals(personId))).go();
   }
 
@@ -56,6 +98,7 @@ class PersonsDao extends DatabaseAccessor<AppDatabase> with _$PersonsDaoMixin {
 
     return (select(persons)
           ..where((t) => t.bookId.equals(bookId))
+          ..where((t) => t.deletedAt.isNull())
           ..where((t) => t.name.like('%$kw%') | t.phone.like('%$kw%'))
           ..orderBy([(t) => OrderingTerm.asc(t.name)])
           ..limit(limit))

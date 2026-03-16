@@ -15,6 +15,18 @@ class GiftRecordWithPerson {
   final Person person;
 }
 
+class DeletedGiftRecordWithPerson {
+  const DeletedGiftRecordWithPerson({
+    required this.record,
+    required this.personName,
+    required this.personAvatarUri,
+  });
+
+  final GiftRecord record;
+  final String? personName;
+  final String? personAvatarUri;
+}
+
 /// 礼金记录 DAO。
 @DriftAccessor(tables: [GiftRecords, Persons])
 class GiftRecordsDao extends DatabaseAccessor<AppDatabase>
@@ -25,6 +37,7 @@ class GiftRecordsDao extends DatabaseAccessor<AppDatabase>
   Stream<List<GiftRecord>> watchRecentInBook(String bookId, {int limit = 200}) {
     return (select(giftRecords)
           ..where((t) => t.bookId.equals(bookId))
+          ..where((t) => t.deletedAt.isNull())
           ..orderBy([(t) => OrderingTerm.desc(t.occurredAt)])
           ..limit(limit))
         .watch();
@@ -36,6 +49,7 @@ class GiftRecordsDao extends DatabaseAccessor<AppDatabase>
   Stream<List<GiftRecord>> watchAllInBook(String bookId) {
     return (select(giftRecords)
           ..where((t) => t.bookId.equals(bookId))
+          ..where((t) => t.deletedAt.isNull())
           ..orderBy([(t) => OrderingTerm.desc(t.occurredAt)]))
         .watch();
   }
@@ -75,7 +89,9 @@ class GiftRecordsDao extends DatabaseAccessor<AppDatabase>
       ),
     ])
       ..where(giftRecords.bookId.equals(bookId))
+      ..where(giftRecords.deletedAt.isNull())
       ..where(persons.bookId.equals(bookId))
+      ..where(persons.deletedAt.isNull())
       ..orderBy([OrderingTerm.desc(giftRecords.occurredAt)]);
 
     return joined.watch().map((rows) {
@@ -102,6 +118,8 @@ class GiftRecordsDao extends DatabaseAccessor<AppDatabase>
         persons.personId.equalsExp(giftRecords.personId),
       ),
     ])
+      ..where(giftRecords.deletedAt.isNull())
+      ..where(persons.deletedAt.isNull())
       ..orderBy([OrderingTerm.desc(giftRecords.occurredAt)]);
 
     return joined.watch().map((rows) {
@@ -116,12 +134,34 @@ class GiftRecordsDao extends DatabaseAccessor<AppDatabase>
     });
   }
 
+  Future<List<GiftRecordWithPerson>> listAllWithPersonInAllBooks() async {
+    final joined = select(giftRecords).join([
+      innerJoin(
+        persons,
+        persons.personId.equalsExp(giftRecords.personId),
+      ),
+    ])
+      ..where(giftRecords.deletedAt.isNull())
+      ..where(persons.deletedAt.isNull())
+      ..orderBy([OrderingTerm.desc(giftRecords.occurredAt)]);
+    final rows = await joined.get();
+    return rows
+        .map(
+          (row) => GiftRecordWithPerson(
+            record: row.readTable(giftRecords),
+            person: row.readTable(persons),
+          ),
+        )
+        .toList();
+  }
+
   /// 账簿内记录数（用于账簿列表展示“xx 条记录”）。
   Stream<int> watchCountInBook(String bookId) {
     final countExp = giftRecords.recordId.count();
     final query = selectOnly(giftRecords)
       ..addColumns([countExp])
-      ..where(giftRecords.bookId.equals(bookId));
+      ..where(giftRecords.bookId.equals(bookId))
+      ..where(giftRecords.deletedAt.isNull());
 
     return query.watch().map((rows) {
       if (rows.isEmpty) return 0;
@@ -132,7 +172,9 @@ class GiftRecordsDao extends DatabaseAccessor<AppDatabase>
   /// 默认账簿视角：统计所有记录数。
   Stream<int> watchCountInAllBooks() {
     final countExp = giftRecords.recordId.count();
-    final query = selectOnly(giftRecords)..addColumns([countExp]);
+    final query = selectOnly(giftRecords)
+      ..addColumns([countExp])
+      ..where(giftRecords.deletedAt.isNull());
     return query.watch().map((rows) {
       if (rows.isEmpty) return 0;
       return rows.first.read(countExp) ?? 0;
@@ -140,6 +182,13 @@ class GiftRecordsDao extends DatabaseAccessor<AppDatabase>
   }
 
   Future<GiftRecord?> findById(String recordId) {
+    return (select(giftRecords)
+          ..where((t) => t.recordId.equals(recordId))
+          ..where((t) => t.deletedAt.isNull()))
+        .getSingleOrNull();
+  }
+
+  Future<GiftRecord?> findByIdAny(String recordId) {
     return (select(giftRecords)..where((t) => t.recordId.equals(recordId)))
         .getSingleOrNull();
   }
@@ -167,7 +216,50 @@ class GiftRecordsDao extends DatabaseAccessor<AppDatabase>
   }
 
   Future<int> deleteById(String recordId) {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    return (update(giftRecords)..where((t) => t.recordId.equals(recordId))).write(
+      GiftRecordsCompanion(
+        deletedAt: Value(now),
+        updatedAt: Value(now),
+      ),
+    );
+  }
+
+  Future<int> restoreById(String recordId) {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    return (update(giftRecords)..where((t) => t.recordId.equals(recordId))).write(
+      GiftRecordsCompanion(
+        deletedAt: const Value(null),
+        updatedAt: Value(now),
+      ),
+    );
+  }
+
+  Future<int> purgeById(String recordId) {
     return (delete(giftRecords)..where((t) => t.recordId.equals(recordId))).go();
+  }
+
+  Stream<List<DeletedGiftRecordWithPerson>> watchDeletedWithPerson() {
+    final joined = select(giftRecords).join([
+      leftOuterJoin(
+        persons,
+        persons.personId.equalsExp(giftRecords.personId),
+      ),
+    ])
+      ..where(giftRecords.deletedAt.isNotNull())
+      ..orderBy([OrderingTerm.desc(giftRecords.deletedAt), OrderingTerm.desc(giftRecords.occurredAt)]);
+
+    return joined.watch().map((rows) {
+      return rows
+          .map(
+            (row) => DeletedGiftRecordWithPerson(
+              record: row.readTable(giftRecords),
+              personName: row.readTableOrNull(persons)?.name,
+              personAvatarUri: row.readTableOrNull(persons)?.avatarUri,
+            ),
+          )
+          .toList();
+    });
   }
 
   /// 查询某个关系人在指定账簿下的往来记录（按时间倒序）。
@@ -179,6 +271,7 @@ class GiftRecordsDao extends DatabaseAccessor<AppDatabase>
     return (select(giftRecords)
           ..where((t) => t.bookId.equals(bookId))
           ..where((t) => t.personId.equals(personId))
+          ..where((t) => t.deletedAt.isNull())
           ..orderBy([(t) => OrderingTerm.desc(t.occurredAt)])
           ..limit(limit))
         .get();
@@ -192,6 +285,7 @@ class GiftRecordsDao extends DatabaseAccessor<AppDatabase>
   }) {
     return (select(giftRecords)
           ..where((t) => t.bookId.equals(bookId))
+          ..where((t) => t.deletedAt.isNull())
           ..where((t) => t.occurredAt.isBetweenValues(startAt, endAt))
           ..orderBy([(t) => OrderingTerm.asc(t.occurredAt)]))
         .get();
@@ -211,6 +305,7 @@ class GiftRecordsDao extends DatabaseAccessor<AppDatabase>
     final query = selectOnly(giftRecords)
       ..addColumns([sumExp])
       ..where(giftRecords.bookId.equals(bookId))
+      ..where(giftRecords.deletedAt.isNull())
       ..where(giftRecords.personId.equals(personId))
       ..where(giftRecords.direction.equals(direction));
 

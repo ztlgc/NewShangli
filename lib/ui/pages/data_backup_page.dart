@@ -130,60 +130,16 @@ class _CanvasState extends State<_Canvas> {
                 onBackup: _busy ? null : _runBackup,
               ),
               const SizedBox(height: 24),
-              _Overline(title: '网盘设置（WebDAV）'),
+              _Overline(title: '备份设置'),
               const SizedBox(height: 12),
-              _WebDavConfigCard(
-                config: _config,
-                saving: _busy,
-                onToggleEnabled: (v) => _setConfig(_config.copyWith(webDavEnabled: v)),
-                onEditBaseUrl: () => _editAndSet(
-                  title: '服务器地址',
-                  label: '地址',
-                  initial: _config.webDavBaseUrl,
-                  hintText: '例如：https://example.com/remote.php/dav/files/user/',
-                  multiline: false,
-                  requiredField: true,
-                  onValue: (v) => _setConfig(_config.copyWith(webDavBaseUrl: v)),
-                ),
-                onEditUsername: () => _editAndSet(
-                  title: '用户名',
-                  label: '用户名',
-                  initial: _config.webDavUsername,
-                  hintText: '请输入用户名',
-                  multiline: false,
-                  requiredField: true,
-                  onValue: (v) => _setConfig(_config.copyWith(webDavUsername: v)),
-                ),
-                onEditPassword: () => _editAndSet(
-                  title: '密码',
-                  label: '密码',
-                  initial: _config.webDavPassword,
-                  hintText: '请输入密码',
-                  multiline: false,
-                  requiredField: true,
-                  obscureText: true,
-                  onValue: (v) => _setConfig(_config.copyWith(webDavPassword: v)),
-                ),
-                onEditRemoteDir: () => _editAndSet(
-                  title: '远程目录',
-                  label: '目录',
-                  initial: _config.webDavRemoteDir,
-                  hintText: '例如：backup/newshangli',
-                  multiline: false,
-                  requiredField: false,
-                  onValue: (v) => _setConfig(_config.copyWith(webDavRemoteDir: v)),
-                ),
-                onTest: _busy ? null : _testWebDav,
-                onSave: _busy ? null : _persistConfig,
-                readyHint: _webDavReady,
-              ),
-              const SizedBox(height: 16),
               _DriveExtraConfigCard(
                 config: _config,
                 history: _history,
                 saving: _busy,
                 onToggleAutoBackup: (v) => _setConfig(_config.copyWith(autoBackupEnabled: v)),
                 onPickFrequency: _busy ? null : _pickBackupFrequency,
+                webDavConfigured: _webDavReady,
+                onOpenWebDavConfig: _busy ? null : _openWebDavConfigDialog,
                 onRestore: _busy ? null : _restoreBackup,
               ),
             ],
@@ -197,7 +153,7 @@ class _CanvasState extends State<_Canvas> {
     setState(() => _config = next);
   }
 
-  Future<void> _persistConfig() async {
+  Future<bool> _persistConfig() async {
     setState(() => _saving = true);
     final remoteDirRaw = _config.webDavRemoteDir.trim();
     if (remoteDirRaw.isNotEmpty && !BackupConfig.isValidWebDavRemoteDir(remoteDirRaw)) {
@@ -207,22 +163,27 @@ class _CanvasState extends State<_Canvas> {
         );
         setState(() => _saving = false);
       }
-      return;
+      return false;
     }
     final normalizedRemoteDir = BackupConfig.normalizeWebDavRemoteDir(remoteDirRaw);
-    final next = _config.copyWith(webDavRemoteDir: normalizedRemoteDir);
+    final next = _config.copyWith(
+      webDavEnabled: true,
+      webDavRemoteDir: normalizedRemoteDir,
+    );
     setState(() => _config = next);
     try {
       await BackupConfig.save(next);
-      if (!mounted) return;
+      if (!mounted) return false;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('已保存')),
       );
+      return true;
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted) return false;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('保存失败：$e')),
       );
+      return false;
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -422,177 +383,41 @@ class _CanvasState extends State<_Canvas> {
     );
   }
 
-  Future<void> _editAndSet({
-    required String title,
-    required String label,
-    required String initial,
-    required String hintText,
-    required bool multiline,
-    required bool requiredField,
-    required ValueChanged<String> onValue,
-    bool obscureText = false,
-  }) async {
-    if (_saving) return;
-    final v = await _editText(
-      title: title,
-      label: label,
-      initial: initial,
-      hintText: hintText,
-      multiline: multiline,
-      requiredField: requiredField,
-      obscureText: obscureText,
-    );
-    if (v == null) return;
-    onValue(v);
-  }
-
-  Future<String?> _editText({
-    required String title,
-    required String label,
-    required String initial,
-    required String hintText,
-    required bool multiline,
-    required bool requiredField,
-    required bool obscureText,
-    TextInputType? keyboardType,
-  }) async {
-    final ctrl = TextEditingController(text: initial);
-    final ok = await showModalBottomSheet<String>(
+  Future<void> _openWebDavConfigDialog() async {
+    if (_busy) return;
+    await showDialog<void>(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
-        var saving = false;
-        return Padding(
-          padding: EdgeInsets.fromLTRB(12, 0, 12, 12 + bottomInset),
-          child: Container(
-            decoration: const BoxDecoration(
-              color: AppColors.white,
-              borderRadius: AppRadii.br2xl,
-              boxShadow: AppShadows.lg,
-            ),
-            clipBehavior: Clip.antiAlias,
-            child: StatefulBuilder(
-              builder: (context, setState) {
-                final canSubmit = !saving && (!requiredField || ctrl.text.trim().isNotEmpty);
-                return Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      decoration: const BoxDecoration(
-                        color: AppColors.white,
-                        border: Border(bottom: BorderSide(color: AppColors.gray100, width: 1)),
-                      ),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              title,
-                              style: AppTypography.base(
-                                fontSize: 14,
-                                fontWeight: AppTypography.bold,
-                                color: AppColors.textPrimary,
-                              ),
-                            ),
-                          ),
-                          PrototypeIconButton(
-                            icon: const FaIcon(FontAwesomeIcons.xmark, size: 14),
-                            backgroundColor: AppColors.gray100,
-                            foregroundColor: AppColors.textSecondary,
-                            onPressed: saving ? null : () => Navigator.of(context).pop(),
-                            radius: 12,
-                          ),
-                        ],
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          RichText(
-                            text: TextSpan(
-                              style: AppTypography.base(
-                                fontSize: 12,
-                                fontWeight: AppTypography.medium,
-                                color: AppColors.textSecondary,
-                              ),
-                              children: [
-                                TextSpan(text: label),
-                                if (requiredField)
-                                  const TextSpan(
-                                    text: ' *',
-                                    style: TextStyle(color: AppColors.red500),
-                                  ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          TextField(
-                            controller: ctrl,
-                            obscureText: obscureText,
-                            keyboardType: keyboardType,
-                            maxLines: multiline ? 4 : 1,
-                            minLines: multiline ? 4 : 1,
-                            style: AppTypography.base(
-                              fontSize: 14,
-                              fontWeight: AppTypography.regular,
-                              color: AppColors.textPrimary,
-                            ),
-                            decoration: InputDecoration(
-                              hintText: hintText,
-                              hintStyle: AppTypography.base(
-                                fontSize: 14,
-                                fontWeight: AppTypography.regular,
-                                color: AppColors.textMuted,
-                              ),
-                              isDense: true,
-                              filled: true,
-                              fillColor: AppColors.gray50,
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: const BorderSide(color: AppColors.gray100),
-                              ),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: const BorderSide(color: AppColors.gray100),
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                // 使用主题内已定义的焦点边框色，避免引用不存在的色值常量。
-                                borderSide: const BorderSide(color: AppColors.borderFocus),
-                              ),
-                            ),
-                            onChanged: (_) => setState(() {}),
-                          ),
-                          const SizedBox(height: 16),
-                          PrototypePrimaryButton(
-                            label: saving ? '保存中' : '确定',
-                            onTap: canSubmit
-                                ? () async {
-                                    setState(() => saving = true);
-                                    try {
-                                      Navigator.of(context).pop(ctrl.text.trim());
-                                    } finally {
-                                      setState(() => saving = false);
-                                    }
-                                  }
-                                : null,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                );
-              },
+      barrierColor: AppColors.scrimBlack30,
+      builder: (dialogContext) {
+        return SafeArea(
+          child: Align(
+            alignment: Alignment.topCenter,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 72, 16, 24),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 360),
+                child: _WebDavConfigDialog(
+                  config: _config,
+                  saving: _busy,
+                  onChangedBaseUrl: (v) => _setConfig(_config.copyWith(webDavBaseUrl: v)),
+                  onChangedUsername: (v) => _setConfig(_config.copyWith(webDavUsername: v)),
+                  onChangedPassword: (v) => _setConfig(_config.copyWith(webDavPassword: v)),
+                  onChangedRemoteDir: (v) => _setConfig(_config.copyWith(webDavRemoteDir: v)),
+                  onTest: _busy ? null : _testWebDav,
+                  onSave: _busy
+                      ? null
+                      : () async {
+                          final ok = await _persistConfig();
+                          if (!dialogContext.mounted || !ok) return;
+                          Navigator.of(dialogContext).pop();
+                        },
+                ),
+              ),
             ),
           ),
         );
       },
     );
-    return ok;
   }
 }
 
@@ -679,122 +504,6 @@ class _BackupMainCard extends StatelessWidget {
   }
 }
 
-class _WebDavConfigCard extends StatelessWidget {
-  const _WebDavConfigCard({
-    required this.config,
-    required this.saving,
-    required this.onToggleEnabled,
-    required this.onEditBaseUrl,
-    required this.onEditUsername,
-    required this.onEditPassword,
-    required this.onEditRemoteDir,
-    required this.onTest,
-    required this.onSave,
-    required this.readyHint,
-  });
-
-  final BackupConfig config;
-  final bool saving;
-  final ValueChanged<bool> onToggleEnabled;
-  final VoidCallback onEditBaseUrl;
-  final VoidCallback onEditUsername;
-  final VoidCallback onEditPassword;
-  final VoidCallback onEditRemoteDir;
-  final VoidCallback? onTest;
-  final VoidCallback? onSave;
-  final bool readyHint;
-
-  @override
-  Widget build(BuildContext context) {
-    final passwordMasked = config.webDavPassword.isEmpty ? '' : '••••••••';
-    return Container(
-      decoration: const BoxDecoration(
-        color: AppColors.white,
-        borderRadius: AppRadii.br2xl,
-        boxShadow: AppShadows.sm,
-      ),
-      child: Column(
-        children: [
-          _OptionRow(
-            title: '启用 WebDAV 备份',
-            subtitle: '开启后，备份文件会上传到你的网盘目录',
-            trailing: _Toggle(
-              value: config.webDavEnabled,
-              onChanged: saving ? null : onToggleEnabled,
-            ),
-          ),
-          const PrototypeDivider(color: AppColors.borderDivider),
-          _OptionRow(
-            title: '服务器地址',
-            subtitle: config.webDavBaseUrl.isEmpty ? '未设置' : config.webDavBaseUrl,
-            trailing: const FaIcon(FontAwesomeIcons.chevronRight, size: 10, color: AppColors.gray300),
-            onTap: saving ? null : onEditBaseUrl,
-          ),
-          const PrototypeDivider(color: AppColors.borderDivider),
-          _OptionRow(
-            title: '用户名',
-            subtitle: config.webDavUsername.isEmpty ? '未设置' : config.webDavUsername,
-            trailing: const FaIcon(FontAwesomeIcons.chevronRight, size: 10, color: AppColors.gray300),
-            onTap: saving ? null : onEditUsername,
-          ),
-          const PrototypeDivider(color: AppColors.borderDivider),
-          _OptionRow(
-            title: '密码',
-            subtitle: passwordMasked.isEmpty ? '未设置' : passwordMasked,
-            trailing: const FaIcon(FontAwesomeIcons.chevronRight, size: 10, color: AppColors.gray300),
-            onTap: saving ? null : onEditPassword,
-          ),
-          const PrototypeDivider(color: AppColors.borderDivider),
-          _OptionRow(
-            title: '远程目录',
-            subtitle: config.webDavRemoteDir.isEmpty ? '（可选）例如：backup/newshangli' : config.webDavRemoteDir,
-            trailing: const FaIcon(FontAwesomeIcons.chevronRight, size: 10, color: AppColors.gray300),
-            onTap: saving ? null : onEditRemoteDir,
-            borderBottom: false,
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                if (!readyHint)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
-                    child: Text(
-                      '提示：启用后需至少填写地址、用户名、密码',
-                      style: AppTypography.base(
-                        fontSize: 12,
-                        fontWeight: AppTypography.regular,
-                        color: AppColors.textMuted,
-                      ),
-                    ),
-                  ),
-                Row(
-                  children: [
-                    Expanded(
-                      child: PrototypeSecondaryButton(
-                        label: saving ? '测试中' : '测试连接',
-                        onTap: onTest,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: PrototypePrimaryButton(
-                        label: saving ? '保存中' : '保存配置',
-                        onTap: onSave,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _DriveExtraConfigCard extends StatelessWidget {
   const _DriveExtraConfigCard({
     required this.config,
@@ -802,6 +511,8 @@ class _DriveExtraConfigCard extends StatelessWidget {
     required this.saving,
     required this.onToggleAutoBackup,
     required this.onPickFrequency,
+    required this.webDavConfigured,
+    required this.onOpenWebDavConfig,
     required this.onRestore,
   });
 
@@ -810,6 +521,8 @@ class _DriveExtraConfigCard extends StatelessWidget {
   final bool saving;
   final ValueChanged<bool> onToggleAutoBackup;
   final VoidCallback? onPickFrequency;
+  final bool webDavConfigured;
+  final VoidCallback? onOpenWebDavConfig;
   final ValueChanged<BackupHistoryEntry>? onRestore;
 
   @override
@@ -836,6 +549,13 @@ class _DriveExtraConfigCard extends StatelessWidget {
             subtitle: backupFrequencyLabel(config.backupFrequency),
             trailing: const FaIcon(FontAwesomeIcons.chevronRight, size: 10, color: AppColors.gray300),
             onTap: saving ? null : onPickFrequency,
+          ),
+          const PrototypeDivider(color: AppColors.borderDivider),
+          _OptionRow(
+            title: '网盘配置（WebDAV）',
+            subtitle: webDavConfigured ? '已配置' : '未设置',
+            trailing: const FaIcon(FontAwesomeIcons.chevronRight, size: 10, color: AppColors.gray300),
+            onTap: saving ? null : onOpenWebDavConfig,
           ),
           const PrototypeDivider(color: AppColors.borderDivider),
           Padding(
@@ -866,6 +586,236 @@ class _DriveExtraConfigCard extends StatelessWidget {
                   ),
               ],
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _WebDavConfigDialog extends StatefulWidget {
+  const _WebDavConfigDialog({
+    required this.config,
+    required this.saving,
+    required this.onChangedBaseUrl,
+    required this.onChangedUsername,
+    required this.onChangedPassword,
+    required this.onChangedRemoteDir,
+    required this.onTest,
+    required this.onSave,
+  });
+
+  final BackupConfig config;
+  final bool saving;
+  final ValueChanged<String> onChangedBaseUrl;
+  final ValueChanged<String> onChangedUsername;
+  final ValueChanged<String> onChangedPassword;
+  final ValueChanged<String> onChangedRemoteDir;
+  final VoidCallback? onTest;
+  final VoidCallback? onSave;
+
+  @override
+  State<_WebDavConfigDialog> createState() => _WebDavConfigDialogState();
+}
+
+class _WebDavConfigDialogState extends State<_WebDavConfigDialog> {
+  late final TextEditingController _baseUrlCtrl;
+  late final TextEditingController _usernameCtrl;
+  late final TextEditingController _passwordCtrl;
+  late final TextEditingController _remoteDirCtrl;
+  bool _obscurePassword = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _baseUrlCtrl = TextEditingController(text: widget.config.webDavBaseUrl);
+    _usernameCtrl = TextEditingController(text: widget.config.webDavUsername);
+    _passwordCtrl = TextEditingController(text: widget.config.webDavPassword);
+    _remoteDirCtrl = TextEditingController(text: widget.config.webDavRemoteDir);
+  }
+
+  @override
+  void dispose() {
+    _baseUrlCtrl.dispose();
+    _usernameCtrl.dispose();
+    _passwordCtrl.dispose();
+    _remoteDirCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final saving = widget.saving;
+    return Material(
+      color: Colors.transparent,
+      child: Container(
+        decoration: const BoxDecoration(
+          color: AppColors.white,
+          borderRadius: AppRadii.br3xl,
+          boxShadow: AppShadows.lg,
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _InputRow(
+              title: '服务器地址',
+              hintText: '例如：https://example.com/remote.php/dav/files/user/',
+              controller: _baseUrlCtrl,
+              enabled: !saving,
+              onChanged: widget.onChangedBaseUrl,
+            ),
+            const PrototypeDivider(color: AppColors.borderDivider),
+            _InputRow(
+              title: '用户名',
+              hintText: '请输入用户名',
+              controller: _usernameCtrl,
+              enabled: !saving,
+              onChanged: widget.onChangedUsername,
+            ),
+            const PrototypeDivider(color: AppColors.borderDivider),
+            _InputRow(
+              title: '密码',
+              hintText: '请输入密码',
+              controller: _passwordCtrl,
+              enabled: !saving,
+              obscureText: _obscurePassword,
+              onToggleObscure: () {
+                if (saving) return;
+                setState(() => _obscurePassword = !_obscurePassword);
+              },
+              onChanged: widget.onChangedPassword,
+            ),
+            const PrototypeDivider(color: AppColors.borderDivider),
+            _InputRow(
+              title: '远程目录',
+              hintText: '（可选）例如：backup/newshangli',
+              controller: _remoteDirCtrl,
+              enabled: !saving,
+              onChanged: widget.onChangedRemoteDir,
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: Text(
+                      '提示：启用后需至少填写地址、用户名、密码',
+                      style: AppTypography.base(
+                        fontSize: 12,
+                        fontWeight: AppTypography.regular,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
+                  ),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: PrototypeSecondaryButton(
+                          label: saving ? '测试中' : '测试连接',
+                          onTap: widget.onTest,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: PrototypePrimaryButton(
+                          label: saving ? '保存中' : '保存配置',
+                          onTap: widget.onSave,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _InputRow extends StatelessWidget {
+  const _InputRow({
+    required this.title,
+    required this.hintText,
+    required this.controller,
+    required this.enabled,
+    required this.onChanged,
+    this.obscureText = false,
+    this.onToggleObscure,
+  });
+
+  final String title;
+  final String hintText;
+  final TextEditingController controller;
+  final bool enabled;
+  final ValueChanged<String> onChanged;
+  final bool obscureText;
+  final VoidCallback? onToggleObscure;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: AppTypography.base(
+              fontSize: 14,
+              fontWeight: AppTypography.medium,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 8),
+          TextField(
+            controller: controller,
+            enabled: enabled,
+            obscureText: obscureText,
+            style: AppTypography.base(
+              fontSize: 13,
+              fontWeight: AppTypography.regular,
+              color: AppColors.textPrimary,
+            ),
+            decoration: InputDecoration(
+              hintText: hintText,
+              hintStyle: AppTypography.base(
+                fontSize: 13,
+                fontWeight: AppTypography.regular,
+                color: AppColors.textMuted,
+              ),
+              isDense: true,
+              filled: true,
+              fillColor: AppColors.gray50,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: AppColors.gray100),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: AppColors.gray100),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: AppColors.borderFocus),
+              ),
+              suffixIcon: onToggleObscure == null
+                  ? null
+                  : IconButton(
+                      onPressed: enabled ? onToggleObscure : null,
+                      icon: Icon(
+                        obscureText ? Icons.visibility_off : Icons.visibility,
+                        size: 18,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+            ),
+            onChanged: onChanged,
           ),
         ],
       ),
@@ -993,20 +943,18 @@ class _OptionRow extends StatelessWidget {
     this.subtitle,
     required this.trailing,
     this.onTap,
-    this.borderBottom = true,
   });
 
   final String title;
   final String? subtitle;
   final Widget trailing;
   final VoidCallback? onTap;
-  final bool borderBottom;
 
   @override
   Widget build(BuildContext context) {
     return PrototypePressableRow(
       onTap: onTap,
-      borderBottom: borderBottom,
+      borderBottom: true,
       padding: const EdgeInsets.all(16),
       child: Row(
         children: [

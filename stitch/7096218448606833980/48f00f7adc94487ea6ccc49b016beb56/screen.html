@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+
+<html lang="zh-CN"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#312E81", // Indigo primary as requested
+                        "background-light": "#f8f6f6",
+                        "background-dark": "#221610",
+                    },
+                    fontFamily: {
+                        "display": ["Public Sans", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        /* Custom selector arrow appearance */
+        select {
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+            background-position: right 1rem center;
+            background-repeat: no-repeat;
+            background-size: 1.5em 1.5em;
+        }
+        body {
+            min-height: max(884px, 100dvh);
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 min-h-screen">
+<!-- Top Navigation Bar -->
+<header class="sticky top-0 z-10 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800">
+<div class="flex items-center justify-between px-4 h-14">
+<button class="flex items-center justify-center w-10 h-10 -ml-2 text-slate-600 dark:text-slate-400" style="">
+<span class="material-symbols-outlined" style="">arrow_back_ios</span>
+</button>
+<h1 class="text-lg font-bold tracking-tight" style="">新建提醒</h1>
+<button class="text-primary font-bold text-base px-2 py-1" style="">保存</button>
+</div>
+</header>
+<main class="max-w-2xl mx-auto p-4 space-y-6">
+<!-- Event Name Input -->
+<section class="space-y-2">
+<label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 ml-1" style="">事件名称</label>
+<div class="relative">
+<input class="w-full bg-white dark:bg-slate-800 border-none rounded-xl h-14 px-4 shadow-sm focus:ring-2 focus:ring-primary/20 placeholder:text-slate-400" placeholder="请输入提醒名称，例如：张三的婚礼" type="text"/>
+</div>
+</section>
+<!-- Configuration Group -->
+<div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm divide-y divide-slate-100 dark:divide-slate-700 overflow-hidden">
+<!-- Category -->
+<div class="flex items-center px-4 py-4">
+<div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary mr-3">
+<span class="material-symbols-outlined" style="">category</span>
+</div>
+<div class="flex-1">
+<p class="text-xs text-slate-500 dark:text-slate-400" style="">提醒类型</p>
+<select class="w-full bg-transparent border-none p-0 focus:ring-0 text-base font-medium">
+<option value="birthday">生日</option>
+<option value="return_gift">回礼</option>
+<option value="anniversary">纪念日</option>
+<option value="housewarming">乔迁</option>
+<option value="other">其他</option>
+</select>
+</div>
+</div>
+<!-- Date -->
+<div class="flex flex-col px-4 py-4">
+<div class="flex items-center">
+<div class="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center text-orange-600 mr-3">
+<span class="material-symbols-outlined" style="">calendar_today</span>
+</div>
+<div class="flex-1">
+<p class="text-xs text-slate-500 dark:text-slate-400" style="">日期</p>
+<input class="w-full bg-transparent border-none p-0 focus:ring-0 text-base font-medium" type="date" value="2023-10-24"/>
+</div>
+<!-- Calendar Switcher (Stacked Layout) -->
+<div class="bg-slate-100 dark:bg-slate-700 p-1 rounded-lg flex flex-col gap-1">
+<button class="px-3 py-1 text-[10px] leading-none font-semibold rounded-md bg-white dark:bg-slate-600 shadow-sm text-primary dark:text-white transition-all" style="">公历</button>
+<button class="px-3 py-1 text-[10px] leading-none font-semibold rounded-md text-slate-500 dark:text-slate-400 hover:text-primary dark:hover:text-white transition-all" style="">农历</button>
+</div>
+</div>
+</div>
+<!-- Reminder Time -->
+<div class="flex items-center px-4 py-4">
+<div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 mr-3">
+<span class="material-symbols-outlined" style="">schedule</span>
+</div>
+<div class="flex-1">
+<p class="text-xs text-slate-500 dark:text-slate-400" style="">提醒时间</p>
+<input class="w-full bg-transparent border-none p-0 focus:ring-0 text-base font-medium" type="time" value="09:00"/>
+</div>
+</div>
+<!-- Repeat -->
+<div class="flex items-center px-4 py-4">
+<div class="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-green-600 mr-3">
+<span class="material-symbols-outlined" style="">replay</span>
+</div>
+<div class="flex-1">
+<p class="text-xs text-slate-500 dark:text-slate-400" style="">重复频率</p>
+<select class="w-full bg-transparent border-none p-0 focus:ring-0 text-base font-medium">
+<option value="none">不重复</option>
+<option value="yearly">每年</option>
+<option value="monthly">每月</option>
+<option value="weekly">每周</option>
+</select>
+</div>
+</div>
+<!-- Related Person -->
+<button class="w-full flex items-center px-4 py-4 text-left hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+<div class="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center text-purple-600 mr-3">
+<span class="material-symbols-outlined" style="">person</span>
+</div>
+<div class="flex-1">
+<p class="text-xs text-slate-500 dark:text-slate-400" style="">关联人物</p>
+<p class="text-base font-medium text-slate-400" style="">选择联系人</p>
+</div>
+<span class="material-symbols-outlined text-slate-400" style="">chevron_right</span>
+</button>
+</div>
+<!-- Notes Section -->
+<section class="space-y-2">
+<label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 ml-1" style="">备注</label>
+<textarea class="w-full bg-white dark:bg-slate-800 border-none rounded-xl p-4 shadow-sm focus:ring-2 focus:ring-primary/20 placeholder:text-slate-400 resize-none" placeholder="添加更多细节描述..." rows="4"></textarea>
+</section>
+<!-- Action Area -->
+<div class="pt-4">
+<button class="w-full bg-primary text-white font-bold py-4 rounded-xl shadow-lg shadow-primary/20 active:scale-[0.98] transition-transform" style="">
+            创建提醒任务
+        </button>
+<p class="text-center text-xs text-slate-400 mt-4" style="">
+            我们将通过系统通知在设定的时间提醒您
+        </p>
+</div>
+</main>
+<!-- Bottom spacing for mobile safe area -->
+<div class="h-10"></div>
+</body></html>

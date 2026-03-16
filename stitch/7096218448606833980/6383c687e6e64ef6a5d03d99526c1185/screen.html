@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+
+<html lang="zh-CN"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#ec5b13",
+                        "background-light": "#f8f6f6",
+                        "background-dark": "#221610",
+                    },
+                    fontFamily: {
+                        "display": ["Public Sans", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<title>管理关系类型 - NewShangli</title>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 antialiased">
+<!-- Header Section -->
+<div class="sticky top-0 z-50 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800">
+<div class="flex items-center justify-between px-4 h-16 max-w-4xl mx-auto">
+<div class="flex items-center gap-4">
+<button class="flex items-center justify-center w-10 h-10 rounded-full hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">
+<span class="material-symbols-outlined text-2xl">arrow_back</span>
+</button>
+<h1 class="text-xl font-bold tracking-tight">管理关系类型</h1>
+</div>
+</div>
+</div>
+<main class="max-w-4xl mx-auto px-4 py-6 space-y-6">
+<!-- Search Bar Section -->
+<div class="relative">
+<label class="flex items-center w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 shadow-sm focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary transition-all">
+<span class="material-symbols-outlined text-slate-400 dark:text-slate-500 mr-3">search</span>
+<input class="bg-transparent border-none p-0 focus:ring-0 w-full text-base placeholder:text-slate-400 dark:placeholder:text-slate-500" placeholder="搜索关系类型..." type="text"/>
+</label>
+</div>
+<!-- Stats Overview (Optional context) -->
+<div class="grid grid-cols-2 gap-4">
+<div class="bg-slate-100 dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700">
+<p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">总类型</p>
+<p class="text-2xl font-bold mt-1">8</p>
+</div>
+<div class="bg-slate-100 dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700">
+<p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">已分类联系人</p>
+<p class="text-2xl font-bold mt-1">342</p>
+</div>
+</div>
+<!-- Relationship List -->
+<div class="space-y-3">
+<h2 class="text-sm font-semibold text-slate-500 dark:text-slate-400 px-1 uppercase tracking-widest">所有类别</h2>
+<!-- List Items -->
+<div class="grid gap-3">
+<!-- Item 1 -->
+<div class="group flex items-center gap-4 bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-primary/50 dark:hover:border-primary/50 transition-all cursor-pointer">
+<div class="flex items-center justify-center w-12 h-12 rounded-lg bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">
+<span class="material-symbols-outlined text-2xl">group</span>
+</div>
+<div class="flex-1 min-w-0">
+<h3 class="font-bold text-lg truncate">朋友</h3>
+<p class="text-sm text-slate-500 dark:text-slate-400 font-normal">128 个联系人</p>
+</div>
+<div class="flex items-center gap-2">
+<button class="p-2 text-slate-400 hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-xl">edit</span>
+</button>
+<span class="material-symbols-outlined text-slate-300 dark:text-slate-600">chevron_right</span>
+</div>
+</div>
+<!-- Item 2 -->
+<div class="group flex items-center gap-4 bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-primary/50 dark:hover:border-primary/50 transition-all cursor-pointer">
+<div class="flex items-center justify-center w-12 h-12 rounded-lg bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400">
+<span class="material-symbols-outlined text-2xl">business_center</span>
+</div>
+<div class="flex-1 min-w-0">
+<h3 class="font-bold text-lg truncate">同事</h3>
+<p class="text-sm text-slate-500 dark:text-slate-400 font-normal">56 个联系人</p>
+</div>
+<div class="flex items-center gap-2">
+<button class="p-2 text-slate-400 hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-xl">edit</span>
+</button>
+<span class="material-symbols-outlined text-slate-300 dark:text-slate-600">chevron_right</span>
+</div>
+</div>
+<!-- Item 3 -->
+<div class="group flex items-center gap-4 bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-primary/50 dark:hover:border-primary/50 transition-all cursor-pointer">
+<div class="flex items-center justify-center w-12 h-12 rounded-lg bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400">
+<span class="material-symbols-outlined text-2xl">home</span>
+</div>
+<div class="flex-1 min-w-0">
+<h3 class="font-bold text-lg truncate">亲戚</h3>
+<p class="text-sm text-slate-500 dark:text-slate-400 font-normal">32 个联系人</p>
+</div>
+<div class="flex items-center gap-2">
+<button class="p-2 text-slate-400 hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-xl">edit</span>
+</button>
+<span class="material-symbols-outlined text-slate-300 dark:text-slate-600">chevron_right</span>
+</div>
+</div>
+<!-- Item 4 -->
+<div class="group flex items-center gap-4 bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-primary/50 dark:hover:border-primary/50 transition-all cursor-pointer">
+<div class="flex items-center justify-center w-12 h-12 rounded-lg bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400">
+<span class="material-symbols-outlined text-2xl">school</span>
+</div>
+<div class="flex-1 min-w-0">
+<h3 class="font-bold text-lg truncate">同学</h3>
+<p class="text-sm text-slate-500 dark:text-slate-400 font-normal">84 个联系人</p>
+</div>
+<div class="flex items-center gap-2">
+<button class="p-2 text-slate-400 hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-xl">edit</span>
+</button>
+<span class="material-symbols-outlined text-slate-300 dark:text-slate-600">chevron_right</span>
+</div>
+</div>
+<!-- Item 5 -->
+<div class="group flex items-center gap-4 bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-primary/50 dark:hover:border-primary/50 transition-all cursor-pointer">
+<div class="flex items-center justify-center w-12 h-12 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400">
+<span class="material-symbols-outlined text-2xl">handshake</span>
+</div>
+<div class="flex-1 min-w-0">
+<h3 class="font-bold text-lg truncate">合作伙伴</h3>
+<p class="text-sm text-slate-500 dark:text-slate-400 font-normal">42 个联系人</p>
+</div>
+<div class="flex items-center gap-2">
+<button class="p-2 text-slate-400 hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-xl">edit</span>
+</button>
+<span class="material-symbols-outlined text-slate-300 dark:text-slate-600">chevron_right</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Empty State / Footer Hint -->
+<div class="py-10 text-center">
+<div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-400 mb-4">
+<span class="material-symbols-outlined text-3xl">info</span>
+</div>
+<p class="text-slate-500 dark:text-slate-400 text-sm max-w-xs mx-auto">
+                在这里管理您的所有联系人关系类型。点击右侧的编辑图标可以修改名称，点击加号可以添加新类型。
+            </p>
+</div>
+</main>
+<!-- Floating Action Button for smaller views if needed -->
+</body></html>

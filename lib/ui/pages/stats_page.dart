@@ -6,7 +6,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:provider/provider.dart';
 
 import '../app_tokens.dart';
-import '../app_data.dart';
+import '../app_database_scope.dart';
 import '../app_scaffold.dart';
 import '../components.dart';
 import '../lunar_date_picker.dart';
@@ -18,10 +18,17 @@ import '../../stats/stats_db.dart';
 import '../../stats/stats_models.dart';
 import '../../stats/stats_repository.dart';
 import '../../stats/stats_time_range.dart';
-import 'data_export_page.dart';
+
 import 'person_list_page.dart';
 import 'record_home_page.dart';
 import 'settings_home_page.dart';
+
+// ── 统计页专用配色 ──
+const Color _statsPrimary = Color(0xFF0F766E);    // teal700
+const Color _statsExpenseColor = Color(0xFFF97316); // orange500
+const Color _statsIncomeColor = Color(0xFF14B8A6);  // teal500
+const Color _statsExpenseArea = Color(0xFFFFEDD5);  // orange100
+const Color _statsIncomeArea = Color(0xFFCCFBF1);   // teal100
 
 final StatsRepository _statsRepository = StatsRepository(db: StatsDb());
 
@@ -42,8 +49,8 @@ class _StatsPageState extends State<StatsPage> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (_vm != null) return;
-    final appData = AppDataScope.of(context);
-    final vm = StatsViewModel(repository: widget.repository ?? _statsRepository, appData: appData, now: widget.now);
+    final db = AppDatabaseScope.of(context);
+    final vm = StatsViewModel(repository: widget.repository ?? _statsRepository, db: db, now: widget.now);
     _vm = vm;
     unawaited(vm.init());
   }
@@ -112,6 +119,8 @@ class _StatsPageBodyState extends State<_StatsPageBody> {
 
   /// 自定义：用于在页面内展示已选日期范围（与 vm.customRange 同步）。
   StatsDateRange? _customRange;
+  Timer? _rangeCommitDebounce;
+  Completer<void>? _pendingRangeCompleter;
 
   @override
   void initState() {
@@ -130,6 +139,13 @@ class _StatsPageBodyState extends State<_StatsPageBody> {
   }
 
   @override
+  void dispose() {
+    _rangeCommitDebounce?.cancel();
+    _pendingRangeCompleter?.complete();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final vm = context.watch<StatsViewModel>();
     final data = vm.data;
@@ -145,7 +161,6 @@ class _StatsPageBodyState extends State<_StatsPageBody> {
           _TopBar(
             tab: _tab,
             onSelectTab: (t) => unawaited(_handleSelectTab(vm, t)),
-            onOpenMenu: () => unawaited(_openMenu(vm)),
           ),
           _SubHeader(
             tab: _tab,
@@ -276,7 +291,7 @@ class _StatsPageBodyState extends State<_StatsPageBody> {
       case _StatsUiTab.year:
         final y = _selectedYear;
         if (y == null) {
-          final minYear = _minRecordYear(context) ?? now.year;
+          final minYear = vm.minRecordYear ?? now.year;
           return StatsDateRange(
             start: DateTime(minYear, 1, 1),
             endExclusive: DateTime(now.year, now.month, now.day + 1),
@@ -305,23 +320,20 @@ class _StatsPageBodyState extends State<_StatsPageBody> {
   }
 
   Future<void> _handleSelectTab(StatsViewModel vm, _StatsUiTab tab) async {
+    if (_tab == tab) return;
     setState(() => _tab = tab);
     final now = DateTime.now();
     switch (tab) {
       case _StatsUiTab.month:
-        /// 月统计：默认定位到本月
         _selectedMonthStart = DateTime(now.year, now.month, 1);
-        await vm.setPreset(StatsTimePreset.thisMonth);
+        await _scheduleRangeCommit(() => vm.setPreset(StatsTimePreset.thisMonth));
       case _StatsUiTab.year:
-        /// 年统计：默认定位到今年
         _selectedYear = now.year;
-        await vm.setPreset(StatsTimePreset.thisYear);
+        await _scheduleRangeCommit(() => vm.setPreset(StatsTimePreset.thisYear));
       case _StatsUiTab.custom:
-        // 自定义：不再直接跳转/弹出范围选择页面。
-        // 用户通过下方“起始时间/截止时间”来分别选择日期。
         final range = _customRange ?? _defaultCustomRange();
         setState(() => _customRange = range);
-        await vm.setCustomRange(range);
+        await _scheduleRangeCommit(() => vm.setCustomRange(range));
     }
   }
 
@@ -335,35 +347,64 @@ class _StatsPageBodyState extends State<_StatsPageBody> {
   }
 
   Future<void> _selectMonth(StatsViewModel vm, DateTime monthStart) async {
-    setState(() => _selectedMonthStart = DateTime(monthStart.year, monthStart.month, 1));
+    final normalized = DateTime(monthStart.year, monthStart.month, 1);
+    if (normalized.year == _selectedMonthStart.year && normalized.month == _selectedMonthStart.month) {
+      return;
+    }
+    setState(() => _selectedMonthStart = normalized);
     final now = DateTime.now();
     final isThisMonth = monthStart.year == now.year && monthStart.month == now.month;
     if (isThisMonth) {
-      await vm.setPreset(StatsTimePreset.thisMonth);
+      await _scheduleRangeCommit(() => vm.setPreset(StatsTimePreset.thisMonth));
       return;
     }
     final s = DateTime(monthStart.year, monthStart.month, 1);
-    await vm.setCustomRange(StatsDateRange(start: s, endExclusive: DateTime(s.year, s.month + 1, 1)));
+    await _scheduleRangeCommit(() => vm.setCustomRange(StatsDateRange(start: s, endExclusive: DateTime(s.year, s.month + 1, 1))));
   }
 
   Future<void> _selectYear(StatsViewModel vm, int? year) async {
+    if (_selectedYear == year) return;
     setState(() => _selectedYear = year);
     final now = DateTime.now();
     if (year == null) {
-      final minYear = _minRecordYear(context) ?? now.year;
-      await vm.setCustomRange(
-        StatsDateRange(
-          start: DateTime(minYear, 1, 1),
-          endExclusive: DateTime(now.year, now.month, now.day + 1),
+      final minYear = vm.minRecordYear ?? now.year;
+      await _scheduleRangeCommit(
+        () => vm.setCustomRange(
+          StatsDateRange(
+            start: DateTime(minYear, 1, 1),
+            endExclusive: DateTime(now.year, now.month, now.day + 1),
+          ),
         ),
       );
       return;
     }
     if (year == now.year) {
-      await vm.setPreset(StatsTimePreset.thisYear);
+      await _scheduleRangeCommit(() => vm.setPreset(StatsTimePreset.thisYear));
       return;
     }
-    await vm.setCustomRange(StatsDateRange(start: DateTime(year, 1, 1), endExclusive: DateTime(year + 1, 1, 1)));
+    await _scheduleRangeCommit(
+      () => vm.setCustomRange(StatsDateRange(start: DateTime(year, 1, 1), endExclusive: DateTime(year + 1, 1, 1))),
+    );
+  }
+
+  Future<void> _scheduleRangeCommit(Future<void> Function() action) {
+    _rangeCommitDebounce?.cancel();
+    _pendingRangeCompleter?.complete();
+    final completer = Completer<void>();
+    _pendingRangeCompleter = completer;
+    _rangeCommitDebounce = Timer(const Duration(milliseconds: 50), () async {
+      try {
+        await action();
+      } finally {
+        if (identical(_pendingRangeCompleter, completer)) {
+          _pendingRangeCompleter = null;
+        }
+        if (!completer.isCompleted) {
+          completer.complete();
+        }
+      }
+    });
+    return completer.future;
   }
 
   Future<void> _pickCustomStart(StatsViewModel vm) async {
@@ -416,104 +457,28 @@ class _StatsPageBodyState extends State<_StatsPageBody> {
     await vm.setCustomRange(range);
   }
 
-  int? _minRecordYear(BuildContext context) {
-    final appData = AppDataScope.of(context);
-    if (appData.records.isEmpty) return null;
-    var minYear = appData.records.first.occurredAt.year;
-    for (final r in appData.records) {
-      final y = r.occurredAt.year;
-      if (y < minYear) minYear = y;
-    }
-    return minYear;
-  }
-
-  Future<void> _openMenu(StatsViewModel vm) async {
-    final picked = await showModalBottomSheet<String>(
-      context: context,
-      showDragHandle: true,
-      builder: (context) {
-        return SafeArea(
-          child: ListView(
-            padding: const EdgeInsets.only(bottom: 12),
-            shrinkWrap: true,
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                child: Text('更多', style: AppTypography.h2().copyWith(fontSize: 16)),
-              ),
-              PrototypePressableRow(
-                onTap: () => Navigator.of(context).pop('refresh'),
-                child: const Row(
-                  children: [
-                    FaIcon(FontAwesomeIcons.arrowRotateRight, size: 16, color: AppColors.textSecondary),
-                    SizedBox(width: 12),
-                    Text('刷新'),
-                  ],
-                ),
-              ),
-              PrototypePressableRow(
-                onTap: () => Navigator.of(context).pop('export'),
-                child: const Row(
-                  children: [
-                    FaIcon(FontAwesomeIcons.fileExport, size: 16, color: AppColors.textSecondary),
-                    SizedBox(width: 12),
-                    Text('导出数据'),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-    if (picked == null) return;
-    if (!mounted) return;
-    if (picked == 'refresh') {
-      await vm.refresh();
-      return;
-    }
-    if (picked == 'export') {
-      AppNav.push(context, const DataExportPage());
-      return;
-    }
-  }
 }
 
 class _TopBar extends StatelessWidget {
   const _TopBar({
     required this.tab,
     required this.onSelectTab,
-    required this.onOpenMenu,
   });
 
   final _StatsUiTab tab;
   final ValueChanged<_StatsUiTab> onSelectTab;
-  final VoidCallback onOpenMenu;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 10, 12, 10),
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
       decoration: const BoxDecoration(
         color: AppColors.white,
         border: Border(bottom: BorderSide(color: AppColors.gray100, width: 1)),
       ),
-      child: Row(
-        children: [
-          Expanded(
-            child: _TopTabs(
-              active: tab,
-              onSelect: onSelectTab,
-            ),
-          ),
-          const SizedBox(width: 8),
-          PrototypeIconButton(
-            icon: const FaIcon(FontAwesomeIcons.ellipsisVertical, size: 16),
-            backgroundColor: AppColors.gray100,
-            foregroundColor: AppColors.textSecondary,
-            onPressed: onOpenMenu,
-          ),
-        ],
+      child: _TopTabs(
+        active: tab,
+        onSelect: onSelectTab,
       ),
     );
   }
@@ -539,7 +504,7 @@ class _TopTabs extends StatelessWidget {
           curve: Curves.easeOut,
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           decoration: BoxDecoration(
-            color: selected ? AppColors.brandSecondary : Colors.transparent,
+            color: selected ? _statsPrimary : Colors.transparent,
             borderRadius: BorderRadius.circular(10),
           ),
           child: Text(
@@ -642,7 +607,7 @@ class _MonthSelector extends StatelessWidget {
           padding: const EdgeInsets.only(right: 10),
           child: PrototypePill(
             label: label,
-            background: selected ? AppColors.brandSecondary : Colors.transparent,
+            background: selected ? _statsPrimary : Colors.transparent,
             foreground: selected ? AppColors.white : AppColors.textMuted,
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
             fontSize: 16,
@@ -700,7 +665,7 @@ class _YearSelector extends StatelessWidget {
           padding: const EdgeInsets.only(right: 10),
           child: PrototypePill(
             label: label,
-            background: selected ? AppColors.brandSecondary : Colors.transparent,
+            background: selected ? _statsPrimary : Colors.transparent,
             foreground: selected ? AppColors.white : AppColors.textMuted,
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
             fontSize: 16,
@@ -881,14 +846,14 @@ class _KpiSummaryCard extends StatelessWidget {
     Color deltaColor(int? prev, int cur) {
       if (prev == null) return AppColors.white20;
       if (cur == prev) return AppColors.white20;
-      return cur >= (prev) ? AppColors.green100 : AppColors.red100;
+      return cur >= (prev) ? const Color(0xFFCCFBF1) : const Color(0xFFFFEDD5);
     }
 
     return PressableScale(
       onTap: onToggleExpanded,
       child: PrototypeCard(
         padding: const EdgeInsets.fromLTRB(18, 16, 18, 14),
-        color: AppColors.brandSecondary,
+        color: _statsPrimary,
         shadow: null,
         child: Column(
           children: [
@@ -1129,15 +1094,16 @@ class _TrendLineCard extends StatelessWidget {
                 ),
               ),
               const Spacer(),
-              _LegendDot(label: '支出', color: AppColors.stateSuccess),
+              _LegendDot(label: '支出', color: _statsExpenseColor),
               const SizedBox(width: 12),
-              _LegendDot(label: '收入', color: AppColors.stateDanger),
+              _LegendDot(label: '收入', color: _statsIncomeColor),
             ],
           ),
           const SizedBox(height: 14),
           SizedBox(
             height: 220,
             child: LineChart(
+              duration: Duration.zero,
               LineChartData(
                 minX: 0,
                 maxX: (buckets.length - 1).toDouble().clamp(0, double.infinity),
@@ -1195,18 +1161,18 @@ class _TrendLineCard extends StatelessWidget {
                   LineChartBarData(
                     spots: expenseSpots,
                     isCurved: true,
-                    color: AppColors.stateSuccess,
+                    color: _statsExpenseColor,
                     barWidth: 3,
                     dotData: const FlDotData(show: false),
-                    belowBarData: BarAreaData(show: true, color: AppColors.green50.withValues(alpha: 0.7)),
+                    belowBarData: BarAreaData(show: true, color: _statsExpenseArea.withValues(alpha: 0.5)),
                   ),
                   LineChartBarData(
                     spots: incomeSpots,
                     isCurved: true,
-                    color: AppColors.stateDanger,
+                    color: _statsIncomeColor,
                     barWidth: 3,
                     dotData: const FlDotData(show: false),
-                    belowBarData: BarAreaData(show: true, color: AppColors.red100.withValues(alpha: 0.3)),
+                    belowBarData: BarAreaData(show: true, color: _statsIncomeArea.withValues(alpha: 0.3)),
                   ),
                 ],
               ),
@@ -1296,6 +1262,7 @@ class _HistogramCard extends StatelessWidget {
           SizedBox(
             height: 220,
             child: BarChart(
+              duration: Duration.zero,
               BarChartData(
                 minY: minY > 0 ? 0 : (minY - rangeY * 0.15),
                 maxY: maxY + rangeY * 0.15,
@@ -1377,9 +1344,9 @@ class _HistogramCard extends StatelessWidget {
   Color _colorForMetric(_StatsMetric metric) {
     switch (metric) {
       case _StatsMetric.expense:
-        return AppColors.stateSuccess;
+        return _statsExpenseColor;
       case _StatsMetric.income:
-        return AppColors.stateDanger;
+        return _statsIncomeColor;
     }
   }
 }
@@ -1405,7 +1372,7 @@ class _MetricSegment extends StatelessWidget {
             curve: Curves.easeOut,
             padding: const EdgeInsets.symmetric(vertical: 8),
             decoration: BoxDecoration(
-              color: selected ? AppColors.brandSecondary : Colors.transparent,
+              color: selected ? _statsPrimary : Colors.transparent,
               borderRadius: BorderRadius.circular(10),
             ),
             alignment: Alignment.center,
@@ -1510,6 +1477,7 @@ class _CategoryCard extends StatelessWidget {
                   children: [
                     Positioned.fill(
                       child: PieChart(
+                        duration: Duration.zero,
                         PieChartData(
                           sections: sections.isEmpty
                               ? [

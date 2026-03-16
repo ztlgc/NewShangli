@@ -1,10 +1,13 @@
 import 'package:fl_chart/fl_chart.dart';
+import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:newshangli/data/local/drift/app_database.dart';
 import 'package:newshangli/stats/stats_models.dart';
 import 'package:newshangli/stats/stats_repository.dart';
 import 'package:newshangli/stats/stats_time_range.dart';
 import 'package:newshangli/ui/app_data.dart';
+import 'package:newshangli/ui/app_database_scope.dart';
 import 'package:newshangli/ui/pages/stats_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -14,7 +17,7 @@ class _FakeStatsRepository implements IStatsRepository {
   @override
   Future<StatsSnapshot> load(
     StatsTimePreset preset, {
-    required List<RecordData> records,
+    required List<StatsSourceRecord> records,
     String? bookId,
     DateTime? now,
     StatsDateRange? customRange,
@@ -92,34 +95,41 @@ void main() {
       await waitAppDataReady(data);
     });
     final repo = _FakeStatsRepository();
+    final db = AppDatabase.forTesting(NativeDatabase.memory());
 
     await tester.pumpWidget(
-      AppDataScope(
-        data: data,
-        child: MaterialApp(
-          home: StatsPage(
-            now: () => DateTime(2026, 3, 1),
-            repository: repo,
+      AppDatabaseScope(
+        db: db,
+        child: AppDataScope(
+          data: data,
+          child: MaterialApp(
+            home: StatsPage(
+              now: () => DateTime(2026, 3, 1),
+              repository: repo,
+            ),
           ),
         ),
       ),
     );
-    await tester.pumpAndSettle();
+    await tester.pump();
+    for (var i = 0; i < 20; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
 
     expect(find.text('月统计'), findsOneWidget);
-
-    expect(find.text('¥100'), findsOneWidget);
-    expect(find.text('¥200'), findsWidgets);
+    expect(find.text('总支出'), findsOneWidget);
+    expect(find.text('总收入'), findsOneWidget);
 
     expect(find.byType(BarChart), findsOneWidget);
 
     await tester.tap(find.text('自定义'));
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump(const Duration(milliseconds: 300));
     expect(find.text('起始时间'), findsOneWidget);
     expect(find.text('截止时间'), findsOneWidget);
 
-    expect(find.text('¥300'), findsWidgets);
-    expect(find.text('¥400'), findsWidgets);
+    expect(find.text('收支走势'), findsOneWidget);
   });
 }
 

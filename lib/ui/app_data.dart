@@ -534,6 +534,50 @@ class AppData extends ChangeNotifier {
     return null;
   }
 
+  void mergeImportedData({
+    required Iterable<PersonData> persons,
+    required Iterable<RecordData> records,
+  }) {
+    var changed = false;
+    final personIndex = <String, int>{for (var i = 0; i < _persons.length; i++) _persons[i].id: i};
+    for (final person in persons) {
+      if (person.id.trim().isEmpty || person.name.trim().isEmpty) {
+        continue;
+      }
+      _trashedPersons.removeWhere((e) => e.id == person.id);
+      final index = personIndex[person.id];
+      if (index == null) {
+        _persons.add(person);
+        personIndex[person.id] = _persons.length - 1;
+        changed = true;
+      } else {
+        _persons[index] = person;
+        changed = true;
+      }
+    }
+    final recordIndex = <String, int>{for (var i = 0; i < _records.length; i++) _records[i].id: i};
+    for (final record in records) {
+      if (record.id.trim().isEmpty || record.personId.trim().isEmpty) {
+        continue;
+      }
+      _trashedRecords.removeWhere((e) => e.id == record.id);
+      final index = recordIndex[record.id];
+      if (index == null) {
+        _records.add(record);
+        recordIndex[record.id] = _records.length - 1;
+        changed = true;
+      } else {
+        _records[index] = record;
+        changed = true;
+      }
+    }
+    if (!changed) return;
+    _records.sort((a, b) => b.occurredAt.compareTo(a.occurredAt));
+    _persons.sort((a, b) => a.name.compareTo(b.name));
+    _persistCoreDataSoon();
+    notifyListeners();
+  }
+
   void createRecord({
     String? bookId,
     required String personId,
@@ -957,12 +1001,57 @@ class AppData extends ChangeNotifier {
     );
     if (exists) throw ArgumentError.value(name, 'name', '已存在同名关系类型');
     final old = _relationTypes[idx];
+    final oldName = old.name.trim();
+    var personsChanged = false;
+    if (oldName.toLowerCase() != trimmed.toLowerCase()) {
+      for (var i = 0; i < _persons.length; i++) {
+        final person = _persons[i];
+        if (person.relationship.trim().toLowerCase() != oldName.toLowerCase()) {
+          continue;
+        }
+        _persons[i] = PersonData(
+          id: person.id,
+          name: person.name,
+          relationship: trimmed,
+          phone: person.phone,
+          note: person.note,
+          avatarUrl: person.avatarUrl,
+          birthday: person.birthday,
+          isLunarBirthday: person.isLunarBirthday,
+          birthdayReminder: person.birthdayReminder,
+          createdAt: person.createdAt,
+        );
+        personsChanged = true;
+      }
+      for (var i = 0; i < _trashedPersons.length; i++) {
+        final person = _trashedPersons[i];
+        if (person.relationship.trim().toLowerCase() != oldName.toLowerCase()) {
+          continue;
+        }
+        _trashedPersons[i] = PersonData(
+          id: person.id,
+          name: person.name,
+          relationship: trimmed,
+          phone: person.phone,
+          note: person.note,
+          avatarUrl: person.avatarUrl,
+          birthday: person.birthday,
+          isLunarBirthday: person.isLunarBirthday,
+          birthdayReminder: person.birthdayReminder,
+          createdAt: person.createdAt,
+        );
+        personsChanged = true;
+      }
+    }
     _relationTypes[idx] = RelationTypeData(
       id: old.id,
       name: trimmed,
       createdAt: old.createdAt,
       updatedAt: DateTime.now(),
     );
+    if (personsChanged) {
+      _persistCoreDataSoon();
+    }
     notifyListeners();
     await _persistRelationTypes();
   }
@@ -970,6 +1059,13 @@ class AppData extends ChangeNotifier {
   Future<void> deleteRelationType(String id) async {
     final used = _contactRelations.any((e) => e.typeId == id);
     if (used) throw StateError('该类型正在被使用，无法删除');
+    final target = findRelationType(id);
+    if (target == null) return;
+    final name = target.name.trim().toLowerCase();
+    final usedByPerson = _persons.any(
+      (e) => e.relationship.trim().toLowerCase() == name,
+    );
+    if (usedByPerson) throw StateError('该类型已被联系人使用，无法删除');
     _relationTypes.removeWhere((e) => e.id == id);
     notifyListeners();
     await _persistRelationTypes();

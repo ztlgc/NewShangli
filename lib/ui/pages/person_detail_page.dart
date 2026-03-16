@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:drift/drift.dart' show OrderingTerm;
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
+import '../../data/local/drift/app_database.dart';
 import '../app_data.dart';
+import '../app_database_scope.dart';
 import '../app_tokens.dart';
 import '../app_scaffold.dart';
 import '../contact_avatar.dart';
@@ -23,68 +26,182 @@ class PersonDetailPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (personId == null) {
+      return _buildNotFound(context);
+    }
+    return FutureBuilder<_PersonDetailView?>(
+      future: _loadView(context),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return const AppScaffold(
+            backgroundColor: AppColors.surfaceApp,
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+        final view = snapshot.data;
+        if (view == null) {
+          return _buildNotFound(context);
+        }
+        return AppScaffold(
+          backgroundColor: AppColors.surfaceApp,
+          body: _Canvas(view: view),
+        );
+      },
+    );
+  }
+
+  Future<_PersonDetailView?> _loadView(BuildContext context) async {
+    final fromDb = await _loadFromDb(context);
+    if (fromDb != null) return fromDb;
+    return _loadFromAppData(context);
+  }
+
+  Future<_PersonDetailView?> _loadFromDb(BuildContext context) async {
+    final id = personId;
+    if (id == null || id.trim().isEmpty) return null;
+    try {
+      final db = AppDatabaseScope.maybeOf(context);
+      if (db == null) return null;
+      final Person? person = await db.personsDao.findById(id);
+      if (person == null) return null;
+      final records = await (db.select(db.giftRecords)
+            ..where((t) => t.personId.equals(id))
+            ..orderBy([(t) => OrderingTerm.desc(t.occurredAt)]))
+          .get();
+      var incomeCent = 0;
+      var expenseCent = 0;
+      final recordItems = <_PersonRecordView>[];
+      for (final r in records) {
+        final isIncome = r.direction != '支出';
+        if (isIncome) {
+          incomeCent += r.amountCent;
+        } else {
+          expenseCent += r.amountCent;
+        }
+        recordItems.add(
+          _PersonRecordView(
+            recordId: r.recordId,
+            eventName: (r.eventName ?? '').trim().isEmpty ? '未设置事由' : r.eventName!.trim(),
+            isIncome: isIncome,
+            amountCent: r.amountCent,
+            paymentMethod: (r.paymentMethod ?? '').trim().isEmpty ? '未设置' : r.paymentMethod!.trim(),
+            occurredAt: DateTime.fromMillisecondsSinceEpoch(r.occurredAt),
+          ),
+        );
+      }
+      return _PersonDetailView(
+        person: PersonData(
+          id: person.personId,
+          name: person.name,
+          relationship: person.relationshipType,
+          phone: person.phone,
+          note: person.note,
+          avatarUrl: person.avatarUri,
+          birthday: DateTime.tryParse(person.birthday ?? ''),
+          isLunarBirthday: false,
+          birthdayReminder: false,
+          createdAt: DateTime.fromMillisecondsSinceEpoch(person.createdAt),
+        ),
+        incomeCent: incomeCent,
+        expenseCent: expenseCent,
+        records: recordItems,
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  _PersonDetailView? _loadFromAppData(BuildContext context) {
+    final id = personId;
+    if (id == null || id.trim().isEmpty) return null;
     final data = AppDataScope.of(context);
-    final person = personId == null ? null : data.findPerson(personId!);
-    if (personId != null && person == null) {
-      return AppScaffold(
-        backgroundColor: AppColors.surfaceApp,
-        body: Column(
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              color: AppColors.brandPrimary,
-              child: Row(
-                children: [
-                  PrototypeIconButton(
-                    icon: const FaIcon(FontAwesomeIcons.arrowLeft, size: 18),
-                    backgroundColor: Colors.transparent,
-                    foregroundColor: AppColors.white,
-                    onPressed: () => AppNav.pop(context),
-                  ),
-                  Expanded(
-                    child: Center(
-                      child: Text(
-                        '详情',
-                        style: AppTypography.base(
-                          fontSize: 18,
-                          fontWeight: AppTypography.bold,
-                          color: AppColors.white,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 40),
-                ],
-              ),
-            ),
-            Expanded(
-              child: Center(
-                child: Text(
-                  '联系人已删除或不存在',
-                  style: AppTypography.base(
-                    fontSize: 14,
-                    fontWeight: AppTypography.medium,
-                    color: AppColors.textMuted,
-                  ),
-                ),
-              ),
-            ),
-          ],
+    final person = data.findPerson(id);
+    if (person == null) return null;
+    final records = data.records.where((e) => e.personId == id).toList()
+      ..sort((a, b) => b.occurredAt.compareTo(a.occurredAt));
+    var incomeCent = 0;
+    var expenseCent = 0;
+    final recordItems = <_PersonRecordView>[];
+    for (final r in records) {
+      final isIncome = r.direction == RecordDirection.income;
+      if (isIncome) {
+        incomeCent += r.amountCent;
+      } else {
+        expenseCent += r.amountCent;
+      }
+      recordItems.add(
+        _PersonRecordView(
+          recordId: r.id,
+          eventName: r.eventName.trim().isEmpty ? '未设置事由' : r.eventName.trim(),
+          isIncome: isIncome,
+          amountCent: r.amountCent,
+          paymentMethod: r.paymentMethod.trim().isEmpty ? '未设置' : r.paymentMethod.trim(),
+          occurredAt: r.occurredAt,
         ),
       );
     }
+    return _PersonDetailView(
+      person: person,
+      incomeCent: incomeCent,
+      expenseCent: expenseCent,
+      records: recordItems,
+    );
+  }
+
+  Widget _buildNotFound(BuildContext context) {
     return AppScaffold(
       backgroundColor: AppColors.surfaceApp,
-      body: _Canvas(personId: personId, person: person),
+      body: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            color: AppColors.brandPrimary,
+            child: Row(
+              children: [
+                PrototypeIconButton(
+                  icon: const FaIcon(FontAwesomeIcons.arrowLeft, size: 18),
+                  backgroundColor: Colors.transparent,
+                  foregroundColor: AppColors.white,
+                  onPressed: () => AppNav.pop(context),
+                ),
+                Expanded(
+                  child: Center(
+                    child: Text(
+                      '详情',
+                      style: AppTypography.base(
+                        fontSize: 18,
+                        fontWeight: AppTypography.bold,
+                        color: AppColors.white,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 40),
+              ],
+            ),
+          ),
+          Expanded(
+            child: Center(
+              child: Text(
+                '联系人已删除或不存在',
+                style: AppTypography.base(
+                  fontSize: 14,
+                  fontWeight: AppTypography.medium,
+                  color: AppColors.textMuted,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
 
 class _Canvas extends StatelessWidget {
-  const _Canvas({required this.personId, required this.person});
+  const _Canvas({required this.view});
 
-  final String? personId;
-  final PersonData? person;
+  final _PersonDetailView view;
 
   @override
   Widget build(BuildContext context) {
@@ -117,7 +234,7 @@ class _Canvas extends StatelessWidget {
                 icon: const FaIcon(FontAwesomeIcons.pen, size: 14),
                 backgroundColor: Colors.transparent,
                 foregroundColor: AppColors.white,
-                onPressed: () => AppNav.push(context, PersonEditPage(personId: personId), requiresLogin: true),
+                onPressed: () => AppNav.push(context, PersonEditPage(personId: view.person.id), requiresLogin: true),
               ),
             ],
           ),
@@ -128,10 +245,10 @@ class _Canvas extends StatelessWidget {
               ListView(
                 padding: const EdgeInsets.only(bottom: 83 + 16),
                 children: [
-                  _Hero(person: person),
-                  _InfoCards(person: person),
+                  _Hero(view: view),
+                  _InfoCards(person: view.person),
                   const _RecordsHeader(),
-                  const _RecordsCard(),
+                  _RecordsCard(records: view.records),
                   const SizedBox(height: 24),
                 ],
               ),
@@ -144,17 +261,50 @@ class _Canvas extends StatelessWidget {
   }
 }
 
-class _Hero extends StatelessWidget {
-  const _Hero({required this.person});
+class _PersonDetailView {
+  const _PersonDetailView({
+    required this.person,
+    required this.incomeCent,
+    required this.expenseCent,
+    required this.records,
+  });
 
-  final PersonData? person;
+  final PersonData person;
+  final int incomeCent;
+  final int expenseCent;
+  final List<_PersonRecordView> records;
+}
+
+class _PersonRecordView {
+  const _PersonRecordView({
+    required this.recordId,
+    required this.eventName,
+    required this.isIncome,
+    required this.amountCent,
+    required this.paymentMethod,
+    required this.occurredAt,
+  });
+
+  final String recordId;
+  final String eventName;
+  final bool isIncome;
+  final int amountCent;
+  final String paymentMethod;
+  final DateTime occurredAt;
+}
+
+class _Hero extends StatelessWidget {
+  const _Hero({required this.view});
+
+  final _PersonDetailView view;
 
   @override
   Widget build(BuildContext context) {
-    final name = person?.name.trim().isNotEmpty == true ? person!.name.trim() : '未知';
-    final relationship = person?.relationship.trim().isNotEmpty == true ? person!.relationship.trim() : '未设置';
-    final phone = person?.phone?.trim().isNotEmpty == true ? person!.phone!.trim() : '未设置';
-    final avatarUrl = person?.avatarUrl?.trim();
+    final person = view.person;
+    final name = person.name.trim().isEmpty ? '未知' : person.name.trim();
+    final relationship = person.relationship.trim().isEmpty ? '未设置' : person.relationship.trim();
+    final phone = person.phone?.trim().isNotEmpty == true ? person.phone!.trim() : '未设置';
+    final avatarUrl = person.avatarUrl?.trim();
     return Stack(
       clipBehavior: Clip.none,
       children: [
@@ -250,22 +400,22 @@ class _Hero extends StatelessWidget {
               boxShadow: AppShadows.lg,
             ),
             child: Row(
-              children: const [
+              children: [
                 _StatCell(
                   label: '收礼',
-                  value: '¥2,000',
+                  value: _formatCurrency(view.incomeCent),
                   valueColor: AppColors.green600,
                 ),
                 _VerticalDivider(),
                 _StatCell(
                   label: '送礼',
-                  value: '¥800',
+                  value: _formatCurrency(view.expenseCent),
                   valueColor: AppColors.red500,
                 ),
                 _VerticalDivider(),
                 _StatCell(
                   label: '差额',
-                  value: '+1,200',
+                  value: _formatSigned(view.incomeCent - view.expenseCent),
                   valueColor: AppColors.indigo600,
                 ),
               ],
@@ -478,10 +628,33 @@ class _RecordsHeader extends StatelessWidget {
 }
 
 class _RecordsCard extends StatelessWidget {
-  const _RecordsCard();
+  const _RecordsCard({required this.records});
+
+  final List<_PersonRecordView> records;
 
   @override
   Widget build(BuildContext context) {
+    if (records.isEmpty) {
+      return Container(
+        margin: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+        decoration: const BoxDecoration(
+          color: AppColors.white,
+          borderRadius: AppRadii.br2xl,
+          boxShadow: AppShadows.sm,
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Text(
+            '暂无往来记录',
+            style: AppTypography.base(
+              fontSize: 14,
+              fontWeight: AppTypography.regular,
+              color: AppColors.textMuted,
+            ),
+          ),
+        ),
+      );
+    }
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 8, 16, 24),
       decoration: const BoxDecoration(
@@ -491,39 +664,11 @@ class _RecordsCard extends StatelessWidget {
       ),
       child: Column(
         children: [
-          _RecordRow(
-            iconBg: AppColors.green100,
-            iconFg: AppColors.green600,
-            icon: FontAwesomeIcons.gift,
-            title: '结婚礼金',
-            amount: '+2,000',
-            amountColor: AppColors.green600,
-            subtitleLeft: '收礼 - 微信',
-            subtitleRight: DateUtil.format(DateTime(2026, 2, 10)),
-          ),
-          const PrototypeDivider(color: AppColors.borderDivider),
-          _RecordRow(
-            iconBg: AppColors.red100,
-            iconFg: AppColors.red600,
-            icon: FontAwesomeIcons.handHoldingHeart,
-            title: '孩子满月',
-            amount: '-800',
-            amountColor: AppColors.red500,
-            subtitleLeft: '送礼 - 现金',
-            subtitleRight: DateUtil.format(DateTime(2025, 8, 12)),
-          ),
-          const PrototypeDivider(color: AppColors.borderDivider),
-          _RecordRow(
-            iconBg: AppColors.green100,
-            iconFg: AppColors.green600,
-            icon: FontAwesomeIcons.envelopeOpenText,
-            title: '乔迁红包',
-            amount: '+600',
-            amountColor: AppColors.green600,
-            subtitleLeft: '收礼 - 支付宝',
-            subtitleRight: DateUtil.format(DateTime(2024, 12, 1)),
-            borderBottom: false,
-          ),
+          for (var i = 0; i < records.length; i++)
+            _RecordRow(
+              record: records[i],
+              borderBottom: i != records.length - 1,
+            ),
         ],
       ),
     );
@@ -531,32 +676,23 @@ class _RecordsCard extends StatelessWidget {
 }
 
 class _RecordRow extends StatelessWidget {
-  const _RecordRow({
-    required this.iconBg,
-    required this.iconFg,
-    required this.icon,
-    required this.title,
-    required this.amount,
-    required this.amountColor,
-    required this.subtitleLeft,
-    required this.subtitleRight,
-    this.borderBottom = true,
-  });
+  const _RecordRow({required this.record, this.borderBottom = true});
 
-  final Color iconBg;
-  final Color iconFg;
-  final IconData icon;
-  final String title;
-  final String amount;
-  final Color amountColor;
-  final String subtitleLeft;
-  final String subtitleRight;
+  final _PersonRecordView record;
   final bool borderBottom;
 
   @override
   Widget build(BuildContext context) {
+    final isIncome = record.isIncome;
+    final iconBg = isIncome ? AppColors.green100 : AppColors.red100;
+    final iconFg = isIncome ? AppColors.green600 : AppColors.red600;
+    final icon = isIncome ? FontAwesomeIcons.gift : FontAwesomeIcons.handHoldingHeart;
+    final amountColor = isIncome ? AppColors.green600 : AppColors.red500;
+    final amount = _formatSignedAmount(record.amountCent, isIncome: isIncome);
+    final subtitleLeft = '${isIncome ? '收礼' : '送礼'} - ${record.paymentMethod}';
+    final subtitleRight = DateUtil.format(record.occurredAt);
     return PrototypePressableRow(
-      onTap: () => AppNav.push(context, const RecordDetailPage(recordId: 'r_20260210_zw')),
+      onTap: () => AppNav.push(context, RecordDetailPage(recordId: record.recordId), requiresLogin: true),
       borderBottom: borderBottom,
       child: Row(
         children: [
@@ -576,7 +712,7 @@ class _RecordRow extends StatelessWidget {
                   children: [
                     Expanded(
                       child: Text(
-                        title,
+                        record.eventName,
                         style: AppTypography.base(
                           fontSize: 14,
                           fontWeight: AppTypography.medium,
@@ -664,6 +800,29 @@ class _BottomActions extends StatelessWidget {
       ),
     );
   }
+}
+
+String _formatCurrency(int cent) {
+  final absCent = cent.abs();
+  final yuan = (absCent / 100).toStringAsFixed(2);
+  final parts = yuan.split('.');
+  final intPart = parts[0];
+  final fracPart = parts[1];
+  final grouped = intPart.replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (m) => ',');
+  return '¥$grouped.$fracPart';
+}
+
+String _formatSigned(int cent) {
+  final symbol = cent >= 0 ? '+' : '-';
+  return '$symbol${_formatCurrency(cent).replaceFirst('¥', '')}';
+}
+
+String _formatSignedAmount(int cent, {required bool isIncome}) {
+  final symbol = isIncome ? '+' : '-';
+  final value = (cent.abs() / 100).toStringAsFixed(2);
+  final parts = value.split('.');
+  final grouped = parts[0].replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (m) => ',');
+  return '$symbol$grouped.${parts[1]}';
 }
 
 class _ActionButton extends StatelessWidget {

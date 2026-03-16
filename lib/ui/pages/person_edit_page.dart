@@ -1,12 +1,16 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:drift/drift.dart' show Value;
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:lunar/lunar.dart';
 
+import '../../data/local/drift/app_database.dart';
+import '../../import/default_book_service.dart';
 import '../app_tokens.dart';
 import '../app_scaffold.dart';
 import '../app_data.dart';
+import '../app_database_scope.dart';
 import '../contact_avatar.dart';
 import '../components.dart';
 import '../navigation.dart';
@@ -38,6 +42,7 @@ class _PersonEditPageState extends State<PersonEditPage> {
   bool _inited = false;
   bool _saving = false;
   String _relationship = '';
+  String _personBookId = AppData.defaultBookId;
   String? _avatarUrl;
   DateTime? _birthday;
   bool _isLunarBirthday = false;
@@ -54,6 +59,7 @@ class _PersonEditPageState extends State<PersonEditPage> {
   String _savedName = '';
   String _savedPhone = '';
   String _savedNote = '';
+  final DefaultBookService _defaultBookService = DefaultBookService();
 
   @override
   void dispose() {
@@ -88,6 +94,9 @@ class _PersonEditPageState extends State<PersonEditPage> {
     } else {
       final prefer = data.relationTypes.any((e) => e.name == '朋友') ? '朋友' : (data.relationTypes.isEmpty ? '朋友' : data.relationTypes.first.name);
       _relationship = prefer;
+    }
+    if (person == null && widget.personId != null) {
+      _loadPersonFromDrift(widget.personId!);
     }
   }
 
@@ -134,7 +143,7 @@ class _PersonEditPageState extends State<PersonEditPage> {
                   ),
                 ),
                 PressableScale(
-                  onTap: _saving ? null : () => _onSave(data),
+                  onTap: _saving ? null : _onSave,
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                     decoration: BoxDecoration(
@@ -171,9 +180,9 @@ class _PersonEditPageState extends State<PersonEditPage> {
                   nameEditing: _nameEditing,
                   nameErrorText: _nameError,
                   onTapName: _saving ? null : () => _startEditing(_InlineEditField.name),
-                  onNameChanged: _saving ? null : (v) => _onNameChanged(data, v),
-                  onNameSubmitted: _saving ? null : () => _commitName(data),
-                  onNameFocusChange: _saving ? null : (hasFocus) => _onNameFocusChange(data, hasFocus),
+                  onNameChanged: _saving ? null : _onNameChanged,
+                  onNameSubmitted: _saving ? null : _commitName,
+                  onNameFocusChange: _saving ? null : _onNameFocusChange,
                   relationship: _relationship,
                   phone: _phoneCtrl.text,
                   onPickRelationship: _saving ? null : () => _pickRelationship(data),
@@ -182,9 +191,9 @@ class _PersonEditPageState extends State<PersonEditPage> {
                   phoneEditing: _phoneEditing,
                   phoneErrorText: _phoneError,
                   onTapPhone: _saving ? null : () => _startEditing(_InlineEditField.phone),
-                  onPhoneChanged: _saving ? null : (v) => _onPhoneChanged(data, v),
-                  onPhoneSubmitted: _saving ? null : () => _commitPhone(data),
-                  onPhoneFocusChange: _saving ? null : (hasFocus) => _onPhoneFocusChange(data, hasFocus),
+                  onPhoneChanged: _saving ? null : _onPhoneChanged,
+                  onPhoneSubmitted: _saving ? null : _commitPhone,
+                  onPhoneFocusChange: _saving ? null : _onPhoneFocusChange,
                   birthday: _birthday,
                   isLunarBirthday: _isLunarBirthday,
                   birthdayReminder: _birthdayReminder,
@@ -201,14 +210,14 @@ class _PersonEditPageState extends State<PersonEditPage> {
                   noteEditing: _noteEditing,
                   noteErrorText: _noteError,
                   onTap: _saving ? null : () => _startEditing(_InlineEditField.note),
-                  onNoteChanged: _saving ? null : (v) => _onNoteChanged(data, v),
-                  onNoteSubmitted: _saving ? null : () => _commitNote(data),
-                  onNoteFocusChange: _saving ? null : (hasFocus) => _onNoteFocusChange(data, hasFocus),
+                  onNoteChanged: _saving ? null : _onNoteChanged,
+                  onNoteSubmitted: _saving ? null : _commitNote,
+                  onNoteFocusChange: _saving ? null : _onNoteFocusChange,
                 ),
                 const SizedBox(height: 24),
                 if (widget.personId != null)
                   _DeleteButton(
-                    onTap: _saving ? null : () => _confirmDelete(data),
+                    onTap: _saving ? null : _confirmDelete,
                   ),
               ],
             ),
@@ -218,7 +227,7 @@ class _PersonEditPageState extends State<PersonEditPage> {
     );
   }
 
-  Future<void> _onSave(AppData data) async {
+  Future<void> _onSave() async {
     FocusManager.instance.primaryFocus?.unfocus();
     setState(() {
       _nameEditing = false;
@@ -226,38 +235,107 @@ class _PersonEditPageState extends State<PersonEditPage> {
       _noteEditing = false;
     });
 
-    if (!_validateAll(data)) {
+    if (!_validateAll()) {
       _toast(context, '请修正后再保存');
       return;
     }
 
+    final appData = AppDataScope.of(context);
+    final db = AppDatabaseScope.maybeOf(context);
     final name = _nameCtrl.text.trim();
     final phone = _phoneCtrl.text.trim();
     final note = _noteCtrl.text.trim();
     setState(() => _saving = true);
     try {
+      if (db == null) {
+        if (widget.personId == null) {
+          appData.createPerson(
+            name: name,
+            relationship: _relationship,
+            phone: phone.isEmpty ? null : phone,
+            note: note.isEmpty ? null : note,
+            avatarUrl: _avatarUrl,
+            birthday: _birthday,
+            isLunarBirthday: _isLunarBirthday,
+            birthdayReminder: _birthdayReminder,
+          );
+        } else {
+          appData.updatePerson(
+            id: widget.personId!,
+            name: name,
+            relationship: _relationship,
+            phone: phone.isEmpty ? null : phone,
+            note: note.isEmpty ? null : note,
+            avatarUrl: _avatarUrl,
+            birthday: _birthday,
+            isLunarBirthday: _isLunarBirthday,
+            birthdayReminder: _birthdayReminder,
+          );
+        }
+        if (!mounted) return;
+        Navigator.of(context).pop(true);
+        _toast(context, '已保存');
+        return;
+      }
+      if (phone.isNotEmpty && await _isPhoneExistsInDrift(db, phone, excludeId: widget.personId)) {
+        if (!mounted) return;
+        setState(() {
+          _phoneError = '该手机号已存在';
+          _saving = false;
+        });
+        return;
+      }
+      final dbBookId = await _resolveDbBookId(db, _personBookId);
+      final now = DateTime.now().millisecondsSinceEpoch;
+      String targetId;
       if (widget.personId == null) {
-        data.createPerson(
-          name: name,
-          relationship: _relationship,
-          phone: phone.isEmpty ? null : phone,
-          note: note.isEmpty ? null : note,
-          avatarUrl: _avatarUrl,
-          birthday: _birthday,
-          isLunarBirthday: _isLunarBirthday,
-          birthdayReminder: _birthdayReminder,
+        targetId = await db.personsDao.insertOne(
+          PersonsCompanion.insert(
+            bookId: dbBookId,
+            name: name,
+            relationshipType: Value(_relationship.trim().isEmpty ? '朋友' : _relationship.trim()),
+            phone: Value(phone.isEmpty ? null : phone),
+            birthday: Value(_birthday?.toIso8601String()),
+            avatarUri: Value(_avatarUrl?.trim().isEmpty == true ? null : _avatarUrl?.trim()),
+            note: Value(note.isEmpty ? null : note),
+            createdAt: now,
+            updatedAt: now,
+          ),
         );
       } else {
-        data.updatePerson(
-          id: widget.personId!,
+        targetId = widget.personId!;
+        final existing = await db.personsDao.findById(targetId);
+        if (existing == null) {
+          throw StateError('联系人不存在');
+        }
+        final updated = existing.copyWith(
           name: name,
-          relationship: _relationship,
-          phone: phone.isEmpty ? null : phone,
-          note: note.isEmpty ? null : note,
-          avatarUrl: _avatarUrl,
-          birthday: _birthday,
-          isLunarBirthday: _isLunarBirthday,
-          birthdayReminder: _birthdayReminder,
+          relationshipType: _relationship.trim().isEmpty ? existing.relationshipType : _relationship.trim(),
+          phone: Value(phone.isEmpty ? null : phone),
+          birthday: Value(_birthday?.toIso8601String()),
+          avatarUri: Value(_avatarUrl?.trim().isEmpty == true ? null : _avatarUrl?.trim()),
+          note: Value(note.isEmpty ? null : note),
+        );
+        await db.personsDao.updateOne(updated);
+      }
+      final person = await db.personsDao.findById(targetId);
+      if (person != null) {
+        appData.mergeImportedData(
+          persons: <PersonData>[
+            PersonData(
+              id: person.personId,
+              name: person.name,
+              relationship: person.relationshipType,
+              phone: person.phone,
+              note: person.note,
+              avatarUrl: person.avatarUri,
+              birthday: DateTime.tryParse(person.birthday ?? ''),
+              isLunarBirthday: false,
+              birthdayReminder: false,
+              createdAt: DateTime.fromMillisecondsSinceEpoch(person.createdAt),
+            ),
+          ],
+          records: const <RecordData>[],
         );
       }
       if (!mounted) return;
@@ -273,9 +351,9 @@ class _PersonEditPageState extends State<PersonEditPage> {
     }
   }
 
-  bool _validateAll(AppData data) {
+  bool _validateAll() {
     final nameErr = _validateName(_nameCtrl.text);
-    final phoneErr = _validatePhone(data, _phoneCtrl.text);
+    final phoneErr = _validatePhone(_phoneCtrl.text);
     final noteErr = _validateNote(_noteCtrl.text);
     final ok = nameErr == null && phoneErr == null && noteErr == null;
     setState(() {
@@ -295,7 +373,7 @@ class _PersonEditPageState extends State<PersonEditPage> {
     return null;
   }
 
-  String? _validatePhone(AppData data, String raw) {
+  String? _validatePhone(String raw) {
     final trimmed = raw.trim();
     if (trimmed.isEmpty) return null;
 
@@ -306,10 +384,6 @@ class _PersonEditPageState extends State<PersonEditPage> {
     // 支持 +86 或纯数字，简单的正则校验
     if (!RegExp(r'^1[3-9]\d{9}$').hasMatch(digits)) {
       return '手机号格式不正确';
-    }
-    
-    if (data.isPhoneExists(digits, excludeId: widget.personId)) {
-      return '该手机号已存在';
     }
     
     return null;
@@ -346,43 +420,43 @@ class _PersonEditPageState extends State<PersonEditPage> {
     });
   }
 
-  void _onNameChanged(AppData data, String v) {
+  void _onNameChanged(String v) {
     setState(() {
       _nameError = _validateName(v);
     });
   }
 
-  void _onPhoneChanged(AppData data, String v) {
+  void _onPhoneChanged(String v) {
     setState(() {
-      _phoneError = _validatePhone(data, v);
+      _phoneError = _validatePhone(v);
     });
   }
 
-  void _onNoteChanged(AppData data, String v) {
+  void _onNoteChanged(String v) {
     setState(() {
       _noteError = _validateNote(v);
     });
   }
 
-  void _onNameFocusChange(AppData data, bool hasFocus) {
+  void _onNameFocusChange(bool hasFocus) {
     if (hasFocus) return;
     if (!_nameEditing) return;
-    _commitName(data);
+    _commitName();
   }
 
-  void _onPhoneFocusChange(AppData data, bool hasFocus) {
+  void _onPhoneFocusChange(bool hasFocus) {
     if (hasFocus) return;
     if (!_phoneEditing) return;
-    _commitPhone(data);
+    _commitPhone();
   }
 
-  void _onNoteFocusChange(AppData data, bool hasFocus) {
+  void _onNoteFocusChange(bool hasFocus) {
     if (hasFocus) return;
     if (!_noteEditing) return;
-    _commitNote(data);
+    _commitNote();
   }
 
-  void _commitName(AppData data) {
+  void _commitName() {
     final err = _validateName(_nameCtrl.text);
     setState(() {
       _nameError = err;
@@ -392,11 +466,11 @@ class _PersonEditPageState extends State<PersonEditPage> {
       _nameFocus.requestFocus();
       return;
     }
-    _saveInlineField(data, _InlineEditField.name);
+    _saveInlineField(_InlineEditField.name);
   }
 
-  void _commitPhone(AppData data) {
-    final err = _validatePhone(data, _phoneCtrl.text);
+  void _commitPhone() {
+    final err = _validatePhone(_phoneCtrl.text);
     setState(() {
       _phoneError = err;
       if (err == null) _phoneEditing = false;
@@ -405,10 +479,10 @@ class _PersonEditPageState extends State<PersonEditPage> {
       _phoneFocus.requestFocus();
       return;
     }
-    _saveInlineField(data, _InlineEditField.phone);
+    _saveInlineField(_InlineEditField.phone);
   }
 
-  void _commitNote(AppData data) {
+  void _commitNote() {
     final err = _validateNote(_noteCtrl.text);
     setState(() {
       _noteError = err;
@@ -418,18 +492,20 @@ class _PersonEditPageState extends State<PersonEditPage> {
       _noteFocus.requestFocus();
       return;
     }
-    _saveInlineField(data, _InlineEditField.note);
+    _saveInlineField(_InlineEditField.note);
   }
 
-  Future<void> _saveInlineField(AppData data, _InlineEditField field) async {
+  Future<void> _saveInlineField(_InlineEditField field) async {
     if (widget.personId == null) return;
+    final db = AppDatabaseScope.maybeOf(context);
+    final appData = AppDataScope.of(context);
 
     final name = (field == _InlineEditField.name ? _nameCtrl.text : _savedName).trim();
     final phone = (field == _InlineEditField.phone ? _phoneCtrl.text : _savedPhone).trim();
     final note = (field == _InlineEditField.note ? _noteCtrl.text : _savedNote).trim();
 
     final nameErr = _validateName(name);
-    final phoneErr = field == _InlineEditField.phone ? _validatePhone(data, phone) : null;
+    final phoneErr = field == _InlineEditField.phone ? _validatePhone(phone) : null;
     final noteErr = field == _InlineEditField.note ? _validateNote(note) : null;
 
     if (nameErr != null || phoneErr != null || noteErr != null) {
@@ -449,16 +525,57 @@ class _PersonEditPageState extends State<PersonEditPage> {
     if (!changed) return;
 
     try {
-      data.updatePerson(
-        id: widget.personId!,
+      if (db == null) {
+        appData.updatePerson(
+          id: widget.personId!,
+          name: name,
+          relationship: _relationship,
+          phone: phone.isEmpty ? null : phone,
+          note: note.isEmpty ? null : note,
+          avatarUrl: _avatarUrl,
+          birthday: _birthday,
+          isLunarBirthday: _isLunarBirthday,
+          birthdayReminder: _birthdayReminder,
+        );
+        if (field == _InlineEditField.name) _savedName = name;
+        if (field == _InlineEditField.phone) _savedPhone = phone;
+        if (field == _InlineEditField.note) _savedNote = note;
+        return;
+      }
+      if (field == _InlineEditField.phone &&
+          phone.isNotEmpty &&
+          await _isPhoneExistsInDrift(db, phone, excludeId: widget.personId)) {
+        if (!mounted) return;
+        setState(() => _phoneError = '该手机号已存在');
+        return;
+      }
+      final existing = await db.personsDao.findById(widget.personId!);
+      if (existing == null) return;
+      final updated = existing.copyWith(
         name: name,
-        relationship: _relationship,
-        phone: phone.isEmpty ? null : phone,
-        note: note.isEmpty ? null : note,
-        avatarUrl: _avatarUrl,
-        birthday: _birthday,
-        isLunarBirthday: _isLunarBirthday,
-        birthdayReminder: _birthdayReminder,
+        relationshipType: _relationship.trim().isEmpty ? existing.relationshipType : _relationship.trim(),
+        phone: Value(phone.isEmpty ? null : phone),
+        birthday: Value(_birthday?.toIso8601String()),
+        avatarUri: Value(_avatarUrl?.trim().isEmpty == true ? null : _avatarUrl?.trim()),
+        note: Value(note.isEmpty ? null : note),
+      );
+      await db.personsDao.updateOne(updated);
+      appData.mergeImportedData(
+        persons: <PersonData>[
+          PersonData(
+            id: updated.personId,
+            name: updated.name,
+            relationship: updated.relationshipType,
+            phone: updated.phone,
+            note: updated.note,
+            avatarUrl: updated.avatarUri,
+            birthday: DateTime.tryParse(updated.birthday ?? ''),
+            isLunarBirthday: false,
+            birthdayReminder: false,
+            createdAt: DateTime.fromMillisecondsSinceEpoch(updated.createdAt),
+          ),
+        ],
+        records: const <RecordData>[],
       );
       if (field == _InlineEditField.name) _savedName = name;
       if (field == _InlineEditField.phone) _savedPhone = phone;
@@ -472,7 +589,9 @@ class _PersonEditPageState extends State<PersonEditPage> {
     }
   }
 
-  Future<void> _confirmDelete(AppData data) async {
+  Future<void> _confirmDelete() async {
+    final db = AppDatabaseScope.maybeOf(context);
+    final appData = AppDataScope.of(context);
     final name = _nameCtrl.text.trim().isEmpty ? '该联系人' : _nameCtrl.text.trim();
     final ok = await showDialog<bool>(
       context: context,
@@ -488,10 +607,69 @@ class _PersonEditPageState extends State<PersonEditPage> {
       },
     );
     if (ok != true) return;
-    data.trashPerson(widget.personId!);
+    if (db == null) {
+      appData.trashPerson(widget.personId!);
+      if (!mounted) return;
+      Navigator.of(context).pop(true);
+      _toast(context, '已移入回收站');
+      return;
+    }
+    await db.personsDao.deleteById(widget.personId!);
     if (!mounted) return;
     Navigator.of(context).pop(true);
     _toast(context, '已移入回收站');
+  }
+
+  Future<void> _loadPersonFromDrift(String personId) async {
+    try {
+      final db = AppDatabaseScope.maybeOf(context);
+      if (db == null) return;
+      final person = await db.personsDao.findById(personId);
+      if (person == null || !mounted) return;
+      setState(() {
+        _nameCtrl.text = person.name;
+        _phoneCtrl.text = person.phone ?? '';
+        _noteCtrl.text = person.note ?? '';
+        _savedName = _nameCtrl.text.trim();
+        _savedPhone = _phoneCtrl.text.trim();
+        _savedNote = _noteCtrl.text.trim();
+        _relationship = person.relationshipType;
+        _avatarUrl = person.avatarUri;
+        _birthday = DateTime.tryParse(person.birthday ?? '');
+        _personBookId = person.bookId;
+      });
+    } catch (_) {}
+  }
+
+  Future<String> _resolveDbBookId(AppDatabase db, String selectedBookId) async {
+    if (selectedBookId != AppData.defaultBookId) return selectedBookId;
+    return _defaultBookService.ensureDefaultBookId(db);
+  }
+
+  Future<bool> _isPhoneExistsInDrift(
+    AppDatabase db,
+    String raw, {
+    String? excludeId,
+  }) async {
+    String clean(String s) {
+      var d = s.replaceAll(RegExp(r'\D'), '');
+      if (d.startsWith('86') && d.length == 13) {
+        d = d.substring(2);
+      }
+      return d;
+    }
+
+    final target = clean(raw);
+    if (target.isEmpty) return false;
+    final all = await db.select(db.persons).get();
+    for (final p in all) {
+      if (p.personId == excludeId) continue;
+      final normalized = clean(p.phone ?? '');
+      if (normalized.isNotEmpty && normalized == target) {
+        return true;
+      }
+    }
+    return false;
   }
 
   Future<void> _pickRelationship(AppData data) async {

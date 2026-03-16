@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
-import '../app_data.dart';
+import '../../data/local/drift/app_database.dart';
+import '../app_database_scope.dart';
 import '../app_scaffold.dart';
 import '../app_tokens.dart';
 import '../components.dart';
@@ -26,7 +27,7 @@ class _Canvas extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final data = AppDataScope.of(context);
+    final db = AppDatabaseScope.of(context);
     return DefaultTabController(
       length: 2,
       child: Column(
@@ -81,8 +82,8 @@ class _Canvas extends StatelessWidget {
           Expanded(
             child: TabBarView(
               children: [
-                _TrashedRecordsList(data: data),
-                _TrashedPersonsList(data: data),
+                _TrashedRecordsList(db: db),
+                _TrashedPersonsList(db: db),
               ],
             ),
           ),
@@ -93,118 +94,133 @@ class _Canvas extends StatelessWidget {
 }
 
 class _TrashedRecordsList extends StatelessWidget {
-  const _TrashedRecordsList({required this.data});
+  const _TrashedRecordsList({required this.db});
 
-  final AppData data;
+  final AppDatabase db;
 
   @override
   Widget build(BuildContext context) {
-    final items = data.trashedRecords;
-    if (items.isEmpty) {
-      return const Center(child: Text('回收站暂无收支记录'));
-    }
-
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 16 + AppTokens.tabBarHeight),
-      children: [
-        Container(
-          decoration: const BoxDecoration(
-            color: AppColors.white,
-            borderRadius: AppRadii.br2xl,
-            boxShadow: AppShadows.sm,
-          ),
-          child: Column(
-            children: [
-              for (var i = 0; i < items.length; i++)
-                _TrashedRecordRow(
-                  record: items[i],
-                  borderBottom: i != items.length - 1,
-                  onRestore: () {
-                    data.restoreRecord(items[i].id);
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('已恢复')));
-                  },
-                  onPurge: () async {
-                    final messenger = ScaffoldMessenger.of(context);
-                    final ok = await _confirmPurge(context);
-                    if (ok != true) return;
-                    data.purgeRecord(items[i].id);
-                    messenger.showSnackBar(const SnackBar(content: Text('已彻底删除')));
-                  },
-                ),
-            ],
-          ),
-        ),
-      ],
+    return StreamBuilder<List<DeletedGiftRecordWithPerson>>(
+      stream: db.giftRecordsDao.watchDeletedWithPerson(),
+      builder: (context, snapshot) {
+        final items = snapshot.data ?? const <DeletedGiftRecordWithPerson>[];
+        if (items.isEmpty) {
+          return const Center(child: Text('回收站暂无收支记录'));
+        }
+        return ListView(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 16 + AppTokens.tabBarHeight),
+          children: [
+            Container(
+              decoration: const BoxDecoration(
+                color: AppColors.white,
+                borderRadius: AppRadii.br2xl,
+                boxShadow: AppShadows.sm,
+              ),
+              child: Column(
+                children: [
+                  for (var i = 0; i < items.length; i++)
+                    _TrashedRecordRow(
+                      item: items[i],
+                      borderBottom: i != items.length - 1,
+                      onRestore: () async {
+                        await db.giftRecordsDao.restoreById(items[i].record.recordId);
+                        if (!context.mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('已恢复')));
+                      },
+                      onPurge: () async {
+                        final messenger = ScaffoldMessenger.of(context);
+                        final ok = await _confirmPurge(context);
+                        if (ok != true) return;
+                        await db.giftRecordsDao.purgeById(items[i].record.recordId);
+                        messenger.showSnackBar(const SnackBar(content: Text('已彻底删除')));
+                      },
+                    ),
+                ],
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }
 
 class _TrashedPersonsList extends StatelessWidget {
-  const _TrashedPersonsList({required this.data});
+  const _TrashedPersonsList({required this.db});
 
-  final AppData data;
+  final AppDatabase db;
 
   @override
   Widget build(BuildContext context) {
-    final items = data.trashedPersons;
-    if (items.isEmpty) {
-      return const Center(child: Text('回收站暂无联系人'));
-    }
-
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 16 + AppTokens.tabBarHeight),
-      children: [
-        Container(
-          decoration: const BoxDecoration(
-            color: AppColors.white,
-            borderRadius: AppRadii.br2xl,
-            boxShadow: AppShadows.sm,
-          ),
-          child: Column(
-            children: [
-              for (var i = 0; i < items.length; i++)
-                _TrashedPersonRow(
-                  person: items[i],
-                  borderBottom: i != items.length - 1,
-                  onRestore: () {
-                    data.restorePerson(items[i].id);
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('已恢复')));
-                  },
-                  onPurge: () async {
-                    final messenger = ScaffoldMessenger.of(context);
-                    final ok = await _confirmPurge(context);
-                    if (ok != true) return;
-                    data.purgePerson(items[i].id);
-                    messenger.showSnackBar(const SnackBar(content: Text('已彻底删除')));
-                  },
-                ),
-            ],
-          ),
-        ),
-      ],
+    return StreamBuilder<List<Person>>(
+      stream: db.personsDao.watchDeleted(),
+      builder: (context, snapshot) {
+        final items = snapshot.data ?? const <Person>[];
+        if (items.isEmpty) {
+          return const Center(child: Text('回收站暂无联系人'));
+        }
+        return ListView(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 16 + AppTokens.tabBarHeight),
+          children: [
+            Container(
+              decoration: const BoxDecoration(
+                color: AppColors.white,
+                borderRadius: AppRadii.br2xl,
+                boxShadow: AppShadows.sm,
+              ),
+              child: Column(
+                children: [
+                  for (var i = 0; i < items.length; i++)
+                    _TrashedPersonRow(
+                      person: items[i],
+                      borderBottom: i != items.length - 1,
+                      onRestore: () async {
+                        await db.personsDao.restoreById(items[i].personId);
+                        if (!context.mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('已恢复')));
+                      },
+                      onPurge: () async {
+                        final messenger = ScaffoldMessenger.of(context);
+                        final ok = await _confirmPurge(context);
+                        if (ok != true) return;
+                        await db.personsDao.purgeById(items[i].personId);
+                        messenger.showSnackBar(const SnackBar(content: Text('已彻底删除')));
+                      },
+                    ),
+                ],
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }
 
 class _TrashedRecordRow extends StatelessWidget {
   const _TrashedRecordRow({
-    required this.record,
+    required this.item,
     required this.borderBottom,
     required this.onRestore,
     required this.onPurge,
   });
 
-  final RecordData record;
+  final DeletedGiftRecordWithPerson item;
   final bool borderBottom;
   final VoidCallback onRestore;
   final VoidCallback onPurge;
 
   @override
   Widget build(BuildContext context) {
-    final amountText = _formatSignedAmount(record.direction, record.amountCent);
-    final amountColor = record.direction == RecordDirection.income ? AppColors.green600 : AppColors.red500;
-    final subtitle = '${record.eventName} - ${record.paymentMethod}';
-    final dateText = DateUtil.format(record.occurredAt);
+    final record = item.record;
+    final isIncome = record.direction != '支出';
+    final amountText = _formatSignedAmount(isIncome, record.amountCent);
+    final amountColor = isIncome ? AppColors.green600 : AppColors.red500;
+    final personName = (item.personName ?? '').trim().isEmpty ? '已删除联系人' : item.personName!;
+    final eventName = (record.eventName ?? '').trim().isEmpty ? '未设置事由' : record.eventName!.trim();
+    final paymentMethod = (record.paymentMethod ?? '').trim().isEmpty ? '未设置' : record.paymentMethod!.trim();
+    final subtitle = '$eventName - $paymentMethod';
+    final dateText = DateUtil.format(DateTime.fromMillisecondsSinceEpoch(record.occurredAt));
 
     return PrototypePressableRow(
       onTap: null,
@@ -219,7 +235,7 @@ class _TrashedRecordRow extends StatelessWidget {
                   children: [
                     Expanded(
                       child: Text(
-                        record.personName,
+                        personName,
                         style: AppTypography.base(
                           fontSize: 16,
                           fontWeight: AppTypography.medium,
@@ -291,7 +307,7 @@ class _TrashedPersonRow extends StatelessWidget {
     required this.onPurge,
   });
 
-  final PersonData person;
+  final Person person;
   final bool borderBottom;
   final VoidCallback onRestore;
   final VoidCallback onPurge;
@@ -317,7 +333,7 @@ class _TrashedPersonRow extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  person.relationship,
+                  person.relationshipType,
                   style: AppTypography.base(
                     fontSize: 12,
                     fontWeight: AppTypography.regular,
@@ -363,8 +379,8 @@ Future<bool?> _confirmPurge(BuildContext context) {
   );
 }
 
-String _formatSignedAmount(RecordDirection direction, int cent) {
-  final sign = direction == RecordDirection.income ? '+' : '-';
+String _formatSignedAmount(bool isIncome, int cent) {
+  final sign = isIncome ? '+' : '-';
   final absCent = cent.abs();
   final yuan = (absCent / 100).toStringAsFixed(2);
   final parts = yuan.split('.');

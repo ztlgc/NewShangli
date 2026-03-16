@@ -271,6 +271,9 @@ class _CanvasState extends State<_Canvas> {
       (p) async {
         if (!mounted) return;
         setState(() => _progress = p);
+        if (p.status == DataImportStatus.completed) {
+          await _bookIdFuture;
+        }
         await _refreshLogTail();
       },
       onError: (e) {

@@ -47,6 +47,8 @@ class AccountBooks extends Table {
   IntColumn get updatedAt =>
       integer().named('updated_at').customConstraint('NOT NULL')();
 
+  IntColumn get deletedAt => integer().named('deleted_at').nullable()();
+
   @override
   Set<Column> get primaryKey => {bookId};
 }
@@ -92,6 +94,8 @@ class Persons extends Table {
 
   IntColumn get updatedAt =>
       integer().named('updated_at').customConstraint('NOT NULL')();
+
+  IntColumn get deletedAt => integer().named('deleted_at').nullable()();
 
   List<Index> get indexes => [
         Index(
@@ -164,6 +168,8 @@ class GiftRecords extends Table {
 
   IntColumn get updatedAt =>
       integer().named('updated_at').customConstraint('NOT NULL')();
+
+  IntColumn get deletedAt => integer().named('deleted_at').nullable()();
 
   List<Index> get indexes => [
         Index(

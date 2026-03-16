@@ -1,4 +1,3 @@
-import '../ui/app_data.dart';
 import 'stats_db.dart';
 import 'stats_engine.dart';
 import 'stats_models.dart';
@@ -7,11 +6,35 @@ import 'stats_time_range.dart';
 abstract class IStatsRepository {
   Future<StatsSnapshot> load(
     StatsTimePreset preset, {
-    required List<RecordData> records,
+    required List<StatsSourceRecord> records,
     String? bookId,
     DateTime? now,
     StatsDateRange? customRange,
   });
+}
+
+class StatsSourceRecord {
+  const StatsSourceRecord({
+    required this.id,
+    required this.bookId,
+    required this.direction,
+    required this.amountCent,
+    required this.eventName,
+    required this.personName,
+    required this.paymentMethod,
+    required this.occurredAt,
+    this.note,
+  });
+
+  final String id;
+  final String? bookId;
+  final int direction;
+  final int amountCent;
+  final String eventName;
+  final String personName;
+  final String paymentMethod;
+  final DateTime occurredAt;
+  final String? note;
 }
 
 class StatsRepository implements IStatsRepository {
@@ -30,7 +53,7 @@ class StatsRepository implements IStatsRepository {
   @override
   Future<StatsSnapshot> load(
     StatsTimePreset preset, {
-    required List<RecordData> records,
+    required List<StatsSourceRecord> records,
     String? bookId,
     DateTime? now,
     StatsDateRange? customRange,
@@ -38,7 +61,6 @@ class StatsRepository implements IStatsRepository {
     final range = resolveStatsDateRange(preset, now: now, customRange: customRange);
     final startS = range.start.millisecondsSinceEpoch ~/ 1000;
     final endS = range.endExclusive.millisecondsSinceEpoch ~/ 1000;
-    await _ensureSynced(records);
 
     final targetBookId = _normalizeBookId(bookId);
     final cacheKey = '${preset.name}|$targetBookId|$startS|$endS';
@@ -65,7 +87,8 @@ class StatsRepository implements IStatsRepository {
     return snapshot;
   }
 
-  Future<void> _ensureSynced(List<RecordData> records) async {
+  /// 将源记录同步到统计数据库。应在加载统计数据前调用一次。
+  Future<void> ensureSynced(List<StatsSourceRecord> records) async {
     // 缓存/同步指纹：
     // - 之前仅用 records.length + max(occurredAt) 作为指纹，无法覆盖“仅变更 bookId”等场景
     // - 这里改为对记录关键字段做滚动哈希，以保证统计结果与账簿归属实时一致
@@ -77,7 +100,7 @@ class StatsRepository implements IStatsRepository {
         fp,
         r.id,
         effectiveBookId,
-        r.direction.index,
+        r.direction,
         r.amountCent,
         r.eventName,
         r.personName,
@@ -95,7 +118,7 @@ class StatsRepository implements IStatsRepository {
       rows.add(<String, Object?>{
         'id': r.id,
         'book_id': _normalizeBookId(r.bookId),
-        'direction': r.direction == RecordDirection.income ? 0 : 1,
+        'direction': r.direction,
         'amount_cent': r.amountCent,
         'event_name': r.eventName,
         'person_name': r.personName,
@@ -108,7 +131,7 @@ class StatsRepository implements IStatsRepository {
 
   String _normalizeBookId(String? bookId) {
     final v = bookId?.trim();
-    if (v == null || v.isEmpty) return AppData.defaultBookId;
+    if (v == null || v.isEmpty) return 'book_default';
     return v;
   }
 
@@ -142,3 +165,4 @@ class _CacheEntry {
   final StatsSnapshot data;
   final int expiresAtMs;
 }
+

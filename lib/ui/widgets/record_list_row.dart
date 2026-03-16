@@ -19,6 +19,8 @@ class RecordListRow extends StatelessWidget {
     this.borderBottom = true,
     this.selectionMode = false,
     this.selected = false,
+    this.onSelectionToggle,
+    this.fadeDuration = const Duration(milliseconds: 250),
   });
 
   final String? avatarUrl;
@@ -32,31 +34,52 @@ class RecordListRow extends StatelessWidget {
   final bool borderBottom;
   final bool selectionMode;
   final bool selected;
+  final VoidCallback? onSelectionToggle;
+  final Duration fadeDuration;
 
   @override
   Widget build(BuildContext context) {
     final amountText = _formatSignedAmount(direction, amountCent);
     final amountColor = direction == RecordDirection.income ? AppColors.green600 : AppColors.red500;
-    final dateText = '${occurredAt.month.toString().padLeft(2, '0')}-${occurredAt.day.toString().padLeft(2, '0')}';
+    final dateText =
+        '${occurredAt.month.toString().padLeft(2, '0')}-${occurredAt.day.toString().padLeft(2, '0')}';
 
     return PrototypePressableRow(
       onTap: onTap,
       onLongPress: onLongPress,
       borderBottom: borderBottom,
-      pressedColor: selectionMode ? AppColors.indigo50 : AppColors.gray50,
-      enablePressedFeedback: !selectionMode,
       child: Row(
         children: [
-          if (selectionMode) ...[
-            _SelectDot(selected: selected),
-            const SizedBox(width: 10),
-          ],
-          ContactAvatar(
-            name: name,
-            avatarUrl: avatarUrl,
-            size: 40,
-            shape: ContactAvatarShape.circle,
-            border: Border.all(color: AppColors.gray100, width: 1),
+          SizedBox(
+            width: 40,
+            height: 40,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                ContactAvatar(
+                  name: name,
+                  avatarUrl: avatarUrl,
+                  size: 40,
+                  shape: ContactAvatarShape.circle,
+                  border: Border.all(color: AppColors.gray100, width: 1),
+                ),
+                Positioned.fill(
+                  child: IgnorePointer(
+                    ignoring: !selectionMode,
+                    child: AnimatedOpacity(
+                      opacity: selectionMode ? 1 : 0,
+                      duration: fadeDuration,
+                      curve: Curves.easeInOut,
+                      child: _AvatarSelectionCheckbox(
+                        label: name,
+                        selected: selected,
+                        onToggle: onSelectionToggle ?? onTap,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -128,23 +151,50 @@ class RecordListRow extends StatelessWidget {
   }
 }
 
-class _SelectDot extends StatelessWidget {
-  const _SelectDot({required this.selected});
+class _AvatarSelectionCheckbox extends StatelessWidget {
+  const _AvatarSelectionCheckbox({
+    required this.label,
+    required this.selected,
+    required this.onToggle,
+  });
 
+  final String label;
   final bool selected;
+  final VoidCallback? onToggle;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 22,
-      height: 22,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: selected ? AppColors.indigo600 : Colors.transparent,
-        border: Border.all(color: selected ? AppColors.indigo600 : AppColors.gray300, width: 1.5),
+    final backgroundColor = selected ? AppColors.brandPrimary : AppColors.gray500.withValues(alpha: 0.2);
+    return Semantics(
+      checked: selected,
+      button: true,
+      label: '$label，${selected ? '已选中' : '未选中'}',
+      child: GestureDetector(
+        onTap: onToggle,
+        behavior: HitTestBehavior.opaque,
+        child: Container(
+          width: double.infinity,
+          height: double.infinity,
+          decoration: BoxDecoration(
+            color: backgroundColor,
+            shape: BoxShape.circle,
+            border: Border.all(color: AppColors.white, width: 2),
+            boxShadow: AppShadows.sm,
+          ),
+          alignment: Alignment.center,
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 180),
+            child: selected
+                ? const Icon(
+                    Icons.check,
+                    key: ValueKey('selected'),
+                    size: 16,
+                    color: AppColors.white,
+                  )
+                : const SizedBox(key: ValueKey('unselected')),
+          ),
+        ),
       ),
-      alignment: Alignment.center,
-      child: selected ? const Icon(Icons.check, size: 12, color: AppColors.white) : null,
     );
   }
 }

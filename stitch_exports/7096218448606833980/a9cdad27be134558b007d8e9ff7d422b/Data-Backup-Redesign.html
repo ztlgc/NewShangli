@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+
+<html lang="zh-CN"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#ec5b13",
+                        "background-light": "#f8f6f6",
+                        "background-dark": "#221610",
+                    },
+                    fontFamily: {
+                        "display": ["Public Sans"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<title>数据备份 - Data Backup</title>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 min-h-screen">
+<!-- Top Navigation Bar -->
+<nav class="sticky top-0 z-10 flex items-center bg-background-light dark:bg-background-dark p-4 justify-between border-b border-primary/10">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined cursor-pointer text-slate-900 dark:text-slate-100" style="">arrow_back</span>
+<h1 class="text-xl font-bold leading-tight tracking-tight" style="">数据备份</h1>
+</div>
+<span class="material-symbols-outlined cursor-pointer text-slate-500" style="">more_vert</span>
+</nav>
+<main class="max-w-2xl mx-auto p-4 space-y-6">
+<!-- Status Section Card -->
+<section class="@container">
+<div class="flex flex-col items-stretch justify-start rounded-xl shadow-sm bg-white dark:bg-primary/5 border border-primary/10 overflow-hidden">
+<div class="p-6 flex flex-col items-center text-center gap-4">
+<div class="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary text-4xl" style='font-variation-settings: "FILL" 1;'>cloud_done</span>
+</div>
+<div>
+<h2 class="text-lg font-bold leading-tight tracking-tight" style="">云备份已开启</h2>
+<p class="text-slate-500 dark:text-slate-400 text-sm mt-1" style="">您的数据正在受到保护</p>
+</div>
+<div class="w-full bg-background-light dark:bg-primary/10 rounded-lg p-3 flex items-center justify-between">
+<div class="text-left">
+<p class="text-xs text-slate-400 uppercase font-semibold" style="">上次备份时间</p>
+<p class="text-sm font-medium" style="">今天 09:30</p>
+</div>
+<button class="flex min-w-[100px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-9 px-4 bg-primary text-white text-sm font-bold transition-opacity hover:opacity-90" style="">
+<span class="truncate" style="">立即备份</span>
+</button>
+</div>
+</div>
+</div>
+</section>
+<!-- Settings Section -->
+<section class="space-y-3">
+<h3 class="text-base font-bold px-1" style="">备份设置</h3>
+<div class="bg-white dark:bg-primary/5 rounded-xl border border-primary/10 divide-y divide-primary/5">
+<!-- Auto Backup Toggle -->
+<div class="flex items-center gap-4 px-4 min-h-[72px] py-2 justify-between">
+<div class="flex flex-col justify-center">
+<p class="font-medium leading-normal line-clamp-1" style="">自动备份</p>
+<p class="text-slate-500 dark:text-slate-400 text-xs line-clamp-2" style="">在连接 Wi-Fi 且充电时自动运行</p>
+</div>
+<div class="shrink-0">
+<label class="relative flex h-[28px] w-[48px] cursor-pointer items-center rounded-full border-none bg-slate-200 dark:bg-primary/20 p-1 has-[:checked]:justify-end has-[:checked]:bg-primary" style="">
+<div class="h-full w-[20px] rounded-full bg-white shadow-sm"></div>
+<input checked="" class="invisible absolute" type="checkbox"/>
+</label>
+</div>
+</div>
+<!-- Backup Frequency -->
+<div class="flex items-center gap-4 px-4 min-h-[72px] py-2 justify-between cursor-pointer hover:bg-slate-50 dark:hover:bg-primary/10 transition-colors">
+<div class="flex flex-col justify-center">
+<p class="font-medium leading-normal line-clamp-1" style="">备份频率</p>
+<p class="text-primary text-sm font-medium leading-normal" style="">每天</p>
+</div>
+<div class="shrink-0">
+<span class="material-symbols-outlined text-slate-400" style="">chevron_right</span>
+</div>
+</div>
+<!-- Network Selection -->
+<div class="flex items-center gap-4 px-4 min-h-[72px] py-2 justify-between cursor-pointer hover:bg-slate-50 dark:hover:bg-primary/10 transition-colors">
+<div class="flex flex-col justify-center">
+<p class="font-medium leading-normal line-clamp-1" style="">网盘配置（WebDav）</p>
+<p class="text-slate-500 dark:text-slate-400 text-xs line-clamp-2" style=""><br/></p>
+</div>
+<div class="shrink-0">
+<span class="material-symbols-outlined text-slate-400" style="">chevron_right</span>
+</div>
+</div>
+</div>
+</section>
+<!-- History Section -->
+<section class="space-y-3">
+<div class="flex items-center justify-between px-1">
+<h3 class="text-base font-bold" style="">备份记录</h3>
+<button class="text-primary text-xs font-bold uppercase tracking-wider" style="">查看全部</button>
+</div>
+<div class="space-y-3">
+<!-- Record Item 1 -->
+<div class="flex items-center gap-4 bg-white dark:bg-primary/5 p-4 rounded-xl border border-primary/10">
+<div class="size-12 rounded-lg bg-slate-100 dark:bg-primary/10 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-slate-600 dark:text-primary" style="">database</span>
+</div>
+<div class="flex-1 min-w-0">
+<p class="font-bold text-sm truncate" style="">2023年10月24日 备份</p>
+<p class="text-slate-500 dark:text-slate-400 text-xs" style="">大小: 1.2 GB • 包含 14,203 个文件</p>
+</div>
+<button class="px-3 py-1.5 rounded-lg border border-primary text-primary text-xs font-bold hover:bg-primary/5 transition-colors shrink-0" style="">
+                        恢复
+                    </button>
+</div>
+<!-- Record Item 2 -->
+<div class="flex items-center gap-4 bg-white dark:bg-primary/5 p-4 rounded-xl border border-primary/10">
+<div class="size-12 rounded-lg bg-slate-100 dark:bg-primary/10 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-slate-600 dark:text-primary" style="">database</span>
+</div>
+<div class="flex-1 min-w-0">
+<p class="font-bold text-sm truncate" style="">2023年10月23日 备份</p>
+<p class="text-slate-500 dark:text-slate-400 text-xs" style="">大小: 1.1 GB • 包含 14,188 个文件</p>
+</div>
+<button class="px-3 py-1.5 rounded-lg border border-primary text-primary text-xs font-bold hover:bg-primary/5 transition-colors shrink-0" style="">
+                        恢复
+                    </button>
+</div>
+<!-- Record Item 3 -->
+<div class="flex items-center gap-4 bg-white dark:bg-primary/5 p-4 rounded-xl border border-primary/10 opacity-75">
+<div class="size-12 rounded-lg bg-slate-100 dark:bg-primary/10 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-slate-600 dark:text-primary" style="">database</span>
+</div>
+<div class="flex-1 min-w-0">
+<p class="font-bold text-sm truncate" style="">2023年10月22日 备份</p>
+<p class="text-slate-500 dark:text-slate-400 text-xs" style="">大小: 1.1 GB • 包含 14,150 个文件</p>
+</div>
+<button class="px-3 py-1.5 rounded-lg border border-primary text-primary text-xs font-bold hover:bg-primary/5 transition-colors shrink-0" style="">
+                        恢复
+                    </button>
+</div>
+</div>
+</section>
+<!-- Storage Info (Extra Detail) -->
+</main>
+<!-- Footer Space -->
+<div class="h-10"></div>
+</body></html>

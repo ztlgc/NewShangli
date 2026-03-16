@@ -3,7 +3,6 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import '../../data/local/drift/app_database.dart';
 import '../../import/default_book_service.dart';
-import '../app_data.dart';
 import '../app_database_scope.dart';
 import '../app_tokens.dart';
 import '../app_scaffold.dart';
@@ -166,7 +165,6 @@ class _BookCardDb extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDefault = book.isDefault == 1;
-    final data = AppDataScope.of(context);
 
     final theme = _parseHexColorOrNull(book.themeColor) ?? AppColors.indigo900;
     final icon = _iconByReasonType(book.reasonType);
@@ -277,11 +275,10 @@ class _BookCardDb extends StatelessWidget {
                 const SizedBox(height: 12),
                 Row(
                   children: [
-                    Builder(
-                      builder: (context) {
-                        final count = isDefault
-                            ? data.records.length
-                            : data.records.where((r) => data.resolveBookId(r.bookId) == book.bookId).length;
+                    StreamBuilder<int>(
+                      stream: db.giftRecordsDao.watchCountInBook(book.bookId),
+                      builder: (context, snapshot) {
+                        final count = snapshot.data ?? 0;
                         return Text(
                           '$count 条记录',
                           style: AppTypography.base(
