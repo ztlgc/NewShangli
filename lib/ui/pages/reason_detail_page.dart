@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
-import '../app_data.dart';
+import '../../data/local/drift/app_database.dart';
+import '../app_database_scope.dart';
 import '../app_tokens.dart';
 import '../app_scaffold.dart';
 import '../components.dart';
@@ -33,6 +34,7 @@ class _ReasonDetailPageState extends State<ReasonDetailPage> {
   bool _editing = false;
   bool _saving = false;
   bool _inited = false;
+  Reason? _reason;
 
   @override
   void initState() {
@@ -47,11 +49,7 @@ class _ReasonDetailPageState extends State<ReasonDetailPage> {
     super.didChangeDependencies();
     if (_inited) return;
     _inited = true;
-    if (widget.id == null) return;
-    final data = AppDataScope.of(context);
-    final reason = data.findReason(widget.id!);
-    _nameCtrl.text = reason?.name ?? '';
-    _descCtrl.text = reason?.description ?? '';
+    _loadReason();
   }
 
   @override
@@ -63,8 +61,8 @@ class _ReasonDetailPageState extends State<ReasonDetailPage> {
 
   @override
   Widget build(BuildContext context) {
-    final data = AppDataScope.of(context);
-    final reason = widget.id == null ? null : data.findReason(widget.id!);
+    final db = AppDatabaseScope.of(context);
+    final reason = _reason;
 
     return AppScaffold(
       backgroundColor: AppColors.surfaceApp,
@@ -192,7 +190,12 @@ class _ReasonDetailPageState extends State<ReasonDetailPage> {
                         ),
                         Switch(
                           value: reason.enabled,
-                          onChanged: _saving ? null : (v) => data.setReasonEnabled(id: reason.id, enabled: v),
+                          onChanged: _saving
+                              ? null
+                              : (v) async {
+                                  await db.reasonsDao.setEnabled(id: reason.reasonId, enabled: v);
+                                  await _loadReason();
+                                },
                         ),
                       ],
                     ),
@@ -214,7 +217,7 @@ class _ReasonDetailPageState extends State<ReasonDetailPage> {
                         ),
                         const SizedBox(height: 6),
                         Text(
-                          _formatTime(reason.updatedAt),
+                          _formatTime(DateTime.fromMillisecondsSinceEpoch(reason.updatedAt)),
                           style: AppTypography.base(
                             fontSize: 14,
                             fontWeight: AppTypography.medium,
@@ -227,7 +230,7 @@ class _ReasonDetailPageState extends State<ReasonDetailPage> {
                 const SizedBox(height: 16),
                 if (widget.id != null)
                   PressableScale(
-                    onTap: _saving ? null : () => _confirmDelete(context, data),
+                    onTap: _saving ? null : () => _confirmDelete(context, db),
                     child: Container(
                       height: 48,
                       decoration: BoxDecoration(
@@ -274,15 +277,29 @@ class _ReasonDetailPageState extends State<ReasonDetailPage> {
     if (form == null) return;
     if (!form.validate()) return;
     setState(() => _saving = true);
-    final data = AppDataScope.of(context);
+    final db = AppDatabaseScope.of(context);
     try {
+      final name = _nameCtrl.text.trim();
+      final description = _descCtrl.text.trim();
+      final all = await db.reasonsDao.listAll();
+      final duplicated = all.any(
+        (e) => e.reasonId != widget.id && e.name.trim().toLowerCase() == name.toLowerCase(),
+      );
+      if (duplicated) {
+        throw ArgumentError.value(name, 'name', '已存在同名事由');
+      }
       if (widget.id == null) {
-        await data.createReason(name: _nameCtrl.text, description: _descCtrl.text);
+        await db.reasonsDao.create(name: name, description: description);
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('已创建')));
         AppNav.pop(context);
       } else {
-        await data.updateReason(id: widget.id!, name: _nameCtrl.text, description: _descCtrl.text);
+        await db.reasonsDao.updateReason(
+          id: widget.id!,
+          name: name,
+          description: description,
+        );
+        await _loadReason();
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('已保存')));
         setState(() => _editing = false);
@@ -295,7 +312,7 @@ class _ReasonDetailPageState extends State<ReasonDetailPage> {
     }
   }
 
-  Future<void> _confirmDelete(BuildContext context, AppData data) async {
+  Future<void> _confirmDelete(BuildContext context, AppDatabase db) async {
     final ok = await showDialog<bool>(
       context: context,
       builder: (context) {
@@ -311,7 +328,7 @@ class _ReasonDetailPageState extends State<ReasonDetailPage> {
     );
     if (ok != true) return;
     try {
-      await data.deleteReason(widget.id!);
+      await db.reasonsDao.deleteById(widget.id!);
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('已删除')));
       AppNav.pop(context);
@@ -319,6 +336,19 @@ class _ReasonDetailPageState extends State<ReasonDetailPage> {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('删除失败：$e')));
     }
+  }
+
+  Future<void> _loadReason() async {
+    final id = widget.id;
+    if (id == null || id.trim().isEmpty) return;
+    final db = AppDatabaseScope.of(context);
+    final row = await db.reasonsDao.findById(id);
+    if (!mounted) return;
+    setState(() {
+      _reason = row;
+      _nameCtrl.text = row?.name ?? '';
+      _descCtrl.text = row?.description ?? '';
+    });
   }
 
   String _formatTime(DateTime dt) {

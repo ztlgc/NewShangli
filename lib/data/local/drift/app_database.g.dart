@@ -3029,6 +3029,1222 @@ class GiftRecordsCompanion extends UpdateCompanion<GiftRecord> {
   }
 }
 
+class $ReasonsTable extends Reasons with TableInfo<$ReasonsTable, Reason> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ReasonsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _reasonIdMeta = const VerificationMeta(
+    'reasonId',
+  );
+  @override
+  late final GeneratedColumn<String> reasonId = GeneratedColumn<String>(
+    'reason_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 1,
+      maxTextLength: 64,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _descriptionMeta = const VerificationMeta(
+    'description',
+  );
+  @override
+  late final GeneratedColumn<String> description = GeneratedColumn<String>(
+    'description',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _enabledMeta = const VerificationMeta(
+    'enabled',
+  );
+  @override
+  late final GeneratedColumn<bool> enabled = GeneratedColumn<bool>(
+    'enabled',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("enabled" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<int> createdAt = GeneratedColumn<int>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL',
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<int> updatedAt = GeneratedColumn<int>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL',
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    reasonId,
+    name,
+    description,
+    enabled,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'reason';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<Reason> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('reason_id')) {
+      context.handle(
+        _reasonIdMeta,
+        reasonId.isAcceptableOrUnknown(data['reason_id']!, _reasonIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_reasonIdMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('description')) {
+      context.handle(
+        _descriptionMeta,
+        description.isAcceptableOrUnknown(
+          data['description']!,
+          _descriptionMeta,
+        ),
+      );
+    }
+    if (data.containsKey('enabled')) {
+      context.handle(
+        _enabledMeta,
+        enabled.isAcceptableOrUnknown(data['enabled']!, _enabledMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {reasonId};
+  @override
+  Reason map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return Reason(
+      reasonId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}reason_id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      description: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}description'],
+      ),
+      enabled: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}enabled'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $ReasonsTable createAlias(String alias) {
+    return $ReasonsTable(attachedDatabase, alias);
+  }
+}
+
+class Reason extends DataClass implements Insertable<Reason> {
+  final String reasonId;
+  final String name;
+  final String? description;
+  final bool enabled;
+  final int createdAt;
+  final int updatedAt;
+  const Reason({
+    required this.reasonId,
+    required this.name,
+    this.description,
+    required this.enabled,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['reason_id'] = Variable<String>(reasonId);
+    map['name'] = Variable<String>(name);
+    if (!nullToAbsent || description != null) {
+      map['description'] = Variable<String>(description);
+    }
+    map['enabled'] = Variable<bool>(enabled);
+    map['created_at'] = Variable<int>(createdAt);
+    map['updated_at'] = Variable<int>(updatedAt);
+    return map;
+  }
+
+  ReasonsCompanion toCompanion(bool nullToAbsent) {
+    return ReasonsCompanion(
+      reasonId: Value(reasonId),
+      name: Value(name),
+      description: description == null && nullToAbsent
+          ? const Value.absent()
+          : Value(description),
+      enabled: Value(enabled),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory Reason.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return Reason(
+      reasonId: serializer.fromJson<String>(json['reasonId']),
+      name: serializer.fromJson<String>(json['name']),
+      description: serializer.fromJson<String?>(json['description']),
+      enabled: serializer.fromJson<bool>(json['enabled']),
+      createdAt: serializer.fromJson<int>(json['createdAt']),
+      updatedAt: serializer.fromJson<int>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'reasonId': serializer.toJson<String>(reasonId),
+      'name': serializer.toJson<String>(name),
+      'description': serializer.toJson<String?>(description),
+      'enabled': serializer.toJson<bool>(enabled),
+      'createdAt': serializer.toJson<int>(createdAt),
+      'updatedAt': serializer.toJson<int>(updatedAt),
+    };
+  }
+
+  Reason copyWith({
+    String? reasonId,
+    String? name,
+    Value<String?> description = const Value.absent(),
+    bool? enabled,
+    int? createdAt,
+    int? updatedAt,
+  }) => Reason(
+    reasonId: reasonId ?? this.reasonId,
+    name: name ?? this.name,
+    description: description.present ? description.value : this.description,
+    enabled: enabled ?? this.enabled,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  Reason copyWithCompanion(ReasonsCompanion data) {
+    return Reason(
+      reasonId: data.reasonId.present ? data.reasonId.value : this.reasonId,
+      name: data.name.present ? data.name.value : this.name,
+      description: data.description.present
+          ? data.description.value
+          : this.description,
+      enabled: data.enabled.present ? data.enabled.value : this.enabled,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('Reason(')
+          ..write('reasonId: $reasonId, ')
+          ..write('name: $name, ')
+          ..write('description: $description, ')
+          ..write('enabled: $enabled, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(reasonId, name, description, enabled, createdAt, updatedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is Reason &&
+          other.reasonId == this.reasonId &&
+          other.name == this.name &&
+          other.description == this.description &&
+          other.enabled == this.enabled &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class ReasonsCompanion extends UpdateCompanion<Reason> {
+  final Value<String> reasonId;
+  final Value<String> name;
+  final Value<String?> description;
+  final Value<bool> enabled;
+  final Value<int> createdAt;
+  final Value<int> updatedAt;
+  final Value<int> rowid;
+  const ReasonsCompanion({
+    this.reasonId = const Value.absent(),
+    this.name = const Value.absent(),
+    this.description = const Value.absent(),
+    this.enabled = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  ReasonsCompanion.insert({
+    required String reasonId,
+    required String name,
+    this.description = const Value.absent(),
+    this.enabled = const Value.absent(),
+    required int createdAt,
+    required int updatedAt,
+    this.rowid = const Value.absent(),
+  }) : reasonId = Value(reasonId),
+       name = Value(name),
+       createdAt = Value(createdAt),
+       updatedAt = Value(updatedAt);
+  static Insertable<Reason> custom({
+    Expression<String>? reasonId,
+    Expression<String>? name,
+    Expression<String>? description,
+    Expression<bool>? enabled,
+    Expression<int>? createdAt,
+    Expression<int>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (reasonId != null) 'reason_id': reasonId,
+      if (name != null) 'name': name,
+      if (description != null) 'description': description,
+      if (enabled != null) 'enabled': enabled,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  ReasonsCompanion copyWith({
+    Value<String>? reasonId,
+    Value<String>? name,
+    Value<String?>? description,
+    Value<bool>? enabled,
+    Value<int>? createdAt,
+    Value<int>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return ReasonsCompanion(
+      reasonId: reasonId ?? this.reasonId,
+      name: name ?? this.name,
+      description: description ?? this.description,
+      enabled: enabled ?? this.enabled,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (reasonId.present) {
+      map['reason_id'] = Variable<String>(reasonId.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (description.present) {
+      map['description'] = Variable<String>(description.value);
+    }
+    if (enabled.present) {
+      map['enabled'] = Variable<bool>(enabled.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<int>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<int>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ReasonsCompanion(')
+          ..write('reasonId: $reasonId, ')
+          ..write('name: $name, ')
+          ..write('description: $description, ')
+          ..write('enabled: $enabled, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $RelationTypesTable extends RelationTypes
+    with TableInfo<$RelationTypesTable, RelationType> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $RelationTypesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _typeIdMeta = const VerificationMeta('typeId');
+  @override
+  late final GeneratedColumn<String> typeId = GeneratedColumn<String>(
+    'type_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 1,
+      maxTextLength: 64,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<int> createdAt = GeneratedColumn<int>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL',
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<int> updatedAt = GeneratedColumn<int>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL',
+  );
+  @override
+  List<GeneratedColumn> get $columns => [typeId, name, createdAt, updatedAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'relation_type';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<RelationType> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('type_id')) {
+      context.handle(
+        _typeIdMeta,
+        typeId.isAcceptableOrUnknown(data['type_id']!, _typeIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_typeIdMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {typeId};
+  @override
+  RelationType map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return RelationType(
+      typeId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}type_id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $RelationTypesTable createAlias(String alias) {
+    return $RelationTypesTable(attachedDatabase, alias);
+  }
+}
+
+class RelationType extends DataClass implements Insertable<RelationType> {
+  final String typeId;
+  final String name;
+  final int createdAt;
+  final int updatedAt;
+  const RelationType({
+    required this.typeId,
+    required this.name,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['type_id'] = Variable<String>(typeId);
+    map['name'] = Variable<String>(name);
+    map['created_at'] = Variable<int>(createdAt);
+    map['updated_at'] = Variable<int>(updatedAt);
+    return map;
+  }
+
+  RelationTypesCompanion toCompanion(bool nullToAbsent) {
+    return RelationTypesCompanion(
+      typeId: Value(typeId),
+      name: Value(name),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory RelationType.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return RelationType(
+      typeId: serializer.fromJson<String>(json['typeId']),
+      name: serializer.fromJson<String>(json['name']),
+      createdAt: serializer.fromJson<int>(json['createdAt']),
+      updatedAt: serializer.fromJson<int>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'typeId': serializer.toJson<String>(typeId),
+      'name': serializer.toJson<String>(name),
+      'createdAt': serializer.toJson<int>(createdAt),
+      'updatedAt': serializer.toJson<int>(updatedAt),
+    };
+  }
+
+  RelationType copyWith({
+    String? typeId,
+    String? name,
+    int? createdAt,
+    int? updatedAt,
+  }) => RelationType(
+    typeId: typeId ?? this.typeId,
+    name: name ?? this.name,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  RelationType copyWithCompanion(RelationTypesCompanion data) {
+    return RelationType(
+      typeId: data.typeId.present ? data.typeId.value : this.typeId,
+      name: data.name.present ? data.name.value : this.name,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RelationType(')
+          ..write('typeId: $typeId, ')
+          ..write('name: $name, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(typeId, name, createdAt, updatedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is RelationType &&
+          other.typeId == this.typeId &&
+          other.name == this.name &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class RelationTypesCompanion extends UpdateCompanion<RelationType> {
+  final Value<String> typeId;
+  final Value<String> name;
+  final Value<int> createdAt;
+  final Value<int> updatedAt;
+  final Value<int> rowid;
+  const RelationTypesCompanion({
+    this.typeId = const Value.absent(),
+    this.name = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  RelationTypesCompanion.insert({
+    required String typeId,
+    required String name,
+    required int createdAt,
+    required int updatedAt,
+    this.rowid = const Value.absent(),
+  }) : typeId = Value(typeId),
+       name = Value(name),
+       createdAt = Value(createdAt),
+       updatedAt = Value(updatedAt);
+  static Insertable<RelationType> custom({
+    Expression<String>? typeId,
+    Expression<String>? name,
+    Expression<int>? createdAt,
+    Expression<int>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (typeId != null) 'type_id': typeId,
+      if (name != null) 'name': name,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  RelationTypesCompanion copyWith({
+    Value<String>? typeId,
+    Value<String>? name,
+    Value<int>? createdAt,
+    Value<int>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return RelationTypesCompanion(
+      typeId: typeId ?? this.typeId,
+      name: name ?? this.name,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (typeId.present) {
+      map['type_id'] = Variable<String>(typeId.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<int>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<int>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RelationTypesCompanion(')
+          ..write('typeId: $typeId, ')
+          ..write('name: $name, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $ContactRelationsTable extends ContactRelations
+    with TableInfo<$ContactRelationsTable, ContactRelation> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ContactRelationsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _relationIdMeta = const VerificationMeta(
+    'relationId',
+  );
+  @override
+  late final GeneratedColumn<String> relationId = GeneratedColumn<String>(
+    'relation_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _personAIdMeta = const VerificationMeta(
+    'personAId',
+  );
+  @override
+  late final GeneratedColumn<String> personAId = GeneratedColumn<String>(
+    'person_a_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints:
+        'NOT NULL REFERENCES person(person_id) ON DELETE CASCADE',
+  );
+  static const VerificationMeta _personBIdMeta = const VerificationMeta(
+    'personBId',
+  );
+  @override
+  late final GeneratedColumn<String> personBId = GeneratedColumn<String>(
+    'person_b_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints:
+        'NOT NULL REFERENCES person(person_id) ON DELETE CASCADE',
+  );
+  static const VerificationMeta _typeIdMeta = const VerificationMeta('typeId');
+  @override
+  late final GeneratedColumn<String> typeId = GeneratedColumn<String>(
+    'type_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints:
+        'NOT NULL REFERENCES relation_type(type_id) ON DELETE RESTRICT',
+  );
+  static const VerificationMeta _noteMeta = const VerificationMeta('note');
+  @override
+  late final GeneratedColumn<String> note = GeneratedColumn<String>(
+    'note',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<int> createdAt = GeneratedColumn<int>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL',
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<int> updatedAt = GeneratedColumn<int>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL',
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    relationId,
+    personAId,
+    personBId,
+    typeId,
+    note,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'contact_relation';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ContactRelation> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('relation_id')) {
+      context.handle(
+        _relationIdMeta,
+        relationId.isAcceptableOrUnknown(data['relation_id']!, _relationIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_relationIdMeta);
+    }
+    if (data.containsKey('person_a_id')) {
+      context.handle(
+        _personAIdMeta,
+        personAId.isAcceptableOrUnknown(data['person_a_id']!, _personAIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_personAIdMeta);
+    }
+    if (data.containsKey('person_b_id')) {
+      context.handle(
+        _personBIdMeta,
+        personBId.isAcceptableOrUnknown(data['person_b_id']!, _personBIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_personBIdMeta);
+    }
+    if (data.containsKey('type_id')) {
+      context.handle(
+        _typeIdMeta,
+        typeId.isAcceptableOrUnknown(data['type_id']!, _typeIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_typeIdMeta);
+    }
+    if (data.containsKey('note')) {
+      context.handle(
+        _noteMeta,
+        note.isAcceptableOrUnknown(data['note']!, _noteMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {relationId};
+  @override
+  ContactRelation map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ContactRelation(
+      relationId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}relation_id'],
+      )!,
+      personAId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}person_a_id'],
+      )!,
+      personBId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}person_b_id'],
+      )!,
+      typeId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}type_id'],
+      )!,
+      note: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}note'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $ContactRelationsTable createAlias(String alias) {
+    return $ContactRelationsTable(attachedDatabase, alias);
+  }
+}
+
+class ContactRelation extends DataClass implements Insertable<ContactRelation> {
+  final String relationId;
+  final String personAId;
+  final String personBId;
+  final String typeId;
+  final String? note;
+  final int createdAt;
+  final int updatedAt;
+  const ContactRelation({
+    required this.relationId,
+    required this.personAId,
+    required this.personBId,
+    required this.typeId,
+    this.note,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['relation_id'] = Variable<String>(relationId);
+    map['person_a_id'] = Variable<String>(personAId);
+    map['person_b_id'] = Variable<String>(personBId);
+    map['type_id'] = Variable<String>(typeId);
+    if (!nullToAbsent || note != null) {
+      map['note'] = Variable<String>(note);
+    }
+    map['created_at'] = Variable<int>(createdAt);
+    map['updated_at'] = Variable<int>(updatedAt);
+    return map;
+  }
+
+  ContactRelationsCompanion toCompanion(bool nullToAbsent) {
+    return ContactRelationsCompanion(
+      relationId: Value(relationId),
+      personAId: Value(personAId),
+      personBId: Value(personBId),
+      typeId: Value(typeId),
+      note: note == null && nullToAbsent ? const Value.absent() : Value(note),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory ContactRelation.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ContactRelation(
+      relationId: serializer.fromJson<String>(json['relationId']),
+      personAId: serializer.fromJson<String>(json['personAId']),
+      personBId: serializer.fromJson<String>(json['personBId']),
+      typeId: serializer.fromJson<String>(json['typeId']),
+      note: serializer.fromJson<String?>(json['note']),
+      createdAt: serializer.fromJson<int>(json['createdAt']),
+      updatedAt: serializer.fromJson<int>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'relationId': serializer.toJson<String>(relationId),
+      'personAId': serializer.toJson<String>(personAId),
+      'personBId': serializer.toJson<String>(personBId),
+      'typeId': serializer.toJson<String>(typeId),
+      'note': serializer.toJson<String?>(note),
+      'createdAt': serializer.toJson<int>(createdAt),
+      'updatedAt': serializer.toJson<int>(updatedAt),
+    };
+  }
+
+  ContactRelation copyWith({
+    String? relationId,
+    String? personAId,
+    String? personBId,
+    String? typeId,
+    Value<String?> note = const Value.absent(),
+    int? createdAt,
+    int? updatedAt,
+  }) => ContactRelation(
+    relationId: relationId ?? this.relationId,
+    personAId: personAId ?? this.personAId,
+    personBId: personBId ?? this.personBId,
+    typeId: typeId ?? this.typeId,
+    note: note.present ? note.value : this.note,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  ContactRelation copyWithCompanion(ContactRelationsCompanion data) {
+    return ContactRelation(
+      relationId: data.relationId.present
+          ? data.relationId.value
+          : this.relationId,
+      personAId: data.personAId.present ? data.personAId.value : this.personAId,
+      personBId: data.personBId.present ? data.personBId.value : this.personBId,
+      typeId: data.typeId.present ? data.typeId.value : this.typeId,
+      note: data.note.present ? data.note.value : this.note,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ContactRelation(')
+          ..write('relationId: $relationId, ')
+          ..write('personAId: $personAId, ')
+          ..write('personBId: $personBId, ')
+          ..write('typeId: $typeId, ')
+          ..write('note: $note, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    relationId,
+    personAId,
+    personBId,
+    typeId,
+    note,
+    createdAt,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ContactRelation &&
+          other.relationId == this.relationId &&
+          other.personAId == this.personAId &&
+          other.personBId == this.personBId &&
+          other.typeId == this.typeId &&
+          other.note == this.note &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class ContactRelationsCompanion extends UpdateCompanion<ContactRelation> {
+  final Value<String> relationId;
+  final Value<String> personAId;
+  final Value<String> personBId;
+  final Value<String> typeId;
+  final Value<String?> note;
+  final Value<int> createdAt;
+  final Value<int> updatedAt;
+  final Value<int> rowid;
+  const ContactRelationsCompanion({
+    this.relationId = const Value.absent(),
+    this.personAId = const Value.absent(),
+    this.personBId = const Value.absent(),
+    this.typeId = const Value.absent(),
+    this.note = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  ContactRelationsCompanion.insert({
+    required String relationId,
+    required String personAId,
+    required String personBId,
+    required String typeId,
+    this.note = const Value.absent(),
+    required int createdAt,
+    required int updatedAt,
+    this.rowid = const Value.absent(),
+  }) : relationId = Value(relationId),
+       personAId = Value(personAId),
+       personBId = Value(personBId),
+       typeId = Value(typeId),
+       createdAt = Value(createdAt),
+       updatedAt = Value(updatedAt);
+  static Insertable<ContactRelation> custom({
+    Expression<String>? relationId,
+    Expression<String>? personAId,
+    Expression<String>? personBId,
+    Expression<String>? typeId,
+    Expression<String>? note,
+    Expression<int>? createdAt,
+    Expression<int>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (relationId != null) 'relation_id': relationId,
+      if (personAId != null) 'person_a_id': personAId,
+      if (personBId != null) 'person_b_id': personBId,
+      if (typeId != null) 'type_id': typeId,
+      if (note != null) 'note': note,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  ContactRelationsCompanion copyWith({
+    Value<String>? relationId,
+    Value<String>? personAId,
+    Value<String>? personBId,
+    Value<String>? typeId,
+    Value<String?>? note,
+    Value<int>? createdAt,
+    Value<int>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return ContactRelationsCompanion(
+      relationId: relationId ?? this.relationId,
+      personAId: personAId ?? this.personAId,
+      personBId: personBId ?? this.personBId,
+      typeId: typeId ?? this.typeId,
+      note: note ?? this.note,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (relationId.present) {
+      map['relation_id'] = Variable<String>(relationId.value);
+    }
+    if (personAId.present) {
+      map['person_a_id'] = Variable<String>(personAId.value);
+    }
+    if (personBId.present) {
+      map['person_b_id'] = Variable<String>(personBId.value);
+    }
+    if (typeId.present) {
+      map['type_id'] = Variable<String>(typeId.value);
+    }
+    if (note.present) {
+      map['note'] = Variable<String>(note.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<int>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<int>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ContactRelationsCompanion(')
+          ..write('relationId: $relationId, ')
+          ..write('personAId: $personAId, ')
+          ..write('personBId: $personBId, ')
+          ..write('typeId: $typeId, ')
+          ..write('note: $note, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $ReminderTypesTable extends ReminderTypes
     with TableInfo<$ReminderTypesTable, ReminderType> {
   @override
@@ -4613,6 +5829,11 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $PersonsTable persons = $PersonsTable(this);
   late final $EventRemindersTable eventReminders = $EventRemindersTable(this);
   late final $GiftRecordsTable giftRecords = $GiftRecordsTable(this);
+  late final $ReasonsTable reasons = $ReasonsTable(this);
+  late final $RelationTypesTable relationTypes = $RelationTypesTable(this);
+  late final $ContactRelationsTable contactRelations = $ContactRelationsTable(
+    this,
+  );
   late final $ReminderTypesTable reminderTypes = $ReminderTypesTable(this);
   late final $DataImportJobsTable dataImportJobs = $DataImportJobsTable(this);
   late final AccountBooksDao accountBooksDao = AccountBooksDao(
@@ -4623,6 +5844,13 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     this as AppDatabase,
   );
   late final EventRemindersDao eventRemindersDao = EventRemindersDao(
+    this as AppDatabase,
+  );
+  late final ReasonsDao reasonsDao = ReasonsDao(this as AppDatabase);
+  late final RelationTypesDao relationTypesDao = RelationTypesDao(
+    this as AppDatabase,
+  );
+  late final ContactRelationsDao contactRelationsDao = ContactRelationsDao(
     this as AppDatabase,
   );
   late final ReminderTypesDao reminderTypesDao = ReminderTypesDao(
@@ -4640,6 +5868,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     persons,
     eventReminders,
     giftRecords,
+    reasons,
+    relationTypes,
+    contactRelations,
     reminderTypes,
     dataImportJobs,
   ];
@@ -4686,6 +5917,20 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         limitUpdateKind: UpdateKind.delete,
       ),
       result: [TableUpdate('gift_record', kind: UpdateKind.update)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'person',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('contact_relation', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'person',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('contact_relation', kind: UpdateKind.delete)],
     ),
     WritePropagation(
       on: TableUpdateQuery.onTableName(
@@ -7565,6 +8810,1072 @@ typedef $$GiftRecordsTableProcessedTableManager =
       GiftRecord,
       PrefetchHooks Function({bool bookId, bool personId, bool reminderId})
     >;
+typedef $$ReasonsTableCreateCompanionBuilder =
+    ReasonsCompanion Function({
+      required String reasonId,
+      required String name,
+      Value<String?> description,
+      Value<bool> enabled,
+      required int createdAt,
+      required int updatedAt,
+      Value<int> rowid,
+    });
+typedef $$ReasonsTableUpdateCompanionBuilder =
+    ReasonsCompanion Function({
+      Value<String> reasonId,
+      Value<String> name,
+      Value<String?> description,
+      Value<bool> enabled,
+      Value<int> createdAt,
+      Value<int> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$ReasonsTableFilterComposer
+    extends Composer<_$AppDatabase, $ReasonsTable> {
+  $$ReasonsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get reasonId => $composableBuilder(
+    column: $table.reasonId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get enabled => $composableBuilder(
+    column: $table.enabled,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$ReasonsTableOrderingComposer
+    extends Composer<_$AppDatabase, $ReasonsTable> {
+  $$ReasonsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get reasonId => $composableBuilder(
+    column: $table.reasonId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get enabled => $composableBuilder(
+    column: $table.enabled,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$ReasonsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ReasonsTable> {
+  $$ReasonsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get reasonId =>
+      $composableBuilder(column: $table.reasonId, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get enabled =>
+      $composableBuilder(column: $table.enabled, builder: (column) => column);
+
+  GeneratedColumn<int> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<int> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$ReasonsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $ReasonsTable,
+          Reason,
+          $$ReasonsTableFilterComposer,
+          $$ReasonsTableOrderingComposer,
+          $$ReasonsTableAnnotationComposer,
+          $$ReasonsTableCreateCompanionBuilder,
+          $$ReasonsTableUpdateCompanionBuilder,
+          (Reason, BaseReferences<_$AppDatabase, $ReasonsTable, Reason>),
+          Reason,
+          PrefetchHooks Function()
+        > {
+  $$ReasonsTableTableManager(_$AppDatabase db, $ReasonsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ReasonsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ReasonsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ReasonsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> reasonId = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<String?> description = const Value.absent(),
+                Value<bool> enabled = const Value.absent(),
+                Value<int> createdAt = const Value.absent(),
+                Value<int> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ReasonsCompanion(
+                reasonId: reasonId,
+                name: name,
+                description: description,
+                enabled: enabled,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String reasonId,
+                required String name,
+                Value<String?> description = const Value.absent(),
+                Value<bool> enabled = const Value.absent(),
+                required int createdAt,
+                required int updatedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => ReasonsCompanion.insert(
+                reasonId: reasonId,
+                name: name,
+                description: description,
+                enabled: enabled,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$ReasonsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $ReasonsTable,
+      Reason,
+      $$ReasonsTableFilterComposer,
+      $$ReasonsTableOrderingComposer,
+      $$ReasonsTableAnnotationComposer,
+      $$ReasonsTableCreateCompanionBuilder,
+      $$ReasonsTableUpdateCompanionBuilder,
+      (Reason, BaseReferences<_$AppDatabase, $ReasonsTable, Reason>),
+      Reason,
+      PrefetchHooks Function()
+    >;
+typedef $$RelationTypesTableCreateCompanionBuilder =
+    RelationTypesCompanion Function({
+      required String typeId,
+      required String name,
+      required int createdAt,
+      required int updatedAt,
+      Value<int> rowid,
+    });
+typedef $$RelationTypesTableUpdateCompanionBuilder =
+    RelationTypesCompanion Function({
+      Value<String> typeId,
+      Value<String> name,
+      Value<int> createdAt,
+      Value<int> updatedAt,
+      Value<int> rowid,
+    });
+
+final class $$RelationTypesTableReferences
+    extends BaseReferences<_$AppDatabase, $RelationTypesTable, RelationType> {
+  $$RelationTypesTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static MultiTypedResultKey<$ContactRelationsTable, List<ContactRelation>>
+  _contactRelationsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.contactRelations,
+    aliasName: $_aliasNameGenerator(
+      db.relationTypes.typeId,
+      db.contactRelations.typeId,
+    ),
+  );
+
+  $$ContactRelationsTableProcessedTableManager get contactRelationsRefs {
+    final manager =
+        $$ContactRelationsTableTableManager($_db, $_db.contactRelations).filter(
+          (f) => f.typeId.typeId.sqlEquals($_itemColumn<String>('type_id')!),
+        );
+
+    final cache = $_typedResult.readTableOrNull(
+      _contactRelationsRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+}
+
+class $$RelationTypesTableFilterComposer
+    extends Composer<_$AppDatabase, $RelationTypesTable> {
+  $$RelationTypesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get typeId => $composableBuilder(
+    column: $table.typeId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  Expression<bool> contactRelationsRefs(
+    Expression<bool> Function($$ContactRelationsTableFilterComposer f) f,
+  ) {
+    final $$ContactRelationsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.typeId,
+      referencedTable: $db.contactRelations,
+      getReferencedColumn: (t) => t.typeId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ContactRelationsTableFilterComposer(
+            $db: $db,
+            $table: $db.contactRelations,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$RelationTypesTableOrderingComposer
+    extends Composer<_$AppDatabase, $RelationTypesTable> {
+  $$RelationTypesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get typeId => $composableBuilder(
+    column: $table.typeId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$RelationTypesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $RelationTypesTable> {
+  $$RelationTypesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get typeId =>
+      $composableBuilder(column: $table.typeId, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<int> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<int> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  Expression<T> contactRelationsRefs<T extends Object>(
+    Expression<T> Function($$ContactRelationsTableAnnotationComposer a) f,
+  ) {
+    final $$ContactRelationsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.typeId,
+      referencedTable: $db.contactRelations,
+      getReferencedColumn: (t) => t.typeId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ContactRelationsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.contactRelations,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$RelationTypesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $RelationTypesTable,
+          RelationType,
+          $$RelationTypesTableFilterComposer,
+          $$RelationTypesTableOrderingComposer,
+          $$RelationTypesTableAnnotationComposer,
+          $$RelationTypesTableCreateCompanionBuilder,
+          $$RelationTypesTableUpdateCompanionBuilder,
+          (RelationType, $$RelationTypesTableReferences),
+          RelationType,
+          PrefetchHooks Function({bool contactRelationsRefs})
+        > {
+  $$RelationTypesTableTableManager(_$AppDatabase db, $RelationTypesTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$RelationTypesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$RelationTypesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$RelationTypesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> typeId = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<int> createdAt = const Value.absent(),
+                Value<int> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => RelationTypesCompanion(
+                typeId: typeId,
+                name: name,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String typeId,
+                required String name,
+                required int createdAt,
+                required int updatedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => RelationTypesCompanion.insert(
+                typeId: typeId,
+                name: name,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$RelationTypesTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({contactRelationsRefs = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [
+                if (contactRelationsRefs) db.contactRelations,
+              ],
+              addJoins: null,
+              getPrefetchedDataCallback: (items) async {
+                return [
+                  if (contactRelationsRefs)
+                    await $_getPrefetchedData<
+                      RelationType,
+                      $RelationTypesTable,
+                      ContactRelation
+                    >(
+                      currentTable: table,
+                      referencedTable: $$RelationTypesTableReferences
+                          ._contactRelationsRefsTable(db),
+                      managerFromTypedResult: (p0) =>
+                          $$RelationTypesTableReferences(
+                            db,
+                            table,
+                            p0,
+                          ).contactRelationsRefs,
+                      referencedItemsForCurrentItem: (item, referencedItems) =>
+                          referencedItems.where((e) => e.typeId == item.typeId),
+                      typedResults: items,
+                    ),
+                ];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$RelationTypesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $RelationTypesTable,
+      RelationType,
+      $$RelationTypesTableFilterComposer,
+      $$RelationTypesTableOrderingComposer,
+      $$RelationTypesTableAnnotationComposer,
+      $$RelationTypesTableCreateCompanionBuilder,
+      $$RelationTypesTableUpdateCompanionBuilder,
+      (RelationType, $$RelationTypesTableReferences),
+      RelationType,
+      PrefetchHooks Function({bool contactRelationsRefs})
+    >;
+typedef $$ContactRelationsTableCreateCompanionBuilder =
+    ContactRelationsCompanion Function({
+      required String relationId,
+      required String personAId,
+      required String personBId,
+      required String typeId,
+      Value<String?> note,
+      required int createdAt,
+      required int updatedAt,
+      Value<int> rowid,
+    });
+typedef $$ContactRelationsTableUpdateCompanionBuilder =
+    ContactRelationsCompanion Function({
+      Value<String> relationId,
+      Value<String> personAId,
+      Value<String> personBId,
+      Value<String> typeId,
+      Value<String?> note,
+      Value<int> createdAt,
+      Value<int> updatedAt,
+      Value<int> rowid,
+    });
+
+final class $$ContactRelationsTableReferences
+    extends
+        BaseReferences<_$AppDatabase, $ContactRelationsTable, ContactRelation> {
+  $$ContactRelationsTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $PersonsTable _personAIdTable(_$AppDatabase db) =>
+      db.persons.createAlias(
+        $_aliasNameGenerator(
+          db.contactRelations.personAId,
+          db.persons.personId,
+        ),
+      );
+
+  $$PersonsTableProcessedTableManager get personAId {
+    final $_column = $_itemColumn<String>('person_a_id')!;
+
+    final manager = $$PersonsTableTableManager(
+      $_db,
+      $_db.persons,
+    ).filter((f) => f.personId.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_personAIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static $PersonsTable _personBIdTable(_$AppDatabase db) =>
+      db.persons.createAlias(
+        $_aliasNameGenerator(
+          db.contactRelations.personBId,
+          db.persons.personId,
+        ),
+      );
+
+  $$PersonsTableProcessedTableManager get personBId {
+    final $_column = $_itemColumn<String>('person_b_id')!;
+
+    final manager = $$PersonsTableTableManager(
+      $_db,
+      $_db.persons,
+    ).filter((f) => f.personId.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_personBIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static $RelationTypesTable _typeIdTable(_$AppDatabase db) =>
+      db.relationTypes.createAlias(
+        $_aliasNameGenerator(
+          db.contactRelations.typeId,
+          db.relationTypes.typeId,
+        ),
+      );
+
+  $$RelationTypesTableProcessedTableManager get typeId {
+    final $_column = $_itemColumn<String>('type_id')!;
+
+    final manager = $$RelationTypesTableTableManager(
+      $_db,
+      $_db.relationTypes,
+    ).filter((f) => f.typeId.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_typeIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$ContactRelationsTableFilterComposer
+    extends Composer<_$AppDatabase, $ContactRelationsTable> {
+  $$ContactRelationsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get relationId => $composableBuilder(
+    column: $table.relationId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get note => $composableBuilder(
+    column: $table.note,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$PersonsTableFilterComposer get personAId {
+    final $$PersonsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.personAId,
+      referencedTable: $db.persons,
+      getReferencedColumn: (t) => t.personId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PersonsTableFilterComposer(
+            $db: $db,
+            $table: $db.persons,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$PersonsTableFilterComposer get personBId {
+    final $$PersonsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.personBId,
+      referencedTable: $db.persons,
+      getReferencedColumn: (t) => t.personId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PersonsTableFilterComposer(
+            $db: $db,
+            $table: $db.persons,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$RelationTypesTableFilterComposer get typeId {
+    final $$RelationTypesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.typeId,
+      referencedTable: $db.relationTypes,
+      getReferencedColumn: (t) => t.typeId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$RelationTypesTableFilterComposer(
+            $db: $db,
+            $table: $db.relationTypes,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$ContactRelationsTableOrderingComposer
+    extends Composer<_$AppDatabase, $ContactRelationsTable> {
+  $$ContactRelationsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get relationId => $composableBuilder(
+    column: $table.relationId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get note => $composableBuilder(
+    column: $table.note,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$PersonsTableOrderingComposer get personAId {
+    final $$PersonsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.personAId,
+      referencedTable: $db.persons,
+      getReferencedColumn: (t) => t.personId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PersonsTableOrderingComposer(
+            $db: $db,
+            $table: $db.persons,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$PersonsTableOrderingComposer get personBId {
+    final $$PersonsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.personBId,
+      referencedTable: $db.persons,
+      getReferencedColumn: (t) => t.personId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PersonsTableOrderingComposer(
+            $db: $db,
+            $table: $db.persons,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$RelationTypesTableOrderingComposer get typeId {
+    final $$RelationTypesTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.typeId,
+      referencedTable: $db.relationTypes,
+      getReferencedColumn: (t) => t.typeId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$RelationTypesTableOrderingComposer(
+            $db: $db,
+            $table: $db.relationTypes,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$ContactRelationsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ContactRelationsTable> {
+  $$ContactRelationsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get relationId => $composableBuilder(
+    column: $table.relationId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get note =>
+      $composableBuilder(column: $table.note, builder: (column) => column);
+
+  GeneratedColumn<int> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<int> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  $$PersonsTableAnnotationComposer get personAId {
+    final $$PersonsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.personAId,
+      referencedTable: $db.persons,
+      getReferencedColumn: (t) => t.personId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PersonsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.persons,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$PersonsTableAnnotationComposer get personBId {
+    final $$PersonsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.personBId,
+      referencedTable: $db.persons,
+      getReferencedColumn: (t) => t.personId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PersonsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.persons,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$RelationTypesTableAnnotationComposer get typeId {
+    final $$RelationTypesTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.typeId,
+      referencedTable: $db.relationTypes,
+      getReferencedColumn: (t) => t.typeId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$RelationTypesTableAnnotationComposer(
+            $db: $db,
+            $table: $db.relationTypes,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$ContactRelationsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $ContactRelationsTable,
+          ContactRelation,
+          $$ContactRelationsTableFilterComposer,
+          $$ContactRelationsTableOrderingComposer,
+          $$ContactRelationsTableAnnotationComposer,
+          $$ContactRelationsTableCreateCompanionBuilder,
+          $$ContactRelationsTableUpdateCompanionBuilder,
+          (ContactRelation, $$ContactRelationsTableReferences),
+          ContactRelation,
+          PrefetchHooks Function({bool personAId, bool personBId, bool typeId})
+        > {
+  $$ContactRelationsTableTableManager(
+    _$AppDatabase db,
+    $ContactRelationsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ContactRelationsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ContactRelationsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ContactRelationsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> relationId = const Value.absent(),
+                Value<String> personAId = const Value.absent(),
+                Value<String> personBId = const Value.absent(),
+                Value<String> typeId = const Value.absent(),
+                Value<String?> note = const Value.absent(),
+                Value<int> createdAt = const Value.absent(),
+                Value<int> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ContactRelationsCompanion(
+                relationId: relationId,
+                personAId: personAId,
+                personBId: personBId,
+                typeId: typeId,
+                note: note,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String relationId,
+                required String personAId,
+                required String personBId,
+                required String typeId,
+                Value<String?> note = const Value.absent(),
+                required int createdAt,
+                required int updatedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => ContactRelationsCompanion.insert(
+                relationId: relationId,
+                personAId: personAId,
+                personBId: personBId,
+                typeId: typeId,
+                note: note,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$ContactRelationsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback:
+              ({personAId = false, personBId = false, typeId = false}) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [],
+                  addJoins:
+                      <
+                        T extends TableManagerState<
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic
+                        >
+                      >(state) {
+                        if (personAId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.personAId,
+                                    referencedTable:
+                                        $$ContactRelationsTableReferences
+                                            ._personAIdTable(db),
+                                    referencedColumn:
+                                        $$ContactRelationsTableReferences
+                                            ._personAIdTable(db)
+                                            .personId,
+                                  )
+                                  as T;
+                        }
+                        if (personBId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.personBId,
+                                    referencedTable:
+                                        $$ContactRelationsTableReferences
+                                            ._personBIdTable(db),
+                                    referencedColumn:
+                                        $$ContactRelationsTableReferences
+                                            ._personBIdTable(db)
+                                            .personId,
+                                  )
+                                  as T;
+                        }
+                        if (typeId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.typeId,
+                                    referencedTable:
+                                        $$ContactRelationsTableReferences
+                                            ._typeIdTable(db),
+                                    referencedColumn:
+                                        $$ContactRelationsTableReferences
+                                            ._typeIdTable(db)
+                                            .typeId,
+                                  )
+                                  as T;
+                        }
+
+                        return state;
+                      },
+                  getPrefetchedDataCallback: (items) async {
+                    return [];
+                  },
+                );
+              },
+        ),
+      );
+}
+
+typedef $$ContactRelationsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $ContactRelationsTable,
+      ContactRelation,
+      $$ContactRelationsTableFilterComposer,
+      $$ContactRelationsTableOrderingComposer,
+      $$ContactRelationsTableAnnotationComposer,
+      $$ContactRelationsTableCreateCompanionBuilder,
+      $$ContactRelationsTableUpdateCompanionBuilder,
+      (ContactRelation, $$ContactRelationsTableReferences),
+      ContactRelation,
+      PrefetchHooks Function({bool personAId, bool personBId, bool typeId})
+    >;
 typedef $$ReminderTypesTableCreateCompanionBuilder =
     ReminderTypesCompanion Function({
       Value<String> typeId,
@@ -8569,6 +10880,12 @@ class $AppDatabaseManager {
       $$EventRemindersTableTableManager(_db, _db.eventReminders);
   $$GiftRecordsTableTableManager get giftRecords =>
       $$GiftRecordsTableTableManager(_db, _db.giftRecords);
+  $$ReasonsTableTableManager get reasons =>
+      $$ReasonsTableTableManager(_db, _db.reasons);
+  $$RelationTypesTableTableManager get relationTypes =>
+      $$RelationTypesTableTableManager(_db, _db.relationTypes);
+  $$ContactRelationsTableTableManager get contactRelations =>
+      $$ContactRelationsTableTableManager(_db, _db.contactRelations);
   $$ReminderTypesTableTableManager get reminderTypes =>
       $$ReminderTypesTableTableManager(_db, _db.reminderTypes);
   $$DataImportJobsTableTableManager get dataImportJobs =>
@@ -8644,6 +10961,61 @@ class EventRemindersDaoManager {
       $$EventRemindersTableTableManager(
         _db.attachedDatabase,
         _db.eventReminders,
+      );
+}
+
+mixin _$ReasonsDaoMixin on DatabaseAccessor<AppDatabase> {
+  $ReasonsTable get reasons => attachedDatabase.reasons;
+  ReasonsDaoManager get managers => ReasonsDaoManager(this);
+}
+
+class ReasonsDaoManager {
+  final _$ReasonsDaoMixin _db;
+  ReasonsDaoManager(this._db);
+  $$ReasonsTableTableManager get reasons =>
+      $$ReasonsTableTableManager(_db.attachedDatabase, _db.reasons);
+}
+
+mixin _$RelationTypesDaoMixin on DatabaseAccessor<AppDatabase> {
+  $RelationTypesTable get relationTypes => attachedDatabase.relationTypes;
+  $AccountBooksTable get accountBooks => attachedDatabase.accountBooks;
+  $PersonsTable get persons => attachedDatabase.persons;
+  RelationTypesDaoManager get managers => RelationTypesDaoManager(this);
+}
+
+class RelationTypesDaoManager {
+  final _$RelationTypesDaoMixin _db;
+  RelationTypesDaoManager(this._db);
+  $$RelationTypesTableTableManager get relationTypes =>
+      $$RelationTypesTableTableManager(_db.attachedDatabase, _db.relationTypes);
+  $$AccountBooksTableTableManager get accountBooks =>
+      $$AccountBooksTableTableManager(_db.attachedDatabase, _db.accountBooks);
+  $$PersonsTableTableManager get persons =>
+      $$PersonsTableTableManager(_db.attachedDatabase, _db.persons);
+}
+
+mixin _$ContactRelationsDaoMixin on DatabaseAccessor<AppDatabase> {
+  $AccountBooksTable get accountBooks => attachedDatabase.accountBooks;
+  $PersonsTable get persons => attachedDatabase.persons;
+  $RelationTypesTable get relationTypes => attachedDatabase.relationTypes;
+  $ContactRelationsTable get contactRelations =>
+      attachedDatabase.contactRelations;
+  ContactRelationsDaoManager get managers => ContactRelationsDaoManager(this);
+}
+
+class ContactRelationsDaoManager {
+  final _$ContactRelationsDaoMixin _db;
+  ContactRelationsDaoManager(this._db);
+  $$AccountBooksTableTableManager get accountBooks =>
+      $$AccountBooksTableTableManager(_db.attachedDatabase, _db.accountBooks);
+  $$PersonsTableTableManager get persons =>
+      $$PersonsTableTableManager(_db.attachedDatabase, _db.persons);
+  $$RelationTypesTableTableManager get relationTypes =>
+      $$RelationTypesTableTableManager(_db.attachedDatabase, _db.relationTypes);
+  $$ContactRelationsTableTableManager get contactRelations =>
+      $$ContactRelationsTableTableManager(
+        _db.attachedDatabase,
+        _db.contactRelations,
       );
 }
 

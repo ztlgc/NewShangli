@@ -16,6 +16,9 @@ part 'daos/gift_records_dao.dart';
 part 'daos/event_reminders_dao.dart';
 part 'daos/reminder_types_dao.dart';
 part 'daos/data_import_jobs_dao.dart';
+part 'daos/reasons_dao.dart';
+part 'daos/relation_types_dao.dart';
+part 'daos/contact_relations_dao.dart';
 
 /// 应用主数据库（Drift）。
 ///
@@ -28,6 +31,9 @@ part 'daos/data_import_jobs_dao.dart';
     Persons,
     GiftRecords,
     EventReminders,
+    Reasons,
+    RelationTypes,
+    ContactRelations,
     ReminderTypes,
     DataImportJobs,
   ],
@@ -36,6 +42,9 @@ part 'daos/data_import_jobs_dao.dart';
     PersonsDao,
     GiftRecordsDao,
     EventRemindersDao,
+    ReasonsDao,
+    RelationTypesDao,
+    ContactRelationsDao,
     ReminderTypesDao,
     DataImportJobsDao,
   ],
@@ -50,7 +59,7 @@ class AppDatabase extends _$AppDatabase {
   ///
   /// 版本升级时在 [migration] 中补齐迁移逻辑，并同步单元测试。
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
 
   /// 统一注入迁移策略：
   /// - onCreate：创建所有表与索引
@@ -122,6 +131,11 @@ class AppDatabase extends _$AppDatabase {
             await addDeletedAtIfNeeded('account_book');
             await addDeletedAtIfNeeded('person');
             await addDeletedAtIfNeeded('gift_record');
+          }
+          if (from < 8) {
+            await m.createTable(reasons);
+            await m.createTable(relationTypes);
+            await m.createTable(contactRelations);
           }
         },
         beforeOpen: (details) async {

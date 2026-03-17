@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:azlistview/azlistview.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:flutter/services.dart';
@@ -27,12 +28,28 @@ class PersonListPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const AppScaffold(
-      backgroundColor: AppColors.white,
-      body: _Canvas(),
-    );
+    return const AppScaffold(backgroundColor: AppColors.white, body: _Canvas());
   }
 }
+
+// ──────────────────────────────────────────────
+// 数据模型：实现 ISuspensionBean（azlistview 要求）
+// ──────────────────────────────────────────────
+
+class _ContactItem extends ISuspensionBean {
+  _ContactItem({required this.personData, required this.tagIndex});
+
+  final PersonData personData;
+
+  String tagIndex;
+
+  @override
+  String getSuspensionTag() => tagIndex;
+}
+
+// ──────────────────────────────────────────────
+// State
+// ──────────────────────────────────────────────
 
 class _Canvas extends StatefulWidget {
   const _Canvas();
@@ -58,106 +75,31 @@ class _CanvasState extends State<_Canvas> {
 
   @override
   Widget build(BuildContext context) {
-    final bottomInset = MediaQuery.paddingOf(context).bottom;
     final db = AppDatabaseScope.of(context);
-    return Stack(
-      children: [
-        StreamBuilder<List<Person>>(
-          stream: db.personsDao.watchAllInAllBooks(),
-          builder: (context, snapshot) {
-            final data = _toPersonDataList(snapshot.data ?? const <Person>[]);
-            final sectionData = _buildPersonSectionData(
-              context,
-              data,
-              _keyword,
-              multiSelectMode: _multiSelectMode,
-              selectedPersonIds: _selectedPersonIds,
-              onPersonTap: (id) => _handlePersonTap(context, id),
-              onPersonLongPress: _enterMultiSelectMode,
-              onPersonSelectionToggle: _togglePersonSelection,
-            );
-            final bottomBarHeight = _multiSelectMode ? _multiSelectBarHeight : AppTokens.tabBarHeight;
-            return Stack(
-              children: [
-                Column(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      decoration: const BoxDecoration(
-                        color: AppColors.white,
-                        border: Border(bottom: BorderSide(color: AppColors.gray100, width: 1)),
-                      ),
-                      child: Row(
-                        children: [
-                          Text('关系人', style: AppTypography.h2().copyWith(fontSize: 20)),
-                          const Spacer(),
-                          if (_multiSelectMode)
-                            PressableScale(
-                              onTap: _exitMultiSelectMode,
-                              child: Text(
-                                '取消',
-                                style: AppTypography.base(
-                                  fontSize: 14,
-                                  fontWeight: AppTypography.medium,
-                                  color: AppColors.textSecondary,
-                                ),
-                              ),
-                            )
-                          else
-                            PrototypeIconButton(
-                              icon: const FaIcon(FontAwesomeIcons.userPlus, size: 16),
-                              backgroundColor: AppColors.gray100,
-                              foregroundColor: AppColors.textSecondary,
-                              onPressed: () => AppNav.push(context, const PersonEditPage(), requiresLogin: true),
-                            ),
-                        ],
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      child: PrototypeSearchField(
-                        controller: _searchController,
-                        hintText: '搜索姓名、手机号',
-                        onChanged: (v) => setState(() => _keyword = v),
-                      ),
-                    ),
-                    Expanded(
-                      child: CustomScrollView(
-                        physics: const BouncingScrollPhysics(),
-                        slivers: [
-                          ...sectionData.slivers,
-                          const SliverToBoxAdapter(child: SizedBox(height: 96)),
-                        ],
-                      ),
-                    ),
-                    if (_multiSelectMode)
-                      _MultiSelectActionBar(
-                        selectedCount: _selectedPersonIds.length,
-                        allSelected: sectionData.personIds.isNotEmpty &&
-                            _selectedPersonIds.length == sectionData.personIds.length,
-                        onToggleSelectAll: () => _toggleSelectAll(sectionData.personIds),
-                        onDelete: () => _deleteSelectedPersons(db),
-                      )
-                    else
-                      PrototypeBottomNav(activeIndex: 1, onTap: (index) => _handleBottomNavTap(context, index)),
-                  ],
-                ),
-                Positioned(
-                  right: 4,
-                  top: 60,
-                  bottom: bottomBarHeight + 24 + bottomInset,
-                  child: _keyword.trim().isEmpty
-                      ? _IndexBar(
-                          letters: sectionData.indexLetters,
-                          activeLetters: sectionData.activeIndexLetters,
-                        )
-                      : const SizedBox.shrink(),
-                ),
-              ],
-            );
+    return StreamBuilder<List<Person>>(
+      stream: db.personsDao.watchAllInAllBooks(),
+      builder: (context, snapshot) {
+        final persons = snapshot.data ?? const <Person>[];
+        final personDataList = _toPersonDataList(persons);
+        return _CanvasBody(
+          personDataList: personDataList,
+          keyword: _keyword,
+          searchController: _searchController,
+          multiSelectMode: _multiSelectMode,
+          selectedPersonIds: _selectedPersonIds,
+          onKeywordChanged: (v) => setState(() => _keyword = v),
+          onPersonTap: (id) => _handlePersonTap(context, id),
+          onPersonLongPress: _enterMultiSelectMode,
+          onPersonSelectionToggle: _togglePersonSelection,
+          onBottomNavTap: (index) => _handleBottomNavTap(context, index),
+          onExitMultiSelect: _exitMultiSelectMode,
+          onToggleSelectAll: _toggleSelectAll,
+          onDelete: () {
+            final db2 = AppDatabaseScope.of(context);
+            _deleteSelectedPersons(db2);
           },
-        ),
-      ],
+        );
+      },
     );
   }
 
@@ -250,8 +192,14 @@ class _CanvasState extends State<_Canvas> {
           title: const Text('删除联系人'),
           content: Text('确认删除已选择的${ids.length}位联系人？删除后将进入回收站。'),
           actions: [
-            TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('取消')),
-            TextButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('删除')),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('取消'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('删除'),
+            ),
           ],
         );
       },
@@ -265,7 +213,9 @@ class _CanvasState extends State<_Canvas> {
       _selectedPersonIds = <String>{};
       _multiSelectMode = false;
     });
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('已删除：${ids.length}项')));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('已删除：${ids.length}项')));
   }
 
   void _exitMultiSelectMode() {
@@ -276,72 +226,186 @@ class _CanvasState extends State<_Canvas> {
   }
 }
 
-class _PersonSectionData {
-  const _PersonSectionData({
-    required this.slivers,
-    required this.indexLetters,
-    required this.activeIndexLetters,
-    required this.personIds,
+// ──────────────────────────────────────────────
+// 主体 Widget（将 AzListView 与搜索联动）
+// ──────────────────────────────────────────────
+
+class _CanvasBody extends StatelessWidget {
+  const _CanvasBody({
+    required this.personDataList,
+    required this.keyword,
+    required this.searchController,
+    required this.multiSelectMode,
+    required this.selectedPersonIds,
+    required this.onKeywordChanged,
+    required this.onPersonTap,
+    required this.onPersonLongPress,
+    required this.onPersonSelectionToggle,
+    required this.onBottomNavTap,
+    required this.onExitMultiSelect,
+    required this.onToggleSelectAll,
+    required this.onDelete,
   });
 
-  final List<Widget> slivers;
-  final List<String> indexLetters;
-  final Set<String> activeIndexLetters;
-  final List<String> personIds;
-}
+  final List<PersonData> personDataList;
+  final String keyword;
+  final TextEditingController searchController;
+  final bool multiSelectMode;
+  final Set<String> selectedPersonIds;
+  final ValueChanged<String> onKeywordChanged;
+  final ValueChanged<String> onPersonTap;
+  final ValueChanged<String> onPersonLongPress;
+  final ValueChanged<String> onPersonSelectionToggle;
+  final ValueChanged<int> onBottomNavTap;
+  final VoidCallback onExitMultiSelect;
+  final ValueChanged<List<String>> onToggleSelectAll;
+  final VoidCallback onDelete;
 
-_PersonSectionData _buildPersonSectionData(
-  BuildContext context,
-  List<PersonData> sourcePersons,
-  String keyword, {
-  required bool multiSelectMode,
-  required Set<String> selectedPersonIds,
-  required ValueChanged<String> onPersonTap,
-  required ValueChanged<String> onPersonLongPress,
-  required ValueChanged<String> onPersonSelectionToggle,
-}) {
-  final trimmed = keyword.trim();
-  final persons = (trimmed.isEmpty
-          ? sourcePersons.toList()
-          : sourcePersons
-              .where((p) {
-                final kw = trimmed.toLowerCase();
-                return p.name.toLowerCase().contains(kw) || (p.phone ?? '').toLowerCase().contains(kw);
-              })
-              .toList())
-    ..sort(_comparePersonByInitialAndName);
-  if (persons.isEmpty) {
-    return _PersonSectionData(
-      slivers: [
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: EdgeInsets.only(top: 80),
-            child: Center(child: Text(trimmed.isEmpty ? '暂无联系人' : '无匹配联系人')),
+  @override
+  Widget build(BuildContext context) {
+    final trimmed = keyword.trim();
+    final isSearching = trimmed.isNotEmpty;
+
+    // 构建 AzListView 所需的数据
+    final contactItems = _buildContactItems(personDataList);
+    final allPersonIds = contactItems.map((e) => e.personData.id).toList();
+
+    // 搜索过滤
+    final filtered = isSearching
+        ? personDataList.where((p) {
+            final kw = trimmed.toLowerCase();
+            return p.name.toLowerCase().contains(kw) ||
+                (p.phone ?? '').toLowerCase().contains(kw);
+          }).toList()
+        : null;
+
+    return Column(
+      children: [
+        // 顶部标题栏
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: const BoxDecoration(
+            color: AppColors.white,
+            border: Border(
+              bottom: BorderSide(color: AppColors.gray100, width: 1),
+            ),
+          ),
+          child: Row(
+            children: [
+              Text('关系人', style: AppTypography.h2().copyWith(fontSize: 20)),
+              const Spacer(),
+              if (multiSelectMode)
+                PressableScale(
+                  onTap: onExitMultiSelect,
+                  child: Text(
+                    '取消',
+                    style: AppTypography.base(
+                      fontSize: 14,
+                      fontWeight: AppTypography.medium,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                )
+              else
+                PrototypeIconButton(
+                  icon: const FaIcon(FontAwesomeIcons.userPlus, size: 16),
+                  backgroundColor: AppColors.gray100,
+                  foregroundColor: AppColors.textSecondary,
+                  onPressed: () => AppNav.push(
+                    context,
+                    const PersonEditPage(),
+                    requiresLogin: true,
+                  ),
+                ),
+            ],
           ),
         ),
+        // 搜索框
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: PrototypeSearchField(
+            controller: searchController,
+            hintText: '搜索姓名、手机号',
+            onChanged: onKeywordChanged,
+          ),
+        ),
+        // 列表区域
+        Expanded(
+          child: isSearching
+              ? _SearchResultList(
+                  persons: filtered!,
+                  multiSelectMode: multiSelectMode,
+                  selectedPersonIds: selectedPersonIds,
+                  onPersonTap: onPersonTap,
+                  onPersonLongPress: onPersonLongPress,
+                  onPersonSelectionToggle: onPersonSelectionToggle,
+                )
+              : _AzContactList(
+                  items: contactItems,
+                  multiSelectMode: multiSelectMode,
+                  selectedPersonIds: selectedPersonIds,
+                  onPersonTap: onPersonTap,
+                  onPersonLongPress: onPersonLongPress,
+                  onPersonSelectionToggle: onPersonSelectionToggle,
+                ),
+        ),
+        // 底部导航 / 多选操作栏
+        if (multiSelectMode)
+          _MultiSelectActionBar(
+            selectedCount: selectedPersonIds.length,
+            allSelected:
+                allPersonIds.isNotEmpty &&
+                selectedPersonIds.length == allPersonIds.length,
+            onToggleSelectAll: () => onToggleSelectAll(allPersonIds),
+            onDelete: onDelete,
+          )
+        else
+          PrototypeBottomNav(activeIndex: 1, onTap: onBottomNavTap),
       ],
-      indexLetters: const [],
-      activeIndexLetters: const <String>{},
-      personIds: const [],
     );
   }
+}
 
-  final Map<String, List<PersonData>> groups = {};
-  for (final p in persons) {
-    final letter = _letterForName(p.name);
-    (groups[letter] ??= <PersonData>[]).add(p);
-  }
+// ──────────────────────────────────────────────
+// AzListView 联系人列表（非搜索状态）
+// ──────────────────────────────────────────────
 
-  final keys = groups.keys.toList()..sort(_compareInitialLetter);
-  final indexLetters = _buildIndexLetters(keys);
-  final slivers = <Widget>[];
-  for (final letter in keys) {
-    slivers.add(_LetterHeader(letter: letter));
-    final list = groups[letter]!;
-    for (var i = 0; i < list.length; i++) {
-      final p = list[i];
-      slivers.add(
-        _PersonRow(
+class _AzContactList extends StatelessWidget {
+  const _AzContactList({
+    required this.items,
+    required this.multiSelectMode,
+    required this.selectedPersonIds,
+    required this.onPersonTap,
+    required this.onPersonLongPress,
+    required this.onPersonSelectionToggle,
+  });
+
+  final List<_ContactItem> items;
+  final bool multiSelectMode;
+  final Set<String> selectedPersonIds;
+  final ValueChanged<String> onPersonTap;
+  final ValueChanged<String> onPersonLongPress;
+  final ValueChanged<String> onPersonSelectionToggle;
+
+  @override
+  Widget build(BuildContext context) {
+    if (items.isEmpty) {
+      return const Center(
+        child: Padding(padding: EdgeInsets.only(top: 80), child: Text('暂无联系人')),
+      );
+    }
+
+    return AzListView(
+      data: items,
+      itemCount: items.length,
+      physics: const BouncingScrollPhysics(),
+      itemBuilder: (context, index) {
+        final item = items[index];
+        final p = item.personData;
+        final isLast =
+            index == items.length - 1 ||
+            items[index + 1].tagIndex != item.tagIndex;
+        return _PersonRow(
           id: p.id,
           avatarUrl: p.avatarUrl,
           name: p.name,
@@ -350,24 +414,131 @@ _PersonSectionData _buildPersonSectionData(
           selected: selectedPersonIds.contains(p.id),
           fadeDuration: _CanvasState._multiSelectFadeDuration,
           longPressDuration: _CanvasState._longPressDuration,
-          borderBottom: i != list.length - 1,
+          borderBottom: !isLast,
           onTap: () => onPersonTap(p.id),
           onLongPress: () => onPersonLongPress(p.id),
           onSelectionToggle: () => onPersonSelectionToggle(p.id),
+        );
+      },
+      susItemBuilder: (context, index) {
+        final item = items[index];
+        return _SusHeader(letter: item.getSuspensionTag());
+      },
+      indexBarData: [...kIndexBarData, '#'],
+      indexBarOptions: IndexBarOptions(
+        needRebuild: true,
+        ignoreDragCancel: true,
+        textStyle: AppTypography.base(
+          fontSize: 10,
+          fontWeight: AppTypography.medium,
+          color: AppColors.textMuted,
+        ),
+        downTextStyle: AppTypography.base(
+          fontSize: 10,
+          fontWeight: AppTypography.medium,
+          color: AppColors.white,
+        ),
+        downItemDecoration: const BoxDecoration(
+          shape: BoxShape.circle,
+          color: AppColors.indigo600,
+        ),
+        indexHintWidth: 40,
+        indexHintHeight: 40,
+        indexHintDecoration: BoxDecoration(
+          color: AppColors.indigo600,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        indexHintTextStyle: const TextStyle(
+          fontSize: 18,
+          fontWeight: FontWeight.bold,
+          color: Colors.white,
+        ),
+        indexHintAlignment: Alignment.centerRight,
+        indexHintOffset: const Offset(-52, 0),
+      ),
+    );
+  }
+}
+
+// ──────────────────────────────────────────────
+// 搜索结果列表（搜索状态下不显示字母索引）
+// ──────────────────────────────────────────────
+
+class _SearchResultList extends StatelessWidget {
+  const _SearchResultList({
+    required this.persons,
+    required this.multiSelectMode,
+    required this.selectedPersonIds,
+    required this.onPersonTap,
+    required this.onPersonLongPress,
+    required this.onPersonSelectionToggle,
+  });
+
+  final List<PersonData> persons;
+  final bool multiSelectMode;
+  final Set<String> selectedPersonIds;
+  final ValueChanged<String> onPersonTap;
+  final ValueChanged<String> onPersonLongPress;
+  final ValueChanged<String> onPersonSelectionToggle;
+
+  @override
+  Widget build(BuildContext context) {
+    if (persons.isEmpty) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.only(top: 80),
+          child: Text('无匹配联系人'),
         ),
       );
     }
+    final sorted = persons.toList()..sort(_comparePersonByInitialAndName);
+    return ListView.builder(
+      physics: const BouncingScrollPhysics(),
+      itemCount: sorted.length,
+      itemBuilder: (context, index) {
+        final p = sorted[index];
+        return _PersonRow(
+          id: p.id,
+          avatarUrl: p.avatarUrl,
+          name: p.name,
+          subtitle: p.relationship,
+          multiSelectMode: multiSelectMode,
+          selected: selectedPersonIds.contains(p.id),
+          fadeDuration: _CanvasState._multiSelectFadeDuration,
+          longPressDuration: _CanvasState._longPressDuration,
+          borderBottom: index != sorted.length - 1,
+          onTap: () => onPersonTap(p.id),
+          onLongPress: () => onPersonLongPress(p.id),
+          onSelectionToggle: () => onPersonSelectionToggle(p.id),
+        );
+      },
+    );
   }
-  return _PersonSectionData(
-    slivers: slivers,
-    indexLetters: indexLetters,
-    activeIndexLetters: keys.toSet(),
-    personIds: persons.map((e) => e.id).toList(growable: false),
-  );
 }
 
+// ──────────────────────────────────────────────
+// 辅助：构建 _ContactItem 列表（排序 + 标记吸顶状态）
+// ──────────────────────────────────────────────
+
+List<_ContactItem> _buildContactItems(List<PersonData> persons) {
+  final items = persons.map((p) {
+    return _ContactItem(personData: p, tagIndex: _letterForName(p.name));
+  }).toList();
+
+  SuspensionUtil.sortListBySuspensionTag(items);
+  SuspensionUtil.setShowSuspensionStatus(items);
+  return items;
+}
+
+// ──────────────────────────────────────────────
+// 工具函数
+// ──────────────────────────────────────────────
+
 int _comparePersonByInitialAndName(PersonData a, PersonData b) {
-  final letterCompare = _compareInitialLetter(_letterForName(a.name), _letterForName(b.name));
+  final letterCompare = _compareInitialLetter(
+    _letterForName(a.name),
+    _letterForName(b.name),
+  );
   if (letterCompare != 0) return letterCompare;
   final pinyinCompare = _nameSortKey(a.name).compareTo(_nameSortKey(b.name));
   if (pinyinCompare != 0) return pinyinCompare;
@@ -412,62 +583,34 @@ String _namePinyin(String name) {
   return source.toUpperCase().replaceAll(RegExp(r'[^A-Z0-9]'), '');
 }
 
-List<String> _buildIndexLetters(List<String> groupKeys) {
-  final letters = List<String>.generate(26, (index) => String.fromCharCode(65 + index));
-  if (groupKeys.contains('#')) {
-    letters.add('#');
-  }
-  return letters;
-}
+// ──────────────────────────────────────────────
+// 组件
+// ──────────────────────────────────────────────
 
-class _LetterHeader extends StatelessWidget {
-  const _LetterHeader({required this.letter});
+/// 分组吸顶字母头部（悬浮在列表上方）
+class _SusHeader extends StatelessWidget {
+  const _SusHeader({required this.letter});
 
   final String letter;
   static const double _headerHeight = 24;
 
   @override
   Widget build(BuildContext context) {
-    return SliverPersistentHeader(
-      pinned: false,
-      delegate: _HeaderDelegate(
-        height: _headerHeight,
-        child: Container(
-          height: _headerHeight,
-          color: AppColors.gray50,
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          alignment: Alignment.centerLeft,
-          child: Text(
-            letter,
-            style: AppTypography.base(
-              fontSize: 12,
-              fontWeight: AppTypography.bold,
-              color: AppColors.textTertiary,
-            ),
-          ),
+    return Container(
+      height: _headerHeight,
+      color: AppColors.gray50,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      alignment: Alignment.centerLeft,
+      child: Text(
+        letter,
+        style: AppTypography.base(
+          fontSize: 12,
+          fontWeight: AppTypography.bold,
+          color: AppColors.textTertiary,
         ),
       ),
     );
   }
-}
-
-class _HeaderDelegate extends SliverPersistentHeaderDelegate {
-  _HeaderDelegate({required this.child, required this.height});
-
-  final Widget child;
-  final double height;
-
-  @override
-  double get minExtent => height;
-
-  @override
-  double get maxExtent => height;
-
-  @override
-  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) => child;
-
-  @override
-  bool shouldRebuild(covariant _HeaderDelegate oldDelegate) => child != oldDelegate.child;
 }
 
 class _PersonRow extends StatefulWidget {
@@ -505,124 +648,125 @@ class _PersonRow extends StatefulWidget {
 
 class _PersonRowState extends State<_PersonRow> {
   bool _pressed = false;
-  bool _longPressTriggered = false;
-  Timer? _longPressTimer;
-
-  @override
-  void dispose() {
-    _longPressTimer?.cancel();
-    super.dispose();
-  }
 
   void _onTapDown(TapDownDetails _) {
     setState(() => _pressed = true);
-    _longPressTriggered = false;
-    _longPressTimer?.cancel();
-    _longPressTimer = Timer(widget.longPressDuration, () {
-      _longPressTriggered = true;
-      if (mounted) {
-        setState(() => _pressed = false);
-      }
-      widget.onLongPress();
-    });
   }
 
   void _onTapUp(TapUpDetails _) {
-    _longPressTimer?.cancel();
-    if (!_longPressTriggered) {
-      widget.onTap();
-    }
-    if (mounted) {
-      setState(() => _pressed = false);
-    }
+    setState(() => _pressed = false);
   }
 
   void _onTapCancel() {
-    _longPressTimer?.cancel();
-    if (mounted) {
-      setState(() => _pressed = false);
+    setState(() => _pressed = false);
+  }
+
+  void _handleTap() {
+    if (widget.id.startsWith('p_')) {
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('这是演示数据，添加真实联系人后将自动消失')));
+    } else {
+      widget.onTap();
+    }
+  }
+
+  void _handleLongPress() {
+    if (widget.id.startsWith('p_')) {
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('这是演示数据，添加真实联系人后将自动消失')));
+    } else {
+      widget.onLongPress();
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return SliverToBoxAdapter(
-      child: GestureDetector(
-        onTapDown: _onTapDown,
-        onTapUp: _onTapUp,
-        onTapCancel: _onTapCancel,
-        behavior: HitTestBehavior.opaque,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          curve: Curves.easeInOut,
-          color: _pressed ? AppColors.gray50 : Colors.transparent,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              border: widget.borderBottom
-                  ? const Border(bottom: BorderSide(color: AppColors.borderDivider, width: 1))
-                  : null,
-            ),
-            child: Row(
-              children: [
-                SizedBox(
-                  width: 40,
-                  height: 40,
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      ContactAvatar(
-                        name: widget.name,
-                        avatarUrl: widget.avatarUrl,
-                        size: 40,
-                        shape: ContactAvatarShape.circle,
-                        border: Border.all(color: AppColors.gray100, width: 1),
-                      ),
-                      Positioned.fill(
-                        child: IgnorePointer(
-                          ignoring: !widget.multiSelectMode,
-                          child: AnimatedOpacity(
-                            opacity: widget.multiSelectMode ? 1 : 0,
-                            duration: widget.fadeDuration,
-                            curve: Curves.easeInOut,
-                            child: _AvatarSelectionCheckbox(
-                              label: widget.name,
-                              selected: widget.selected,
-                              onToggle: widget.onSelectionToggle,
-                            ),
+    return GestureDetector(
+      onTap: _handleTap,
+      onLongPress: _handleLongPress,
+      onTapDown: _onTapDown,
+      onTapUp: _onTapUp,
+      onTapCancel: _onTapCancel,
+      behavior: HitTestBehavior.opaque,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        curve: Curves.easeInOut,
+        color: _pressed ? AppColors.gray50 : Colors.transparent,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            border: widget.borderBottom
+                ? const Border(
+                    bottom: BorderSide(
+                      color: AppColors.borderDivider,
+                      width: 1,
+                    ),
+                  )
+                : null,
+          ),
+          child: Row(
+            children: [
+              SizedBox(
+                width: 40,
+                height: 40,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    ContactAvatar(
+                      name: widget.name,
+                      avatarUrl: widget.avatarUrl,
+                      size: 40,
+                      shape: ContactAvatarShape.circle,
+                      border: Border.all(color: AppColors.gray100, width: 1),
+                    ),
+                    Positioned.fill(
+                      child: IgnorePointer(
+                        ignoring: !widget.multiSelectMode,
+                        child: AnimatedOpacity(
+                          opacity: widget.multiSelectMode ? 1 : 0,
+                          duration: widget.fadeDuration,
+                          curve: Curves.easeInOut,
+                          child: _AvatarSelectionCheckbox(
+                            label: widget.name,
+                            selected: widget.selected,
+                            onToggle: widget.onSelectionToggle,
                           ),
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        widget.name,
-                        style: AppTypography.base(
-                          fontSize: 16,
-                          fontWeight: AppTypography.medium,
-                          color: AppColors.textPrimary,
-                        ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.name,
+                      style: AppTypography.base(
+                        fontSize: 16,
+                        fontWeight: AppTypography.medium,
+                        color: AppColors.textPrimary,
                       ),
-                      const SizedBox(height: 2),
-                      Text(
-                        widget.subtitle,
-                        style: AppTypography.base(
-                          fontSize: 12,
-                          fontWeight: AppTypography.regular,
-                          color: AppColors.textMuted,
-                        ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      widget.subtitle,
+                      style: AppTypography.base(
+                        fontSize: 12,
+                        fontWeight: AppTypography.regular,
+                        color: AppColors.textMuted,
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
@@ -643,7 +787,9 @@ class _AvatarSelectionCheckbox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final backgroundColor = selected ? AppColors.brandPrimary : AppColors.gray500.withValues(alpha: 0.2);
+    final backgroundColor = selected
+        ? AppColors.brandPrimary
+        : AppColors.gray500.withValues(alpha: 0.2);
     return Semantics(
       checked: selected,
       button: true,
@@ -699,7 +845,9 @@ class _MultiSelectActionBar extends StatelessWidget {
       height: _CanvasState._multiSelectBarHeight + bottomInset,
       decoration: BoxDecoration(
         color: AppColors.white,
-        border: const Border(top: BorderSide(color: AppColors.borderDefault, width: 1)),
+        border: const Border(
+          top: BorderSide(color: AppColors.borderDefault, width: 1),
+        ),
         boxShadow: AppShadows.sm,
       ),
       child: Padding(
@@ -711,7 +859,10 @@ class _MultiSelectActionBar extends StatelessWidget {
               PressableScale(
                 onTap: onToggleSelectAll,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.gray100,
                     borderRadius: BorderRadius.circular(999),
@@ -742,9 +893,14 @@ class _MultiSelectActionBar extends StatelessWidget {
               PressableScale(
                 onTap: canDelete ? onDelete : null,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
-                    color: canDelete ? AppColors.stateDanger : AppColors.gray200,
+                    color: canDelete
+                        ? AppColors.stateDanger
+                        : AppColors.gray200,
                     borderRadius: BorderRadius.circular(999),
                   ),
                   child: Text(
@@ -761,37 +917,6 @@ class _MultiSelectActionBar extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-class _IndexBar extends StatelessWidget {
-  const _IndexBar({
-    required this.letters,
-    required this.activeLetters,
-  });
-
-  final List<String> letters;
-  final Set<String> activeLetters;
-
-  @override
-  Widget build(BuildContext context) {
-    if (letters.isEmpty) return const SizedBox.shrink();
-
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        for (final l in letters)
-          Text(
-            l,
-            style: AppTypography.base(
-              fontSize: 10,
-              fontWeight: AppTypography.medium,
-              color: activeLetters.contains(l) ? AppColors.indigo600 : AppColors.textMuted,
-              height: 1.6,
-            ),
-          ),
-      ],
     );
   }
 }

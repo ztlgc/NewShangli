@@ -262,6 +262,110 @@ class EventReminders extends Table {
   Set<Column> get primaryKey => {reminderId};
 }
 
+class Reasons extends Table {
+  @override
+  String get tableName => 'reason';
+
+  TextColumn get reasonId => text().named('reason_id')();
+
+  TextColumn get name => text().named('name').withLength(min: 1, max: 64)();
+
+  TextColumn get description => text().named('description').nullable()();
+
+  BoolColumn get enabled =>
+      boolean().named('enabled').withDefault(const Constant(true))();
+
+  IntColumn get createdAt =>
+      integer().named('created_at').customConstraint('NOT NULL')();
+
+  IntColumn get updatedAt =>
+      integer().named('updated_at').customConstraint('NOT NULL')();
+
+  List<Index> get indexes => [
+        Index(
+          'idx_reason_name',
+          'CREATE UNIQUE INDEX IF NOT EXISTS idx_reason_name ON reason(name COLLATE NOCASE)',
+        ),
+        Index(
+          'idx_reason_updated_at',
+          'CREATE INDEX IF NOT EXISTS idx_reason_updated_at ON reason(updated_at DESC)',
+        ),
+      ];
+
+  @override
+  Set<Column> get primaryKey => {reasonId};
+}
+
+class RelationTypes extends Table {
+  @override
+  String get tableName => 'relation_type';
+
+  TextColumn get typeId => text().named('type_id')();
+
+  TextColumn get name => text().named('name').withLength(min: 1, max: 64)();
+
+  IntColumn get createdAt =>
+      integer().named('created_at').customConstraint('NOT NULL')();
+
+  IntColumn get updatedAt =>
+      integer().named('updated_at').customConstraint('NOT NULL')();
+
+  List<Index> get indexes => [
+        Index(
+          'idx_relation_type_name',
+          'CREATE UNIQUE INDEX IF NOT EXISTS idx_relation_type_name ON relation_type(name COLLATE NOCASE)',
+        ),
+        Index(
+          'idx_relation_type_updated_at',
+          'CREATE INDEX IF NOT EXISTS idx_relation_type_updated_at ON relation_type(updated_at DESC)',
+        ),
+      ];
+
+  @override
+  Set<Column> get primaryKey => {typeId};
+}
+
+class ContactRelations extends Table {
+  @override
+  String get tableName => 'contact_relation';
+
+  TextColumn get relationId => text().named('relation_id')();
+
+  TextColumn get personAId => text()
+      .named('person_a_id')
+      .customConstraint('NOT NULL REFERENCES person(person_id) ON DELETE CASCADE')();
+
+  TextColumn get personBId => text()
+      .named('person_b_id')
+      .customConstraint('NOT NULL REFERENCES person(person_id) ON DELETE CASCADE')();
+
+  TextColumn get typeId => text()
+      .named('type_id')
+      .customConstraint('NOT NULL REFERENCES relation_type(type_id) ON DELETE RESTRICT')();
+
+  TextColumn get note => text().named('note').nullable()();
+
+  IntColumn get createdAt =>
+      integer().named('created_at').customConstraint('NOT NULL')();
+
+  IntColumn get updatedAt =>
+      integer().named('updated_at').customConstraint('NOT NULL')();
+
+  List<Index> get indexes => [
+        Index(
+          'idx_contact_relation_pair_type',
+          'CREATE UNIQUE INDEX IF NOT EXISTS idx_contact_relation_pair_type ON contact_relation(person_a_id, person_b_id, type_id)',
+        ),
+        Index(
+          'idx_contact_relation_updated_at',
+          'CREATE INDEX IF NOT EXISTS idx_contact_relation_updated_at ON contact_relation(updated_at DESC)',
+        ),
+      ];
+
+  @override
+  Set<Column> get primaryKey => {relationId};
+}
+
 class ReminderTypes extends Table {
   @override
   String get tableName => 'reminder_type';

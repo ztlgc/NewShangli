@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
-import '../app_data.dart';
+import '../../data/local/drift/app_database.dart';
+import '../app_database_scope.dart';
 import '../app_tokens.dart';
 import '../app_scaffold.dart';
 import '../components.dart';
@@ -57,13 +58,7 @@ class _CanvasState extends State<_Canvas> {
 
   @override
   Widget build(BuildContext context) {
-    final data = AppDataScope.of(context);
-    final reasons = data.reasons.toList()
-      ..sort((a, b) {
-        if (a.enabled != b.enabled) return a.enabled ? -1 : 1;
-        return b.updatedAt.compareTo(a.updatedAt);
-      });
-    final showCount = reasons.length < _visibleCount ? reasons.length : _visibleCount;
+    final db = AppDatabaseScope.of(context);
 
     return Column(
       children: [
@@ -95,76 +90,68 @@ class _CanvasState extends State<_Canvas> {
           ),
         ),
         Expanded(
-          child: ListView(
-            controller: _controller,
-            physics: const BouncingScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
-            children: [
-              if (data.reasonsLoadError != null)
-                PrototypeCard(
-                  color: AppColors.orange50,
-                  shadow: null,
-                  border: Border.all(color: AppColors.orange100, width: 1),
-                  child: Text(
-                    '事由加载失败，已使用默认数据：${data.reasonsLoadError}',
-                    style: AppTypography.base(
-                      fontSize: 12,
-                      fontWeight: AppTypography.medium,
-                      color: AppColors.orange600,
-                    ),
-                  ),
-                ),
-              if (data.reasonsLoadError != null) const SizedBox(height: 12),
-              PrototypeCard(
-                padding: EdgeInsets.zero,
-                child: Column(
-                  children: [
-                    if (reasons.isEmpty)
-                      Padding(
-                        padding: const EdgeInsets.all(24),
-                        child: Text(
-                          '暂无事由，点击右上角添加',
-                          style: AppTypography.base(
-                            fontSize: 14,
-                            fontWeight: AppTypography.medium,
-                            color: AppColors.textMuted,
-                          ),
-                        ),
-                      )
-                    else
-                      for (var i = 0; i < showCount; i++)
-                        _ReasonRow(
-                          reason: reasons[i],
-                          borderBottom: i != showCount - 1,
-                          onTap: () => AppNav.push(context, ReasonDetailPage(id: reasons[i].id)),
-                          onToggleEnabled: (v) => data.setReasonEnabled(id: reasons[i].id, enabled: v),
-                          onLongPress: () => _confirmDelete(context, data, reasons[i]),
-                        ),
-                    if (showCount < reasons.length)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        child: Center(
-                          child: Text(
-                            '继续下拉加载更多…',
-                            style: AppTypography.base(
-                              fontSize: 12,
-                              fontWeight: AppTypography.regular,
-                              color: AppColors.textMuted,
+          child: StreamBuilder<List<Reason>>(
+            stream: db.reasonsDao.watchAll(),
+            builder: (context, snapshot) {
+              final reasons = snapshot.data ?? const <Reason>[];
+              final showCount = reasons.length < _visibleCount ? reasons.length : _visibleCount;
+              return ListView(
+                controller: _controller,
+                physics: const BouncingScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
+                children: [
+                  PrototypeCard(
+                    padding: EdgeInsets.zero,
+                    child: Column(
+                      children: [
+                        if (reasons.isEmpty)
+                          Padding(
+                            padding: const EdgeInsets.all(24),
+                            child: Text(
+                              '暂无事由，点击右上角添加',
+                              style: AppTypography.base(
+                                fontSize: 14,
+                                fontWeight: AppTypography.medium,
+                                color: AppColors.textMuted,
+                              ),
+                            ),
+                          )
+                        else
+                          for (var i = 0; i < showCount; i++)
+                            _ReasonRow(
+                              reason: reasons[i],
+                              borderBottom: i != showCount - 1,
+                              onTap: () => AppNav.push(context, ReasonDetailPage(id: reasons[i].reasonId)),
+                              onToggleEnabled: (v) => db.reasonsDao.setEnabled(id: reasons[i].reasonId, enabled: v),
+                              onLongPress: () => _confirmDelete(context, db, reasons[i]),
+                            ),
+                        if (showCount < reasons.length)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            child: Center(
+                              child: Text(
+                                '继续下拉加载更多…',
+                                style: AppTypography.base(
+                                  fontSize: 12,
+                                  fontWeight: AppTypography.regular,
+                                  color: AppColors.textMuted,
+                                ),
+                              ),
                             ),
                           ),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            ],
+                      ],
+                    ),
+                  ),
+                ],
+              );
+            },
           ),
         ),
       ],
     );
   }
 
-  Future<void> _confirmDelete(BuildContext context, AppData data, ReasonData reason) async {
+  Future<void> _confirmDelete(BuildContext context, AppDatabase db, Reason reason) async {
     final ok = await showDialog<bool>(
       context: context,
       builder: (context) {
@@ -180,7 +167,7 @@ class _CanvasState extends State<_Canvas> {
     );
     if (ok != true) return;
     try {
-      await data.deleteReason(reason.id);
+      await db.reasonsDao.deleteById(reason.reasonId);
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('已删除')));
     } catch (e) {
@@ -199,7 +186,7 @@ class _ReasonRow extends StatelessWidget {
     this.borderBottom = true,
   });
 
-  final ReasonData reason;
+  final Reason reason;
   final VoidCallback onTap;
   final ValueChanged<bool> onToggleEnabled;
   final VoidCallback onLongPress;

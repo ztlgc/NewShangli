@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import '../../data/local/drift/app_database.dart';
-import '../app_data.dart';
 import '../app_database_scope.dart';
 import '../app_tokens.dart';
 import '../app_scaffold.dart';
@@ -52,26 +51,7 @@ class _Canvas extends StatelessWidget {
   }
 
   Future<_RecordView?> _loadRecord(BuildContext context) async {
-    final fromDb = await _loadFromDb(context);
-    if (fromDb != null) return fromDb;
-    return _loadFromAppData(context);
-  }
-
-  _RecordView? _loadFromAppData(BuildContext context) {
-    final data = AppDataScope.of(context);
-    final record = data.findRecord(recordId);
-    if (record == null) return null;
-    return _RecordView(
-      personId: record.personId,
-      personName: record.personName,
-      direction: record.direction,
-      amountCent: record.amountCent,
-      eventName: record.eventName,
-      paymentMethod: record.paymentMethod,
-      occurredAt: record.occurredAt,
-      note: record.note,
-      bookName: data.resolveBookName(record.bookId),
-    );
+    return _loadFromDb(context);
   }
 
   Future<_RecordView?> _loadFromDb(BuildContext context) async {
@@ -85,7 +65,7 @@ class _Canvas extends StatelessWidget {
       return _RecordView(
         personId: record.personId,
         personName: person?.name ?? '未知联系人',
-        direction: record.direction == '支出' ? RecordDirection.expense : RecordDirection.income,
+        isIncome: record.direction != '支出',
         amountCent: record.amountCent,
         eventName: record.eventName ?? '未设置事由',
         paymentMethod: record.paymentMethod ?? '未设置',
@@ -127,16 +107,7 @@ class _Canvas extends StatelessWidget {
                   ),
                 ),
               ),
-              PrototypeIconButton(
-                icon: const FaIcon(FontAwesomeIcons.ellipsisVertical, size: 16),
-                backgroundColor: Colors.transparent,
-                foregroundColor: AppColors.textPrimary,
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('仅原型展示：更多操作未实现')),
-                  );
-                },
-              ),
+              const SizedBox(width: 40),
             ],
           ),
         ),
@@ -147,7 +118,7 @@ class _Canvas extends StatelessWidget {
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 24 + 83),
                 children: [
                   _AmountSummaryCard(
-                    isIncome: record.direction == RecordDirection.income,
+                    isIncome: record.isIncome,
                     amountText: _formatCurrency(record.amountCent),
                   ),
                   const SizedBox(height: 24),
@@ -207,7 +178,7 @@ class _RecordView {
   const _RecordView({
     required this.personId,
     required this.personName,
-    required this.direction,
+    required this.isIncome,
     required this.amountCent,
     required this.eventName,
     required this.paymentMethod,
@@ -218,7 +189,7 @@ class _RecordView {
 
   final String personId;
   final String personName;
-  final RecordDirection direction;
+  final bool isIncome;
   final int amountCent;
   final String eventName;
   final String paymentMethod;

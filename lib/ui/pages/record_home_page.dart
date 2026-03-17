@@ -92,8 +92,14 @@ class _CanvasState extends State<_Canvas> {
           title: const Text('批量删除'),
           content: Text('确认删除 ${_selectedRecordIds.length} 条记录？删除后将进入回收站。'),
           actions: [
-            TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('取消')),
-            TextButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('永久删除')),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('取消'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('永久删除'),
+            ),
           ],
         );
       },
@@ -105,7 +111,9 @@ class _CanvasState extends State<_Canvas> {
     }
     if (!mounted) return;
     _exitSelection();
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('已删除选中记录')));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('已删除选中记录')));
   }
 
   @override
@@ -121,7 +129,9 @@ class _CanvasState extends State<_Canvas> {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: const BoxDecoration(
                 color: AppColors.white,
-                border: Border(bottom: BorderSide(color: AppColors.gray100, width: 1)),
+                border: Border(
+                  bottom: BorderSide(color: AppColors.gray100, width: 1),
+                ),
                 boxShadow: AppShadows.sm,
               ),
               child: Row(
@@ -145,7 +155,11 @@ class _CanvasState extends State<_Canvas> {
                       icon: const FaIcon(FontAwesomeIcons.bell, size: 16),
                       backgroundColor: AppColors.gray100,
                       foregroundColor: AppColors.textSecondary,
-                      onPressed: () => AppNav.push(context, const RemindersPage(), requiresLogin: true),
+                      onPressed: () => AppNav.push(
+                        context,
+                        const RemindersPage(),
+                        requiresLogin: true,
+                      ),
                     ),
                   ],
                 ],
@@ -164,7 +178,9 @@ class _CanvasState extends State<_Canvas> {
               child: StreamBuilder<List<GiftRecordWithPerson>>(
                 stream: db.giftRecordsDao.watchAllWithPersonInAllBooks(),
                 builder: (context, snapshot) {
-                  final records = _toRecordDataList(snapshot.data ?? const <GiftRecordWithPerson>[]);
+                  final records = _toRecordDataList(
+                    snapshot.data ?? const <GiftRecordWithPerson>[],
+                  );
                   return CustomScrollView(
                     physics: const BouncingScrollPhysics(),
                     slivers: [
@@ -183,7 +199,8 @@ class _CanvasState extends State<_Canvas> {
                 onToggleSelectAll: () {
                   HapticFeedback.selectionClick();
                   setState(() {
-                    if (_selectedRecordIds.length == _allVisibleRecordIds.length) {
+                    if (_selectedRecordIds.length ==
+                        _allVisibleRecordIds.length) {
                       _selectedRecordIds.clear();
                       _selectionMode = false;
                     } else {
@@ -232,7 +249,11 @@ class _CanvasState extends State<_Canvas> {
                   boxShadow: AppShadows.brandFab,
                 ),
                 alignment: Alignment.center,
-                child: const FaIcon(FontAwesomeIcons.plus, color: AppColors.white, size: 24),
+                child: const FaIcon(
+                  FontAwesomeIcons.plus,
+                  color: AppColors.white,
+                  size: 24,
+                ),
               ),
             ),
           ),
@@ -249,11 +270,19 @@ class _CanvasState extends State<_Canvas> {
             personId: row.person.personId,
             personName: row.person.name,
             personAvatarUrl: row.person.avatarUri,
-            direction: row.record.direction == '支出' ? RecordDirection.expense : RecordDirection.income,
+            direction: row.record.direction == '支出'
+                ? RecordDirection.expense
+                : RecordDirection.income,
             amountCent: row.record.amountCent,
-            eventName: (row.record.eventName ?? '').trim().isEmpty ? '未设置' : row.record.eventName!.trim(),
-            paymentMethod: (row.record.paymentMethod ?? '').trim().isEmpty ? '未设置' : row.record.paymentMethod!.trim(),
-            occurredAt: DateTime.fromMillisecondsSinceEpoch(row.record.occurredAt),
+            eventName: (row.record.eventName ?? '').trim().isEmpty
+                ? '未设置'
+                : row.record.eventName!.trim(),
+            paymentMethod: (row.record.paymentMethod ?? '').trim().isEmpty
+                ? '未设置'
+                : row.record.paymentMethod!.trim(),
+            occurredAt: DateTime.fromMillisecondsSinceEpoch(
+              row.record.occurredAt,
+            ),
             note: row.record.note,
           ),
         )
@@ -284,12 +313,12 @@ class _CanvasState extends State<_Canvas> {
 
     final Map<String, List<RecordData>> groups = {};
     for (final r in records) {
-      final key = '${r.occurredAt.year}-${r.occurredAt.month.toString().padLeft(2, '0')}';
+      final key =
+          '${r.occurredAt.year}-${r.occurredAt.month.toString().padLeft(2, '0')}';
       (groups[key] ??= <RecordData>[]).add(r);
     }
 
-    final keys = groups.keys.toList()
-      ..sort((a, b) => b.compareTo(a));
+    final keys = groups.keys.toList()..sort((a, b) => b.compareTo(a));
 
     final slivers = <Widget>[];
     for (var i = 0; i < keys.length; i++) {
@@ -300,7 +329,8 @@ class _CanvasState extends State<_Canvas> {
       final title = '$year年$month月';
       slivers.add(_MonthHeaderSliver(title: title, topMargin: i == 0 ? 0 : 8));
 
-      final monthRecords = groups[key]!..sort((a, b) => b.occurredAt.compareTo(a.occurredAt));
+      final monthRecords = groups[key]!
+        ..sort((a, b) => b.occurredAt.compareTo(a.occurredAt));
       slivers.add(
         SliverToBoxAdapter(
           child: Container(
@@ -313,7 +343,11 @@ class _CanvasState extends State<_Canvas> {
                     name: monthRecords[j].personName,
                     direction: monthRecords[j].direction,
                     amountCent: monthRecords[j].amountCent,
-                    subtitle: '${monthRecords[j].eventName} - ${monthRecords[j].paymentMethod}',
+                    subtitle:
+                        monthRecords[j].paymentMethod == '未设置' ||
+                            monthRecords[j].paymentMethod.isEmpty
+                        ? monthRecords[j].eventName
+                        : '${monthRecords[j].eventName} - ${monthRecords[j].paymentMethod}',
                     occurredAt: monthRecords[j].occurredAt,
                     selectionMode: _selectionMode,
                     selected: _selectedRecordIds.contains(monthRecords[j].id),
@@ -324,16 +358,42 @@ class _CanvasState extends State<_Canvas> {
                         _toggleSelection(monthRecords[j].id);
                         return;
                       }
-                      AppNav.push(context, RecordDetailPage(recordId: monthRecords[j].id));
+                      if (monthRecords[j].id.startsWith('r_')) {
+                        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('这是演示数据，添加真实记录后将自动消失')),
+                        );
+                        return;
+                      }
+                      AppNav.push(
+                        context,
+                        RecordDetailPage(recordId: monthRecords[j].id),
+                      );
                     },
                     onLongPress: () {
                       if (_selectionMode) {
                         _toggleSelection(monthRecords[j].id);
                         return;
                       }
+                      if (monthRecords[j].id.startsWith('r_')) {
+                        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('演示数据不可操作')),
+                        );
+                        return;
+                      }
                       _enterSelection(monthRecords[j].id);
                     },
-                    onSelectionToggle: () => _toggleSelection(monthRecords[j].id),
+                    onSelectionToggle: () {
+                      if (monthRecords[j].id.startsWith('r_')) {
+                        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('演示数据不可操作')),
+                        );
+                        return;
+                      }
+                      _toggleSelection(monthRecords[j].id);
+                    },
                   ),
               ],
             ),
@@ -402,7 +462,11 @@ class _SimpleHeaderDelegate extends SliverPersistentHeaderDelegate {
   double get maxExtent => maxHeight;
 
   @override
-  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) => child;
+  Widget build(
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) => child;
 
   @override
   bool shouldRebuild(_SimpleHeaderDelegate oldDelegate) =>
@@ -410,7 +474,6 @@ class _SimpleHeaderDelegate extends SliverPersistentHeaderDelegate {
       maxHeight != oldDelegate.maxHeight ||
       child != oldDelegate.child;
 }
-
 
 class _RecordMultiSelectBar extends StatelessWidget {
   const _RecordMultiSelectBar({
@@ -436,7 +499,9 @@ class _RecordMultiSelectBar extends StatelessWidget {
       height: _barHeight + bottomInset,
       decoration: BoxDecoration(
         color: AppColors.white,
-        border: const Border(top: BorderSide(color: AppColors.borderDefault, width: 1)),
+        border: const Border(
+          top: BorderSide(color: AppColors.borderDefault, width: 1),
+        ),
         boxShadow: AppShadows.sm,
       ),
       child: Padding(
@@ -448,7 +513,10 @@ class _RecordMultiSelectBar extends StatelessWidget {
               PressableScale(
                 onTap: onToggleSelectAll,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.gray100,
                     borderRadius: BorderRadius.circular(999),
@@ -479,9 +547,14 @@ class _RecordMultiSelectBar extends StatelessWidget {
               PressableScale(
                 onTap: canDelete ? onDelete : null,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
-                    color: canDelete ? AppColors.stateDanger : AppColors.gray200,
+                    color: canDelete
+                        ? AppColors.stateDanger
+                        : AppColors.gray200,
                     borderRadius: BorderRadius.circular(999),
                   ),
                   child: Text(

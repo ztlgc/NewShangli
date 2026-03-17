@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
-import '../app_data.dart';
+import '../../data/local/drift/app_database.dart';
+import '../app_database_scope.dart';
 import '../app_scaffold.dart';
 import '../app_tokens.dart';
 import '../components.dart';
@@ -53,25 +54,7 @@ class _CanvasState extends State<_Canvas> {
 
   @override
   Widget build(BuildContext context) {
-    final data = AppDataScope.of(context);
-    final types = data.relationTypes.toList()..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
-    final relationCountByTypeId = <String, int>{};
-    for (final relation in data.contactRelations) {
-      relationCountByTypeId.update(relation.typeId, (v) => v + 1, ifAbsent: () => 1);
-    }
-    final personCountByRelationName = <String, int>{};
-    var categorizedContacts = 0;
-    for (final person in data.persons) {
-      final relation = person.relationship.trim();
-      if (relation.isEmpty) continue;
-      categorizedContacts += 1;
-      final key = relation.toLowerCase();
-      personCountByRelationName.update(key, (v) => v + 1, ifAbsent: () => 1);
-    }
-    final filter = _keyword.toLowerCase();
-    final visibleTypes = filter.isEmpty
-        ? types
-        : types.where((e) => e.name.toLowerCase().contains(filter)).toList();
+    final db = AppDatabaseScope.of(context);
 
     return Column(
       children: [
@@ -96,14 +79,41 @@ class _CanvasState extends State<_Canvas> {
                 icon: const FaIcon(FontAwesomeIcons.plus, size: 16),
                 backgroundColor: AppColors.gray100,
                 foregroundColor: AppColors.textSecondary,
-                onPressed: () => _openEditor(context, data, null),
+                onPressed: () => _openEditor(context, db, null),
                 radius: 12,
               ),
             ],
           ),
         ),
         Expanded(
-          child: ListView(
+          child: StreamBuilder<List<RelationType>>(
+            stream: db.relationTypesDao.watchAll(),
+            builder: (context, typeSnapshot) {
+              final types = typeSnapshot.data ?? const <RelationType>[];
+              return StreamBuilder<List<ContactRelationWithDetails>>(
+                stream: db.contactRelationsDao.watchAllWithDetails(),
+                builder: (context, relationSnapshot) {
+                  final relationCountByTypeId = <String, int>{};
+                  for (final relation in relationSnapshot.data ?? const <ContactRelationWithDetails>[]) {
+                    relationCountByTypeId.update(relation.relation.typeId, (v) => v + 1, ifAbsent: () => 1);
+                  }
+                  return StreamBuilder<List<Person>>(
+                    stream: db.personsDao.watchAllInAllBooks(),
+                    builder: (context, personSnapshot) {
+                      final personCountByRelationName = <String, int>{};
+                      var categorizedContacts = 0;
+                      for (final person in personSnapshot.data ?? const <Person>[]) {
+                        final relation = person.relationshipType.trim();
+                        if (relation.isEmpty) continue;
+                        categorizedContacts += 1;
+                        final key = relation.toLowerCase();
+                        personCountByRelationName.update(key, (v) => v + 1, ifAbsent: () => 1);
+                      }
+                      final filter = _keyword.toLowerCase();
+                      final visibleTypes = filter.isEmpty
+                          ? types
+                          : types.where((e) => e.name.toLowerCase().contains(filter)).toList();
+                      return ListView(
             physics: const BouncingScrollPhysics(),
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
             children: [
@@ -207,11 +217,11 @@ class _CanvasState extends State<_Canvas> {
                     type: visibleTypes[i],
                     contactCount:
                         personCountByRelationName[visibleTypes[i].name.trim().toLowerCase()] ?? 0,
-                    relationCount: relationCountByTypeId[visibleTypes[i].id] ?? 0,
-                    onTap: () => _openEditor(context, data, visibleTypes[i]),
+                    relationCount: relationCountByTypeId[visibleTypes[i].typeId] ?? 0,
+                    onTap: () => _openEditor(context, db, visibleTypes[i]),
                     onLongPress: () => _confirmDelete(
                       context,
-                      data,
+                      db,
                       visibleTypes[i],
                       personCountByRelationName[visibleTypes[i].name.trim().toLowerCase()] ?? 0,
                     ),
@@ -219,13 +229,19 @@ class _CanvasState extends State<_Canvas> {
                   if (i != visibleTypes.length - 1) const SizedBox(height: 10),
                 ],
             ],
+                      );
+                    },
+                  );
+                },
+              );
+            },
           ),
         ),
       ],
     );
   }
 
-  Future<void> _openEditor(BuildContext context, AppData data, RelationTypeData? type) async {
+  Future<void> _openEditor(BuildContext context, AppDatabase db, RelationType? type) async {
     final nameCtrl = TextEditingController(text: type?.name ?? '');
     final ok = await showModalBottomSheet<bool>(
       context: context,
@@ -339,9 +355,9 @@ class _CanvasState extends State<_Canvas> {
                                     setState(() => saving = true);
                                     try {
                                       if (type == null) {
-                                        await data.createRelationType(name: text);
+                                        await db.relationTypesDao.create(name: text);
                                       } else {
-                                        await data.updateRelationType(id: type.id, name: text);
+                                        await db.relationTypesDao.updateType(id: type.typeId, name: text);
                                       }
                                       if (!context.mounted) return;
                                       Navigator.of(context).pop(true);
@@ -370,8 +386,8 @@ class _CanvasState extends State<_Canvas> {
 
   Future<void> _confirmDelete(
     BuildContext context,
-    AppData data,
-    RelationTypeData type,
+    AppDatabase db,
+    RelationType type,
     int contactCount,
   ) async {
     if (contactCount > 0) {
@@ -395,7 +411,10 @@ class _CanvasState extends State<_Canvas> {
     );
     if (ok != true) return;
     try {
-      await data.deleteRelationType(type.id);
+      final relations = await db.contactRelationsDao.watchAllWithDetails().first;
+      final used = relations.any((e) => e.relation.typeId == type.typeId);
+      if (used) throw StateError('该类型正在被使用，无法删除');
+      await db.relationTypesDao.deleteById(type.typeId);
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('已删除')));
     } catch (e) {
@@ -459,7 +478,7 @@ class _TypeRow extends StatelessWidget {
     required this.relationCount,
   });
 
-  final RelationTypeData type;
+  final RelationType type;
   final VoidCallback onTap;
   final VoidCallback onLongPress;
   final int contactCount;

@@ -219,7 +219,7 @@ class _TrashedRecordRow extends StatelessWidget {
     final personName = (item.personName ?? '').trim().isEmpty ? '已删除联系人' : item.personName!;
     final eventName = (record.eventName ?? '').trim().isEmpty ? '未设置事由' : record.eventName!.trim();
     final paymentMethod = (record.paymentMethod ?? '').trim().isEmpty ? '未设置' : record.paymentMethod!.trim();
-    final subtitle = '$eventName - $paymentMethod';
+    final subtitle = (paymentMethod == '未设置' || paymentMethod.isEmpty) ? eventName : '$eventName - $paymentMethod';
     final dateText = DateUtil.format(DateTime.fromMillisecondsSinceEpoch(record.occurredAt));
 
     return PrototypePressableRow(

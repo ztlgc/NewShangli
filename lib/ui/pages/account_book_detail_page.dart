@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import '../../data/local/drift/app_database.dart';
@@ -244,7 +244,9 @@ class _RecordsSection extends StatelessWidget {
                   name: rows[i].person.name,
                   direction: rows[i].record.direction == '收入' ? RecordDirection.income : RecordDirection.expense,
                   amountCent: rows[i].record.amountCent,
-                  subtitle: '${rows[i].record.eventName ?? '未设置事由'} - ${rows[i].record.paymentMethod ?? '未设置方式'}',
+                  subtitle: (rows[i].record.paymentMethod == null || rows[i].record.paymentMethod!.isEmpty || rows[i].record.paymentMethod == '未设置') 
+                      ? '${rows[i].record.eventName ?? '未设置事由'}' 
+                      : '${rows[i].record.eventName ?? '未设置事由'} - ${rows[i].record.paymentMethod}',
                   occurredAt: DateTime.fromMillisecondsSinceEpoch(rows[i].record.occurredAt),
                   borderBottom: i != rows.length - 1,
                   onTap: () => AppNav.push(

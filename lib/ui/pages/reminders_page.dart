@@ -60,6 +60,10 @@ class _CanvasState extends State<_Canvas> {
   }
 
   Future<void> _openEdit(String bookId, String reminderId) async {
+    if (reminderId.startsWith('mock')) {
+      _toast('这是演示数据，添加真实提醒后将自动消失');
+      return;
+    }
     final ok = await AppNav.push<bool>(
       context,
       ReminderEditPage(bookId: bookId, reminderId: reminderId),
@@ -72,6 +76,10 @@ class _CanvasState extends State<_Canvas> {
   }
 
   Future<void> _toggleDone(String reminderId) async {
+    if (reminderId.startsWith('mock')) {
+      _toast('演示数据不可操作，添加真实提醒后将自动消失');
+      return;
+    }
     try {
       final status = await _service.toggleDone(reminderId);
       if (!mounted) return;

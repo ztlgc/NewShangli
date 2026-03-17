@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import '../../data/local/drift/app_database.dart';
-import '../app_data.dart';
 import '../app_database_scope.dart';
 import '../app_tokens.dart';
 import '../app_scaffold.dart';
@@ -95,7 +94,10 @@ class _CanvasState extends State<_Canvas> {
       AppNav.pop(context);
       return;
     }
-    await AppDataScope.of(context).ensureReasonExists(name: book.reasonType);
+    final reason = await _db.reasonsDao.findByName(book.reasonType);
+    if (reason == null) {
+      await _db.reasonsDao.create(name: book.reasonType, enabled: true);
+    }
     setState(() {
       _book = book;
       _nameCtrl.text = book.name;
@@ -114,8 +116,8 @@ class _CanvasState extends State<_Canvas> {
       _toast('账簿名称不能为空');
       return;
     }
-    final data = AppDataScope.of(context);
-    if (!data.isReasonEnabledByName(_reasonType)) {
+    final reason = await _db.reasonsDao.findByName(_reasonType);
+    if (reason == null || !reason.enabled) {
       _toast('事由类型无效，请从列表中选择已启用的事由');
       return;
     }
@@ -144,6 +146,9 @@ class _CanvasState extends State<_Canvas> {
           isDefault: _isDefault ? 1 : 0,
         );
         await _db.accountBooksDao.updateOne(updated);
+        if (_book!.reasonType != _reasonType) {
+          await _db.giftRecordsDao.updateEventNameByBookId(updated.bookId, _reasonType);
+        }
         if (_isDefault) {
           await _db.accountBooksDao.setDefaultBook(updated.bookId);
         }
@@ -260,8 +265,9 @@ class _CanvasState extends State<_Canvas> {
   }
 
   Future<void> _pickReasonType() async {
-    final data = AppDataScope.of(context);
-    final reasons = data.enabledReasons.toList()..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+    final reasons = await _db.reasonsDao.listAll();
+    final enabled = reasons.where((e) => e.enabled).toList()
+      ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
     final picked = await showModalBottomSheet<String>(
       context: context,
       isScrollControlled: true,
@@ -312,7 +318,7 @@ class _CanvasState extends State<_Canvas> {
                     shrinkWrap: true,
                     padding: const EdgeInsets.only(bottom: 12),
                     children: [
-                      for (final r in reasons)
+                      for (final r in enabled)
                         PrototypePressableRow(
                           onTap: () => Navigator.of(context).pop(r.name),
                           child: Row(

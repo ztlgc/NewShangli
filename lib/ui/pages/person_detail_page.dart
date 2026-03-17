@@ -51,9 +51,7 @@ class PersonDetailPage extends StatelessWidget {
   }
 
   Future<_PersonDetailView?> _loadView(BuildContext context) async {
-    final fromDb = await _loadFromDb(context);
-    if (fromDb != null) return fromDb;
-    return _loadFromAppData(context);
+    return _loadFromDb(context);
   }
 
   Future<_PersonDetailView?> _loadFromDb(BuildContext context) async {
@@ -109,43 +107,6 @@ class PersonDetailPage extends StatelessWidget {
     } catch (_) {
       return null;
     }
-  }
-
-  _PersonDetailView? _loadFromAppData(BuildContext context) {
-    final id = personId;
-    if (id == null || id.trim().isEmpty) return null;
-    final data = AppDataScope.of(context);
-    final person = data.findPerson(id);
-    if (person == null) return null;
-    final records = data.records.where((e) => e.personId == id).toList()
-      ..sort((a, b) => b.occurredAt.compareTo(a.occurredAt));
-    var incomeCent = 0;
-    var expenseCent = 0;
-    final recordItems = <_PersonRecordView>[];
-    for (final r in records) {
-      final isIncome = r.direction == RecordDirection.income;
-      if (isIncome) {
-        incomeCent += r.amountCent;
-      } else {
-        expenseCent += r.amountCent;
-      }
-      recordItems.add(
-        _PersonRecordView(
-          recordId: r.id,
-          eventName: r.eventName.trim().isEmpty ? '未设置事由' : r.eventName.trim(),
-          isIncome: isIncome,
-          amountCent: r.amountCent,
-          paymentMethod: r.paymentMethod.trim().isEmpty ? '未设置' : r.paymentMethod.trim(),
-          occurredAt: r.occurredAt,
-        ),
-      );
-    }
-    return _PersonDetailView(
-      person: person,
-      incomeCent: incomeCent,
-      expenseCent: expenseCent,
-      records: recordItems,
-    );
   }
 
   Widget _buildNotFound(BuildContext context) {
@@ -483,19 +444,39 @@ class _InfoCards extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final note = person?.note?.trim().isNotEmpty == true ? person!.note!.trim() : '未设置';
+    
+    String birthdayValue = '未设置';
+    Widget? birthdayTrailing;
+
+    if (person?.birthday != null) {
+      final b = person!.birthday!;
+      birthdayValue = DateUtil.format(b);
+
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      DateTime nextBirthday = DateTime(now.year, b.month, b.day);
+      if (nextBirthday.isBefore(today)) {
+        nextBirthday = DateTime(now.year + 1, b.month, b.day);
+      }
+      
+      final diffDays = nextBirthday.difference(today).inDays;
+      String badgeText = diffDays == 0 ? '今天' : '$diffDays天后';
+      birthdayTrailing = _Badge(text: badgeText, bg: AppColors.pink100, fg: AppColors.pink600);
+    }
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 48, 16, 24),
       child: PrototypeCard(
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            const _InfoRow(
+            _InfoRow(
               iconBg: AppColors.pink50,
               iconFg: AppColors.pink500,
               icon: FontAwesomeIcons.cakeCandles,
               label: '生日',
-              value: '1990年08月15日 (七月廿六)',
-              trailing: _Badge(text: '5天后', bg: AppColors.pink100, fg: AppColors.pink600),
+              value: birthdayValue,
+              trailing: birthdayTrailing,
             ),
             const SizedBox(height: 16),
             _InfoRow(
@@ -689,7 +670,9 @@ class _RecordRow extends StatelessWidget {
     final icon = isIncome ? FontAwesomeIcons.gift : FontAwesomeIcons.handHoldingHeart;
     final amountColor = isIncome ? AppColors.green600 : AppColors.red500;
     final amount = _formatSignedAmount(record.amountCent, isIncome: isIncome);
-    final subtitleLeft = '${isIncome ? '收礼' : '送礼'} - ${record.paymentMethod}';
+    final subtitleLeft = (record.paymentMethod == '未设置' || record.paymentMethod.isEmpty) 
+        ? '${isIncome ? '收礼' : '送礼'}' 
+        : '${isIncome ? '收礼' : '送礼'} - ${record.paymentMethod}';
     final subtitleRight = DateUtil.format(record.occurredAt);
     return PrototypePressableRow(
       onTap: () => AppNav.push(context, RecordDetailPage(recordId: record.recordId), requiresLogin: true),

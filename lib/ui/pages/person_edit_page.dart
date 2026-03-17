@@ -9,7 +9,6 @@ import '../../data/local/drift/app_database.dart';
 import '../../import/default_book_service.dart';
 import '../app_tokens.dart';
 import '../app_scaffold.dart';
-import '../app_data.dart';
 import '../app_database_scope.dart';
 import '../contact_avatar.dart';
 import '../components.dart';
@@ -42,7 +41,8 @@ class _PersonEditPageState extends State<PersonEditPage> {
   bool _inited = false;
   bool _saving = false;
   String _relationship = '';
-  String _personBookId = AppData.defaultBookId;
+  static const String _defaultBookSelectionId = 'book_default';
+  String _personBookId = _defaultBookSelectionId;
   String? _avatarUrl;
   DateTime? _birthday;
   bool _isLunarBirthday = false;
@@ -77,32 +77,25 @@ class _PersonEditPageState extends State<PersonEditPage> {
     super.didChangeDependencies();
     if (_inited) return;
     _inited = true;
-    final data = AppDataScope.of(context);
-    final person = widget.personId == null ? null : data.findPerson(widget.personId!);
-    _nameCtrl.text = person?.name ?? '';
-    _phoneCtrl.text = person?.phone ?? '';
-    _noteCtrl.text = person?.note ?? '';
+    _nameCtrl.text = '';
+    _phoneCtrl.text = '';
+    _noteCtrl.text = '';
     _savedName = _nameCtrl.text.trim();
     _savedPhone = _phoneCtrl.text.trim();
     _savedNote = _noteCtrl.text.trim();
-    _avatarUrl = person?.avatarUrl;
-    _birthday = person?.birthday;
-    _isLunarBirthday = person?.isLunarBirthday ?? false;
-    _birthdayReminder = person?.birthdayReminder ?? false;
-    if (person != null) {
-      _relationship = person.relationship;
-    } else {
-      final prefer = data.relationTypes.any((e) => e.name == '朋友') ? '朋友' : (data.relationTypes.isEmpty ? '朋友' : data.relationTypes.first.name);
-      _relationship = prefer;
-    }
-    if (person == null && widget.personId != null) {
+    _avatarUrl = null;
+    _birthday = null;
+    _isLunarBirthday = false;
+    _birthdayReminder = false;
+    _relationship = '朋友';
+    _loadDefaultRelationshipFromDrift();
+    if (widget.personId != null) {
       _loadPersonFromDrift(widget.personId!);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final data = AppDataScope.of(context);
     return AppScaffold(
       backgroundColor: AppColors.surfaceApp,
       body: Column(
@@ -185,7 +178,7 @@ class _PersonEditPageState extends State<PersonEditPage> {
                   onNameFocusChange: _saving ? null : _onNameFocusChange,
                   relationship: _relationship,
                   phone: _phoneCtrl.text,
-                  onPickRelationship: _saving ? null : () => _pickRelationship(data),
+                  onPickRelationship: _saving ? null : _pickRelationship,
                   phoneCtrl: _phoneCtrl,
                   phoneFocus: _phoneFocus,
                   phoneEditing: _phoneEditing,
@@ -240,43 +233,12 @@ class _PersonEditPageState extends State<PersonEditPage> {
       return;
     }
 
-    final appData = AppDataScope.of(context);
-    final db = AppDatabaseScope.maybeOf(context);
+    final db = AppDatabaseScope.of(context);
     final name = _nameCtrl.text.trim();
     final phone = _phoneCtrl.text.trim();
     final note = _noteCtrl.text.trim();
     setState(() => _saving = true);
     try {
-      if (db == null) {
-        if (widget.personId == null) {
-          appData.createPerson(
-            name: name,
-            relationship: _relationship,
-            phone: phone.isEmpty ? null : phone,
-            note: note.isEmpty ? null : note,
-            avatarUrl: _avatarUrl,
-            birthday: _birthday,
-            isLunarBirthday: _isLunarBirthday,
-            birthdayReminder: _birthdayReminder,
-          );
-        } else {
-          appData.updatePerson(
-            id: widget.personId!,
-            name: name,
-            relationship: _relationship,
-            phone: phone.isEmpty ? null : phone,
-            note: note.isEmpty ? null : note,
-            avatarUrl: _avatarUrl,
-            birthday: _birthday,
-            isLunarBirthday: _isLunarBirthday,
-            birthdayReminder: _birthdayReminder,
-          );
-        }
-        if (!mounted) return;
-        Navigator.of(context).pop(true);
-        _toast(context, '已保存');
-        return;
-      }
       if (phone.isNotEmpty && await _isPhoneExistsInDrift(db, phone, excludeId: widget.personId)) {
         if (!mounted) return;
         setState(() {
@@ -317,26 +279,6 @@ class _PersonEditPageState extends State<PersonEditPage> {
           note: Value(note.isEmpty ? null : note),
         );
         await db.personsDao.updateOne(updated);
-      }
-      final person = await db.personsDao.findById(targetId);
-      if (person != null) {
-        appData.mergeImportedData(
-          persons: <PersonData>[
-            PersonData(
-              id: person.personId,
-              name: person.name,
-              relationship: person.relationshipType,
-              phone: person.phone,
-              note: person.note,
-              avatarUrl: person.avatarUri,
-              birthday: DateTime.tryParse(person.birthday ?? ''),
-              isLunarBirthday: false,
-              birthdayReminder: false,
-              createdAt: DateTime.fromMillisecondsSinceEpoch(person.createdAt),
-            ),
-          ],
-          records: const <RecordData>[],
-        );
       }
       if (!mounted) return;
       Navigator.of(context).pop(true);
@@ -497,8 +439,7 @@ class _PersonEditPageState extends State<PersonEditPage> {
 
   Future<void> _saveInlineField(_InlineEditField field) async {
     if (widget.personId == null) return;
-    final db = AppDatabaseScope.maybeOf(context);
-    final appData = AppDataScope.of(context);
+    final db = AppDatabaseScope.of(context);
 
     final name = (field == _InlineEditField.name ? _nameCtrl.text : _savedName).trim();
     final phone = (field == _InlineEditField.phone ? _phoneCtrl.text : _savedPhone).trim();
@@ -525,23 +466,6 @@ class _PersonEditPageState extends State<PersonEditPage> {
     if (!changed) return;
 
     try {
-      if (db == null) {
-        appData.updatePerson(
-          id: widget.personId!,
-          name: name,
-          relationship: _relationship,
-          phone: phone.isEmpty ? null : phone,
-          note: note.isEmpty ? null : note,
-          avatarUrl: _avatarUrl,
-          birthday: _birthday,
-          isLunarBirthday: _isLunarBirthday,
-          birthdayReminder: _birthdayReminder,
-        );
-        if (field == _InlineEditField.name) _savedName = name;
-        if (field == _InlineEditField.phone) _savedPhone = phone;
-        if (field == _InlineEditField.note) _savedNote = note;
-        return;
-      }
       if (field == _InlineEditField.phone &&
           phone.isNotEmpty &&
           await _isPhoneExistsInDrift(db, phone, excludeId: widget.personId)) {
@@ -560,23 +484,6 @@ class _PersonEditPageState extends State<PersonEditPage> {
         note: Value(note.isEmpty ? null : note),
       );
       await db.personsDao.updateOne(updated);
-      appData.mergeImportedData(
-        persons: <PersonData>[
-          PersonData(
-            id: updated.personId,
-            name: updated.name,
-            relationship: updated.relationshipType,
-            phone: updated.phone,
-            note: updated.note,
-            avatarUrl: updated.avatarUri,
-            birthday: DateTime.tryParse(updated.birthday ?? ''),
-            isLunarBirthday: false,
-            birthdayReminder: false,
-            createdAt: DateTime.fromMillisecondsSinceEpoch(updated.createdAt),
-          ),
-        ],
-        records: const <RecordData>[],
-      );
       if (field == _InlineEditField.name) _savedName = name;
       if (field == _InlineEditField.phone) _savedPhone = phone;
       if (field == _InlineEditField.note) _savedNote = note;
@@ -590,8 +497,7 @@ class _PersonEditPageState extends State<PersonEditPage> {
   }
 
   Future<void> _confirmDelete() async {
-    final db = AppDatabaseScope.maybeOf(context);
-    final appData = AppDataScope.of(context);
+    final db = AppDatabaseScope.of(context);
     final name = _nameCtrl.text.trim().isEmpty ? '该联系人' : _nameCtrl.text.trim();
     final ok = await showDialog<bool>(
       context: context,
@@ -607,13 +513,6 @@ class _PersonEditPageState extends State<PersonEditPage> {
       },
     );
     if (ok != true) return;
-    if (db == null) {
-      appData.trashPerson(widget.personId!);
-      if (!mounted) return;
-      Navigator.of(context).pop(true);
-      _toast(context, '已移入回收站');
-      return;
-    }
     await db.personsDao.deleteById(widget.personId!);
     if (!mounted) return;
     Navigator.of(context).pop(true);
@@ -622,8 +521,7 @@ class _PersonEditPageState extends State<PersonEditPage> {
 
   Future<void> _loadPersonFromDrift(String personId) async {
     try {
-      final db = AppDatabaseScope.maybeOf(context);
-      if (db == null) return;
+      final db = AppDatabaseScope.of(context);
       final person = await db.personsDao.findById(personId);
       if (person == null || !mounted) return;
       setState(() {
@@ -642,7 +540,7 @@ class _PersonEditPageState extends State<PersonEditPage> {
   }
 
   Future<String> _resolveDbBookId(AppDatabase db, String selectedBookId) async {
-    if (selectedBookId != AppData.defaultBookId) return selectedBookId;
+    if (selectedBookId != _defaultBookSelectionId) return selectedBookId;
     return _defaultBookService.ensureDefaultBookId(db);
   }
 
@@ -672,14 +570,15 @@ class _PersonEditPageState extends State<PersonEditPage> {
     return false;
   }
 
-  Future<void> _pickRelationship(AppData data) async {
+  Future<void> _pickRelationship() async {
+    final db = AppDatabaseScope.of(context);
+    final types = await db.relationTypesDao.listAll();
     final picked = await showModalBottomSheet<String>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) {
         final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
-        final types = data.relationTypes.toList()..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
         return Padding(
           padding: EdgeInsets.fromLTRB(12, 0, 12, 12 + bottomInset),
           child: Container(
@@ -773,13 +672,13 @@ class _PersonEditPageState extends State<PersonEditPage> {
     );
     if (picked == null) return;
     if (picked == '__custom__') {
-      _inputCustomRelationship(data);
+      _inputCustomRelationship();
     } else {
       setState(() => _relationship = picked);
     }
   }
 
-  Future<void> _inputCustomRelationship(AppData data) async {
+  Future<void> _inputCustomRelationship() async {
     final ctrl = TextEditingController();
     final ok = await showDialog<String>(
       context: context,
@@ -806,10 +705,21 @@ class _PersonEditPageState extends State<PersonEditPage> {
     );
     if (ok != null && ok.isNotEmpty) {
       try {
-        await data.createRelationType(name: ok);
+        final db = AppDatabaseScope.of(context);
+        await db.relationTypesDao.create(name: ok);
       } catch (_) {}
       setState(() => _relationship = ok);
     }
+  }
+
+  Future<void> _loadDefaultRelationshipFromDrift() async {
+    try {
+      final db = AppDatabaseScope.of(context);
+      final types = await db.relationTypesDao.listAll();
+      if (!mounted || types.isEmpty) return;
+      final prefer = types.any((e) => e.name == '朋友') ? '朋友' : types.first.name;
+      setState(() => _relationship = prefer);
+    } catch (_) {}
   }
 
   Future<void> _pickBirthday() async {

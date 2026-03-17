@@ -549,124 +549,196 @@ class _CanvasState extends State<_Canvas> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) {
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-          child: Container(
-            decoration: const BoxDecoration(
-              color: AppColors.white,
-              borderRadius: AppRadii.br2xl,
-              boxShadow: AppShadows.lg,
-            ),
-            clipBehavior: Clip.antiAlias,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        String query = '';
+        final searchCtrl = TextEditingController();
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            final size = MediaQuery.sizeOf(context);
+            final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
+            return Padding(
+              padding: EdgeInsets.fromLTRB(12, 0, 12, 12 + bottomInset),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxHeight: size.height * 0.75),
+                child: Container(
                   decoration: const BoxDecoration(
                     color: AppColors.white,
-                    border: Border(bottom: BorderSide(color: AppColors.gray100, width: 1)),
+                    borderRadius: AppRadii.br2xl,
+                    boxShadow: AppShadows.lg,
                   ),
-                  child: Row(
+                  clipBehavior: Clip.antiAlias,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Expanded(
-                        child: Text(
-                          '选择人物（可选）',
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        decoration: const BoxDecoration(
+                          color: AppColors.white,
+                          border: Border(bottom: BorderSide(color: AppColors.gray100, width: 1)),
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                '选择人物（可选）',
+                                style: AppTypography.base(
+                                  fontSize: 14,
+                                  fontWeight: AppTypography.bold,
+                                  color: AppColors.textPrimary,
+                                ),
+                              ),
+                            ),
+                            PrototypeIconButton(
+                              icon: const FaIcon(FontAwesomeIcons.xmark, size: 14),
+                              backgroundColor: AppColors.gray100,
+                              foregroundColor: AppColors.textSecondary,
+                              onPressed: () => Navigator.of(context).pop(),
+                              radius: 12,
+                            ),
+                          ],
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                        child: TextField(
+                          controller: searchCtrl,
+                          onChanged: (v) {
+                            setModalState(() {
+                              query = v.trim();
+                            });
+                          },
                           style: AppTypography.base(
                             fontSize: 14,
-                            fontWeight: AppTypography.bold,
+                            fontWeight: AppTypography.medium,
                             color: AppColors.textPrimary,
+                          ),
+                          decoration: InputDecoration(
+                            isDense: true,
+                            filled: true,
+                            fillColor: AppColors.gray50,
+                            hintText: '按姓名搜索...',
+                            hintStyle: AppTypography.base(
+                              fontSize: 14,
+                              fontWeight: AppTypography.regular,
+                              color: AppColors.textMuted,
+                            ),
+                            prefixIcon: const Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 12),
+                              child: FaIcon(FontAwesomeIcons.magnifyingGlass, size: 14, color: AppColors.textMuted),
+                            ),
+                            prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(color: AppColors.borderSubtle, width: 1),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(color: AppColors.borderSubtle, width: 1),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(color: AppColors.borderFocus, width: 1),
+                            ),
                           ),
                         ),
                       ),
-                      PrototypeIconButton(
-                        icon: const FaIcon(FontAwesomeIcons.xmark, size: 14),
-                        backgroundColor: AppColors.gray100,
-                        foregroundColor: AppColors.textSecondary,
-                        onPressed: () => Navigator.of(context).pop(),
-                        radius: 12,
+                      Flexible(
+                        child: StreamBuilder<List<Person>>(
+                          stream: _db.personsDao.watchAllInBook(widget.bookId),
+                          builder: (context, snapshot) {
+                            final allPeople = snapshot.data ?? const <Person>[];
+                            var people = allPeople;
+                            if (query.isNotEmpty) {
+                              people = people.where((p) => p.name.contains(query)).toList();
+                            }
+                            return ListView(
+                              shrinkWrap: true,
+                              padding: const EdgeInsets.only(top: 12, bottom: 12),
+                              children: [
+                                PrototypePressableRow(
+                                  onTap: () => Navigator.of(context).pop(null),
+                                  child: Row(
+                                    children: [
+                                      const Expanded(
+                                        child: Text('不关联人物'),
+                                      ),
+                                      if (_personId == null)
+                                        const FaIcon(FontAwesomeIcons.check, size: 14, color: AppColors.indigo600),
+                                    ],
+                                  ),
+                                ),
+                                if (allPeople.isEmpty)
+                                  Padding(
+                                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                                    child: Text(
+                                      '当前账簿暂无人物数据',
+                                      style: AppTypography.base(
+                                        fontSize: 12,
+                                        fontWeight: AppTypography.regular,
+                                        color: AppColors.textMuted,
+                                      ),
+                                    ),
+                                  )
+                                else if (people.isEmpty)
+                                  Padding(
+                                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                                    child: Text(
+                                      '未找到匹配的人物',
+                                      style: AppTypography.base(
+                                        fontSize: 12,
+                                        fontWeight: AppTypography.regular,
+                                        color: AppColors.textMuted,
+                                      ),
+                                    ),
+                                  ),
+                                for (final p in people)
+                                  PrototypePressableRow(
+                                    onTap: () => Navigator.of(context).pop(p.personId),
+                                    borderBottom: true,
+                                    child: Row(
+                                      children: [
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                p.name,
+                                                style: AppTypography.base(
+                                                  fontSize: 14,
+                                                  fontWeight: AppTypography.medium,
+                                                  color: AppColors.textPrimary,
+                                                ),
+                                              ),
+                                              if ((p.phone ?? '').trim().isNotEmpty) ...[
+                                                const SizedBox(height: 2),
+                                                Text(
+                                                  p.phone!.trim(),
+                                                  style: AppTypography.base(
+                                                    fontSize: 12,
+                                                    fontWeight: AppTypography.regular,
+                                                    color: AppColors.textMuted,
+                                                  ),
+                                                ),
+                                              ],
+                                            ],
+                                          ),
+                                        ),
+                                        if (p.personId == _personId)
+                                          const FaIcon(FontAwesomeIcons.check, size: 14, color: AppColors.indigo600),
+                                      ],
+                                    ),
+                                  ),
+                              ],
+                            );
+                          },
+                        ),
                       ),
                     ],
                   ),
                 ),
-                Flexible(
-                  child: StreamBuilder<List<Person>>(
-                    stream: _db.personsDao.watchAllInBook(widget.bookId),
-                    builder: (context, snapshot) {
-                      final people = snapshot.data ?? const <Person>[];
-                      return ListView(
-                        shrinkWrap: true,
-                        padding: const EdgeInsets.only(bottom: 12),
-                        children: [
-                          PrototypePressableRow(
-                            onTap: () => Navigator.of(context).pop(null),
-                            child: Row(
-                              children: [
-                                const Expanded(
-                                  child: Text('不关联人物'),
-                                ),
-                                if (_personId == null)
-                                  const FaIcon(FontAwesomeIcons.check, size: 14, color: AppColors.indigo600),
-                              ],
-                            ),
-                          ),
-                          if (people.isEmpty)
-                            Padding(
-                              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                              child: Text(
-                                '当前账簿暂无人物数据',
-                                style: AppTypography.base(
-                                  fontSize: 12,
-                                  fontWeight: AppTypography.regular,
-                                  color: AppColors.textMuted,
-                                ),
-                              ),
-                            ),
-                          for (final p in people)
-                            PrototypePressableRow(
-                              onTap: () => Navigator.of(context).pop(p.personId),
-                              borderBottom: true,
-                              child: Row(
-                                children: [
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          p.name,
-                                          style: AppTypography.base(
-                                            fontSize: 14,
-                                            fontWeight: AppTypography.medium,
-                                            color: AppColors.textPrimary,
-                                          ),
-                                        ),
-                                        if ((p.phone ?? '').trim().isNotEmpty) ...[
-                                          const SizedBox(height: 2),
-                                          Text(
-                                            p.phone!.trim(),
-                                            style: AppTypography.base(
-                                              fontSize: 12,
-                                              fontWeight: AppTypography.regular,
-                                              color: AppColors.textMuted,
-                                            ),
-                                          ),
-                                        ],
-                                      ],
-                                    ),
-                                  ),
-                                  if (p.personId == _personId)
-                                    const FaIcon(FontAwesomeIcons.check, size: 14, color: AppColors.indigo600),
-                                ],
-                              ),
-                            ),
-                        ],
-                      );
-                    },
-                  ),
-                ),
-              ],
-            ),
-          ),
+              ),
+            );
+          },
         );
       },
     );

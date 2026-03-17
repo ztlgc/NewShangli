@@ -312,4 +312,15 @@ class GiftRecordsDao extends DatabaseAccessor<AppDatabase>
     final row = await query.getSingleOrNull();
     return row == null ? 0 : (row.read(sumExp) ?? 0);
   }
+
+  /// 批量更新账簿下所有记录的事由（当账簿事由发生变更时同步）
+  Future<int> updateEventNameByBookId(String bookId, String newEventName) {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    return (update(giftRecords)..where((t) => t.bookId.equals(bookId))).write(
+      GiftRecordsCompanion(
+        eventName: Value(newEventName),
+        updatedAt: Value(now),
+      ),
+    );
+  }
 }

@@ -31,8 +31,9 @@ class RecordAddPage extends StatefulWidget {
 }
 
 class _RecordAddPageState extends State<RecordAddPage> {
+  static const String _defaultBookSelectionId = 'book_default';
   bool _isIncome = true;
-  String _bookId = AppData.defaultBookId;
+  String _bookId = _defaultBookSelectionId;
   String? _personId;
   String _eventName = '';
   String _paymentMethod = '微信支付';
@@ -72,38 +73,8 @@ class _RecordAddPageState extends State<RecordAddPage> {
     super.didChangeDependencies();
     if (_loaded) return;
     _loaded = true;
-    final data = AppDataScope.of(context);
     _suppressDirty = true;
-    var hitFromMemory = false;
     try {
-      if (widget.recordId != null) {
-        final record = data.findRecord(widget.recordId!);
-        if (record != null) {
-          hitFromMemory = true;
-          _isIncome = record.direction == RecordDirection.income;
-          _bookId = data.resolveBookId(record.bookId);
-          _personId = record.personId;
-          _personName = record.personName;
-          _eventName = record.eventName;
-          _paymentMethod = record.paymentMethod;
-          _occurredAt = record.occurredAt;
-          _amountController.text = _formatAmountInput(record.amountCent);
-          _noteController.text = record.note ?? '';
-        }
-      }
-
-      final persons = data.persons;
-      if (_personId == null && persons.isNotEmpty) {
-        _personId = persons.first.id;
-        _personName = persons.first.name;
-      }
-      if (_personName.trim().isEmpty && _personId != null) {
-        final p = data.findPerson(_personId!);
-        if (p != null) _personName = p.name;
-      }
-      if (_eventName.trim().isEmpty && data.reasons.isNotEmpty) {
-        _eventName = data.reasons.first.name;
-      }
       if (_amountController.text.trim().isEmpty) {
         _amountController.text = '';
       }
@@ -111,8 +82,10 @@ class _RecordAddPageState extends State<RecordAddPage> {
       _suppressDirty = false;
       _dirty = false;
     }
-    if (!hitFromMemory && widget.recordId != null) {
+    if (widget.recordId != null) {
       _loadRecordFromDrift(widget.recordId!);
+    } else {
+      _initDefaultsFromDrift();
     }
   }
 
@@ -149,14 +122,7 @@ class _RecordAddPageState extends State<RecordAddPage> {
 
   Future<void> _handleSave() async {
     if (_saving) return;
-    final data = AppDataScope.of(context);
-    if ((_personId == null || _personId!.trim().isEmpty) && data.persons.isNotEmpty) {
-      _personId = data.persons.first.id;
-      _personName = data.persons.first.name;
-    }
-    if (_eventName.trim().isEmpty && data.reasons.isNotEmpty) {
-      _eventName = data.reasons.first.name;
-    }
+    await _ensureRequiredDefaults();
     final amountCent = _parseAmountCent(_amountController.text);
     if (amountCent == null || amountCent <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('请输入正确金额')));
@@ -179,9 +145,9 @@ class _RecordAddPageState extends State<RecordAddPage> {
     }
 
     final db = AppDatabaseScope.maybeOf(context);
-    setState(() => _saving = true);
-    try {
-      if (db == null) {
+    if (db == null) {
+      final data = _appDataMaybe(context);
+      if (data != null) {
         if (widget.recordId == null) {
           data.createRecord(
             bookId: _bookId,
@@ -206,15 +172,18 @@ class _RecordAddPageState extends State<RecordAddPage> {
             note: _noteController.text,
           );
         }
-        if (!mounted) return;
-        _dirty = false;
-        _closeAfterSave();
-        return;
       }
+      if (!mounted) return;
+      _dirty = false;
+      _closeAfterSave();
+      return;
+    }
+    setState(() => _saving = true);
+    try {
       final dbBookId = await _resolveDbBookId(db, _bookId);
       final now = DateTime.now().millisecondsSinceEpoch;
       if (widget.recordId == null) {
-        final createdId = await db.giftRecordsDao.insertOne(
+        await db.giftRecordsDao.insertOne(
           GiftRecordsCompanion.insert(
             bookId: dbBookId,
             personId: pid,
@@ -227,40 +196,6 @@ class _RecordAddPageState extends State<RecordAddPage> {
             createdAt: now,
             updatedAt: now,
           ),
-        );
-        final person = await db.personsDao.findById(pid);
-        data.mergeImportedData(
-          persons: person == null
-              ? const <PersonData>[]
-              : <PersonData>[
-                  PersonData(
-                    id: person.personId,
-                    name: person.name,
-                    relationship: person.relationshipType,
-                    phone: person.phone,
-                    note: person.note,
-                    avatarUrl: person.avatarUri,
-                    birthday: DateTime.tryParse(person.birthday ?? ''),
-                    isLunarBirthday: false,
-                    birthdayReminder: false,
-                    createdAt: DateTime.fromMillisecondsSinceEpoch(person.createdAt),
-                  ),
-                ],
-          records: <RecordData>[
-            RecordData(
-              id: createdId,
-              bookId: _bookId,
-              personId: pid,
-              personName: _personName.trim().isEmpty ? (person?.name ?? '') : _personName.trim(),
-              personAvatarUrl: person?.avatarUri,
-              direction: _isIncome ? RecordDirection.income : RecordDirection.expense,
-              amountCent: amountCent,
-              eventName: eventName,
-              paymentMethod: payment,
-              occurredAt: _occurredAt,
-              note: _noteController.text.trim().isEmpty ? null : _noteController.text.trim(),
-            ),
-          ],
         );
       } else {
         final existing = await db.giftRecordsDao.findById(widget.recordId!);
@@ -280,40 +215,6 @@ class _RecordAddPageState extends State<RecordAddPage> {
             deletedAt: const Value(null),
           ),
         );
-        final person = await db.personsDao.findById(pid);
-        data.mergeImportedData(
-          persons: person == null
-              ? const <PersonData>[]
-              : <PersonData>[
-                  PersonData(
-                    id: person.personId,
-                    name: person.name,
-                    relationship: person.relationshipType,
-                    phone: person.phone,
-                    note: person.note,
-                    avatarUrl: person.avatarUri,
-                    birthday: DateTime.tryParse(person.birthday ?? ''),
-                    isLunarBirthday: false,
-                    birthdayReminder: false,
-                    createdAt: DateTime.fromMillisecondsSinceEpoch(person.createdAt),
-                  ),
-                ],
-          records: <RecordData>[
-            RecordData(
-              id: existing.recordId,
-              bookId: _bookId,
-              personId: pid,
-              personName: _personName.trim().isEmpty ? (person?.name ?? '') : _personName.trim(),
-              personAvatarUrl: person?.avatarUri,
-              direction: _isIncome ? RecordDirection.income : RecordDirection.expense,
-              amountCent: amountCent,
-              eventName: eventName,
-              paymentMethod: payment,
-              occurredAt: _occurredAt,
-              note: _noteController.text.trim().isEmpty ? null : _noteController.text.trim(),
-            ),
-          ],
-        );
       }
       if (!mounted) return;
       _dirty = false;
@@ -329,51 +230,7 @@ class _RecordAddPageState extends State<RecordAddPage> {
   Future<void> _pickPerson() async {
     final db = AppDatabaseScope.maybeOf(context);
     if (db == null) {
-      final data = AppDataScope.of(context);
-      final persons = data.persons;
-      if (persons.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('暂无关系人，请先添加')));
-        return;
-      }
-      final picked = await showModalBottomSheet<PersonData>(
-        context: context,
-        showDragHandle: true,
-        builder: (context) {
-          return SafeArea(
-            child: ListView(
-              padding: const EdgeInsets.only(bottom: 12),
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                  child: Text('选择关系人', style: AppTypography.h2().copyWith(fontSize: 16)),
-                ),
-                for (final p in persons)
-                  ListTile(
-                    title: Text(p.name),
-                    subtitle: Text(p.relationship),
-                    trailing: (_personId == p.id) ? const Icon(Icons.check) : null,
-                    onTap: () => Navigator.of(context).pop(p),
-                  ),
-                const Divider(height: 1),
-                ListTile(
-                  title: const Text('管理关系人'),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () {
-                    Navigator.of(context).pop();
-                    AppNav.push(context, const PersonListPage());
-                  },
-                ),
-              ],
-            ),
-          );
-        },
-      );
-      if (picked == null) return;
-      setState(() {
-        _personId = picked.id;
-        _personName = picked.name;
-        _dirty = true;
-      });
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('数据库未初始化')));
       return;
     }
     final persons = await db.select(db.persons).get();
@@ -426,8 +283,7 @@ class _RecordAddPageState extends State<RecordAddPage> {
   Future<void> _pickBook() async {
     final db = AppDatabaseScope.maybeOf(context);
     if (db == null) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('账簿模块未初始化')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('数据库未初始化')));
       return;
     }
     final books = await db.select(db.accountBooks).get();
@@ -489,7 +345,7 @@ class _RecordAddPageState extends State<RecordAddPage> {
                       for (final b in books)
                         PrototypePressableRow(
                           onTap: () {
-                            final id = (b.isDefault == 1) ? AppData.defaultBookId : b.bookId;
+                            final id = (b.isDefault == 1) ? _defaultBookSelectionId : b.bookId;
                             Navigator.of(context).pop(id);
                           },
                           child: Row(
@@ -504,7 +360,7 @@ class _RecordAddPageState extends State<RecordAddPage> {
                                   ),
                                 ),
                               ),
-                              if (((b.isDefault == 1) ? AppData.defaultBookId : b.bookId) == _bookId)
+                              if (((b.isDefault == 1) ? _defaultBookSelectionId : b.bookId) == _bookId)
                                 const FaIcon(FontAwesomeIcons.check, size: 14, color: AppColors.indigo600),
                             ],
                           ),
@@ -526,7 +382,7 @@ class _RecordAddPageState extends State<RecordAddPage> {
   }
 
   String _resolveBookName(List<AccountBook> books) {
-    if (_bookId == AppData.defaultBookId) {
+    if (_bookId == _defaultBookSelectionId) {
       for (final b in books) {
         if (b.isDefault == 1) return b.name;
       }
@@ -539,8 +395,15 @@ class _RecordAddPageState extends State<RecordAddPage> {
   }
 
   Future<void> _pickReason() async {
-    final data = AppDataScope.of(context);
-    final reasons = data.enabledReasons.toList()..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+    final db = AppDatabaseScope.maybeOf(context);
+    if (db == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('数据库未初始化')));
+      return;
+    }
+    final reasons = (await db.reasonsDao.listAll())
+        .where((e) => e.enabled)
+        .toList()
+      ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
     final picked = await showModalBottomSheet<String>(
       context: context,
       showDragHandle: true,
@@ -694,11 +557,9 @@ class _RecordAddPageState extends State<RecordAddPage> {
 
   @override
   Widget build(BuildContext context) {
-    final data = AppDataScope.of(context);
-    final person = (_personId == null) ? null : data.findPerson(_personId!);
     final displayPersonName = _personName.trim().isNotEmpty
         ? _personName.trim()
-        : (person?.name ?? '请选择');
+        : '请选择';
     final title = widget.recordId == null ? '记录收支' : '编辑收支';
     return WillPopScope(
       onWillPop: _confirmDiscardIfNeeded,
@@ -740,10 +601,10 @@ class _RecordAddPageState extends State<RecordAddPage> {
                     builder: (context) {
                       final db = AppDatabaseScope.maybeOf(context);
                       if (db == null) {
-                        final name = _bookId == AppData.defaultBookId ? '默认账簿' : '未选择';
+                        final name = _bookId == _defaultBookSelectionId ? '默认账簿' : '未选择';
                         return _FormCard(
                           bookName: name,
-                            personName: displayPersonName,
+                          personName: displayPersonName,
                           eventName: _eventName.trim().isEmpty ? '请选择' : _eventName,
                           dateLabel: _formatDate(_occurredAt),
                           paymentMethod: _paymentMethod.trim().isEmpty ? '请选择' : _paymentMethod,
@@ -788,7 +649,25 @@ class _RecordAddPageState extends State<RecordAddPage> {
   Future<void> _loadRecordFromDrift(String recordId) async {
     try {
       final db = AppDatabaseScope.maybeOf(context);
-      if (db == null) return;
+      if (db == null) {
+        final data = _appDataMaybe(context);
+        final record = data?.findRecord(recordId);
+        if (record != null && mounted) {
+          setState(() {
+            _isIncome = record.direction == RecordDirection.income;
+            _bookId = record.bookId ?? _defaultBookSelectionId;
+            _personId = record.personId;
+            _personName = record.personName;
+            _eventName = record.eventName;
+            _paymentMethod = record.paymentMethod;
+            _occurredAt = record.occurredAt;
+            _amountController.text = _formatAmountInput(record.amountCent);
+            _noteController.text = record.note ?? '';
+            _dirty = false;
+          });
+        }
+        return;
+      }
       final record = await db.giftRecordsDao.findById(recordId);
       if (record == null || !mounted) return;
       final person = await db.personsDao.findById(record.personId);
@@ -797,7 +676,7 @@ class _RecordAddPageState extends State<RecordAddPage> {
       _suppressDirty = true;
       setState(() {
         _isIncome = record.direction != '支出';
-        _bookId = (book?.isDefault == 1) ? AppData.defaultBookId : record.bookId;
+        _bookId = (book?.isDefault == 1) ? _defaultBookSelectionId : record.bookId;
         _personId = record.personId;
         _personName = person?.name ?? '';
         _eventName = (record.eventName ?? '').trim().isEmpty ? '' : record.eventName!.trim();
@@ -813,8 +692,53 @@ class _RecordAddPageState extends State<RecordAddPage> {
   }
 
   Future<String> _resolveDbBookId(AppDatabase db, String selectedBookId) async {
-    if (selectedBookId != AppData.defaultBookId) return selectedBookId;
+    if (selectedBookId != _defaultBookSelectionId) return selectedBookId;
     return _defaultBookService.ensureDefaultBookId(db);
+  }
+
+  Future<void> _initDefaultsFromDrift() async {
+    final db = AppDatabaseScope.maybeOf(context);
+    if (db == null) {
+      final data = _appDataMaybe(context);
+      if (data == null) return;
+      if (_personId == null && data.persons.isNotEmpty) {
+        _personId = data.persons.first.id;
+        _personName = data.persons.first.name;
+      }
+      if (_eventName.trim().isEmpty && data.reasons.isNotEmpty) {
+        _eventName = data.reasons.first.name;
+      }
+      if (mounted) {
+        setState(() {});
+      }
+      return;
+    }
+    final persons = await (db.select(db.persons)..limit(1)).get();
+    if (!mounted) return;
+    if (_personId == null && persons.isNotEmpty) {
+      _personId = persons.first.personId;
+      _personName = persons.first.name;
+    }
+    final reasons = await db.reasonsDao.listAll();
+    if (!mounted) return;
+    if (_eventName.trim().isEmpty && reasons.isNotEmpty) {
+      _eventName = reasons.first.name;
+    }
+    setState(() {});
+  }
+
+  Future<void> _ensureRequiredDefaults() async {
+    if (_personId != null && _personId!.trim().isNotEmpty && _eventName.trim().isNotEmpty) {
+      return;
+    }
+    await _initDefaultsFromDrift();
+  }
+
+  AppData? _appDataMaybe(BuildContext context) {
+    final element = context.getElementForInheritedWidgetOfExactType<AppDataScope>();
+    final widget = element?.widget;
+    if (widget is! AppDataScope) return null;
+    return widget.notifier;
   }
 
   void _closeAfterSave() {

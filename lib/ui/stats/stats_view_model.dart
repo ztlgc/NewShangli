@@ -196,7 +196,7 @@ class StatsViewModel extends ChangeNotifier {
             amountCent: row.record.amountCent,
             eventName: (row.record.eventName ?? '').trim().isEmpty ? '未设置' : row.record.eventName!.trim(),
             personName: row.person.name,
-            paymentMethod: (row.record.paymentMethod ?? '').trim().isEmpty ? '未设置' : row.record.paymentMethod!.trim(),
+            paymentMethod: (row.record.paymentMethod ?? '').trim().isEmpty ? '' : row.record.paymentMethod!.trim(),
             occurredAt: DateTime.fromMillisecondsSinceEpoch(row.record.occurredAt),
             note: row.record.note,
           ),

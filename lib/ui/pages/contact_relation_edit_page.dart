@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
-import '../app_data.dart';
+import '../../data/local/drift/app_database.dart';
+import '../app_database_scope.dart';
 import '../app_tokens.dart';
 import '../app_scaffold.dart';
 import '../contact_avatar.dart';
@@ -33,6 +34,7 @@ class _ContactRelationEditPageState extends State<ContactRelationEditPage> {
   String? _personBId;
   String? _typeId;
   late final TextEditingController _noteCtrl;
+  ContactRelation? _relation;
 
   @override
   void initState() {
@@ -45,22 +47,7 @@ class _ContactRelationEditPageState extends State<ContactRelationEditPage> {
     super.didChangeDependencies();
     if (_inited) return;
     _inited = true;
-    final data = AppDataScope.of(context);
-
-    final rel = widget.id == null ? null : data.findContactRelation(widget.id!);
-    if (rel != null) {
-      _personAId = rel.personAId;
-      _personBId = rel.personBId;
-      _typeId = rel.typeId;
-      _noteCtrl.text = rel.note ?? '';
-      return;
-    }
-
-    final persons = data.persons;
-    final types = data.relationTypes;
-    _personAId = persons.isEmpty ? null : persons.first.id;
-    _personBId = persons.length < 2 ? null : persons[1].id;
-    _typeId = types.isEmpty ? null : types.first.id;
+    _loadRelation();
   }
 
   @override
@@ -71,18 +58,23 @@ class _ContactRelationEditPageState extends State<ContactRelationEditPage> {
 
   @override
   Widget build(BuildContext context) {
-    final data = AppDataScope.of(context);
-    final rel = widget.id == null ? null : data.findContactRelation(widget.id!);
-    final persons = data.persons.toList()..sort((a, b) => a.name.compareTo(b.name));
-    final types = data.relationTypes.toList()..sort((a, b) => a.name.compareTo(b.name));
-
-    final aName = _personAId == null ? '请选择' : (data.findPerson(_personAId!)?.name ?? '未知');
-    final bName = _personBId == null ? '请选择' : (data.findPerson(_personBId!)?.name ?? '未知');
-    final tName = _typeId == null ? '请选择' : (data.findRelationType(_typeId!)?.name ?? '未知');
+    final db = AppDatabaseScope.of(context);
 
     return AppScaffold(
       backgroundColor: AppColors.surfaceApp,
-      body: Column(
+      body: StreamBuilder<List<Person>>(
+        stream: db.personsDao.watchAllInAllBooks(),
+        builder: (context, personSnapshot) {
+          final persons = personSnapshot.data ?? const <Person>[];
+          return StreamBuilder<List<RelationType>>(
+            stream: db.relationTypesDao.watchAll(),
+            builder: (context, typeSnapshot) {
+              final types = typeSnapshot.data ?? const <RelationType>[];
+              _ensureDefaults(persons, types);
+              final aName = _resolvePersonName(persons, _personAId);
+              final bName = _resolvePersonName(persons, _personBId);
+              final tName = _resolveTypeName(types, _typeId);
+              return Column(
         children: [
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -155,7 +147,7 @@ class _ContactRelationEditPageState extends State<ContactRelationEditPage> {
                         onTap: () async {
                           final picked = await _pickPerson(context, persons);
                           if (picked == null) return;
-                          setState(() => _personAId = picked.id);
+                          setState(() => _personAId = picked.personId);
                         },
                       ),
                       const PrototypeDivider(color: AppColors.borderDivider),
@@ -165,7 +157,7 @@ class _ContactRelationEditPageState extends State<ContactRelationEditPage> {
                         onTap: () async {
                           final picked = await _pickPerson(context, persons);
                           if (picked == null) return;
-                          setState(() => _personBId = picked.id);
+                          setState(() => _personBId = picked.personId);
                         },
                       ),
                       const PrototypeDivider(color: AppColors.borderDivider),
@@ -175,7 +167,7 @@ class _ContactRelationEditPageState extends State<ContactRelationEditPage> {
                         onTap: () async {
                           final picked = await _pickType(context, types);
                           if (picked == null) return;
-                          setState(() => _typeId = picked.id);
+                          setState(() => _typeId = picked.typeId);
                         },
                         borderBottom: false,
                       ),
@@ -235,7 +227,7 @@ class _ContactRelationEditPageState extends State<ContactRelationEditPage> {
                 const SizedBox(height: 16),
                 if (!widget.createMode)
                   PressableScale(
-                    onTap: _saving ? null : () => _confirmDelete(context, data),
+                    onTap: _saving ? null : () => _confirmDelete(context, db),
                     child: Container(
                       height: 48,
                       decoration: BoxDecoration(
@@ -255,7 +247,7 @@ class _ContactRelationEditPageState extends State<ContactRelationEditPage> {
                       ),
                     ),
                   ),
-                if (!widget.createMode && rel == null)
+                if (!widget.createMode && _relation == null)
                   Padding(
                     padding: const EdgeInsets.only(top: 24),
                     child: Center(
@@ -273,12 +265,16 @@ class _ContactRelationEditPageState extends State<ContactRelationEditPage> {
             ),
           ),
         ],
+              );
+            },
+          );
+        },
       ),
     );
   }
 
   Future<void> _onSave() async {
-    final data = AppDataScope.of(context);
+    final db = AppDatabaseScope.of(context);
     final a = _personAId;
     final b = _personBId;
     final t = _typeId;
@@ -288,8 +284,18 @@ class _ContactRelationEditPageState extends State<ContactRelationEditPage> {
     }
     setState(() => _saving = true);
     try {
+      if (a == b) {
+        throw ArgumentError('两个联系人不能相同');
+      }
+      final exists = await db.contactRelationsDao.existsByPair(
+        personAId: a,
+        personBId: b,
+        typeId: t,
+        excludeRelationId: widget.createMode ? null : widget.id,
+      );
+      if (exists) throw ArgumentError('该关系已存在');
       if (widget.createMode) {
-        await data.createContactRelation(
+        await db.contactRelationsDao.create(
           personAId: a,
           personBId: b,
           typeId: t,
@@ -299,8 +305,8 @@ class _ContactRelationEditPageState extends State<ContactRelationEditPage> {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('已创建')));
         AppNav.pop(context);
       } else {
-        await data.updateContactRelation(
-          id: widget.id!,
+        await db.contactRelationsDao.updateOne(
+          relationId: widget.id!,
           personAId: a,
           personBId: b,
           typeId: t,
@@ -318,7 +324,7 @@ class _ContactRelationEditPageState extends State<ContactRelationEditPage> {
     }
   }
 
-  Future<void> _confirmDelete(BuildContext context, AppData data) async {
+  Future<void> _confirmDelete(BuildContext context, AppDatabase db) async {
     final ok = await showDialog<bool>(
       context: context,
       builder: (context) {
@@ -334,7 +340,7 @@ class _ContactRelationEditPageState extends State<ContactRelationEditPage> {
     );
     if (ok != true) return;
     try {
-      await data.deleteContactRelation(widget.id!);
+      await db.contactRelationsDao.deleteById(widget.id!);
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('已删除')));
       AppNav.pop(context);
@@ -344,8 +350,51 @@ class _ContactRelationEditPageState extends State<ContactRelationEditPage> {
     }
   }
 
-  Future<PersonData?> _pickPerson(BuildContext context, List<PersonData> persons) {
-    return showModalBottomSheet<PersonData>(
+  Future<void> _loadRelation() async {
+    final id = widget.id;
+    if (id == null || id.trim().isEmpty) return;
+    final db = AppDatabaseScope.of(context);
+    final rel = await db.contactRelationsDao.findById(id);
+    if (!mounted) return;
+    setState(() {
+      _relation = rel;
+      _personAId = rel?.personAId;
+      _personBId = rel?.personBId;
+      _typeId = rel?.typeId;
+      _noteCtrl.text = rel?.note ?? '';
+    });
+  }
+
+  void _ensureDefaults(List<Person> persons, List<RelationType> types) {
+    if (_personAId == null && persons.isNotEmpty) {
+      _personAId = persons.first.personId;
+    }
+    if (_personBId == null && persons.length >= 2) {
+      _personBId = persons[1].personId;
+    }
+    if (_typeId == null && types.isNotEmpty) {
+      _typeId = types.first.typeId;
+    }
+  }
+
+  String _resolvePersonName(List<Person> persons, String? personId) {
+    if (personId == null || personId.trim().isEmpty) return '请选择';
+    for (final p in persons) {
+      if (p.personId == personId) return p.name;
+    }
+    return '未知';
+  }
+
+  String _resolveTypeName(List<RelationType> types, String? typeId) {
+    if (typeId == null || typeId.trim().isEmpty) return '请选择';
+    for (final t in types) {
+      if (t.typeId == typeId) return t.name;
+    }
+    return '未知';
+  }
+
+  Future<Person?> _pickPerson(BuildContext context, List<Person> persons) {
+    return showModalBottomSheet<Person>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
@@ -363,7 +412,7 @@ class _ContactRelationEditPageState extends State<ContactRelationEditPage> {
                     children: [
                       ContactAvatar(
                         name: p.name,
-                        avatarUrl: p.avatarUrl,
+                        avatarUrl: p.avatarUri,
                         size: 28,
                         shape: ContactAvatarShape.circle,
                       ),
@@ -388,8 +437,8 @@ class _ContactRelationEditPageState extends State<ContactRelationEditPage> {
     );
   }
 
-  Future<RelationTypeData?> _pickType(BuildContext context, List<RelationTypeData> types) {
-    return showModalBottomSheet<RelationTypeData>(
+  Future<RelationType?> _pickType(BuildContext context, List<RelationType> types) {
+    return showModalBottomSheet<RelationType>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,

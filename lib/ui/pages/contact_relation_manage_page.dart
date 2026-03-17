@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
-import '../app_data.dart';
+import '../../data/local/drift/app_database.dart';
+import '../app_database_scope.dart';
 import '../app_tokens.dart';
 import '../app_scaffold.dart';
 import '../contact_avatar.dart';
@@ -62,8 +63,7 @@ class _CanvasState extends State<_Canvas> {
 
   @override
   Widget build(BuildContext context) {
-    final data = AppDataScope.of(context);
-    final persons = data.persons.toList()..sort((a, b) => a.name.compareTo(b.name));
+    final db = AppDatabaseScope.of(context);
 
     return Column(
       children: [
@@ -103,42 +103,42 @@ class _CanvasState extends State<_Canvas> {
           ),
         ),
         Expanded(
-          child: ListView(
-            controller: _controller,
-            physics: const BouncingScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
-            children: [
-              if (data.relationsLoadError != null)
-                PrototypeCard(
-                  color: AppColors.orange50,
-                  shadow: null,
-                  border: Border.all(color: AppColors.orange100, width: 1),
-                  child: Text(
-                    '联系人关系加载失败，已使用默认数据：${data.relationsLoadError}',
-                    style: AppTypography.base(
-                      fontSize: 12,
-                      fontWeight: AppTypography.medium,
-                      color: AppColors.orange600,
-                    ),
-                  ),
-                ),
-              if (data.relationsLoadError != null) const SizedBox(height: 12),
-              _ModeSwitch(
-                graphMode: _graphMode,
-                onChanged: (v) => setState(() => _graphMode = v),
-              ),
-              const SizedBox(height: 12),
-              if (_graphMode)
-                _GraphView(
-                  persons: persons,
-                  selectedPersonId: _selectedPersonId,
-                  onChangePerson: (id) => setState(() => _selectedPersonId = id),
-                )
-              else
-                _ListView(
-                  visibleCount: _visibleCount,
-                ),
-            ],
+          child: StreamBuilder<List<Person>>(
+            stream: db.personsDao.watchAllInAllBooks(),
+            builder: (context, personSnapshot) {
+              final persons = personSnapshot.data ?? const <Person>[];
+              return StreamBuilder<List<ContactRelationWithDetails>>(
+                stream: db.contactRelationsDao.watchAllWithDetails(),
+                builder: (context, relationSnapshot) {
+                  final relations = relationSnapshot.data ?? const <ContactRelationWithDetails>[];
+                  return ListView(
+                    controller: _controller,
+                    physics: const BouncingScrollPhysics(),
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
+                    children: [
+                      _ModeSwitch(
+                        graphMode: _graphMode,
+                        onChanged: (v) => setState(() => _graphMode = v),
+                      ),
+                      const SizedBox(height: 12),
+                      if (_graphMode)
+                        _GraphView(
+                          persons: persons,
+                          relations: relations,
+                          selectedPersonId: _selectedPersonId,
+                          onChangePerson: (id) => setState(() => _selectedPersonId = id),
+                        )
+                      else
+                        _ListView(
+                          visibleCount: _visibleCount,
+                          relations: relations,
+                          db: db,
+                        ),
+                    ],
+                  );
+                },
+              );
+            },
           ),
         ),
       ],
@@ -208,15 +208,18 @@ class _ModeSwitch extends StatelessWidget {
 }
 
 class _ListView extends StatelessWidget {
-  const _ListView({required this.visibleCount});
+  const _ListView({
+    required this.visibleCount,
+    required this.relations,
+    required this.db,
+  });
 
   final int visibleCount;
+  final List<ContactRelationWithDetails> relations;
+  final AppDatabase db;
 
   @override
   Widget build(BuildContext context) {
-    final data = AppDataScope.of(context);
-    final relations = data.contactRelations.toList()..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
-
     final showCount = relations.length < visibleCount ? relations.length : visibleCount;
     return PrototypeCard(
       padding: EdgeInsets.zero,
@@ -239,8 +242,8 @@ class _ListView extends StatelessWidget {
               _RelationRow(
                 relation: relations[i],
                 borderBottom: i != showCount - 1,
-                onTap: () => AppNav.push(context, ContactRelationEditPage(id: relations[i].id)),
-                onLongPress: () => _confirmDelete(context, data, relations[i]),
+                onTap: () => AppNav.push(context, ContactRelationEditPage(id: relations[i].relation.relationId)),
+                onLongPress: () => _confirmDelete(context, db, relations[i]),
               ),
           if (showCount < relations.length)
             Padding(
@@ -261,7 +264,11 @@ class _ListView extends StatelessWidget {
     );
   }
 
-  Future<void> _confirmDelete(BuildContext context, AppData data, ContactRelationData rel) async {
+  Future<void> _confirmDelete(
+    BuildContext context,
+    AppDatabase db,
+    ContactRelationWithDetails rel,
+  ) async {
     final ok = await showDialog<bool>(
       context: context,
       builder: (context) {
@@ -277,7 +284,7 @@ class _ListView extends StatelessWidget {
     );
     if (ok != true) return;
     try {
-      await data.deleteContactRelation(rel.id);
+      await db.contactRelationsDao.deleteById(rel.relation.relationId);
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('已删除')));
     } catch (e) {
@@ -295,21 +302,16 @@ class _RelationRow extends StatelessWidget {
     this.borderBottom = true,
   });
 
-  final ContactRelationData relation;
+  final ContactRelationWithDetails relation;
   final VoidCallback onTap;
   final VoidCallback onLongPress;
   final bool borderBottom;
 
   @override
   Widget build(BuildContext context) {
-    final data = AppDataScope.of(context);
-    final a = data.findPerson(relation.personAId);
-    final b = data.findPerson(relation.personBId);
-    final t = data.findRelationType(relation.typeId);
-
-    final aName = a?.name ?? '未知';
-    final bName = b?.name ?? '未知';
-    final tName = t?.name ?? '未知';
+    final aName = relation.personA.name;
+    final bName = relation.personB.name;
+    final tName = relation.type.name;
 
     return PrototypePressableRow(
       onTap: onTap,
@@ -360,7 +362,9 @@ class _RelationRow extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  relation.note == null || relation.note!.trim().isEmpty ? '—' : relation.note!,
+                  relation.relation.note == null || relation.relation.note!.trim().isEmpty
+                      ? '—'
+                      : relation.relation.note!,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: AppTypography.base(
@@ -382,17 +386,18 @@ class _RelationRow extends StatelessWidget {
 class _GraphView extends StatelessWidget {
   const _GraphView({
     required this.persons,
+    required this.relations,
     required this.selectedPersonId,
     required this.onChangePerson,
   });
 
-  final List<PersonData> persons;
+  final List<Person> persons;
+  final List<ContactRelationWithDetails> relations;
   final String? selectedPersonId;
   final ValueChanged<String> onChangePerson;
 
   @override
   Widget build(BuildContext context) {
-    final data = AppDataScope.of(context);
     if (persons.isEmpty) {
       return PrototypeCard(
         child: Text(
@@ -406,9 +411,19 @@ class _GraphView extends StatelessWidget {
       );
     }
 
-    final selected = selectedPersonId == null ? persons.first : (data.findPerson(selectedPersonId!) ?? persons.first);
-    final rels = data.contactRelations.where((e) => e.personAId == selected.id || e.personBId == selected.id).toList()
-      ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+    Person selected = persons.first;
+    if (selectedPersonId != null) {
+      for (final p in persons) {
+        if (p.personId == selectedPersonId) {
+          selected = p;
+          break;
+        }
+      }
+    }
+    final rels = relations
+        .where((e) => e.relation.personAId == selected.personId || e.relation.personBId == selected.personId)
+        .toList()
+      ..sort((a, b) => b.relation.updatedAt.compareTo(a.relation.updatedAt));
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -461,7 +476,7 @@ class _GraphView extends StatelessWidget {
                     children: [
                       ContactAvatar(
                         name: selected.name,
-                        avatarUrl: selected.avatarUrl,
+                        avatarUrl: selected.avatarUri,
                         size: 28,
                         shape: ContactAvatarShape.circle,
                       ),
@@ -497,7 +512,7 @@ class _GraphView extends StatelessWidget {
                   children: [
                     for (final rel in rels)
                       _GraphEdgePill(
-                        centerPersonId: selected.id,
+                        centerPersonId: selected.personId,
                         relation: rel,
                       ),
                   ],
@@ -523,7 +538,7 @@ class _GraphView extends StatelessWidget {
                 onTap: () async {
                   final picked = await _pickPerson(context, persons);
                   if (picked == null) return;
-                  onChangePerson(picked.id);
+                  onChangePerson(picked.personId);
                 },
                 child: Row(
                   children: [
@@ -547,8 +562,8 @@ class _GraphView extends StatelessWidget {
     );
   }
 
-  Future<PersonData?> _pickPerson(BuildContext context, List<PersonData> persons) {
-    return showModalBottomSheet<PersonData>(
+  Future<Person?> _pickPerson(BuildContext context, List<Person> persons) {
+    return showModalBottomSheet<Person>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
@@ -566,7 +581,7 @@ class _GraphView extends StatelessWidget {
                     children: [
                       ContactAvatar(
                         name: p.name,
-                        avatarUrl: p.avatarUrl,
+                        avatarUrl: p.avatarUri,
                         size: 28,
                         shape: ContactAvatarShape.circle,
                       ),
@@ -596,17 +611,16 @@ class _GraphEdgePill extends StatelessWidget {
   const _GraphEdgePill({required this.centerPersonId, required this.relation});
 
   final String centerPersonId;
-  final ContactRelationData relation;
+  final ContactRelationWithDetails relation;
 
   @override
   Widget build(BuildContext context) {
-    final data = AppDataScope.of(context);
-    final otherId = relation.personAId == centerPersonId ? relation.personBId : relation.personAId;
-    final other = data.findPerson(otherId);
-    final type = data.findRelationType(relation.typeId);
+    final isA = relation.relation.personAId == centerPersonId;
+    final other = isA ? relation.personB : relation.personA;
+    final type = relation.type;
 
     return PressableScale(
-      onTap: () => AppNav.push(context, ContactRelationEditPage(id: relation.id)),
+      onTap: () => AppNav.push(context, ContactRelationEditPage(id: relation.relation.relationId)),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
@@ -618,7 +632,7 @@ class _GraphEdgePill extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              other?.name ?? '未知',
+              other.name,
               style: AppTypography.base(
                 fontSize: 12,
                 fontWeight: AppTypography.medium,
@@ -627,7 +641,7 @@ class _GraphEdgePill extends StatelessWidget {
             ),
             const SizedBox(width: 8),
             PrototypePill(
-              label: type?.name ?? '未知',
+              label: type.name,
               background: AppColors.indigo50,
               foreground: AppColors.indigo700,
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),

@@ -2,15 +2,17 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:math' as math;
 
+import 'package:drift/drift.dart' show OrderingTerm, Variable;
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../../data/local/drift/app_database.dart';
 import '../../export/data_export_service.dart';
 import '../app_tokens.dart';
-import '../app_data.dart';
+import '../app_database_scope.dart';
 import '../app_scaffold.dart';
 import '../app_session.dart';
 import '../components.dart';
@@ -68,11 +70,9 @@ class _CanvasState extends State<_Canvas> {
   @override
   Widget build(BuildContext context) {
     final session = AppSessionScope.of(context);
-    final data = AppDataScope.of(context);
-    _ensureAllTimeRangeInitialized(data);
-    final billCount = _countBills(data);
     final showExportPath = _exportPathVisible || _exporting || _lastExportFile != null;
-    final bookLabel = _selectedBookId == null ? '所有账本' : data.resolveBookName(_selectedBookId);
+    final db = AppDatabaseScope.of(context);
+    _ensureAllTimeRangeInitialized(db);
     return Column(
       children: [
         PrototypeTopBar(
@@ -92,17 +92,24 @@ class _CanvasState extends State<_Canvas> {
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
                 children: [
+                  FutureBuilder<List<AccountBook>>(
+                    future: (db.select(db.accountBooks)..orderBy([(t) => OrderingTerm.asc(t.createdAt)])).get(),
+                    builder: (context, bookSnapshot) {
+                      final books = bookSnapshot.data ?? const <AccountBook>[];
+                      final bookLabel = _resolveBookLabel(books);
+                      return Column(
+                        children: [
                   _Card(
                     children: [
                       _SettingRow(
                         label: '日期范围',
                         value: _allTime ? '所有时间' : '${_formatDate(_start)}\n${_formatDate(_end)}',
-                        onTap: _exporting ? null : () => _pickDateRange(data),
+                        onTap: _exporting ? null : () => _pickDateRange(db),
                       ),
                       _SettingRow(
                         label: '账本',
                         value: bookLabel,
-                        onTap: _exporting ? null : _pickBook,
+                        onTap: _exporting ? null : () => _pickBook(books),
                       ),
                       _SettingRow(
                         label: '文件格式',
@@ -127,13 +134,23 @@ class _CanvasState extends State<_Canvas> {
                     allTime: _allTime,
                   ),
                   const SizedBox(height: 18),
-                  Text(
-                    '共$billCount条账单数据',
-                    style: AppTypography.base(
-                      fontSize: 14,
-                      fontWeight: AppTypography.regular,
-                      color: AppColors.textMuted,
-                    ),
+                  FutureBuilder<int>(
+                    future: _countBillsDb(db),
+                    builder: (context, countSnapshot) {
+                      final billCount = countSnapshot.data ?? 0;
+                      return Text(
+                        '共$billCount条账单数据',
+                        style: AppTypography.base(
+                          fontSize: 14,
+                          fontWeight: AppTypography.regular,
+                          color: AppColors.textMuted,
+                        ),
+                      );
+                    },
+                  ),
+                        ],
+                      );
+                    },
                   ),
                   const SizedBox(height: 12),
                   AnimatedSwitcher(
@@ -151,7 +168,7 @@ class _CanvasState extends State<_Canvas> {
                     onTap: _exporting
                         ? null
                         : (_lastExportFile == null
-                            ? () => _export(session: session, data: data)
+                            ? () => _export(session: session, db: db)
                             : _shareLastFile),
                   ),
                 ],
@@ -177,20 +194,29 @@ class _CanvasState extends State<_Canvas> {
     setState(() => _exportDirPath = exportDir.path);
   }
 
-  int _countBills(AppData data) {
-    final start = DateTime(_start.year, _start.month, _start.day);
-    final endExclusive = DateTime(_end.year, _end.month, _end.day).add(const Duration(days: 1));
-    var c = 0;
-    for (final r in data.records) {
-      if (r.occurredAt.isBefore(start) || !r.occurredAt.isBefore(endExclusive)) continue;
-      if (_selectedBookId != null) {
-        final effectiveBookId = data.resolveBookId(r.bookId);
-        final targetBookId = data.resolveBookId(_selectedBookId);
-        if (effectiveBookId != targetBookId) continue;
-      }
-      c++;
+  Future<int> _countBillsDb(AppDatabase db) async {
+    final start = DateTime(_start.year, _start.month, _start.day).millisecondsSinceEpoch;
+    final endExclusive = DateTime(_end.year, _end.month, _end.day)
+        .add(const Duration(days: 1))
+        .millisecondsSinceEpoch;
+    final sql = _selectedBookId == null
+        ? 'SELECT COUNT(1) AS c FROM gift_record WHERE deleted_at IS NULL AND occurred_at >= ? AND occurred_at < ?;'
+        : 'SELECT COUNT(1) AS c FROM gift_record WHERE deleted_at IS NULL AND occurred_at >= ? AND occurred_at < ? AND book_id = ?;';
+    final vars = <Variable<Object>>[
+      Variable<int>(start),
+      Variable<int>(endExclusive),
+      if (_selectedBookId != null) Variable<String>(_selectedBookId!),
+    ];
+    final rows = await db.customSelect(sql, variables: vars).get();
+    return (rows.first.data['c'] as int?) ?? 0;
+  }
+
+  String _resolveBookLabel(List<AccountBook> books) {
+    if (_selectedBookId == null) return '所有账本';
+    for (final b in books) {
+      if (b.bookId == _selectedBookId) return b.name;
     }
-    return c;
+    return '所有账本';
   }
 
   String _formatDate(DateTime d) {
@@ -206,8 +232,7 @@ class _CanvasState extends State<_Canvas> {
     }
   }
 
-  Future<void> _pickBook() async {
-    final data = AppDataScope.of(context);
+  Future<void> _pickBook(List<AccountBook> books) async {
     const allKey = '__all__';
     final picked = await showModalBottomSheet<String>(
       context: context,
@@ -227,11 +252,11 @@ class _CanvasState extends State<_Canvas> {
                 trailing: _selectedBookId == null ? const Icon(Icons.check) : null,
                 onTap: () => Navigator.of(context).pop(allKey),
               ),
-              for (final b in data.books)
+              for (final b in books)
                 ListTile(
                   title: Text(b.name),
-                  trailing: _selectedBookId == b.id ? const Icon(Icons.check) : null,
-                  onTap: () => Navigator.of(context).pop(b.id),
+                  trailing: _selectedBookId == b.bookId ? const Icon(Icons.check) : null,
+                  onTap: () => Navigator.of(context).pop(b.bookId),
                 ),
             ],
           ),
@@ -281,7 +306,7 @@ class _CanvasState extends State<_Canvas> {
     });
   }
 
-  Future<void> _pickDateRange(AppData data) async {
+  Future<void> _pickDateRange(AppDatabase db) async {
     final picked = await showModalBottomSheet<String>(
       context: context,
       showDragHandle: true,
@@ -313,7 +338,7 @@ class _CanvasState extends State<_Canvas> {
     if (picked == null) return;
 
     if (picked == 'all') {
-      final minMax = _minMaxRecordDate(data);
+      final minMax = await _minMaxRecordDate(db);
       setState(() {
         _allTime = true;
         _start = minMax.$1;
@@ -343,30 +368,35 @@ class _CanvasState extends State<_Canvas> {
     });
   }
 
-  (DateTime, DateTime) _minMaxRecordDate(AppData data) {
-    if (data.records.isEmpty) {
+  Future<(DateTime, DateTime)> _minMaxRecordDate(AppDatabase db) async {
+    final rows = await (db.select(db.giftRecords)
+          ..where((t) => t.deletedAt.isNull())
+          ..orderBy([(t) => OrderingTerm.asc(t.occurredAt)]))
+        .get();
+    if (rows.isEmpty) {
       final now = DateTime.now();
       final d = DateTime(now.year, now.month, now.day);
       return (d, d);
     }
-    var min = data.records.first.occurredAt;
-    var max = data.records.first.occurredAt;
-    for (final r in data.records) {
-      if (r.occurredAt.isBefore(min)) min = r.occurredAt;
-      if (max.isBefore(r.occurredAt)) max = r.occurredAt;
+    var min = DateTime.fromMillisecondsSinceEpoch(rows.first.occurredAt);
+    var max = min;
+    for (final r in rows) {
+      final dt = DateTime.fromMillisecondsSinceEpoch(r.occurredAt);
+      if (dt.isBefore(min)) min = dt;
+      if (max.isBefore(dt)) max = dt;
     }
     final s = DateTime(min.year, min.month, min.day);
     final e = DateTime(max.year, max.month, max.day);
     return (s, e);
   }
 
-  void _ensureAllTimeRangeInitialized(AppData data) {
+  void _ensureAllTimeRangeInitialized(AppDatabase db) {
     if (!_allTime) return;
     if (_allTimeRangeInitialized) return;
     _allTimeRangeInitialized = true;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
-      final minMax = _minMaxRecordDate(data);
+      final minMax = await _minMaxRecordDate(db);
       setState(() {
         _start = minMax.$1;
         _end = minMax.$2;
@@ -374,7 +404,7 @@ class _CanvasState extends State<_Canvas> {
     });
   }
 
-  Future<void> _export({required AppSession session, required AppData data}) async {
+  Future<void> _export({required AppSession session, required AppDatabase db}) async {
     if (_exporting) return;
     _progressTimer?.cancel();
     setState(() {
@@ -390,9 +420,9 @@ class _CanvasState extends State<_Canvas> {
       setState(() => _progress = math.min(0.9, _progress + 0.02));
     });
     try {
-      final file = await _service.export(
+      final file = await _service.exportFromDrift(
         loggedIn: session.loggedIn,
-        data: data,
+        db: db,
         request: DataExportRequest(
           format: _format,
           start: _start,

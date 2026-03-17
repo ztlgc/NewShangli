@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 
 import '../data/local/drift/app_database.dart';
+import '../data/local/drift/reason_relation_migrator.dart';
 
 class AppDatabaseProvider extends StatefulWidget {
   const AppDatabaseProvider({
@@ -21,6 +22,7 @@ class _AppDatabaseProviderState extends State<AppDatabaseProvider> {
   void initState() {
     super.initState();
     _db = AppDatabase();
+    ReasonRelationMigrator.migrateIfNeeded(_db);
   }
 
   @override

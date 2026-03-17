@@ -13,7 +13,7 @@ import '../lunar_date_picker.dart';
 import '../navigation.dart';
 import '../prototype_kit.dart';
 import '../stats/stats_view_model.dart';
-import '../../utils/date_util.dart';
+
 import '../../stats/stats_db.dart';
 import '../../stats/stats_models.dart';
 import '../../stats/stats_repository.dart';
@@ -472,6 +472,7 @@ class _TopBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+      alignment: Alignment.centerLeft,
       decoration: const BoxDecoration(
         color: AppColors.white,
         border: Border(bottom: BorderSide(color: AppColors.gray100, width: 1)),
@@ -1407,7 +1408,10 @@ class _MetricSegment extends StatelessWidget {
 }
 
 String _fmtCnDate(DateTime dt) {
-  return DateUtil.format(dt);
+  final y = dt.year;
+  final m = dt.month.toString().padLeft(2, '0');
+  final d = dt.day.toString().padLeft(2, '0');
+  return '$y年$m月$d日';
 }
 
 String _fmtDotDate(DateTime dt) {

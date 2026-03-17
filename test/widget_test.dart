@@ -24,25 +24,24 @@ void main() {
     addTearDown(() => FlutterError.onError = oldOnError);
 
     await tester.pumpWidget(const NewShangliApp());
-    await tester.pump();
+    await tester.pumpAndSettle();
 
     expect(find.text('尚礼'), findsOneWidget);
+    
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(seconds: 1));
   });
 
-  testWidgets('Tap record row navigates to detail', (WidgetTester tester) async {
+  testWidgets('Tap dummy record row shows snackbar', (WidgetTester tester) async {
     await tester.pumpWidget(const NewShangliApp());
-    await tester.pump();
+    await tester.pumpAndSettle();
 
     await tester.tap(find.text('张伟'));
     await tester.pumpAndSettle();
-    expect(find.text('记录详情'), findsOneWidget);
+    expect(find.text('这是演示数据，添加真实记录后将自动消失'), findsOneWidget);
 
-    final backIcon = find.byWidgetPredicate(
-      (w) => w is FaIcon && w.icon == FontAwesomeIcons.arrowLeft,
-    );
-    await tester.tap(backIcon.first);
-    await tester.pumpAndSettle();
-    expect(find.text('尚礼'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(seconds: 1));
   });
 
   testWidgets('Dark mode still renders', (WidgetTester tester) async {
@@ -50,7 +49,10 @@ void main() {
     addTearDown(() => tester.binding.platformDispatcher.clearPlatformBrightnessTestValue());
 
     await tester.pumpWidget(const NewShangliApp());
-    await tester.pump();
+    await tester.pumpAndSettle();
     expect(find.text('尚礼'), findsOneWidget);
+    
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(seconds: 1));
   });
 }

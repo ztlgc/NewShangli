@@ -6,6 +6,7 @@ import 'package:excel/excel.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
+import '../data/local/drift/app_database.dart';
 import '../ui/app_data.dart';
 
 enum DataExportFormat { excel, zip }
@@ -34,6 +35,163 @@ class DataExportRequest {
 }
 
 class DataExportService {
+  Future<File> exportFromDrift({
+    required bool loggedIn,
+    required AppDatabase db,
+    required DataExportRequest request,
+    Directory? outputDir,
+  }) async {
+    if (!loggedIn) {
+      throw const DataExportException('未登录，无法导出');
+    }
+    if (!request.includeRecords && !request.includePersons) {
+      throw const DataExportException('请至少选择一种导出内容');
+    }
+    final start = _startOfDay(request.start);
+    final endExclusive = _startOfDay(request.end).add(const Duration(days: 1));
+    if (!start.isBefore(endExclusive)) {
+      throw const DataExportException('时间范围不合法');
+    }
+
+    final allPersons = await (db.select(db.persons)..where((t) => t.deletedAt.isNull())).get();
+    final personById = <String, Person>{for (final p in allPersons) p.personId: p};
+
+    final recordQuery = db.select(db.giftRecords)
+      ..where((t) => t.deletedAt.isNull());
+    if (request.bookId != null) {
+      recordQuery.where((t) => t.bookId.equals(request.bookId!));
+    }
+    final allRecords = await recordQuery.get();
+    final records = allRecords
+        .where(
+          (r) =>
+              r.occurredAt >= start.millisecondsSinceEpoch &&
+              r.occurredAt < endExclusive.millisecondsSinceEpoch,
+        )
+        .toList();
+
+    final recordRows = <List<String>>[];
+    final personRows = <List<String>>[];
+
+    var recordCount = 0;
+    if (request.includeRecords) {
+      recordRows.add(
+        <String>[
+          '记录ID',
+          '收支方向',
+          '金额(元)',
+          '金额(分)',
+          '事由',
+          '关系人ID',
+          '关系人姓名',
+          '关系人关系',
+          '手机号',
+          '支付方式',
+          '发生时间',
+          '备注',
+          if (request.includeImages) '图片/头像',
+        ],
+      );
+      for (final r in records) {
+        recordCount++;
+        final person = personById[r.personId];
+        recordRows.add(
+          <String>[
+            r.recordId,
+            r.direction == '支出' ? '支出' : '收入',
+            (r.amountCent / 100.0).toStringAsFixed(2),
+            r.amountCent.toString(),
+            r.eventName ?? '',
+            r.personId,
+            person?.name ?? '',
+            person?.relationshipType ?? '',
+            person?.phone ?? '',
+            r.paymentMethod ?? '',
+            _formatDateTime(DateTime.fromMillisecondsSinceEpoch(r.occurredAt)),
+            r.note ?? '',
+            if (request.includeImages) person?.avatarUri ?? '',
+          ],
+        );
+      }
+    }
+
+    var personCount = 0;
+    if (request.includePersons) {
+      personRows.add(
+        <String>[
+          '关系人ID',
+          '姓名',
+          '关系',
+          '手机号',
+          '创建时间',
+          '备注',
+          if (request.includeImages) '图片/头像',
+        ],
+      );
+      for (final person in allPersons) {
+        personCount++;
+        personRows.add(
+          <String>[
+            person.personId,
+            person.name,
+            person.relationshipType,
+            person.phone ?? '',
+            _formatDateTime(DateTime.fromMillisecondsSinceEpoch(person.createdAt)),
+            person.note ?? '',
+            if (request.includeImages) person.avatarUri ?? '',
+          ],
+        );
+      }
+    }
+
+    if (request.includeRecords && !request.includePersons && recordCount == 0) {
+      throw const DataExportException('所选时间范围内没有收支记录');
+    }
+    if (!request.includeRecords && request.includePersons && personCount == 0) {
+      throw const DataExportException('当前没有可导出的关系人');
+    }
+
+    final dir = outputDir ?? Directory((await getApplicationDocumentsDirectory()).path);
+    final exportDir = Directory(p.join(dir.path, 'exports'));
+    await exportDir.create(recursive: true);
+
+    final baseName = _buildFileNameBase(start: request.start, end: request.end);
+    switch (request.format) {
+      case DataExportFormat.excel:
+        final bytes = _encodeXlsx(
+          recordRows: recordRows,
+          personRows: personRows,
+          includeRecords: request.includeRecords,
+          includePersons: request.includePersons,
+        );
+        final file = File(p.join(exportDir.path, '$baseName.xlsx'));
+        await file.writeAsBytes(bytes, flush: true);
+        return file;
+      case DataExportFormat.zip:
+        final xlsxBytes = _encodeXlsx(
+          recordRows: recordRows,
+          personRows: personRows,
+          includeRecords: request.includeRecords,
+          includePersons: request.includePersons,
+        );
+        final archive = Archive()..addFile(ArchiveFile('$baseName.xlsx', xlsxBytes.length, xlsxBytes));
+        if (request.includeImages) {
+          await _addLocalImagesToArchiveFromDrift(
+            archive: archive,
+            records: records,
+            persons: allPersons,
+          );
+        }
+        final zipped = ZipEncoder().encode(archive);
+        if (zipped == null) {
+          throw const DataExportException('ZIP 打包失败');
+        }
+        final file = File(p.join(exportDir.path, '$baseName.zip'));
+        await file.writeAsBytes(zipped, flush: true);
+        return file;
+    }
+  }
+
   Future<File> export({
     required bool loggedIn,
     required AppData data,
@@ -251,42 +409,6 @@ class DataExportService {
     return bytes;
   }
 
-  String _buildImageUrlManifest({
-    required AppData data,
-    required DataExportRequest request,
-    required DateTime start,
-    required DateTime endExclusive,
-  }) {
-    final b = StringBuffer();
-    b.writeln('说明：当前应用内图片多为网络链接，本 ZIP 仅收集链接清单。');
-    b.writeln();
-    if (request.includeRecords) {
-      b.writeln('收支记录相关头像/图片链接：');
-      for (final r in data.records) {
-        if (r.occurredAt.isBefore(start) || !r.occurredAt.isBefore(endExclusive)) continue;
-        if (request.bookId != null) {
-          final effectiveBookId = data.resolveBookId(r.bookId);
-          final targetBookId = data.resolveBookId(request.bookId);
-          if (effectiveBookId != targetBookId) continue;
-        }
-        final url = r.personAvatarUrl;
-        if (url == null || url.trim().isEmpty) continue;
-        b.writeln('${r.id}\t${r.personName}\t$url');
-      }
-      b.writeln();
-    }
-    if (request.includePersons) {
-      b.writeln('关系人头像链接：');
-      for (final p in data.persons) {
-        final url = p.avatarUrl;
-        if (url == null || url.trim().isEmpty) continue;
-        b.writeln('${p.id}\t${p.name}\t$url');
-      }
-      b.writeln();
-    }
-    return b.toString();
-  }
-
   Future<void> _addLocalImagesToArchive({
     required Archive archive,
     required AppData data,
@@ -346,6 +468,67 @@ class DataExportService {
         if (url != null) {
           await addPath(url);
         }
+      }
+    }
+
+    final manifest = _buildImageLocalManifest(included: included, skipped: skipped);
+    final b = utf8.encode(manifest);
+    archive.addFile(ArchiveFile('图片清单.txt', b.length, b));
+  }
+
+  Future<void> _addLocalImagesToArchiveFromDrift({
+    required Archive archive,
+    required List<GiftRecord> records,
+    required List<Person> persons,
+  }) async {
+    final seen = <String>{};
+    final usedNames = <String, int>{};
+    final included = <String>[];
+    final skipped = <String>[];
+
+    Future<void> addPath(String source) async {
+      final raw = source.trim();
+      if (raw.isEmpty) return;
+      if (!seen.add(raw)) return;
+
+      final path = _tryParseFilePath(raw);
+      if (path == null) {
+        skipped.add(raw);
+        return;
+      }
+      final f = File(path);
+      if (!await f.exists()) {
+        skipped.add(raw);
+        return;
+      }
+
+      final bytes = await f.readAsBytes();
+      final base = p.basename(path);
+      final safe = base.trim().isEmpty ? 'image' : base;
+      final count = usedNames[safe] ?? 0;
+      usedNames[safe] = count + 1;
+      final finalName = count == 0 ? safe : '${p.basenameWithoutExtension(safe)}_${count + 1}${p.extension(safe)}';
+
+      archive.addFile(ArchiveFile(p.posix.join('images', finalName), bytes.length, bytes));
+      included.add(raw);
+    }
+
+    for (final r in records) {
+      String? url;
+      for (final p in persons) {
+        if (p.personId == r.personId) {
+          url = p.avatarUri;
+          break;
+        }
+      }
+      if (url != null) {
+        await addPath(url);
+      }
+    }
+    for (final person in persons) {
+      final url = person.avatarUri;
+      if (url != null) {
+        await addPath(url);
       }
     }
 

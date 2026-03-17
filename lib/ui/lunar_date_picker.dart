@@ -123,7 +123,7 @@ class _LunarDatePickerDialogState extends State<_LunarDatePickerDialog> {
               child: _WeekHeader(),
             ),
             SizedBox(
-              height: 64 * 6,
+              height: 52 * 6,
               child: PageView.builder(
                 controller: _controller,
                 itemCount: _pageCount,
@@ -267,7 +267,7 @@ class _MonthGrid extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, c) {
         final cellW = c.maxWidth / 7;
-        const cellH = 64.0;
+        const cellH = 52.0;
 
         return Column(
           children: [
@@ -370,19 +370,19 @@ class _DayCell extends StatelessWidget {
                 Text(
                   '$dayNumber',
                   style: AppTypography.base(
-                    fontSize: AppTypography.fs18,
+                    fontSize: AppTypography.fs16,
                     fontWeight: selected ? AppTypography.bold : AppTypography.semibold,
                     color: dayColor,
                     height: 1.0,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 2),
                 Text(
                   info.text,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: AppTypography.base(
-                    fontSize: AppTypography.fs12,
+                    fontSize: AppTypography.fs10,
                     fontWeight: AppTypography.regular,
                     color: lunarColor,
                     height: 1.0,
