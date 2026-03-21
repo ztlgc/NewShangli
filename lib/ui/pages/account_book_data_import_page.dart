@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import '../../data/local/drift/app_database.dart';
+import '../app_toast.dart';
 import '../app_database_scope.dart';
 import '../app_scaffold.dart';
 import '../app_tokens.dart';
@@ -348,7 +349,7 @@ class _AccountBookDataImportPageState extends State<AccountBookDataImportPage> {
 
   void _toast(String msg) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+    AppToast.show(context, msg);
   }
 }
 

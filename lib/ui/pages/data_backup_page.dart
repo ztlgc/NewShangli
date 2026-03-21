@@ -3,7 +3,9 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import '../../backup/backup_config.dart';
 import '../../backup/data_backup_service.dart';
+import '../../backup/data_restore_service.dart';
 import '../../backup/webdav_client.dart';
+import '../app_database_scope.dart';
 import '../app_tokens.dart';
 import '../app_scaffold.dart';
 import '../app_session.dart';
@@ -49,6 +51,7 @@ class _CanvasState extends State<_Canvas> {
   bool _saving = false;
   bool _backingUp = false;
   bool _testing = false;
+  bool _restoring = false;
   BackupProgress? _progress;
 
   bool get _webDavReady {
@@ -59,7 +62,7 @@ class _CanvasState extends State<_Canvas> {
     return true;
   }
 
-  bool get _busy => _saving || _backingUp || _testing;
+  bool get _busy => _saving || _backingUp || _testing || _restoring;
 
   @override
   void initState() {
@@ -279,8 +282,8 @@ class _CanvasState extends State<_Canvas> {
       );
       return;
     }
-    final baseUrl = Uri.tryParse(baseUrlRaw);
-    if (baseUrl == null || (!baseUrl.hasScheme) || baseUrl.host.isEmpty) {
+    final baseUrl = BackupConfig.parseAndNormalizeWebDavBaseUrl(baseUrlRaw);
+    if (baseUrl == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('服务器地址格式不正确')),
       );
@@ -377,10 +380,71 @@ class _CanvasState extends State<_Canvas> {
     _setConfig(_config.copyWith(backupFrequency: picked));
   }
 
-  void _restoreBackup(BackupHistoryEntry entry) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('已选择恢复：${entry.fileName}')),
+  Future<void> _restoreBackup(BackupHistoryEntry entry) async {
+    if (_restoring) return;
+    if (!_webDavReady) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('请先完善 WebDAV 配置')),
+      );
+      return;
+    }
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('确认恢复备份'),
+          content: Text('恢复将覆盖当前本地数据：${entry.fileName}'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('取消'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('继续恢复'),
+            ),
+          ],
+        );
+      },
     );
+    if (confirmed != true || !mounted) return;
+
+    setState(() {
+      _restoring = true;
+      _progress = const BackupProgress(stage: BackupStage.packaging, message: '准备恢复…');
+    });
+    try {
+      final controller = AppDatabaseControllerScope.of(context);
+      await controller.withDatabasePaused(() async {
+        final service = DataRestoreService();
+        await service.restoreFromRemote(
+          config: _config,
+          entry: entry,
+          onProgress: (message) {
+            if (!mounted) return;
+            setState(() {
+              _progress = BackupProgress(stage: BackupStage.packaging, message: message);
+            });
+          },
+        );
+      });
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('恢复成功')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('恢复失败：$e')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _restoring = false;
+          _progress = null;
+        });
+      }
+    }
   }
 
   Future<void> _openWebDavConfigDialog() async {

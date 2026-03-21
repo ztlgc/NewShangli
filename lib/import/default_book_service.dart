@@ -4,8 +4,8 @@ import '../data/local/drift/app_database.dart';
 
 class DefaultBookService {
   Future<String> ensureDefaultBookId(AppDatabase db) async {
-    final existing = await (db.select(db.accountBooks)..limit(1)).getSingleOrNull();
-    if (existing != null) return existing.bookId;
+    final existingDefault = await db.accountBooksDao.findDefault();
+    if (existingDefault != null) return existingDefault.bookId;
 
     final now = DateTime.now().millisecondsSinceEpoch;
     final id = db.newId();
@@ -13,7 +13,7 @@ class DefaultBookService {
       AccountBooksCompanion.insert(
         bookId: Value(id),
         name: '默认账簿',
-        reasonType: const Value('结婚礼金'),
+        reasonType: const Value(''),
         themeColor: const Value('#312E81'),
         icon: const Value.absent(),
         description: const Value.absent(),

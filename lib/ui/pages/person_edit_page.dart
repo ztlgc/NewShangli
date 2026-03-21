@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:drift/drift.dart' show Value;
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -7,9 +8,11 @@ import 'package:lunar/lunar.dart';
 
 import '../../data/local/drift/app_database.dart';
 import '../../import/default_book_service.dart';
+import '../../media/media_storage_service.dart';
 import '../app_tokens.dart';
 import '../app_scaffold.dart';
 import '../app_database_scope.dart';
+import '../app_toast.dart';
 import '../contact_avatar.dart';
 import '../components.dart';
 import '../navigation.dart';
@@ -60,6 +63,7 @@ class _PersonEditPageState extends State<PersonEditPage> {
   String _savedPhone = '';
   String _savedNote = '';
   final DefaultBookService _defaultBookService = DefaultBookService();
+  final MediaStorageService _mediaStorageService = MediaStorageService();
 
   @override
   void dispose() {
@@ -164,7 +168,10 @@ class _PersonEditPageState extends State<PersonEditPage> {
                 _AvatarEditor(
                   avatarUrl: _avatarUrl,
                   nameForFallback: _nameCtrl.text.trim().isEmpty ? '—' : _nameCtrl.text.trim(),
-                  onTap: () => _toast(context, '仅原型展示：更换头像未实现'),
+                  onTap: () {
+                    if (_saving) return;
+                    _pickAvatar();
+                  },
                 ),
                 const SizedBox(height: 24),
                 _BasicInfoCard(
@@ -290,6 +297,33 @@ class _PersonEditPageState extends State<PersonEditPage> {
       }
       _toast(context, '保存失败：$e');
       setState(() => _saving = false);
+    }
+  }
+
+  Future<void> _pickAvatar() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: const <String>['jpg', 'jpeg', 'png', 'webp'],
+      withData: false,
+    );
+    if (!mounted) return;
+    if (result == null || result.files.isEmpty) return;
+    final path = result.files.first.path;
+    if (path == null || path.trim().isEmpty) {
+      _toast(context, '无法读取头像文件路径');
+      return;
+    }
+    try {
+      final stored = await _mediaStorageService.saveAvatarFromPath(
+        path,
+        oldStoredPath: _avatarUrl,
+      );
+      if (!mounted) return;
+      setState(() => _avatarUrl = stored);
+      _toast(context, '头像已更新');
+    } catch (e) {
+      if (!mounted) return;
+      _toast(context, '头像更新失败：$e');
     }
   }
 
@@ -735,16 +769,7 @@ class _PersonEditPageState extends State<PersonEditPage> {
   }
 
   void _toast(BuildContext context, String message) {
-    final messenger = ScaffoldMessenger.maybeOf(context);
-    if (messenger == null) return;
-    messenger.hideCurrentSnackBar();
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text(message),
-        behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 2),
-      ),
-    );
+    AppToast.show(context, message, duration: const Duration(seconds: 2));
   }
 }
 

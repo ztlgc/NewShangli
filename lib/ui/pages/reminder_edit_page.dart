@@ -4,6 +4,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../../data/local/drift/app_database.dart';
 import '../../reminders/reminders_service.dart';
 import '../app_database_scope.dart';
+import '../app_toast.dart';
 import '../app_tokens.dart';
 import '../app_scaffold.dart';
 import '../components.dart';
@@ -865,9 +866,7 @@ class _CanvasState extends State<_Canvas> {
                         onTap: () {
                           final text = ctrl.text.trim();
                           if (requiredField && text.isEmpty) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('$label不能为空')),
-                            );
+                            AppToast.show(context, '$label不能为空');
                             return;
                           }
                           Navigator.of(context).pop(text);
@@ -887,15 +886,7 @@ class _CanvasState extends State<_Canvas> {
   }
 
   void _toast(String message) {
-    final messenger = ScaffoldMessenger.maybeOf(context);
-    if (messenger == null) return;
-    messenger.hideCurrentSnackBar();
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text(message),
-        duration: const Duration(milliseconds: 800),
-      ),
-    );
+    AppToast.show(context, message, duration: const Duration(milliseconds: 800));
   }
 
   @override

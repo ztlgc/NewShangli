@@ -76,6 +76,12 @@ class WebDavClient {
       if (propfindStatus == 200 || propfindStatus == 207) {
         return const WebDavTestResult(ok: true, message: '连接成功');
       }
+      if (propfindStatus == 301 || propfindStatus == 302 || propfindStatus == 307 || propfindStatus == 308) {
+        return const WebDavTestResult(
+          ok: false,
+          message: '连接失败：服务器发生重定向。\n请填写最终可直接访问的 WebDAV 地址（通常需要包含 /dav、/webdav 等后缀）。',
+        );
+      }
       if (propfindStatus == 405) {
         return const WebDavTestResult(
           ok: false,
@@ -143,20 +149,64 @@ class WebDavClient {
     if (status == 403) {
       throw WebDavException('账号已认证，但无目录写入权限（$remotePath）');
     }
+    if (status == 301 || status == 302 || status == 307 || status == 308) {
+      throw const WebDavException('上传失败：服务器返回重定向。\n请改为最终可直接写入的 WebDAV 地址后重试。');
+    }
     if (status == 405) {
-      throw const WebDavException('上传失败：HTTP 405 (Method Not Allowed)。\n通常是 WebDAV 地址填写错误（例如填写了网页查看地址），请检查服务器设置。');
+      throw WebDavException(
+        '上传失败：HTTP 405 (Method Not Allowed)。\n'
+        '通常是 WebDAV 地址填写错误（例如填写了网页查看地址）。\n'
+        '当前上传地址：${uri.toString()}',
+      );
     }
     if (status < 200 || status >= 300) {
       throw WebDavException('上传失败：HTTP $status');
     }
   }
 
-  Future<HttpClientRequest> _open(String method, Uri uri) async {
+  Future<void> getFile({
+    required String remotePath,
+    required File outputFile,
+    required void Function(int receivedBytes, int? totalBytes) onProgress,
+  }) async {
+    final uri = resolvePath(remotePath);
+    final req = await _open('GET', uri, followRedirects: true);
+    final resp = await req.close().timeout(_requestTimeout);
+    final status = resp.statusCode;
+    if (status == 401) {
+      throw const WebDavException('鉴权失败，请检查用户名/密码');
+    }
+    if (status == 403) {
+      throw WebDavException('账号已认证，但无目录读取权限（$remotePath）');
+    }
+    if (status == 404) {
+      throw WebDavException('备份文件不存在（$remotePath）');
+    }
+    if (status < 200 || status >= 300) {
+      throw WebDavException('下载失败：HTTP $status');
+    }
+    await outputFile.parent.create(recursive: true);
+    final sink = outputFile.openWrite();
+    var received = 0;
+    final total = resp.contentLength >= 0 ? resp.contentLength : null;
+    try {
+      await for (final chunk in resp) {
+        sink.add(chunk);
+        received += chunk.length;
+        onProgress(received, total);
+      }
+      await sink.flush();
+    } finally {
+      await sink.close();
+    }
+  }
+
+  Future<HttpClientRequest> _open(String method, Uri uri, {bool followRedirects = false}) async {
     final req = await _client.openUrl(method, uri).timeout(_connectTimeout);
     req.headers.set(HttpHeaders.authorizationHeader, _authHeader);
     req.headers.set(HttpHeaders.userAgentHeader, 'newshangli-webdav');
-    req.followRedirects = true;
-    req.maxRedirects = 3;
+    req.followRedirects = followRedirects;
+    req.maxRedirects = followRedirects ? 3 : 0;
     return req;
   }
 
@@ -188,7 +238,9 @@ class WebDavClient {
     final status = resp.statusCode;
     if (status == 201) return;
     if (status == 405) return;
-    if (status == 301 || status == 302 || status == 307 || status == 308) return;
+    if (status == 301 || status == 302 || status == 307 || status == 308) {
+      throw WebDavException('创建目录失败：服务器返回重定向（$relativeDir）');
+    }
     if (status == 401) {
       throw const WebDavException('鉴权失败，请检查用户名/密码');
     }

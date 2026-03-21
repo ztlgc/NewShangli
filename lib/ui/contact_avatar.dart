@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 
 import 'app_tokens.dart';
@@ -77,19 +79,29 @@ class ContactAvatar extends StatelessWidget {
 
     // 设计选择：当存在 avatarUrl 时，也始终先渲染文字头像作为“底图”。
     // 这样无论是加载中、无网络、图片 404，界面都不会出现闪烁/空白块。
+    final isFileUri = normalizedUrl != null && normalizedUrl.startsWith('file://');
+    final isLocalPath = normalizedUrl != null && normalizedUrl.isNotEmpty && (normalizedUrl.contains(r'\') || normalizedUrl.contains(':/'));
     final content = normalizedUrl != null && normalizedUrl.isNotEmpty
         ? Stack(
             fit: StackFit.expand,
             children: [
               fallback,
-              Image.network(
-                normalizedUrl,
-                width: size,
-                height: size,
-                fit: BoxFit.cover,
-                // 网络失败时不覆盖底图（底图已是 fallback），避免重复绘制。
-                errorBuilder: (context, error, stackTrace) => const SizedBox.shrink(),
-              ),
+              if (isFileUri || isLocalPath)
+                Image.file(
+                  File(isFileUri ? Uri.parse(normalizedUrl).toFilePath(windows: Platform.isWindows) : normalizedUrl),
+                  width: size,
+                  height: size,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) => const SizedBox.shrink(),
+                )
+              else
+                Image.network(
+                  normalizedUrl,
+                  width: size,
+                  height: size,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) => const SizedBox.shrink(),
+                ),
             ],
           )
         : fallback;

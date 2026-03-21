@@ -15,6 +15,7 @@ import '../contact_avatar.dart';
 import '../components.dart';
 import '../navigation.dart';
 import '../prototype_kit.dart';
+import '../widgets/person_display_row.dart';
 import 'person_detail_page.dart';
 import 'person_edit_page.dart';
 import 'record_home_page.dart';
@@ -685,6 +686,19 @@ class _PersonRowState extends State<_PersonRow> {
 
   @override
   Widget build(BuildContext context) {
+    final avatarOverlay = IgnorePointer(
+      ignoring: !widget.multiSelectMode,
+      child: AnimatedOpacity(
+        opacity: widget.multiSelectMode ? 1 : 0,
+        duration: widget.fadeDuration,
+        curve: Curves.easeInOut,
+        child: _AvatarSelectionCheckbox(
+          label: widget.name,
+          selected: widget.selected,
+          onToggle: widget.onSelectionToggle,
+        ),
+      ),
+    );
     return GestureDetector(
       onTap: _handleTap,
       onLongPress: _handleLongPress,
@@ -710,60 +724,12 @@ class _PersonRowState extends State<_PersonRow> {
           ),
           child: Row(
             children: [
-              SizedBox(
-                width: 40,
-                height: 40,
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    ContactAvatar(
-                      name: widget.name,
-                      avatarUrl: widget.avatarUrl,
-                      size: 40,
-                      shape: ContactAvatarShape.circle,
-                      border: Border.all(color: AppColors.gray100, width: 1),
-                    ),
-                    Positioned.fill(
-                      child: IgnorePointer(
-                        ignoring: !widget.multiSelectMode,
-                        child: AnimatedOpacity(
-                          opacity: widget.multiSelectMode ? 1 : 0,
-                          duration: widget.fadeDuration,
-                          curve: Curves.easeInOut,
-                          child: _AvatarSelectionCheckbox(
-                            label: widget.name,
-                            selected: widget.selected,
-                            onToggle: widget.onSelectionToggle,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 12),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      widget.name,
-                      style: AppTypography.base(
-                        fontSize: 16,
-                        fontWeight: AppTypography.medium,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      widget.subtitle,
-                      style: AppTypography.base(
-                        fontSize: 12,
-                        fontWeight: AppTypography.regular,
-                        color: AppColors.textMuted,
-                      ),
-                    ),
-                  ],
+                child: PersonDisplayRow(
+                  name: widget.name,
+                  subtitle: widget.subtitle,
+                  avatarUrl: widget.avatarUrl,
+                  avatarOverlay: avatarOverlay,
                 ),
               ),
             ],

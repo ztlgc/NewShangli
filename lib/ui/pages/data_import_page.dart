@@ -51,6 +51,7 @@ class _CanvasState extends State<_Canvas> {
   late final Future<String> _bookIdFuture;
 
   PlatformFile? _picked;
+  PlatformFile? _mediaZip;
   ImportPreview? _preview;
   bool _loadingPreview = false;
 
@@ -68,8 +69,8 @@ class _CanvasState extends State<_Canvas> {
     '记录ID',
     '收支方向',
     '金额(元)',
-    '金额(分)',
     '事由',
+    '所属账簿名称',
     '关系人ID',
     '关系人姓名',
     '关系人关系',
@@ -77,6 +78,12 @@ class _CanvasState extends State<_Canvas> {
     '支付方式',
     '发生时间',
     '备注',
+    '头像文件名',
+    '附件1名称',
+    '附件2名称',
+    '附件3名称',
+    '附件4名称',
+    '附件5名称',
   ];
 
   @override
@@ -100,7 +107,7 @@ class _CanvasState extends State<_Canvas> {
   Future<void> _pickFile() async {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
-      allowedExtensions: const <String>['csv', 'xlsx'],
+      allowedExtensions: const <String>['xlsx'],
       withData: false,
     );
     if (!mounted) return;
@@ -119,6 +126,7 @@ class _CanvasState extends State<_Canvas> {
       _loadingPreview = true;
       _errors.clear();
       _fieldMapping.clear();
+      _mediaZip = null;
     });
 
     try {
@@ -141,6 +149,19 @@ class _CanvasState extends State<_Canvas> {
     }
   }
 
+  Future<void> _pickMediaZip() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: const <String>['zip'],
+      withData: false,
+    );
+    if (!mounted) return;
+    if (result == null || result.files.isEmpty) return;
+    setState(() {
+      _mediaZip = result.files.first;
+    });
+  }
+
   void _initDefaultMapping() {
     final headers = _preview?.headers ?? const <String>[];
     for (final field in _recordFields) {
@@ -161,11 +182,6 @@ class _CanvasState extends State<_Canvas> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              ListTile(
-                leading: const FaIcon(FontAwesomeIcons.fileCsv, size: 18),
-                title: const Text('CSV 模板'),
-                onTap: () => Navigator.of(context).pop(DataImportTemplateFormat.csv),
-              ),
               ListTile(
                 leading: const FaIcon(FontAwesomeIcons.fileExcel, size: 18),
                 title: const Text('Excel 模板 (.xlsx)'),
@@ -246,6 +262,8 @@ class _CanvasState extends State<_Canvas> {
         bookId: bookId,
         sourceFilePath: _picked!.path!,
         kind: DataImportKind.recordsAndPersons,
+        fieldMapping: _fieldMapping,
+        mediaZipPath: _mediaZip?.path,
       );
       await _startJob(jobId);
     } catch (e) {
@@ -297,113 +315,6 @@ class _CanvasState extends State<_Canvas> {
       if (!mounted) return;
       setState(() => _logTail = tail.join('\n'));
     } catch (_) {}
-  }
-
-  Future<void> _importFromClipboard() async {
-    final data = await Clipboard.getData('text/plain');
-    final raw = (data?.text ?? '').trim();
-    if (raw.isEmpty) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('剪贴板为空')),
-      );
-      return;
-    }
-    final bookId = await _bookIdFuture;
-    if (!mounted) return;
-
-    final lines = raw
-        .split(RegExp(r'\r?\n'))
-        .map((e) => e.trim())
-        .where((e) => e.isNotEmpty)
-        .toList();
-    if (lines.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('未识别到有效内容')),
-      );
-      return;
-    }
-
-    final persons = await (_db.select(_db.persons)..where((t) => t.bookId.equals(bookId))).get();
-    final personByName = <String, Person>{
-      for (final p in persons) p.name.trim(): p,
-    };
-
-    final now = DateTime.now();
-    final dayStart = DateTime(now.year, now.month, now.day).millisecondsSinceEpoch;
-    final dayEnd = DateTime(now.year, now.month, now.day, 23, 59, 59, 999).millisecondsSinceEpoch;
-    final existingRecords = await _db.giftRecordsDao.listInRange(
-      bookId: bookId,
-      startAt: dayStart,
-      endAt: dayEnd,
-    );
-
-    var success = 0;
-    var skipped = 0;
-    var failed = 0;
-    final linePattern = RegExp(r'^\s*([^\s,，\t]+)\s*[,，\t ]+\s*([+-]?\d+(?:\.\d{1,2})?)\s*$');
-
-    for (final line in lines) {
-      final m = linePattern.firstMatch(line);
-      if (m == null) {
-        failed++;
-        continue;
-      }
-      final name = (m.group(1) ?? '').trim();
-      final amountText = (m.group(2) ?? '').trim();
-      final amount = double.tryParse(amountText);
-      if (name.isEmpty || amount == null || amount <= 0) {
-        failed++;
-        continue;
-      }
-      final amountCent = (amount * 100).round();
-
-      var person = personByName[name];
-      if (person == null) {
-        final personId = await _db.personsDao.insertOne(
-          PersonsCompanion.insert(
-            bookId: bookId,
-            name: name,
-            createdAt: DateTime.now().millisecondsSinceEpoch,
-            updatedAt: DateTime.now().millisecondsSinceEpoch,
-          ),
-        );
-        person = await _db.personsDao.findById(personId);
-        if (person == null) {
-          failed++;
-          continue;
-        }
-        personByName[name] = person;
-      }
-
-      final duplicate = existingRecords.any(
-        (r) => r.personId == person!.personId && r.amountCent == amountCent && r.direction == '收入',
-      );
-      if (duplicate) {
-        skipped++;
-        continue;
-      }
-
-      await _db.giftRecordsDao.insertOne(
-        GiftRecordsCompanion.insert(
-          bookId: bookId,
-          personId: person.personId,
-          amountCent: amountCent,
-          direction: const Value('收入'),
-          eventName: const Value('粘贴导入'),
-          occurredAt: DateTime.now().millisecondsSinceEpoch,
-          paymentMethod: const Value('未设置'),
-          createdAt: DateTime.now().millisecondsSinceEpoch,
-          updatedAt: DateTime.now().millisecondsSinceEpoch,
-        ),
-      );
-      success++;
-    }
-
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('粘贴导入完成：成功$success，跳过$skipped，失败$failed')),
-    );
   }
 
   @override
@@ -472,14 +383,6 @@ class _CanvasState extends State<_Canvas> {
                           ),
                         ),
                       ],
-                    ),
-                    const SizedBox(height: 12),
-                    SizedBox(
-                      width: double.infinity,
-                      child: PrototypeSecondaryButton(
-                        label: '粘贴板导入',
-                        onTap: _importFromClipboard,
-                      ),
                     ),
                   ],
                 ),
@@ -609,6 +512,12 @@ class _CanvasState extends State<_Canvas> {
                         ),
                       ],
                     ),
+                    const SizedBox(height: 12),
+                    _UploadArea(
+                      fileName: _mediaZip?.name,
+                      loading: false,
+                      onTap: _pickMediaZip,
+                    ),
                   ],
                 ),
               ),
@@ -722,7 +631,7 @@ class _UploadArea extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      fileName == null ? '点击选择 Excel/CSV 文件' : fileName!,
+                      fileName == null ? '点击选择 Excel 文件' : fileName!,
                       style: AppTypography.base(
                         fontSize: 14,
                         fontWeight: AppTypography.semibold,
@@ -731,7 +640,7 @@ class _UploadArea extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '支持 .xlsx / .csv；大文件建议使用 CSV。',
+                      '支持 Excel (.xlsx) 格式。',
                       style: AppTypography.base(
                         fontSize: AppTypography.fs12,
                         fontWeight: AppTypography.regular,

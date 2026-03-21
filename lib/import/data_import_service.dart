@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:archive/archive.dart';
 import 'package:crypto/crypto.dart';
 import 'package:drift/drift.dart';
 import 'package:excel/excel.dart';
@@ -9,12 +10,15 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
 import '../data/local/drift/app_database.dart';
+import '../media/media_storage_service.dart';
 
 enum DataImportFormat { csv, xlsx }
 
 enum DataImportStatus { pending, running, paused, completed, failed, canceled }
 
 enum DataImportKind { recordsAndPersons, recordsOnly, personsOnly }
+
+const String _kMediaZipPathField = '__media_zip_path__';
 
 class DataImportException implements Exception {
   const DataImportException(this.message);
@@ -70,6 +74,8 @@ class DataImportService {
     required String bookId,
     required String sourceFilePath,
     required DataImportKind kind,
+    Map<String, String?>? fieldMapping,
+    String? mediaZipPath,
   }) async {
     final f = File(sourceFilePath);
     if (!await f.exists()) {
@@ -94,6 +100,24 @@ class DataImportService {
     );
     final logFile = await _prepareLogFile(jobId: fileHash);
     final now = DateTime.now().millisecondsSinceEpoch;
+    final normalizedMapping = <String, String>{
+      for (final entry in (fieldMapping ?? const <String, String?>{}).entries)
+        if ((entry.value ?? '').trim().isNotEmpty) entry.key.trim(): entry.value!.trim(),
+    };
+    if ((mediaZipPath ?? '').trim().isNotEmpty) {
+      final zip = File(mediaZipPath!.trim());
+      if (!await zip.exists()) {
+        throw const DataImportException('媒体ZIP文件不存在');
+      }
+      final zipHash = await _sha256OfFile(zip);
+      final zipDest = await _copyToImportDir(
+        source: zip,
+        fileName: p.basename(zip.path),
+        fileHash: zipHash,
+      );
+      normalizedMapping[_kMediaZipPathField] = zipDest.path;
+    }
+    final mappingJson = normalizedMapping.isEmpty ? null : jsonEncode(normalizedMapping);
 
     final jobId = await _db.dataImportJobsDao.insertOne(
       DataImportJobsCompanion.insert(
@@ -105,6 +129,7 @@ class DataImportService {
         format: format.name,
         status: DataImportStatus.pending.name,
         importKind: kind.name,
+        mappingJson: mappingJson == null ? const Value.absent() : Value(mappingJson),
         errorLogPath: Value(logFile.path),
         startedAt: now,
         updatedAt: now,
@@ -314,7 +339,17 @@ class _ImportRunner {
         _successRows = job.successRows,
         _skippedRows = job.skippedRows,
         _failedRows = job.failedRows,
-        _lastRowIndex = job.lastRowIndex;
+        _lastRowIndex = job.lastRowIndex,
+        _fieldMapping = _parseMapping(job.mappingJson) {
+    _mediaStorageService = MediaStorageService(
+      documentsDirectoryProvider: () async {
+        final parent = File(job.filePath).parent;
+        final dir = Directory(p.join(parent.path, 'runtime_docs'));
+        await dir.create(recursive: true);
+        return dir;
+      },
+    );
+  }
 
   final AppDatabase _db;
   final DataImportJob _job;
@@ -330,11 +365,16 @@ class _ImportRunner {
   int _skippedRows;
   int _failedRows;
   int _lastRowIndex;
+  final Map<String, String> _fieldMapping;
+  late final MediaStorageService _mediaStorageService;
+  Map<String, String>? _mediaNamePathIndex;
 
   final Map<String, String> _personIdByKey = <String, String>{};
   final Set<String> _existingPersonIds = <String>{};
+  final Set<String> _existingRecordIds = <String>{};
   final Set<String> _seenPersonKeys = <String>{};
   final Set<String> _seenRecordKeys = <String>{};
+  final Map<String, String> _bookIdByName = <String, String>{};
 
   static const _kType = '数据类型';
   static const _kPersonId = '关系人ID';
@@ -343,12 +383,13 @@ class _ImportRunner {
   static const _kPhone = '手机号';
   static const _kDirection = '收支方向';
   static const _kAmountYuan = '金额(元)';
-  static const _kAmountCent = '金额(分)';
   static const _kEvent = '事由';
   static const _kPayment = '支付方式';
   static const _kOccurred = '发生时间';
   static const _kNote = '备注';
   static const _kRecordId = '记录ID';
+  static const _kAvatarFile = '头像文件名';
+  static const _kBookName = '所属账簿名称';
 
   Future<DataImportStatus> run() async {
     await _loadExistingPersons();
@@ -368,6 +409,19 @@ class _ImportRunner {
       final key = _personKey(name: p.name, phone: p.phone);
       _personIdByKey[key] = p.personId;
       _existingPersonIds.add(p.personId);
+    }
+    final records = await (_db.select(_db.giftRecords)
+          ..where((t) => t.bookId.equals(_job.bookId))
+          ..where((t) => t.deletedAt.isNull()))
+        .get();
+    for (final r in records) {
+      _existingRecordIds.add(r.recordId);
+    }
+    final books = await (_db.select(_db.accountBooks)
+          ..where((t) => t.deletedAt.isNull()))
+        .get();
+    for (final b in books) {
+      _bookIdByName[b.name] = b.bookId;
     }
   }
 
@@ -429,6 +483,14 @@ class _ImportRunner {
     final bytes = await file.readAsBytes();
     final excel = Excel.decodeBytes(bytes);
     if (excel.sheets.isEmpty) throw const DataImportException('Excel 内容为空');
+    final personSheet = excel.sheets['关系人'];
+    final recordSheet = excel.sheets['礼金记录'] ?? excel.sheets['收支记录'];
+    if (personSheet != null || recordSheet != null) {
+      return _runXlsxTwoSheets(
+        personSheet: personSheet,
+        recordSheet: recordSheet,
+      );
+    }
     final sheet = excel.sheets.values.first;
     final all = sheet.rows;
     if (all.isEmpty) throw const DataImportException('Excel 表格为空');
@@ -463,13 +525,95 @@ class _ImportRunner {
     return DataImportStatus.completed;
   }
 
+  Future<DataImportStatus> _runXlsxTwoSheets({
+    required Sheet? personSheet,
+    required Sheet? recordSheet,
+  }) async {
+    final chunkPersons = <PersonsCompanion>[];
+    final chunkRecords = <GiftRecordsCompanion>[];
+    var rowIndex = _lastRowIndex;
+
+    if (_shouldCancel()) return DataImportStatus.canceled;
+    if (_shouldPause()) return DataImportStatus.paused;
+    await _ensureMediaIndexLoaded();
+
+    if (personSheet != null && _kind != DataImportKind.recordsOnly) {
+      final rows = personSheet.rows;
+      if (rows.isNotEmpty) {
+        final headers = rows.first.map((c) => (c?.value?.toString() ?? '').trim()).toList();
+        for (var i = 1; i < rows.length; i++) {
+          if (_shouldCancel()) {
+            await _flush(rowIndex: rowIndex, persons: chunkPersons, records: chunkRecords);
+            return DataImportStatus.canceled;
+          }
+          if (_shouldPause()) {
+            await _flush(rowIndex: rowIndex, persons: chunkPersons, records: chunkRecords);
+            return DataImportStatus.paused;
+          }
+          final cells = rows[i].map((c) => (c?.value?.toString() ?? '').trim()).toList();
+          final row = _rowMap(headers, cells);
+          _processedRows += 1;
+          final person = await _parsePersonRowV2(rowIndex: i + 1, row: row);
+          if (person != null) {
+            chunkPersons.add(person);
+          }
+          rowIndex++;
+          if (chunkPersons.length + chunkRecords.length >= 2000) {
+            await _flush(rowIndex: rowIndex, persons: chunkPersons, records: chunkRecords);
+          }
+        }
+      }
+    }
+
+    if (recordSheet != null && _kind != DataImportKind.personsOnly) {
+      final rows = recordSheet.rows;
+      if (rows.isNotEmpty) {
+        final headers = rows.first.map((c) => (c?.value?.toString() ?? '').trim()).toList();
+        for (var i = 1; i < rows.length; i++) {
+          if (_shouldCancel()) {
+            await _flush(rowIndex: rowIndex, persons: chunkPersons, records: chunkRecords);
+            return DataImportStatus.canceled;
+          }
+          if (_shouldPause()) {
+            await _flush(rowIndex: rowIndex, persons: chunkPersons, records: chunkRecords);
+            return DataImportStatus.paused;
+          }
+          final cells = rows[i].map((c) => (c?.value?.toString() ?? '').trim()).toList();
+          final row = _rowMap(headers, cells);
+          _processedRows += 1;
+          final record = await _parseRecordRow(
+            rowIndex: i + 1,
+            row: row,
+            persons: chunkPersons,
+          );
+          if (record != null) {
+            chunkRecords.add(record);
+          }
+          rowIndex++;
+          if (chunkPersons.length + chunkRecords.length >= 2000) {
+            await _flush(rowIndex: rowIndex, persons: chunkPersons, records: chunkRecords);
+          }
+        }
+      }
+    }
+    await _flush(rowIndex: rowIndex, persons: chunkPersons, records: chunkRecords);
+    return DataImportStatus.completed;
+  }
+
   void _validateHeaders(List<String> headers) {
-    if (!headers.contains(_kType)) {
+    if (!_hasHeader(headers, _kType)) {
       throw const DataImportException('缺少列：数据类型');
     }
-    if (!headers.contains(_kPersonName) && !headers.contains(_kPersonId)) {
+    if (!_hasHeader(headers, _kPersonName) && !_hasHeader(headers, _kPersonId)) {
       throw const DataImportException('缺少列：关系人姓名/关系人ID（至少一个）');
     }
+  }
+
+  bool _hasHeader(List<String> headers, String standardField) {
+    if (_fieldMapping.containsKey(standardField)) {
+      return headers.contains(_fieldMapping[standardField]);
+    }
+    return headers.contains(standardField);
   }
 
   Future<void> _consumeRow({
@@ -478,7 +622,7 @@ class _ImportRunner {
     required List<PersonsCompanion> persons,
     required List<GiftRecordsCompanion> records,
   }) async {
-    final type = row[_kType]?.trim() ?? '';
+    final type = _read(row, _kType).trim();
     if (type.isEmpty) return;
     if (type == '关系人列表') {
       if (_kind == DataImportKind.recordsOnly) return;
@@ -506,14 +650,14 @@ class _ImportRunner {
     required int rowIndex,
     required Map<String, String> row,
   }) {
-    final name = (row[_kPersonName] ?? '').trim();
+    final name = _read(row, _kPersonName).trim();
     if (name.isEmpty) {
       _failedRows += 1;
       _onLog('第$rowIndex行：关系人姓名为空，已跳过');
       return null;
     }
-    final phone = (row[_kPhone] ?? '').trim();
-    final relationship = (row[_kRelationship] ?? '').trim();
+    final phone = _read(row, _kPhone).trim();
+    final relationship = _read(row, _kRelationship).trim();
     final key = _personKey(name: name, phone: phone.isEmpty ? null : phone);
     if (_seenPersonKeys.contains(key)) {
       _skippedRows += 1;
@@ -526,7 +670,7 @@ class _ImportRunner {
       return null;
     }
 
-    final personId = (row[_kPersonId] ?? '').trim();
+    final personId = _read(row, _kPersonId).trim();
     final now = DateTime.now().millisecondsSinceEpoch;
     final id = personId.isEmpty ? _db.newId() : personId;
     _personIdByKey[key] = id;
@@ -547,12 +691,47 @@ class _ImportRunner {
     );
   }
 
+  Future<PersonsCompanion?> _parsePersonRowV2({
+    required int rowIndex,
+    required Map<String, String> row,
+  }) async {
+    final normalized = Map<String, String>.from(row);
+    if ((normalized[_kPersonName] ?? '').trim().isEmpty &&
+        (normalized['姓名'] ?? '').trim().isNotEmpty) {
+      normalized[_kPersonName] = normalized['姓名']!.trim();
+    }
+    if ((normalized[_kRelationship] ?? '').trim().isEmpty &&
+        (normalized['关系'] ?? '').trim().isNotEmpty) {
+      normalized[_kRelationship] = normalized['关系']!.trim();
+    }
+    final base = _parsePersonRow(rowIndex: rowIndex, row: normalized);
+    if (base == null) return null;
+    final avatarName = (normalized[_kAvatarFile] ?? normalized['头像'] ?? '').trim();
+    if (avatarName.isEmpty) {
+      return base;
+    }
+    final mediaPath = _resolveMediaPathByName(avatarName);
+    if (mediaPath == null) {
+      _skippedRows += 1;
+      await _onLog('第$rowIndex行：头像文件未在ZIP中找到（$avatarName）');
+      return base;
+    }
+    try {
+      final avatarUri = await _mediaStorageService.saveAvatarFromPath(mediaPath);
+      return base.copyWith(avatarUri: Value(avatarUri));
+    } catch (e) {
+      _failedRows += 1;
+      await _onLog('第$rowIndex行：头像落盘失败（$avatarName）：$e');
+      return base;
+    }
+  }
+
   Future<GiftRecordsCompanion?> _parseRecordRow({
     required int rowIndex,
     required Map<String, String> row,
     required List<PersonsCompanion> persons,
   }) async {
-    final direction = (row[_kDirection] ?? '').trim();
+    final direction = _read(row, _kDirection).trim();
     if (direction != '收入' && direction != '支出') {
       _failedRows += 1;
       unawaited(_onLog('第$rowIndex行：收支方向不合法（$direction），已跳过'));
@@ -566,23 +745,44 @@ class _ImportRunner {
       return null;
     }
 
-    final occurredAt = _parseOccurredAt(row[_kOccurred]);
+    final occurredAt = _parseOccurredAt(_read(row, _kOccurred));
     if (occurredAt == null) {
       _failedRows += 1;
       unawaited(_onLog('第$rowIndex行：发生时间不合法，已跳过'));
       return null;
     }
 
-    final personIdRaw = (row[_kPersonId] ?? '').trim();
-    final personName = (row[_kPersonName] ?? '').trim();
+    final bookNameRaw = _read(row, _kBookName).trim();
+    String effectiveBookId = _job.bookId;
+    if (bookNameRaw.isNotEmpty) {
+      final matchedId = _bookIdByName[bookNameRaw];
+      if (matchedId != null) {
+        effectiveBookId = matchedId;
+      } else {
+        effectiveBookId = _db.newId();
+        final now = DateTime.now().millisecondsSinceEpoch;
+        await _db.into(_db.accountBooks).insert(
+          AccountBooksCompanion.insert(
+            bookId: Value(effectiveBookId),
+            name: bookNameRaw,
+            createdAt: now,
+            updatedAt: now,
+          ),
+        );
+        _bookIdByName[bookNameRaw] = effectiveBookId;
+      }
+    }
+
+    final personIdRaw = _read(row, _kPersonId).trim();
+    final personName = _read(row, _kPersonName).trim();
     if (personIdRaw.isEmpty && personName.isEmpty) {
       _failedRows += 1;
       unawaited(_onLog('第$rowIndex行：关系人姓名/ID 为空，已跳过'));
       return null;
     }
 
-    final phone = (row[_kPhone] ?? '').trim();
-    final relationship = (row[_kRelationship] ?? '').trim();
+    final phone = _read(row, _kPhone).trim();
+    final relationship = _read(row, _kRelationship).trim();
     final key = _personKey(name: personName, phone: phone.isEmpty ? null : phone);
     var personId = personIdRaw.isEmpty ? (_personIdByKey[key] ?? '') : personIdRaw;
     if (personId.isEmpty) {
@@ -600,7 +800,7 @@ class _ImportRunner {
       persons.add(
         PersonsCompanion.insert(
           personId: Value(personId),
-          bookId: _job.bookId,
+          bookId: effectiveBookId,
           name: personName,
           relationshipType: Value(relationship.isEmpty ? '其他' : relationship),
           phone: phone.isEmpty ? const Value.absent() : Value(phone),
@@ -611,9 +811,13 @@ class _ImportRunner {
       _existingPersonIds.add(personId);
     }
 
-    final recordId = (row[_kRecordId] ?? '').trim();
+    final recordId = _read(row, _kRecordId).trim();
     final id = recordId.isEmpty ? _db.newId() : recordId;
-    final eventName = (row[_kEvent] ?? '').trim();
+    if (_existingRecordIds.contains(id)) {
+      _skippedRows += 1;
+      return null;
+    }
+    final eventName = _read(row, _kEvent).trim();
     final recordKey = recordId.isNotEmpty
         ? 'id:$id'
         : 'k:$personId|${occurredAt.millisecondsSinceEpoch}|$amountCent|$direction|$eventName';
@@ -622,13 +826,15 @@ class _ImportRunner {
       return null;
     }
     _seenRecordKeys.add(recordKey);
+    _existingRecordIds.add(id);
 
-    final paymentMethod = (row[_kPayment] ?? '').trim();
-    final note = (row[_kNote] ?? '').trim();
+    final paymentMethod = _read(row, _kPayment).trim();
+    final note = _read(row, _kNote).trim();
+    final attachments = await _resolveAttachmentsFromRow(row);
     final now = DateTime.now().millisecondsSinceEpoch;
     return GiftRecordsCompanion.insert(
       recordId: Value(id),
-      bookId: _job.bookId,
+      bookId: effectiveBookId,
       personId: personId,
       reminderId: const Value.absent(),
       direction: Value(direction),
@@ -638,18 +844,29 @@ class _ImportRunner {
       occurredAt: occurredAt.millisecondsSinceEpoch,
       paymentMethod: paymentMethod.isEmpty ? const Value.absent() : Value(paymentMethod),
       note: note.isEmpty ? const Value.absent() : Value(note),
-      attachments: const Value.absent(),
+      attachments: attachments.isEmpty ? const Value.absent() : Value(attachments),
       createdAt: now,
       updatedAt: now,
     );
   }
 
-  int? _parseAmountCent(Map<String, String> row) {
-    final cent = (row[_kAmountCent] ?? '').trim();
-    if (cent.isNotEmpty) {
-      return int.tryParse(cent);
+  Future<List<String>> _resolveAttachmentsFromRow(Map<String, String> row) async {
+    final out = <String>[];
+    for (var i = 1; i <= 20; i++) {
+      final fileName = _read(row, '附件${i}名称').trim();
+      if (fileName.isEmpty) continue;
+      final path = _resolveMediaPathByName(fileName);
+      if (path == null) continue;
+      try {
+        final stored = await _mediaStorageService.saveAttachmentFromPath(path);
+        out.add(stored);
+      } catch (_) {}
     }
-    final yuan = (row[_kAmountYuan] ?? '').trim();
+    return out;
+  }
+
+  int? _parseAmountCent(Map<String, String> row) {
+    final yuan = _read(row, _kAmountYuan).trim();
     if (yuan.isEmpty) return null;
     final n = double.tryParse(yuan.replaceAll(',', ''));
     if (n == null) return null;
@@ -698,6 +915,7 @@ class _ImportRunner {
       return;
     }
 
+    final before = await _countInsertedRowsSnapshot();
     await _db.transaction(() async {
       await _db.batch((b) {
         if (persons.isNotEmpty) {
@@ -709,8 +927,9 @@ class _ImportRunner {
       });
     });
     await Future<void>.delayed(Duration.zero);
+    final after = await _countInsertedRowsSnapshot();
 
-    final insertedDelta = persons.length + records.length;
+    final insertedDelta = (after.$1 + after.$2) - (before.$1 + before.$2);
     _successRows += insertedDelta;
     await (_db.update(_db.dataImportJobs)..where((t) => t.jobId.equals(_job.jobId))).write(
       DataImportJobsCompanion(
@@ -738,6 +957,82 @@ class _ImportRunner {
         failedRows: _failedRows,
       ),
     );
+  }
+
+  Future<(int, int)> _countInsertedRowsSnapshot() async {
+    final personRows = await _db.customSelect(
+      'SELECT COUNT(1) AS c FROM person WHERE book_id = ? AND deleted_at IS NULL;',
+      variables: <Variable<Object>>[Variable<String>(_job.bookId)],
+    ).getSingle();
+    final recordRows = await _db.customSelect(
+      'SELECT COUNT(1) AS c FROM gift_record WHERE book_id = ? AND deleted_at IS NULL;',
+      variables: <Variable<Object>>[Variable<String>(_job.bookId)],
+    ).getSingle();
+    final persons = (personRows.data['c'] as int?) ?? 0;
+    final records = (recordRows.data['c'] as int?) ?? 0;
+    return (persons, records);
+  }
+
+  String _read(Map<String, String> row, String standardField) {
+    if (_fieldMapping.containsKey(standardField)) {
+      final source = _fieldMapping[standardField]!;
+      return row[source] ?? '';
+    }
+    return row[standardField] ?? '';
+  }
+
+  Future<void> _ensureMediaIndexLoaded() async {
+    if (_mediaNamePathIndex != null) return;
+    final zipPath = _fieldMapping[_kMediaZipPathField];
+    if (zipPath == null || zipPath.trim().isEmpty) {
+      _mediaNamePathIndex = <String, String>{};
+      return;
+    }
+    final file = File(zipPath);
+    if (!await file.exists()) {
+      _mediaNamePathIndex = <String, String>{};
+      return;
+    }
+    final base = Directory(p.join(File(_job.filePath).parent.path, 'unzipped', _job.jobId));
+    final temp = base;
+    await temp.create(recursive: true);
+    final bytes = await file.readAsBytes();
+    final archive = ZipDecoder().decodeBytes(bytes);
+    final map = <String, String>{};
+    for (final entry in archive.files) {
+      if (!entry.isFile) continue;
+      final outFile = File(p.join(temp.path, entry.name.replaceAll('/', p.separator)));
+      await outFile.parent.create(recursive: true);
+      await outFile.writeAsBytes(entry.content as List<int>, flush: true);
+      final baseName = p.basename(outFile.path);
+      map[baseName] = outFile.path;
+    }
+    _mediaNamePathIndex = map;
+  }
+
+  String? _resolveMediaPathByName(String fileName) {
+    final name = fileName.trim();
+    if (name.isEmpty) return null;
+    return _mediaNamePathIndex?[name];
+  }
+
+  static Map<String, String> _parseMapping(String? raw) {
+    if (raw == null || raw.trim().isEmpty) return <String, String>{};
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map) return <String, String>{};
+      final map = <String, String>{};
+      decoded.forEach((key, value) {
+        final k = key.toString().trim();
+        final v = value?.toString().trim() ?? '';
+        if (k.isNotEmpty && v.isNotEmpty) {
+          map[k] = v;
+        }
+      });
+      return map;
+    } catch (_) {
+      return <String, String>{};
+    }
   }
 
   Future<void> _persistCheckpoint(int rowIndex) async {

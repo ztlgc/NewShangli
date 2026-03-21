@@ -74,7 +74,7 @@ class _CanvasState extends State<_Canvas> {
                 radius: 12,
               ),
               const SizedBox(width: 12),
-              Expanded(child: Text('管理关系类型', style: AppTypography.h2().copyWith(fontSize: 20))),
+              Expanded(child: Text('联系人关系管理', style: AppTypography.h2().copyWith(fontSize: 20))),
               PrototypeIconButton(
                 icon: const FaIcon(FontAwesomeIcons.plus, size: 16),
                 backgroundColor: AppColors.gray100,

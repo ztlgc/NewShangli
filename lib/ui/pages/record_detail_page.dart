@@ -1,7 +1,10 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import '../../data/local/drift/app_database.dart';
+import '../app_data.dart';
 import '../app_database_scope.dart';
 import '../app_tokens.dart';
 import '../app_scaffold.dart';
@@ -51,7 +54,9 @@ class _Canvas extends StatelessWidget {
   }
 
   Future<_RecordView?> _loadRecord(BuildContext context) async {
-    return _loadFromDb(context);
+    final fromDb = await _loadFromDb(context);
+    if (fromDb != null) return fromDb;
+    return _loadFromAppData(context);
   }
 
   Future<_RecordView?> _loadFromDb(BuildContext context) async {
@@ -72,6 +77,34 @@ class _Canvas extends StatelessWidget {
         occurredAt: DateTime.fromMillisecondsSinceEpoch(record.occurredAt),
         note: record.note,
         bookName: book?.name ?? '未知账簿',
+        attachments: List<String>.from(record.attachments ?? const <String>[]),
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<_RecordView?> _loadFromAppData(BuildContext context) async {
+    try {
+      final element = context.getElementForInheritedWidgetOfExactType<AppDataScope>();
+      final scope = element?.widget;
+      if (scope is! AppDataScope) return null;
+      final data = scope.notifier!;
+      final record = data.findRecord(recordId);
+      if (record == null) return null;
+      final person = data.findPerson(record.personId);
+      final bookName = data.resolveBookName(record.bookId);
+      return _RecordView(
+        personId: record.personId,
+        personName: person?.name ?? record.personName,
+        isIncome: record.direction == RecordDirection.income,
+        amountCent: record.amountCent,
+        eventName: record.eventName,
+        paymentMethod: record.paymentMethod,
+        occurredAt: record.occurredAt,
+        note: record.note,
+        bookName: bookName,
+        attachments: const <String>[],
       );
     } catch (_) {
       return null;
@@ -130,7 +163,7 @@ class _Canvas extends StatelessWidget {
                   const SizedBox(height: 24),
                   const _SectionTitle(title: '附件'),
                   const SizedBox(height: 12),
-                  const _AttachmentRow(),
+                  _AttachmentRow(attachments: record.attachments),
                 ],
               ),
               Positioned(
@@ -185,6 +218,7 @@ class _RecordView {
     required this.occurredAt,
     required this.note,
     required this.bookName,
+    required this.attachments,
   });
 
   final String personId;
@@ -196,6 +230,7 @@ class _RecordView {
   final DateTime occurredAt;
   final String? note;
   final String bookName;
+  final List<String> attachments;
 }
 
 class _AmountSummaryCard extends StatelessWidget {
@@ -457,25 +492,43 @@ class _NoteCard extends StatelessWidget {
 }
 
 class _AttachmentRow extends StatelessWidget {
-  const _AttachmentRow();
+  const _AttachmentRow({required this.attachments});
+
+  final List<String> attachments;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    if (attachments.isEmpty) {
+      return const PrototypeCard(
+        padding: EdgeInsets.all(16),
+        child: Text('暂无附件'),
+      );
+    }
+    return Wrap(
+      spacing: 10,
+      runSpacing: 10,
       children: [
-        Container(
-          width: 96,
-          height: 96,
-          decoration: BoxDecoration(
-            color: AppColors.gray200,
-            borderRadius: BorderRadius.circular(16),
+        for (final path in attachments)
+          Container(
+            width: 96,
+            height: 96,
+            decoration: BoxDecoration(
+              color: AppColors.gray200,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: Image.file(
+              File(path),
+              fit: BoxFit.cover,
+              errorBuilder: (context, _, __) {
+                return Container(
+                  color: AppColors.gray100,
+                  alignment: Alignment.center,
+                  child: const FaIcon(FontAwesomeIcons.triangleExclamation, size: 14),
+                );
+              },
+            ),
           ),
-          clipBehavior: Clip.antiAlias,
-          child: const PrototypeNetworkImage(
-            url: 'https://images.unsplash.com/photo-1511795409834-ef04bbd61622?w=150&h=150&fit=crop',
-            fit: BoxFit.cover,
-          ),
-        ),
       ],
     );
   }

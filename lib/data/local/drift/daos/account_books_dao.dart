@@ -53,23 +53,24 @@ class AccountBooksDao extends DatabaseAccessor<AppDatabase>
   /// 删除账簿。
   ///
   /// 表结构上 book_id 作为其它表外键，开启级联删除。
-  Future<int> deleteById(String bookId) {
+  Future<int> deleteById(String bookId) async {
+    final book = await findById(bookId);
+    if (book == null) return 0;
+    if (book.isDefault == 1) {
+      throw StateError('默认账簿不可删除');
+    }
     return (delete(accountBooks)..where((t) => t.bookId.equals(bookId))).go();
   }
 
   /// 将指定账簿设置为默认账簿（事务保证只有一个默认）。
-  Future<void> setDefaultBook(String bookId) {
-    return transaction(() async {
-      await (update(accountBooks)).write(
-        const AccountBooksCompanion(isDefault: Value(0)),
-      );
-      await (update(accountBooks)..where((t) => t.bookId.equals(bookId))).write(
-        AccountBooksCompanion(
-          isDefault: const Value(1),
-          updatedAt: Value(DateTime.now().millisecondsSinceEpoch),
-        ),
-      );
-    });
+  Future<void> setDefaultBook(String bookId) async {
+    final target = await findById(bookId);
+    if (target == null) {
+      throw StateError('账簿不存在');
+    }
+    if (target.isDefault != 1) {
+      throw StateError('不允许将其他账簿设为默认账簿');
+    }
   }
 
   /// 获取默认账簿（若存在多个，返回 updatedAt 最新的一个）。

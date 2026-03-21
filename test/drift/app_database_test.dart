@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sqlite3/sqlite3.dart' show SqliteException;
 
 import 'package:newshangli/data/local/drift/app_database.dart';
+import 'package:newshangli/import/default_book_service.dart';
 
 void main() {
   group('Drift AppDatabase', () {
@@ -18,7 +19,8 @@ void main() {
       await db.close();
     });
 
-    test('AccountBook：CRUD + 默认账簿事务', () async {
+    test('AccountBook：CRUD + 默认账簿保护', () async {
+      final defaultBookId = await DefaultBookService().ensureDefaultBookId(db);
       final String bookId = await db.accountBooksDao.insertOne(
         AccountBooksCompanion.insert(
           name: '家庭账簿',
@@ -30,14 +32,21 @@ void main() {
       final AccountBook? book = await db.accountBooksDao.findById(bookId);
       expect(book, isNotNull);
       expect(book!.name, '家庭账簿');
-      expect(book.reasonType, '结婚礼金');
+      expect(book.reasonType, '');
       expect(book.themeColor, '#312E81');
       expect(book.isDefault, 0);
 
-      await db.accountBooksDao.setDefaultBook(bookId);
-      final AccountBook? defaultBook = await db.accountBooksDao.findDefault();
-      expect(defaultBook?.bookId, bookId);
-      expect(defaultBook?.isDefault, 1);
+      final AccountBook? defaultBook = await db.accountBooksDao.findById(defaultBookId);
+      expect(defaultBook, isNotNull);
+      expect(defaultBook!.reasonType, '');
+
+      expect(
+        () => db.accountBooksDao.setDefaultBook(bookId),
+        throwsA(isA<StateError>()),
+      );
+      final AccountBook? currentDefaultBook = await db.accountBooksDao.findDefault();
+      expect(currentDefaultBook?.bookId, defaultBookId);
+      expect(currentDefaultBook?.isDefault, 1);
 
       final bool updatedOk = await db.accountBooksDao.updateOne(
         book.copyWith(
@@ -55,6 +64,10 @@ void main() {
       expect(book2?.themeColor, '#22C55E');
       expect(book2?.description, '备注');
 
+      expect(
+        () => db.accountBooksDao.deleteById(defaultBookId),
+        throwsA(isA<StateError>()),
+      );
       final int deleted = await db.accountBooksDao.deleteById(bookId);
       expect(deleted, 1);
       expect(await db.accountBooksDao.findById(bookId), isNull);

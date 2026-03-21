@@ -5,6 +5,7 @@ import 'package:lunar/lunar.dart';
 import '../../data/local/drift/app_database.dart';
 import '../../import/default_book_service.dart';
 import '../../reminders/reminders_service.dart';
+import '../app_toast.dart';
 import '../app_database_scope.dart';
 import '../app_tokens.dart';
 import '../app_scaffold.dart';
@@ -199,15 +200,7 @@ class _CanvasState extends State<_Canvas> {
   }
 
   void _toast(String message) {
-    final messenger = ScaffoldMessenger.maybeOf(context);
-    if (messenger == null) return;
-    messenger.hideCurrentSnackBar();
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text(message),
-        duration: const Duration(milliseconds: 800),
-      ),
-    );
+    AppToast.show(context, message, duration: const Duration(milliseconds: 800));
   }
 
   @override

@@ -43,7 +43,7 @@ class $AccountBooksTable extends AccountBooks
     false,
     type: DriftSqlType.string,
     requiredDuringInsert: false,
-    defaultValue: const Constant('结婚礼金'),
+    defaultValue: const Constant(''),
   );
   static const VerificationMeta _themeColorMeta = const VerificationMeta(
     'themeColor',

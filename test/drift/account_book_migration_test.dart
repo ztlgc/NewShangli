@@ -60,7 +60,7 @@ CREATE TABLE event_reminder (
 
       raw.execute('''
 INSERT INTO account_book(book_id, name, type, theme_color, is_default, created_at, updated_at) VALUES
-('b1', 'A', 'default',  '#312E81', 0, 1, 1),
+('b1', 'A', 'default',  '#312E81', 1, 1, 1),
 ('b2', 'B', 'wedding',  '#312E81', 0, 1, 1),
 ('b3', 'C', 'business', '#312E81', 0, 1, 1),
 ('b4', 'D', '乔迁',     '#312E81', 0, 1, 1);
@@ -83,7 +83,7 @@ INSERT INTO account_book(book_id, name, type, theme_color, is_default, created_a
         expect(b3, isNotNull);
         expect(b4, isNotNull);
 
-        expect(b1!.reasonType, '结婚礼金');
+        expect(b1!.reasonType, '');
         expect(b2!.reasonType, '结婚礼金');
         expect(b3!.reasonType, '商务往来');
         expect(b4!.reasonType, '乔迁');

@@ -32,4 +32,21 @@ void main() {
     expect(BackupConfig.isValidWebDavRemoteDir('backup\\newshangli'), false);
     expect(BackupConfig.normalizeWebDavRemoteDir(''), '');
   });
+
+  test('BackupConfig 规范化 WebDAV 地址并移除 query/fragment', () {
+    final uri = BackupConfig.parseAndNormalizeWebDavBaseUrl(
+      ' https://example.com/remote.php/dav/files/user/?share=1#view ',
+    );
+    expect(uri, isNotNull);
+    expect(uri.toString(), 'https://example.com/remote.php/dav/files/user/');
+  });
+
+  test('BackupConfig 拒绝非 http/https 的 WebDAV 地址', () {
+    expect(
+      BackupConfig.parseAndNormalizeWebDavBaseUrl(
+        'ftp://example.com/remote.php/dav/files/user/',
+      ),
+      isNull,
+    );
+  });
 }

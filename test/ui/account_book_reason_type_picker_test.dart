@@ -53,9 +53,41 @@ void main() {
     await tester.tap(find.text('事由类型'));
     await tester.pumpAndSettle();
 
-    expect(find.text('选择事由类型'), findsOneWidget);
+    expect(find.text('选择事由'), findsOneWidget);
     expect(find.textContaining('自定义'), findsNothing);
     expect(find.text('管理事由'), findsOneWidget);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump();
+    db.close();
+  });
+
+  testWidgets('默认账簿：只读展示且不可删除', (WidgetTester tester) async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+
+    final db = AppDatabase.forTesting(NativeDatabase.memory());
+    final defaultBookId = await DefaultBookService().ensureDefaultBookId(db);
+
+    final data = AppData();
+    await tester.runAsync(() async {
+      await waitAppDataReady(data);
+    });
+
+    await tester.pumpWidget(
+      _DbHost(
+        db: db,
+        child: AppDataScope(
+          data: data,
+          child: MaterialApp(home: AccountBookEditPage(bookId: defaultBookId)),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('不可修改'), findsOneWidget);
+    expect(find.text('全部事由'), findsOneWidget);
+    expect(find.text('删除账簿'), findsNothing);
+    expect(find.text('设为默认账簿'), findsNothing);
 
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump();

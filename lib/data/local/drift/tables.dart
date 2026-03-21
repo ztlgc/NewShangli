@@ -24,7 +24,7 @@ class AccountBooks extends Table {
 
   TextColumn get reasonType => text()
       .named('reason_type')
-      .withDefault(const Constant('结婚礼金'))
+      .withDefault(const Constant(''))
       ();
 
   TextColumn get themeColor => text()

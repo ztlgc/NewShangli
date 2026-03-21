@@ -4,12 +4,27 @@ import 'dart:io';
 import 'package:archive/archive.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
+import 'package:sqlite3/sqlite3.dart' as sqlite;
 
-import '../data/local/drift/app_database.dart';
 import 'backup_config.dart';
 import 'webdav_client.dart';
 
+typedef BackupSnapshotExecutor = Future<void> Function({
+  required String sourceDbPath,
+  required String outputDbPath,
+});
+
 class DataBackupService {
+  DataBackupService({
+    Future<Directory> Function()? documentsDirectoryProvider,
+    BackupSnapshotExecutor? snapshotExecutor,
+  })  : _documentsDirectoryProvider =
+            documentsDirectoryProvider ?? getApplicationDocumentsDirectory,
+        _snapshotExecutor = snapshotExecutor ?? _defaultSnapshotExecutor;
+
+  final Future<Directory> Function() _documentsDirectoryProvider;
+  final BackupSnapshotExecutor _snapshotExecutor;
+
   Future<BackupRunResult> run({
     required BackupConfig config,
     required void Function(BackupProgress progress) onProgress,
@@ -22,8 +37,8 @@ class DataBackupService {
     if (baseUrlRaw.isEmpty) {
       throw const BackupException('请先填写服务器地址');
     }
-    final baseUrl = Uri.tryParse(baseUrlRaw);
-    if (baseUrl == null || (!baseUrl.hasScheme) || baseUrl.host.isEmpty) {
+    final baseUrl = BackupConfig.parseAndNormalizeWebDavBaseUrl(baseUrlRaw);
+    if (baseUrl == null) {
       throw const BackupException('服务器地址格式不正确');
     }
     if (config.webDavUsername.trim().isEmpty) {
@@ -102,8 +117,14 @@ class DataBackupService {
     }
   }
 
+  Future<File> buildLocalBackupZip({
+    required void Function(BackupProgress progress) onProgress,
+  }) {
+    return _createBackupZip(onProgress: onProgress);
+  }
+
   Future<File> _createBackupZip({required void Function(BackupProgress progress) onProgress}) async {
-    final dir = await getApplicationDocumentsDirectory();
+    final dir = await _documentsDirectoryProvider();
     final backupDir = Directory(p.join(dir.path, 'backups'));
     await backupDir.create(recursive: true);
 
@@ -111,49 +132,35 @@ class DataBackupService {
     final baseName = _buildFileNameBase(ts);
     final outFile = File(p.join(backupDir.path, '$baseName.zip'));
 
-    await _checkpointDrift();
-
-    final files = <_BackupFileCandidate>[
-      _BackupFileCandidate(
-        local: File(p.join(dir.path, 'newshangli_drift.sqlite')),
-        archivePath: 'db/newshangli_drift.sqlite',
-        required: true,
-      ),
-      _BackupFileCandidate(
-        local: File(p.join(dir.path, 'newshangli_drift.sqlite-wal')),
-        archivePath: 'db/newshangli_drift.sqlite-wal',
-        required: false,
-      ),
-      _BackupFileCandidate(
-        local: File(p.join(dir.path, 'newshangli_drift.sqlite-shm')),
-        archivePath: 'db/newshangli_drift.sqlite-shm',
-        required: false,
-      ),
-      _BackupFileCandidate(
-        local: File(p.join(dir.path, 'newshangli.db')),
-        archivePath: 'db/newshangli.db',
-        required: false,
-      ),
-    ];
-
     final archive = Archive();
-    final included = <String>[];
-    for (final f in files) {
-      final exists = await f.local.exists();
-      if (!exists) {
-        if (f.required) {
-          throw BackupException('未找到数据库文件：${f.local.path}');
-        }
-        continue;
-      }
-      final bytes = await f.local.readAsBytes();
-      if (!f.required && bytes.isEmpty) continue;
-      included.add(f.archivePath);
-      archive.addFile(ArchiveFile(f.archivePath, bytes.length, bytes));
+    final sourceDb = File(p.join(dir.path, 'newshangli_drift.sqlite'));
+    if (!await sourceDb.exists()) {
+      throw BackupException('未找到数据库文件：${sourceDb.path}');
     }
+    final snapshot = await _createSnapshotDbFile(
+      sourceDbPath: sourceDb.path,
+      ts: ts,
+    );
+    final included = <String>[snapshot.archivePath];
+    try {
+      final bytes = await snapshot.file.readAsBytes();
+      archive.addFile(ArchiveFile(snapshot.archivePath, bytes.length, bytes));
+    } finally {
+      if (await snapshot.file.exists()) {
+        await snapshot.file.delete();
+      }
+    }
+    final mediaSummary = await _addMediaToArchive(archive: archive, docsDir: dir, included: included);
 
     final manifest = <String, Object?>{
       'createdAt': ts.toIso8601String(),
+      'backupMode': 'snapshot_vacuum_into',
+      'dbFile': snapshot.archivePath,
+      'dbSizeBytes': snapshot.sizeBytes,
+      'mediaIncluded': mediaSummary.fileCount > 0,
+      'mediaFilesCount': mediaSummary.fileCount,
+      'mediaBytes': mediaSummary.totalBytes,
+      'schemaVersion': null,
       'files': included,
     };
     final manifestBytes = utf8.encode(const JsonEncoder.withIndent('  ').convert(manifest));
@@ -168,13 +175,68 @@ class DataBackupService {
     return outFile;
   }
 
-  Future<void> _checkpointDrift() async {
-    final db = AppDatabase();
-    try {
-      await db.customStatement('PRAGMA wal_checkpoint(FULL);');
-    } finally {
-      await db.close();
+  Future<_BackupSnapshotResult> _createSnapshotDbFile({
+    required String sourceDbPath,
+    required DateTime ts,
+  }) async {
+    final dir = await _documentsDirectoryProvider();
+    final snapshotDir = Directory(p.join(dir.path, 'backups', 'snapshots'));
+    await snapshotDir.create(recursive: true);
+    final fileName = 'newshangli_snapshot_${ts.millisecondsSinceEpoch}_${DateTime.now().microsecondsSinceEpoch}.sqlite';
+    final snapshotFile = File(p.join(snapshotDir.path, fileName));
+    if (await snapshotFile.exists()) {
+      await snapshotFile.delete();
     }
+
+    try {
+      await _snapshotExecutor(
+        sourceDbPath: sourceDbPath,
+        outputDbPath: snapshotFile.path,
+      );
+    } catch (e) {
+      if (await snapshotFile.exists()) {
+        await snapshotFile.delete();
+      }
+      throw BackupException('生成数据库快照失败：$e');
+    }
+
+    final exists = await snapshotFile.exists();
+    final size = exists ? await snapshotFile.length() : 0;
+    if (!exists || size <= 0) {
+      if (exists) {
+        await snapshotFile.delete();
+      }
+      throw const BackupException('生成数据库快照失败：快照文件为空');
+    }
+    return _BackupSnapshotResult(
+      file: snapshotFile,
+      archivePath: 'db/newshangli_drift.snapshot.sqlite',
+      sizeBytes: size,
+    );
+  }
+
+  Future<_MediaArchiveSummary> _addMediaToArchive({
+    required Archive archive,
+    required Directory docsDir,
+    required List<String> included,
+  }) async {
+    final mediaDir = Directory(p.join(docsDir.path, 'media'));
+    if (!await mediaDir.exists()) {
+      return const _MediaArchiveSummary(fileCount: 0, totalBytes: 0);
+    }
+    var fileCount = 0;
+    var totalBytes = 0;
+    await for (final entity in mediaDir.list(recursive: true, followLinks: false)) {
+      if (entity is! File) continue;
+      final relative = p.relative(entity.path, from: docsDir.path);
+      final archivePath = p.posix.normalize(relative.replaceAll('\\', '/'));
+      final bytes = await entity.readAsBytes();
+      archive.addFile(ArchiveFile(archivePath, bytes.length, bytes));
+      included.add(archivePath);
+      fileCount += 1;
+      totalBytes += bytes.length;
+    }
+    return _MediaArchiveSummary(fileCount: fileCount, totalBytes: totalBytes);
   }
 
   String _buildFileNameBase(DateTime ts) {
@@ -190,6 +252,24 @@ class DataBackupService {
     normalized = normalized.startsWith('/') ? normalized.substring(1) : normalized;
     normalized = normalized.endsWith('/') ? normalized.substring(0, normalized.length - 1) : normalized;
     return p.posix.join(normalized, fileName);
+  }
+
+  static Future<void> _defaultSnapshotExecutor({
+    required String sourceDbPath,
+    required String outputDbPath,
+  }) async {
+    final sourceFile = File(sourceDbPath);
+    if (!await sourceFile.exists()) {
+      throw BackupException('未找到数据库文件：$sourceDbPath');
+    }
+    final db = sqlite.sqlite3.open(sourceDbPath);
+    try {
+      db.execute('PRAGMA wal_checkpoint(TRUNCATE);');
+      final escapedPath = outputDbPath.replaceAll("'", "''");
+      db.execute("VACUUM INTO '$escapedPath';");
+    } finally {
+      db.dispose();
+    }
   }
 }
 
@@ -225,14 +305,24 @@ class BackupException implements Exception {
   String toString() => message;
 }
 
-class _BackupFileCandidate {
-  const _BackupFileCandidate({
-    required this.local,
+class _BackupSnapshotResult {
+  const _BackupSnapshotResult({
+    required this.file,
     required this.archivePath,
-    required this.required,
+    required this.sizeBytes,
   });
 
-  final File local;
+  final File file;
   final String archivePath;
-  final bool required;
+  final int sizeBytes;
+}
+
+class _MediaArchiveSummary {
+  const _MediaArchiveSummary({
+    required this.fileCount,
+    required this.totalBytes,
+  });
+
+  final int fileCount;
+  final int totalBytes;
 }

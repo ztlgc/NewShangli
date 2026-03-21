@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'app_toast.dart';
 import 'app_session.dart';
 
 class AppNav {
@@ -50,16 +51,7 @@ class AppNav {
   static void pop(BuildContext context) => Navigator.of(context).maybePop();
 
   static void _toast(BuildContext context, String message) {
-    final messenger = ScaffoldMessenger.maybeOf(context);
-    if (messenger == null) return;
-    messenger.hideCurrentSnackBar();
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text(message),
-        behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 2),
-      ),
-    );
+    AppToast.show(context, message, duration: const Duration(seconds: 2));
   }
 }
 

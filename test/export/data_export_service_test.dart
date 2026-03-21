@@ -1,11 +1,14 @@
 import 'dart:io';
 
 import 'package:archive/archive.dart';
+import 'package:drift/drift.dart' show Value;
+import 'package:drift/native.dart';
 import 'package:excel/excel.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:newshangli/data/local/drift/app_database.dart';
 import 'package:newshangli/export/data_export_service.dart';
 import 'package:newshangli/ui/app_data.dart';
 
@@ -75,8 +78,8 @@ void main() {
 
     final bytes = await file.readAsBytes();
     final excel = Excel.decodeBytes(bytes);
-    expect(excel.tables.keys.contains('收支记录'), isTrue);
-    expect(excel.tables.keys.contains('联系人'), isTrue);
+    expect(excel.tables.keys.contains('礼金记录'), isTrue);
+    expect(excel.tables.keys.contains('关系人'), isTrue);
   });
 
   test('Export records throws when no record in range', () async {
@@ -220,7 +223,7 @@ void main() {
 
     final bytes = await file.readAsBytes();
     final excel = Excel.decodeBytes(bytes);
-    final sheet = excel.tables['收支记录'];
+    final sheet = excel.tables['礼金记录'];
     expect(sheet, isNotNull);
 
     final nonEmptyRows = sheet!.rows.where((row) {
@@ -228,5 +231,79 @@ void main() {
     }).toList();
     // 1 行表头 + 1 行默认账本记录
     expect(nonEmptyRows.length, 2);
+  });
+
+  test('Drift导出ZIP包含双Sheet及头像附件列和媒体文件', () async {
+    final db = AppDatabase.forTesting(NativeDatabase.memory());
+    addTearDown(() async {
+      await db.close();
+    });
+    final dir = await Directory.systemTemp.createTemp('newshangli_export_drift_');
+    addTearDown(() async {
+      try {
+        await dir.delete(recursive: true);
+      } catch (_) {}
+    });
+    final avatar = File(p.join(dir.path, 'avatar.png'));
+    await avatar.writeAsBytes(<int>[1, 2, 3], flush: true);
+    final att = File(p.join(dir.path, 'a.jpg'));
+    await att.writeAsBytes(<int>[4, 5, 6], flush: true);
+
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final bookId = await db.accountBooksDao.insertOne(
+      AccountBooksCompanion.insert(name: 'b1', createdAt: now, updatedAt: now),
+    );
+    await db.personsDao.insertOne(
+      PersonsCompanion.insert(
+        personId: const Value('p1'),
+        bookId: bookId,
+        name: '张三',
+        relationshipType: const Value('朋友'),
+        avatarUri: Value(avatar.path),
+        createdAt: now,
+        updatedAt: now,
+      ),
+    );
+    await db.giftRecordsDao.insertOne(
+      GiftRecordsCompanion.insert(
+        recordId: const Value('r1'),
+        bookId: bookId,
+        personId: 'p1',
+        amountCent: 100,
+        direction: const Value('收入'),
+        eventName: const Value('测试'),
+        paymentMethod: const Value('现金'),
+        occurredAt: now,
+        attachments: Value(<String>[att.path]),
+        createdAt: now,
+        updatedAt: now,
+      ),
+    );
+
+    final service = DataExportService();
+    final file = await service.exportFromDrift(
+      loggedIn: true,
+      db: db,
+      request: DataExportRequest(
+        format: DataExportFormat.zip,
+        start: DateTime(2020, 1, 1),
+        end: DateTime(2100, 1, 1),
+        includeRecords: true,
+        includePersons: true,
+        includeImages: true,
+      ),
+      outputDir: dir,
+    );
+    final decoded = ZipDecoder().decodeBytes(await file.readAsBytes());
+    final names = decoded.files.map((e) => e.name).toList();
+    expect(names.any((n) => n.contains('media/avatars/')), true);
+    expect(names.any((n) => n.contains('media/attachments/')), true);
+    final xlsxEntry = decoded.files.firstWhere((e) => e.name.endsWith('.xlsx'));
+    final excel = Excel.decodeBytes(xlsxEntry.content as List<int>);
+    expect(excel.tables.keys.contains('礼金记录'), true);
+    expect(excel.tables.keys.contains('关系人'), true);
+    final header = excel.tables['礼金记录']!.rows.first.map((e) => (e?.value?.toString() ?? '')).toList();
+    expect(header.contains('联系人头像'), false);
+    expect(header.contains('附件1名称'), true);
   });
 }

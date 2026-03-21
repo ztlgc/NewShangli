@@ -38,7 +38,9 @@ class ImportFileReader {
     if (excel.sheets.isEmpty) {
       throw const FormatException('Excel 内容为空');
     }
-    final sheet = excel.sheets.values.first;
+    final sheet = excel.sheets['礼金记录'] ??
+        excel.sheets['收支记录'] ??
+        excel.sheets.values.first;
     final all = sheet.rows;
     if (all.isEmpty) {
       throw const FormatException('Excel 表格为空');
@@ -122,4 +124,3 @@ class ImportFileReader {
     return out;
   }
 }
-

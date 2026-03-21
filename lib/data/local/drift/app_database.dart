@@ -59,7 +59,7 @@ class AppDatabase extends _$AppDatabase {
   ///
   /// 版本升级时在 [migration] 中补齐迁移逻辑，并同步单元测试。
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 9;
 
   /// 统一注入迁移策略：
   /// - onCreate：创建所有表与索引
@@ -136,6 +136,11 @@ class AppDatabase extends _$AppDatabase {
             await m.createTable(reasons);
             await m.createTable(relationTypes);
             await m.createTable(contactRelations);
+          }
+          if (from < 9) {
+            await customStatement(
+              "UPDATE account_book SET reason_type = '' WHERE is_default = 1;",
+            );
           }
         },
         beforeOpen: (details) async {

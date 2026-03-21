@@ -171,6 +171,24 @@ class BackupConfig {
     return trimmed;
   }
 
+  static Uri? parseAndNormalizeWebDavBaseUrl(String value) {
+    final raw = value.trim();
+    if (raw.isEmpty) return null;
+    final parsed = Uri.tryParse(raw);
+    if (parsed == null || !parsed.hasScheme || parsed.host.isEmpty) return null;
+    final scheme = parsed.scheme.toLowerCase();
+    if (scheme != 'http' && scheme != 'https') return null;
+    final normalizedPath = parsed.path.trim().isEmpty ? '/' : parsed.path;
+    var authority = parsed.host;
+    if (parsed.hasPort) {
+      authority = '$authority:${parsed.port}';
+    }
+    if (parsed.userInfo.isNotEmpty) {
+      authority = '${parsed.userInfo}@$authority';
+    }
+    return Uri.tryParse('$scheme://$authority$normalizedPath');
+  }
+
   static const String _kWebDavEnabledKey = 'backup_webdav_enabled_v1';
   static const String _kWebDavBaseUrlKey = 'backup_webdav_base_url_v1';
   static const String _kWebDavUsernameKey = 'backup_webdav_username_v1';
@@ -200,8 +218,9 @@ class BackupConfig {
     final prefs = await SharedPreferences.getInstance();
     final remoteDirRaw = config.webDavRemoteDir.trim();
     final normalizedRemoteDir = isValidWebDavRemoteDir(remoteDirRaw) ? normalizeWebDavRemoteDir(remoteDirRaw) : '';
+    final normalizedBaseUrl = parseAndNormalizeWebDavBaseUrl(config.webDavBaseUrl)?.toString() ?? config.webDavBaseUrl.trim();
     await prefs.setBool(_kWebDavEnabledKey, config.webDavEnabled);
-    await prefs.setString(_kWebDavBaseUrlKey, config.webDavBaseUrl.trim());
+    await prefs.setString(_kWebDavBaseUrlKey, normalizedBaseUrl);
     await prefs.setString(_kWebDavUsernameKey, config.webDavUsername.trim());
     await prefs.setString(_kWebDavPasswordKey, config.webDavPassword);
     await prefs.setString(_kWebDavRemoteDirKey, normalizedRemoteDir);

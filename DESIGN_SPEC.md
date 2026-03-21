@@ -3,61 +3,86 @@
 ## 1. 技术架构规范
 
 ### 1.1 架构模式
-采用“轻量 Clean Architecture + MVVM”，在保证边界清晰的前提下避免过度分层。
+采用"Flutter 分层架构 + 响应式数据流"，在保证关注点分离的前提下保持轻量灵活。
 
-- **Presentation（UI + ViewModel）**：UI 只负责渲染与交互意图派发；页面状态使用 `UiState(loading/data/error)` 统一表达；一次性事件（Toast、导航、弹窗）使用 `UiEvent`；ViewModel 负责状态聚合与调用用例/仓库。
-- **Domain**：承载业务规则与跨模块组合逻辑；仅对“有业务口径/需要组合/需要复用”的场景引入 UseCase；简单 CRUD 允许 ViewModel 直接调用 Repository（避免样板代码膨胀）；Domain 内仅定义实体与业务接口，不依赖 Android 框架与实现细节。
-- **Data**：实现 Repository；包含本地存储（Room）、配置存储（DataStore/加密存储）、文件系统导出、以及 WebDAV 备份等基础设施适配；所有协议/IO 仅通过 Data 的基础设施适配实现。
+- **UI 层**：使用 Flutter Widget 构建界面，StatefulWidget / StatelessWidget 负责渲染与交互派发；页面状态通过 `StreamBuilder` / `ValueListenableBuilder` 订阅 Drift 实时流获取。
+- **数据层**：Drift 提供类型安全的 ORM，DAO 负责数据库读写与实时流暴露；业务逻辑内聚在各 Service（如 `DataImportService`、`DataExportService`、`DataBackupService`、`RemindersService` 等）中。
+- **状态管理**：Provider（`ChangeNotifierProvider` / `InheritedWidget`）用于全局会话与账簿作用域注入；页面内状态使用 `setState` + Drift 实时流驱动。
+
+> **说明**：项目没有引入独立 Domain/UseCase 层。简单 CRUD 由页面直接调用 DAO；涉及组合逻辑的场景（如数据导入解析、统计计算、备份/恢复）封装在对应 Service 中。如后续需求膨胀，可考虑抽取 UseCase 层。
 
 **关键约束**：
 - **账簿是一级上下文**：核心数据（关系人、收支记录、提醒）必须归属 `book_id`，所有查询/写入必须在账簿范围内执行。
-- **备份走 WebDAV**：备份能力作为 Data 层基础设施适配（WebDAV Client），通过 Domain 暴露 `BackupRepository` 能力；WorkManager 只负责调度与调用用例，不在 Worker 内写业务规则。
+- **备份走 WebDAV**：备份能力封装在 `DataBackupService` + `WebDavClient`（基于 HTTP），统一管理配置、上传、下载与恢复。
 
-### 1.2 Jetpack 组件
-- Room、ViewModel、LiveData 或 StateFlow、Navigation、DataStore、WorkManager、Paging 3、Hilt
+### 1.2 技术栈与依赖
 
-### 1.3 协程与 Flow 使用场景
-- **数据层**：DAO 返回 Flow 用于实时列表更新，网络调用使用 suspend 函数
-- **业务层**：UseCase 暴露 Flow<Result> 用于组合计算与错误统一处理
-- **表现层**：ViewModel 将 Flow 转换为 StateFlow 提供给 UI
-- **后台任务**：WorkManager 调度提醒与数据同步
+| 类别 | 技术选型 | 说明 |
+| --- | --- | --- |
+| **语言** | Dart 3.10+ | Flutter SDK ^3.10 |
+| **框架** | Flutter | Material 3 |
+| **数据库 ORM** | Drift 2.26+ | 类型安全 SQL，实时流驱动 |
+| **底层 SQLite** | sqflite + sqlite3_flutter_libs | 本地 SQLite 引擎 |
+| **状态管理** | Provider 6.x | ChangeNotifier + InheritedWidget |
+| **本地配置** | shared_preferences | 简单 KV 存储 |
+| **导航** | 手动路由（`Navigator` 封装） | `AppNav` 工具类 |
+| **图表** | fl_chart | 统计页柱状图/饼图 |
+| **日历/农历** | lunar | 农历日期支持 |
+| **拼音索引** | lpinyin + azlistview | 联系人 A-Z 索引 |
+| **数据导出** | excel / csv / archive | Excel/CSV/ZIP 导出 |
+| **文件选择** | file_picker | 导入文件选取 |
+| **分享** | share_plus | 系统分享 |
+| **UUID** | uuid | 主键生成 |
 
-### 1.4 层级接口规范与依赖关系
-- UI 层仅依赖 Presentation 输出的 `UiState/UiEvent` 与 ViewModel
-- Presentation 层仅依赖 Domain 接口与模型
-- Domain 层仅声明业务接口与模型，不依赖 Android 或 Data 实现
-- Data 层实现 Repository，依赖 LocalDataSource 与 Infrastructure（如 WebDAV、文件系统导出等）
-- LocalDataSource 只访问 Room；Infrastructure 仅负责协议/IO（WebDAV/文件/加密存储），不包含业务口径
-- 错误统一封装为 Result 或 AppError
+### 1.3 数据流模式
+- **数据层**：DAO 返回 `Stream`（Drift 实时流）用于列表实时更新，写入操作使用 `Future` 函数。
+- **Service 层**：封装复杂业务逻辑（导入解析、统计聚合、备份上传等），返回 `Future<Result>` 或直接操作 DAO。
+- **UI 层**：页面通过 `StreamBuilder` 监听 Drift 实时流实现自动刷新；一次性操作（保存、删除）调用 DAO/Service 后弹出 Toast 反馈。
 
-**建议目录结构**：
+### 1.4 项目目录结构
+
 ```
-app/
-  src/main/java/...
-    presentation/
-      ui/
-      viewmodel/
-    domain/
-    data/
-    data/local/
-    data/infrastructure/
+lib/
+  main.dart                       # 应用入口
+  ui/
+    app.dart                      # MaterialApp 根组件
+    app_data.dart                 # 旧数据兼容层（AppData）
+    app_database_scope.dart       # Drift 数据库作用域注入
+    app_session.dart              # 会话状态管理
+    app_theme.dart                # Material 3 主题定义
+    app_tokens.dart               # 设计令牌（颜色/字号/间距/阴影）
+    app_toast.dart                # Toast 通知
+    app_scaffold.dart             # 通用页面脚手架
+    components.dart               # 通用 UI 组件
+    contact_avatar.dart           # 联系人头像组件
+    lunar_date_picker.dart        # 农历日期选择器
+    navigation.dart               # 路由导航工具
+    pages/                        # 全部页面（24 个）
+    widgets/                      # 可复用小部件
+    stats/                        # 统计页视图模型
+  data/
+    local/
+      drift/
+        tables.dart               # Drift 表定义（9 张表）
+        app_database.dart         # 数据库配置与迁移
+        app_database.g.dart       # Drift 生成代码
+        converters.dart           # 类型转换器
+        reason_relation_migrator.dart  # 事由/关系数据迁移
+        daos/                     # 数据访问对象（9 个 DAO）
+  backup/                         # WebDAV 备份模块
+  export/                         # 数据导出模块
+  import/                         # 数据导入模块
+  media/                          # 媒体存储服务
+  reminders/                      # 提醒调度服务
+  stats/                          # 统计引擎与数据仓库
+  utils/                          # 工具函数
 ```
 
-### 1.5 技术栈与依赖管理
-- **语言**：Kotlin 1.9+
-- **构建工具**：Gradle 8.0+
-- **最低 SDK**：API 24 (Android 7.0)
-- **目标 SDK**：API 34 (Android 14)
-- **依赖注入**：Hilt
-- **网络**：Retrofit + OkHttp + Kotlinx Serialization（WebDAV 备份同样基于 OkHttp 实现）
-- **图片加载**：Coil
-- **日志**：Timber
-
-### 1.6 错误处理策略
-- 网络错误：统一封装为 NetworkError，包含错误码和友好提示
-- 数据库错误：封装为 DatabaseError，记录详细日志
-- 业务错误：封装为 BusinessError，包含错误类型和处理建议
-- 未知错误：统一封装为 UnknownError，记录堆栈信息
+### 1.5 错误处理策略
+- 数据库错误：DAO 层 try-catch 捕获，通过 `AppToast` 反馈用户
+- 业务错误：Service 层统一返回结果枚举或抛出业务异常
+- 网络错误（WebDAV）：`WebDavClient` 内部封装 HTTP 错误码处理
+- 未知错误：全局 Flutter ErrorWidget 兜底
 
 ## 2. 数据模型定义
 
@@ -66,156 +91,250 @@ app/
 | 字段 | 类型 | 约束 | 默认值 | 说明 | 索引 |
 | --- | --- | --- | --- | --- | --- |
 | book_id | TEXT | 主键 | UUID | 账簿唯一标识 | 主键 |
-| name | TEXT | 非空 | - | 账簿名称 | - |
-| reason_type | TEXT | 非空 | 结婚礼金 | 事由类型（从事由管理中选择） | - |
+| name | TEXT | 非空, 1-32字符 | - | 账簿名称 | - |
+| reason_type | TEXT | 非空 | 结婚礼金 | 事由类型 | - |
 | theme_color | TEXT | 非空 | #312E81 | 主题色（Hex） | - |
 | icon | TEXT | 可空 | - | 图标名称 | - |
 | description | TEXT | 可空 | - | 备注描述 | - |
-| is_default | INTEGER | 非空 | 0 | 是否默认账簿 (0/1) | - |
-| created_at | INTEGER | 非空 | 当前时间 | 创建时间 | - |
-| updated_at | INTEGER | 非空 | 当前时间 | 更新时间 | - |
+| is_default | INTEGER | 非空, CHECK(0/1) | 0 | 是否默认账簿 | - |
+| created_at | INTEGER | 非空 | - | 创建时间戳 | - |
+| updated_at | INTEGER | 非空 | - | 更新时间戳 | - |
+| deleted_at | INTEGER | 可空 | NULL | 软删除时间戳 | - |
 
 ### 2.2 关系人表 person
 
 | 字段 | 类型 | 约束 | 默认值 | 说明 | 索引 |
 | --- | --- | --- | --- | --- | --- |
 | person_id | TEXT | 主键 | UUID | 关系人唯一标识 | 主键 |
-| book_id | TEXT | 外键 | - | 所属账簿 | book_id |
-| name | TEXT | 非空 | - | 姓名 | name |
-| relationship_type | TEXT | 非空 | 其他 | 关系类型 | relationship_type |
-| phone | TEXT | 可空 | - | 手机号 | phone |
-| birthday | TEXT | 可空 | - | 生日（ISO 8601） | birthday |
+| book_id | TEXT | 外键→account_book, CASCADE | - | 所属账簿 | idx_person_book_name |
+| name | TEXT | 非空, 1-32字符 | - | 姓名 | idx_person_book_name |
+| relationship_type | TEXT | 非空 | 其他 | 关系类型 | - |
+| phone | TEXT | 可空 | - | 手机号 | - |
+| birthday | TEXT | 可空 | - | 生日 | - |
 | anniversary | TEXT | 可空 | - | 纪念日 | - |
 | avatar_uri | TEXT | 可空 | - | 头像路径 | - |
 | note | TEXT | 可空 | - | 备注 | - |
-| created_at | INTEGER | 非空 | 当前时间 | 创建时间 | - |
-| updated_at | INTEGER | 非空 | 当前时间 | 更新时间 | - |
+| created_at | INTEGER | 非空 | - | 创建时间戳 | - |
+| updated_at | INTEGER | 非空 | - | 更新时间戳 | - |
+| deleted_at | INTEGER | 可空 | NULL | 软删除时间戳 | - |
 
 ### 2.3 礼金记录表 gift_record
 
 | 字段 | 类型 | 约束 | 默认值 | 说明 | 索引 |
 | --- | --- | --- | --- | --- | --- |
 | record_id | TEXT | 主键 | UUID | 记录唯一标识 | 主键 |
-| book_id | TEXT | 外键 | - | 所属账簿 | book_id |
-| person_id | TEXT | 外键 | - | 关联关系人 | person_id |
-| reminder_id | TEXT | 外键 | 可空 | 关联提醒 | reminder_id |
-| direction | TEXT | 非空 | 收入 | 收/支类型 | direction |
-| amount_cent | INTEGER | 非空 | 0 | 金额（分） | amount_cent |
-| currency | TEXT | 非空 | CNY | 币种 | currency |
-| event_name | TEXT | 可空 | - | 事由 | event_name |
-| occurred_at | INTEGER | 非空 | 当前时间 | 发生时间 | occurred_at |
-| payment_method | TEXT | 可空 | - | 支付方式 | payment_method |
+| book_id | TEXT | 外键→account_book, CASCADE | - | 所属账簿 | idx…book_occurred |
+| person_id | TEXT | 外键→person, CASCADE | - | 关联关系人 | idx…book_person |
+| reminder_id | TEXT | 外键→event_reminder, SET NULL | 可空 | 关联提醒 | - |
+| direction | TEXT | 非空, CHECK('收入'/'支出') | 收入 | 收/支类型 | - |
+| amount_cent | INTEGER | 非空, CHECK(>0) | - | 金额（分） | - |
+| currency | TEXT | 非空 | CNY | 币种 | - |
+| event_name | TEXT | 可空 | - | 事由 | - |
+| occurred_at | INTEGER | 非空 | - | 发生时间戳 | idx…book_occurred |
+| payment_method | TEXT | 可空 | - | 支付方式 | - |
 | note | TEXT | 可空 | - | 备注 | - |
-| attachments | TEXT | 可空 | - | 附件 URI 列表 | - |
-| created_at | INTEGER | 非空 | 当前时间 | 创建时间 | - |
-| updated_at | INTEGER | 非空 | 当前时间 | 更新时间 | - |
+| attachments | TEXT | 可空 | - | 附件路径列表（JSON数组） | - |
+| created_at | INTEGER | 非空 | - | 创建时间戳 | - |
+| updated_at | INTEGER | 非空 | - | 更新时间戳 | - |
+| deleted_at | INTEGER | 可空 | NULL | 软删除时间戳 | - |
 
 ### 2.4 事件提醒表 event_reminder
 
 | 字段 | 类型 | 约束 | 默认值 | 说明 | 索引 |
 | --- | --- | --- | --- | --- | --- |
 | reminder_id | TEXT | 主键 | UUID | 提醒唯一标识 | 主键 |
-| book_id | TEXT | 外键 | - | 所属账簿 | book_id |
-| person_id | TEXT | 外键 | 可空 | 关联关系人 | person_id |
-| reminder_type | TEXT | 非空 | 自定义 | 类型 | reminder_type |
-| target_date | TEXT | 非空 | - | 目标日期（ISO 8601） | target_date |
-| remind_at | INTEGER | 非空 | - | 提醒触发时间 | remind_at |
-| repeat_rule | TEXT | 非空 | none | 重复规则 | repeat_rule |
-| status | TEXT | 非空 | active | 状态 | status |
-| channel | TEXT | 非空 | notification | 通知渠道 | channel |
+| book_id | TEXT | 外键→account_book, CASCADE | - | 所属账簿 | idx…book_remind_at |
+| person_id | TEXT | 外键→person, SET NULL | 可空 | 关联关系人 | - |
+| relation_person_ids | TEXT | 非空 | [] | 关联多人ID列表（JSON数组） | - |
+| reminder_type | TEXT | 非空 | 自定义 | 提醒类型 | - |
+| title | TEXT | 非空 | '' | 提醒标题（UI展示用） | - |
+| target_date | TEXT | 非空 | - | 目标日期 | idx…book_target_date |
+| remind_at | INTEGER | 非空 | - | 提醒触发时间戳 | idx…book_remind_at |
+| repeat_rule | TEXT | 非空 | none | 重复规则 | - |
+| status | TEXT | 非空 | active | 状态 | - |
+| channel | TEXT | 非空 | notification | 通知渠道 | - |
 | note | TEXT | 可空 | - | 备注 | - |
-| created_at | INTEGER | 非空 | 当前时间 | 创建时间 | - |
-| updated_at | INTEGER | 非空 | 当前时间 | 更新时间 | - |
+| created_at | INTEGER | 非空 | - | 创建时间戳 | - |
+| updated_at | INTEGER | 非空 | - | 更新时间戳 | - |
 
-### 2.5 数据实体与 DTO 转换规则
-- Entity 用于本地存储，DTO 用于网络或导出
-- 金额统一使用分为单位，DTO 输出时可转换为元
-- 日期统一使用 ISO 8601，时区在 DTO 中明确
-- 本地字段（如 attachments、本地路径）在 DTO 中以可选字段表示
-- attachments 以 JSON 数组字符串存储，DTO 输出为数组
+### 2.5 事由表 reason
 
-### 2.6 数据校验与默认值策略
-- 金额必须大于 0
-- 姓名长度 1-32 字符
-- 手机号符合本地手机号规则
-- 提醒时间不得早于当前时间
-- direction 默认收入，currency 默认 CNY，repeat_rule 默认 none
-- book_id 必填且必须存在
-- **账簿校验**：每个用户至少有一个默认账簿；删除账簿时需级联删除关联的记录、关系人、提醒（或软删除）。
+| 字段 | 类型 | 约束 | 默认值 | 说明 | 索引 |
+| --- | --- | --- | --- | --- | --- |
+| reason_id | TEXT | 主键 | - | 事由唯一标识 | 主键 |
+| name | TEXT | 非空, 1-64字符 | - | 事由名称 | UNIQUE idx_reason_name |
+| description | TEXT | 可空 | - | 事由描述 | - |
+| enabled | INTEGER(BOOL) | 非空 | true | 是否启用 | - |
+| created_at | INTEGER | 非空 | - | 创建时间戳 | - |
+| updated_at | INTEGER | 非空 | - | 更新时间戳 | idx_reason_updated_at |
 
-### 2.7 数据库版本管理
-- 使用 Room 的 Migration 机制处理数据库升级
-- 每个版本变更需记录详细的迁移脚本
-- 支持降级策略，确保数据完整性
+### 2.6 关系类型表 relation_type
 
-### 2.8 索引与查询建议
-- person：索引 (book_id, name)
-- gift_record：索引 (book_id, occurred_at)、(book_id, person_id)
-- event_reminder：索引 (book_id, remind_at)、(book_id, target_date)
+| 字段 | 类型 | 约束 | 默认值 | 说明 | 索引 |
+| --- | --- | --- | --- | --- | --- |
+| type_id | TEXT | 主键 | - | 类型唯一标识 | 主键 |
+| name | TEXT | 非空, 1-64字符 | - | 类型名称 | UNIQUE idx_relation_type_name |
+| created_at | INTEGER | 非空 | - | 创建时间戳 | - |
+| updated_at | INTEGER | 非空 | - | 更新时间戳 | idx_relation_type_updated_at |
+
+### 2.7 联系人关系表 contact_relation
+
+| 字段 | 类型 | 约束 | 默认值 | 说明 | 索引 |
+| --- | --- | --- | --- | --- | --- |
+| relation_id | TEXT | 主键 | - | 关系唯一标识 | 主键 |
+| person_a_id | TEXT | 外键→person, CASCADE | - | 关系人A | UNIQUE idx…pair_type |
+| person_b_id | TEXT | 外键→person, CASCADE | - | 关系人B | UNIQUE idx…pair_type |
+| type_id | TEXT | 外键→relation_type, RESTRICT | - | 关系类型 | UNIQUE idx…pair_type |
+| note | TEXT | 可空 | - | 备注 | - |
+| created_at | INTEGER | 非空 | - | 创建时间戳 | - |
+| updated_at | INTEGER | 非空 | - | 更新时间戳 | idx…updated_at |
+
+### 2.8 提醒类型表 reminder_type
+
+| 字段 | 类型 | 约束 | 默认值 | 说明 | 索引 |
+| --- | --- | --- | --- | --- | --- |
+| type_id | TEXT | 主键 | UUID | 类型唯一标识 | 主键 |
+| book_id | TEXT | 外键→account_book, CASCADE | - | 所属账簿 | - |
+| name | TEXT | 非空 | - | 类型名称 | - |
+| is_custom | INTEGER(BOOL) | 非空 | false | 是否用户自定义 | - |
+| created_at | INTEGER | 非空 | - | 创建时间戳 | - |
+| updated_at | INTEGER | 非空 | - | 更新时间戳 | - |
+
+### 2.9 数据导入任务表 data_import_job
+
+| 字段 | 类型 | 约束 | 默认值 | 说明 | 索引 |
+| --- | --- | --- | --- | --- | --- |
+| job_id | TEXT | 主键 | UUID | 任务唯一标识 | 主键 |
+| book_id | TEXT | 外键→account_book, CASCADE | - | 目标账簿 | idx…book_started |
+| file_path | TEXT | 非空 | - | 文件路径 | - |
+| file_name | TEXT | 非空 | - | 文件名 | - |
+| file_hash | TEXT | 非空 | - | 文件哈希 | - |
+| file_size | INTEGER | 非空 | - | 文件大小 | - |
+| format | TEXT | 非空 | - | 文件格式 | - |
+| status | TEXT | 非空 | - | 任务状态 | idx…status_updated |
+| import_kind | TEXT | 非空 | - | 导入类型 | - |
+| mapping_json | TEXT | 可空 | - | 列映射规则（JSON） | - |
+| total_rows | INTEGER | 可空 | - | 总行数 | - |
+| processed_rows | INTEGER | 非空 | 0 | 已处理行数 | - |
+| success_rows | INTEGER | 非空 | 0 | 成功行数 | - |
+| skipped_rows | INTEGER | 非空 | 0 | 跳过行数 | - |
+| failed_rows | INTEGER | 非空 | 0 | 失败行数 | - |
+| byte_offset | INTEGER | 非空 | 0 | 字节偏移量 | - |
+| last_row_index | INTEGER | 非空 | 0 | 上次行索引 | - |
+| error_log_path | TEXT | 可空 | - | 错误日志路径 | - |
+| started_at | INTEGER | 非空 | - | 开始时间戳 | idx…book_started |
+| finished_at | INTEGER | 可空 | - | 完成时间戳 | - |
+| updated_at | INTEGER | 非空 | - | 更新时间戳 | idx…status_updated |
+
+### 2.10 数据实体与转换规则
+- 金额统一使用**分**为单位（`amount_cent`），CHECK 约束确保 > 0
+- 时间统一使用 **Unix 时间戳**（毫秒级 INTEGER）
+- attachments 使用 `JsonStringListConverter` 存储为 JSON 数组字符串
+- 软删除通过 `deleted_at` 实现（`account_book`、`person`、`gift_record` 支持软删除）
+
+### 2.11 数据校验策略
+- 金额必须大于 0（数据库 CHECK 约束）
+- 姓名/账簿名长度 1-32 字符（数据库 CHECK 约束）
+- direction 仅允许 '收入' / '支出'（数据库 CHECK 约束）
+- is_default 仅允许 0 / 1（数据库 CHECK 约束）
+- 外键级联规则：account_book 删除时 CASCADE 关联数据；person 删除时 CASCADE 记录但 SET NULL 提醒
+- 每个用户至少保留一个默认账簿
+
+### 2.12 数据库版本管理
+- 使用 Drift 的 `MigrationStrategy` 处理 schema 升级
+- 当前版本：**schema version 8**
+- 迁移历史：v1（核心四表）→ v2（data_import_job）→ v3（reason_type 重命名）→ v4（reminder title）→ v5（relation_person_ids）→ v6（reminder_type 表）→ v7（软删除 deleted_at）→ v8（reason/relation_type/contact_relation 表）
+- `beforeOpen` 统一开启 `PRAGMA foreign_keys = ON`、`journal_mode = WAL`、`synchronous = NORMAL`
+
+### 2.13 索引策略
+- person：`(book_id, name)`
+- gift_record：`(book_id, occurred_at)`、`(book_id, person_id)`
+- event_reminder：`(book_id, remind_at)`、`(book_id, target_date)`
+- reason：`UNIQUE (name COLLATE NOCASE)`、`(updated_at DESC)`
+- relation_type：`UNIQUE (name COLLATE NOCASE)`、`(updated_at DESC)`
+- contact_relation：`UNIQUE (person_a_id, person_b_id, type_id)`、`(updated_at DESC)`
+- data_import_job：`(book_id, started_at)`、`(status, updated_at)`
 
 ## 3. UI/UX 标准
 
 ### 3.1 Material Design 3 规范
 
 #### 3.1.1 核心色彩系统 (Color System)
+
 | Token | 色值 (Hex) | 用途说明 |
 | --- | --- | --- |
-| **Primary** | `#312E81` (indigo-900) | 核心品牌色，用于主要按钮、导航选中态、重要文字 |
-| **Secondary** | `#4F46E5` (indigo-600) | 次级品牌色，用于装饰元素、进度条、次要状态 |
-| **Surface** | `#EEF2FF` (indigo-50) | 背景底色，用于页面背景、卡片背景、选中状态底色 |
-| **Error** | `#EF4444` (red-500) | 错误/支出状态，用于支出金额、删除按钮、错误提示 |
-| **Success** | `#22C55E` (green-500) | 成功/收入状态，用于收入金额、完成标记 |
-| **Text Main** | `#111827` (gray-900) | 主要文字，用于标题、正文 |
-| **Text Sub** | `#6B7280` (gray-500) | 次要文字，用于说明、日期、未选中态 |
-| **Border** | `#F3F4F6` (gray-100) | 边框/分割线 |
+| **brandPrimary** | `#312E81` (indigo-900) | 核心品牌色，用于主要按钮、导航选中态 |
+| **brandSecondary** | `#4F46E5` (indigo-600) | 次级品牌色，用于装饰元素、进度条 |
+| **brandSoft** | `#EEF2FF` (indigo-50) | 品牌浅色底，用于选中态背景 |
+| **surfaceApp** | `#F9FAFB` (gray-50) | 全局页面背景色 |
+| **surfaceCard** | `#FFFFFF` (white) | 卡片背景色 |
+| **surfaceSubtle** | `#F3F4F6` (gray-100) | 次级背景色 |
+| **textPrimary** | `#111827` (gray-900) | 主要文字 |
+| **textSecondary** | `#4B5563` (gray-600) | 次要文字 |
+| **textTertiary** | `#6B7280` (gray-500) | 三级文字 |
+| **textMuted** | `#9CA3AF` (gray-400) | 弱化文字 |
+| **stateSuccess** | `#16A34A` (green-600) | 收入/成功色 |
+| **stateDanger** | `#EF4444` (red-500) | 支出/错误色 |
+| **stateWarning** | `#F97316` (orange-500) | 警告色 |
+| **borderDefault** | `#E5E7EB` (gray-200) | 默认边框色 |
+| **borderSubtle** | `#F3F4F6` (gray-100) | 轻微分割线 |
+
+支持暗色模式（Dark Theme），暗色下主色调调整为 indigo-500，背景使用 gray-800/gray-900。
 
 #### 3.1.2 排版规范 (Typography)
+
 | 样式名称 | 字号 | 字重 | 用途 |
 | --- | --- | --- | --- |
-| **Headline 1** | 24px (text-2xl) | Bold (700) | 页面大标题 |
-| **Headline 2** | 20px (text-xl) | Bold (700) | 模块/卡片标题 |
-| **Headline 3** | 18px (text-lg) | Bold (700) | 次级模块标题 |
-| **Body Medium** | 16px (text-base) | Medium (500) | 重要正文、列表项主文本 |
-| **Body Regular** | 14px (text-sm) | Regular (400) | 普通正文、输入框文字 |
-| **Caption** | 12px (text-xs) | Regular (400) | 辅助说明、日期、底部标签 |
-| **Overline** | 10px | Regular (400) | 微小标签、极小提示 |
+| **h1** | 24px | Bold (700) | 页面大标题 |
+| **h2** | 20px | Bold (700) | 模块/卡片标题 |
+| **h3** | 18px | Bold (700) | 次级模块标题 |
+| **bodyStrong** | 16px | Medium (500) | 重要正文 |
+| **body** | 14px | Regular (400) | 普通正文 |
+| **caption** | 12px | Regular (400) | 辅助说明 |
+| **overline** | 10px | Bold (700) | 微小标签 |
+
+字体族：`Noto Sans SC`，回退：`Noto Sans CJK SC` → `Noto Sans` → `Roboto` → `sans-serif`
+
+附加字号：30px、36px 用于金额等大数字展示。
 
 #### 3.1.3 组件样式特征 (Shape & Elevation)
 - **圆角 (Corner Radius)**：
-  - 页面/大容器：`45px` (iPhone 屏幕模拟)
-  - 卡片/弹窗：`16px` (rounded-2xl)
-  - 按钮：`12px` (rounded-xl)
-  - 标签/Chip：`999px` (rounded-full)
+  - sm: `2px` | md: `6px` | lg: `8px`
+  - xl: `12px`（按钮）| 2xl: `16px`（卡片/弹窗）
+  - 3xl: `24px` | heroBottom: `30px`（顶部英雄区底部）
+  - pill: `9999px`（标签/Chip）
 - **阴影 (Elevation)**：
-  - 低层级（卡片）：`shadow-sm`
-  - 高层级（悬浮按钮/弹窗）：`shadow-lg`
+  - sm：轻阴影（卡片）
+  - lg：中层级阴影
+  - xl：高层级阴影（悬浮按钮/弹窗）
+  - brandSoft/brandFab：品牌色调阴影（FAB）
 - **间距 (Spacing)**：
-  - 页面边距：`16px` (p-4)
-  - 模块间距：`24px` (space-y-6)
-  - 内容间距：`12px` (gap-3)
+  - 基础间距：4px (space1) → 8px (space2) → 12px (space3) → 16px (space4) → 20px (space5) → 24px (space6) → 32px (space8) → 40px (space10) → 48px (space12) → 64px (space16)
+  - 页面边距：16px
+  - 模块间距：24px
+  - 内容间距：12px
+  - 最小点击区域：44px
 
 #### 3.1.4 交互状态 (Interaction)
-- **点击态 (Active)**：
-  - 按钮：`scale-95` (轻微缩小) + `bg-indigo-800` (颜色加深)
-  - 列表项：`bg-gray-50` (背景变灰)
-- **禁用态 (Disabled)**：
-  - 透明度 `opacity-50`，禁止点击响应
+- 全局禁用 InkSplash（`NoSplash.splashFactory`）
+- 全局禁用 highlight / hover 效果（透明色）
+- 页面切换动画：250ms 淡入+微滑（0.06 水平偏移），200ms 反向
 
 ### 3.2 界面原型清单
 
-#### 3.2.1 主页面（首页）
+#### 3.2.1 主页面（首页 → record_home_page）
 **布局结构**：
-- **顶部应用栏**：应用标题 + 搜索图标 + 更多菜单
+- **顶部应用栏**：应用标题 + 搜索 + 更多菜单
 - **Tab 导航**：收支记录 | 关系人 | 统计 | 设置
 - **内容区域**：对应 Tab 的内容列表
 - **悬浮操作按钮**：添加收支记录
 
 **收支记录 Tab**：
-- 顶部：日期/月份筛选栏
-- 列表项：左侧头像、姓名、事由、金额（收入绿色/支出红色）、时间、支付方式
-- 底部：无统计卡片（已移除，简化布局）
+- 顶部：月份分组筛选
+- 列表项：头像、姓名、事由、金额（收入绿色/支出红色）、时间
+- 支持搜索、详情跳转
 
-#### 3.2.2 收支录入页
+#### 3.2.2 收支录入页（record_add_page）
 **布局结构**：
 - **顶部应用栏**：标题"记录收支" + 保存按钮 + 关闭按钮
 - **表单区域**：
@@ -223,186 +342,224 @@ app/
   - 金额输入：大字号输入框 + 快捷金额按钮
   - 关系人选择：列表选择或搜索
   - 事由输入：文本框 + 常用事由标签
-  - 日期选择：日期选择器，默认当天
-  - 支付方式：选择器（微信/支付宝/现金等）
+  - 日期选择：日期选择器（含农历），默认当天
+  - 支付方式：选择器
   - 备注：多行文本框
   - 附件：图片上传区域
 
-#### 3.2.3 收支详情页
+#### 3.2.3 收支详情页（record_detail_page）
 **布局结构**：
-- **顶部应用栏**：标题"记录详情" + 更多操作（编辑/删除）
+- **顶部应用栏**：标题"记录详情" + 编辑/删除操作
 - **金额卡片**：大字号展示金额，区分收/支颜色
 - **详细信息列表**：关系人、事由、时间、支付方式
-- **备注区域**：展示详细备注文本
-- **附件区域**：展示图片缩略图
+- **备注区域**：展示备注文本
+- **附件区域**：展示附件
 
-#### 3.2.4 关系人列表页
+#### 3.2.4 关系人列表页（person_list_page）
 **布局结构**：
 - **顶部应用栏**：标题"关系人" + 添加按钮
-- **搜索栏**：支持姓名/手机号搜索
+- **搜索栏**：支持姓名搜索
 - **列表区域**：
-  - 首字母索引导航（A-Z）
-  - 分组展示联系人
+  - 首字母索引导航（A-Z，azlistview）
+  - 按拼音首字母分组展示
   - 列表项：头像、姓名、关系类型
 
-#### 3.2.5 关系人详情页
+#### 3.2.5 关系人详情页（person_detail_page）
 **布局结构**：
 - **顶部应用栏**：返回按钮 + 编辑按钮
-- **头部信息卡片**：
-  - 头像（支持点击查看大图）
-  - 姓名、关系类型、联系方式
-  - 悬浮统计：总收礼/总送礼/差额
-- **信息列表**：生日、纪念日、备注
+- **头部信息卡片**：头像、姓名、关系类型、联系方式
+- **统计信息**：总收礼/总送礼/差额（从 Drift 实时计算）
+- **信息列表**：生日（含农历）、纪念日、备注
 - **历史记录**：按时间倒序展示往来记录
 - **底部操作栏**：设提醒、记一笔
 
-#### 3.2.6 关系人编辑页
+#### 3.2.6 关系人编辑页（person_edit_page）
 **布局结构**：
 - **顶部应用栏**：标题"编辑关系人" + 保存按钮
 - **表单区域**：
-  - 头像上传：点击更换
+  - 头像上传：点击更换（MediaStorageService）
   - 基础信息：姓名、关系类型、手机号
-  - 重要日期：生日、纪念日
+  - 重要日期：生日（含农历选择器）、纪念日
   - 备注信息
 - **底部操作**：删除联系人按钮
 
-#### 3.2.7 统计图表页
+#### 3.2.7 统计图表页（stats_page）
 **布局结构**：
-- **顶部应用栏**：标题"统计分析" + 导出/分享按钮
-- **筛选区域**：时间范围（本年/半年/本月）
+- **顶部应用栏**：标题"统计分析"
+- **筛选区域**：月度 / 年度 / 自定义日期范围（左对齐展示）
 - **概览卡片**：总收入、总支出
 - **图表区域**：
-  - 收支趋势（柱状图）
+  - 收支趋势（柱状图，fl_chart）
   - 支出分类占比（饼图）
-- **排行榜**：人情往来 Top 5 列表
+- **排行榜**：人情往来 Top 列表
 
-#### 3.2.8 事件提醒页
+#### 3.2.8 事件提醒页（reminders_page）
 **布局结构**：
 - **顶部应用栏**：标题"事件提醒" + 添加按钮
-- **筛选 Tab**：全部 | 生日 | 回礼 | 纪念日
+- **筛选 Tab**：全部 | 按类型筛选
 - **列表区域**：
-  - 本周紧急提醒（高亮显示）
+  - 紧急提醒高亮
   - 未来提醒列表
-  - 支持一键标记完成
+  - 支持关联多个关系人
 
-#### 3.2.9 设置页
+#### 3.2.9 提醒编辑页（reminder_edit_page）
+**布局结构**：
+- **顶部应用栏**：标题"编辑提醒" + 保存按钮
+- **表单区域**：
+  - 提醒标题
+  - 提醒类型选择
+  - 目标日期（含农历选择器）
+  - 提醒时间
+  - 重复规则
+  - 关联关系人（支持多选，三分之二屏高度+搜索）
+  - 备注
+
+#### 3.2.10 提醒类型设置页（reminder_type_settings_page）
+**布局结构**：
+- **顶部应用栏**：标题"提醒类型管理"
+- **类型列表**：系统预置 + 用户自定义
+- **操作**：添加/编辑/删除自定义类型
+
+#### 3.2.11 设置页（settings_home_page）
 **布局结构**：
 - **顶部应用栏**：标题"设置"
-- **个人信息卡片**：头像、昵称
 - **设置列表**：
   - 账簿管理
-  - 通知提醒、隐私安全
-  - 数据备份、导出数据
-  - 关于应用
-- **底部操作**：退出登录
+  - 事由管理
+  - 关系类型管理
+  - 数据备份
+  - 数据导出
+  - 数据导入
+  - 回收站
 
-#### 3.2.10 账簿管理页
+#### 3.2.12 账簿管理页（account_books_page）
 **布局结构**：
 - **顶部应用栏**：标题"账簿管理" + 添加按钮
 - **账簿列表**：
   - 展示所有账簿卡片
   - 标记"当前使用"状态
-  - 包含统计信息（记录数）
+  - 包含记录数统计
   - 操作按钮：切换、编辑
 
-#### 3.2.11 账簿编辑页
+#### 3.2.13 账簿编辑页（account_book_edit_page）
 **布局结构**：
 - **顶部应用栏**：标题"编辑账簿" + 保存按钮
-- **图标预览**：动态展示所选颜色和图标
 - **表单区域**：
   - 账簿名称
-  - 事由类型选择
+  - 事由类型选择（从 Drift reason 表读取）
   - 主题色选择器
   - 备注描述
   - "设为默认账簿"开关
 - **底部操作**：删除账簿按钮
 
-#### 3.2.12 数据备份页
+#### 3.2.14 账簿详情页（account_book_detail_page）
 **布局结构**：
-- **顶部应用栏**：标题"数据备份"
-- **WebDAV 配置**：
-  - 服务器地址（`https://`）
-  - 用户名
-  - 密码/应用专用密码（输入框需遮罩）
-  - 远程目录（可选，默认 `NewShangli/`）
-  - 连接测试按钮（展示成功/失败原因）
-- **备份状态**：展示上次备份时间、备份文件大小、立即备份按钮
-- **备份策略**：自动备份开关、频率设置（仅 Wi‑Fi 可选）、保留份数
-- **历史备份列表**：按时间展示备份文件，支持恢复/删除
+- 展示账簿基本信息
+- 统计概览
+- 快捷操作入口
 
-#### 3.2.13 数据导出页
+#### 3.2.15 账簿记录页（account_book_records_page）
 **布局结构**：
-- **顶部应用栏**：标题"导出数据"
-- **格式选择**：Excel / PDF
-- **筛选条件**：开始日期、结束日期
-- **导出选项**：包含内容（收支记录、关系人）、是否包含图片
-- **底部操作**：确认导出按钮
+- 账簿下的收支记录列表
+- 筛选与排序功能
+
+#### 3.2.16 事由管理页（reason_manage_page + reason_detail_page）
+**布局结构**：
+- **列表页**：展示所有事由，支持启用/禁用
+- **详情页**：编辑事由名称、描述
+
+#### 3.2.17 关系类型管理页（relation_type_manage_page）
+**布局结构**：
+- **列表页**：展示所有关系类型
+- **操作**：添加/编辑/删除类型（唯一性约束，UNIQUE name）
+
+#### 3.2.18 联系人关系编辑页（contact_relation_edit_page）
+**布局结构**：
+- 选择两位联系人
+- 选择关系类型
+- 添加备注
+- 保存关系
+
+#### 3.2.19 数据备份页（data_backup_page）
+**布局结构**：
+- **WebDAV 配置**：服务器地址、用户名、密码（遮罩）、远程目录、连接测试
+- **备份状态**：上次备份时间、文件大小、立即备份
+- **备份策略**：自动备份开关、频率设置
+- **历史备份列表**：支持恢复/删除
+
+#### 3.2.20 数据导出页（data_export_page）
+**布局结构**：
+- **格式选择**：Excel / CSV
+- **筛选条件**：日期范围
+- **导出选项**：选择内容范围
+- **底部操作**：确认导出
+
+#### 3.2.21 数据导入页（data_import_page + account_book_data_import_page）
+**布局结构**：
+- **文件选择**：从设备选取文件（file_picker）
+- **格式识别**：自动检测 Excel/CSV 格式
+- **列映射**：字段映射配置
+- **导入进度**：行数统计（成功/跳过/失败）
+- **导入历史**：data_import_job 记录
+
+#### 3.2.22 回收站页（recycle_bin_page）
+**布局结构**：
+- **Tab 切换**：联系人 / 收支记录
+- **列表展示**：已软删除的数据项
+- **操作**：恢复 / 彻底删除
 
 ### 3.3 无障碍适配
-- 支持系统字体缩放与最小 1.3 倍字号
-- TalkBack 读屏标签覆盖主要控件
+- 支持系统字体缩放
+- 语义化 Widget（Semantics）覆盖主要控件
 - 对比度满足 WCAG 4.5:1
-- 支持高对比度模式
-- 提供文字替代方案（图片内容）
 
 ### 3.4 响应式设计
-- 适配不同屏幕尺寸（手机/平板）
-- 支持横竖屏切换
-- 适配折叠屏设备
-- 支持分屏多任务
+- 设计基准尺寸：393 × 852（iPhone 14 Pro 级别）
+- 沉浸式状态栏（`SystemUiMode.immersiveSticky`）
 
 ## 4. 测试与质量要求
 
 ### 4.1 单元测试
-- 覆盖率 ≥ 60%，业务关键模块 ≥ 80%
-- 覆盖 ViewModel、Repository、UseCase 与关键校验逻辑
-- 重点测试业务逻辑和数据转换
-- 使用 JUnit 4 和 MockK 框架
+- 使用 `flutter_test` + `integration_test` 框架
+- 覆盖 DAO 层数据操作、Service 层业务逻辑
+- Drift 支持内存数据库用于测试（`AppDatabase.forTesting`）
 
 ### 4.2 UI 自动化测试
-- 使用 Espresso 覆盖核心路径，必要时配合 UIAutomator
+- 使用 `integration_test` 覆盖核心路径
 - 覆盖录入收支、查看关系人详情、查看统计、处理提醒
-- 测试不同屏幕尺寸和分辨率
-- 包含异常流程测试
 
-### 4.3 性能基准
-- 冷启动 ≤ 1.5s（中端机型，P95）
-- 列表滑动帧率 ≥ 55fps（中端机型）
-- 数据库查询 ≤ 200ms（P95，常用查询）
-- 内存占用 ≤ 250MB（正常使用）
-- 电池消耗优化（后台任务限制）
+### 4.3 静态分析
+- 使用 `flutter_lints` 6.x 提供的 lint 规则集
+- 配置在 `analysis_options.yaml` 中
 
 ### 4.4 代码质量要求
-- 遵循 Kotlin 编码规范
-- 静态代码分析（Detekt + KtLint）
-- 复杂度控制（圈复杂度 ≤ 10）
-- 公共 API 与复杂业务逻辑需提供清晰说明
+- 遵循 Dart 编码规范（Effective Dart）
+- Drift 生成代码通过 `build_runner` 维护
+- 公共 API 与复杂业务逻辑需提供清晰注释
 
 ## 5. 安全与隐私
 
 ### 5.1 数据安全
-- 本地数据加密存储（SQLCipher）
-- 敏感信息不记录日志
-- 网络传输加密（HTTPS/TLS 1.2+）
-- 生物识别认证（可选）
-- **WebDAV 凭据安全**：WebDAV 账号/密码（或应用专用密码）必须加密存储（Android Keystore + 加密存储）；网络请求与错误日志中不得包含凭据、完整 URL 查询参数或远端目录结构。
+- 本地 SQLite 数据存储（文件：`newshangli_drift.sqlite`）
+- WebDAV 凭据建议加密存储
+- 网络传输加密（HTTPS）
+- 日志中不得包含凭据信息
 
 ### 5.2 隐私保护
 - 最小权限原则
 - 用户数据本地优先
-- 提供数据导出和删除功能
-- 遵循本地隐私法规与合规要求（如 GDPR 等）
+- 提供数据导出和删除功能（含回收站与彻底删除）
+- 软删除机制保护用户免于误操作
 
 ## 6. 部署与运维
 
 ### 6.1 版本管理
+- 当前版本：`1.0.0+2002`
 - 语义化版本号（Semantic Versioning）
-- 使用远程配置/功能开关进行功能灰度
-- 灰度发布策略
-- 版本回滚机制（商店回滚/禁用问题版本）
+- 数据库 schema 版本独立管理（当前 v8）
 
-### 6.2 监控与 analytics
-- 崩溃日志收集（可插拔方案，脱敏）
-- 性能监控（可插拔方案，指标采样）
-- 用户行为分析（匿名化，提供开关）
-- 自定义事件追踪（最小化采集）
+### 6.2 构建与发布
+- 使用 Flutter 标准构建流程
+- 支持 Android 平台（`android/` 目录）
+- 开发调试：`flutter run`
+- 生产构建：`flutter build apk` / `flutter build appbundle`

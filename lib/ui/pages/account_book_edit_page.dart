@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import '../../data/local/drift/app_database.dart';
+import '../app_toast.dart';
 import '../app_database_scope.dart';
 import '../app_tokens.dart';
 import '../app_scaffold.dart';
@@ -41,10 +42,9 @@ class _CanvasState extends State<_Canvas> {
 
   AccountBook? _book;
   late final TextEditingController _nameCtrl;
-  String _reasonType = '结婚礼金';
+  String _reasonType = '';
   String _themeColor = '#312E81';
   late final TextEditingController _noteCtrl;
-  bool _isDefault = false;
   bool _loadedOnce = false;
 
   static const List<_ThemeOption> _themes = [
@@ -94,9 +94,11 @@ class _CanvasState extends State<_Canvas> {
       AppNav.pop(context);
       return;
     }
-    final reason = await _db.reasonsDao.findByName(book.reasonType);
-    if (reason == null) {
-      await _db.reasonsDao.create(name: book.reasonType, enabled: true);
+    if (book.reasonType.trim().isNotEmpty) {
+      final reason = await _db.reasonsDao.findByName(book.reasonType);
+      if (reason == null) {
+        await _db.reasonsDao.create(name: book.reasonType, enabled: true);
+      }
     }
     setState(() {
       _book = book;
@@ -104,13 +106,16 @@ class _CanvasState extends State<_Canvas> {
       _reasonType = book.reasonType;
       _themeColor = book.themeColor;
       _noteCtrl.text = book.description ?? '';
-      _isDefault = book.isDefault == 1;
       _loading = false;
     });
   }
 
   Future<void> _save() async {
     if (_saving) return;
+    if (_book?.isDefault == 1) {
+      _toast('默认账簿不可更改');
+      return;
+    }
     final name = _nameCtrl.text.trim();
     if (name.isEmpty) {
       _toast('账簿名称不能为空');
@@ -125,32 +130,26 @@ class _CanvasState extends State<_Canvas> {
     setState(() => _saving = true);
     try {
       if (_book == null) {
-        final newId = await _db.accountBooksDao.insertOne(
+        await _db.accountBooksDao.insertOne(
           AccountBooksCompanion(
             name: Value(name),
             reasonType: Value(_reasonType),
             themeColor: Value(_themeColor),
             description: note.isEmpty ? const Value.absent() : Value(note),
-            isDefault: Value(_isDefault ? 1 : 0),
+            isDefault: const Value(0),
           ),
         );
-        if (_isDefault) {
-          await _db.accountBooksDao.setDefaultBook(newId);
-        }
       } else {
         final updated = _book!.copyWith(
           name: name,
           reasonType: _reasonType,
           themeColor: _themeColor,
           description: Value(note.isEmpty ? null : note),
-          isDefault: _isDefault ? 1 : 0,
+          isDefault: _book!.isDefault,
         );
         await _db.accountBooksDao.updateOne(updated);
         if (_book!.reasonType != _reasonType) {
           await _db.giftRecordsDao.updateEventNameByBookId(updated.bookId, _reasonType);
-        }
-        if (_isDefault) {
-          await _db.accountBooksDao.setDefaultBook(updated.bookId);
         }
       }
       if (!mounted) return;
@@ -272,104 +271,16 @@ class _CanvasState extends State<_Canvas> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) {
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-          child: Container(
-            decoration: const BoxDecoration(
-              color: AppColors.white,
-              borderRadius: AppRadii.br2xl,
-              boxShadow: AppShadows.lg,
-            ),
-            clipBehavior: Clip.antiAlias,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  decoration: const BoxDecoration(
-                    color: AppColors.white,
-                    border: Border(bottom: BorderSide(color: AppColors.gray100, width: 1)),
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          '选择事由类型',
-                          style: AppTypography.base(
-                            fontSize: 14,
-                            fontWeight: AppTypography.bold,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                      ),
-                      PrototypeIconButton(
-                        icon: const FaIcon(FontAwesomeIcons.xmark, size: 14),
-                        backgroundColor: AppColors.gray100,
-                        foregroundColor: AppColors.textSecondary,
-                        onPressed: () => Navigator.of(context).pop(),
-                        radius: 12,
-                      ),
-                    ],
-                  ),
-                ),
-                Flexible(
-                  child: ListView(
-                    shrinkWrap: true,
-                    padding: const EdgeInsets.only(bottom: 12),
-                    children: [
-                      for (final r in enabled)
-                        PrototypePressableRow(
-                          onTap: () => Navigator.of(context).pop(r.name),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  r.name,
-                                  style: AppTypography.base(
-                                    fontSize: 14,
-                                    fontWeight: AppTypography.medium,
-                                    color: AppColors.textPrimary,
-                                  ),
-                                ),
-                              ),
-                              if (r.name == _reasonType)
-                                const FaIcon(FontAwesomeIcons.check, size: 14, color: AppColors.indigo600),
-                            ],
-                          ),
-                        ),
-                      PrototypePressableRow(
-                        onTap: () {
-                          Navigator.of(context).pop();
-                          AppNav.push(context, const ReasonManagePage());
-                        },
-                        borderBottom: false,
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                '管理事由',
-                                style: AppTypography.base(
-                                  fontSize: 14,
-                                  fontWeight: AppTypography.medium,
-                                  color: AppColors.textPrimary,
-                                ),
-                              ),
-                            ),
-                            const FaIcon(FontAwesomeIcons.chevronRight, size: 10, color: AppColors.gray300),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
+      builder: (context) => _ReasonTypePickerSheet(
+        reasons: enabled,
+        selectedReasonType: _reasonType,
+      ),
     );
     if (picked == null) return;
+    if (picked == _ReasonTypePickerSheet.manageAction) {
+      AppNav.push(context, const ReasonManagePage());
+      return;
+    }
     setState(() => _reasonType = picked);
   }
 
@@ -492,9 +403,7 @@ class _CanvasState extends State<_Canvas> {
                         onTap: () {
                           final text = ctrl.text.trim();
                           if (requiredField && text.isEmpty) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('$label不能为空')),
-                            );
+                            AppToast.show(context, '$label不能为空');
                             return;
                           }
                           Navigator.of(context).pop(text);
@@ -517,18 +426,16 @@ class _CanvasState extends State<_Canvas> {
   }
 
   void _toast(String message) {
-    final messenger = ScaffoldMessenger.maybeOf(context);
-    if (messenger == null) return;
-    messenger.hideCurrentSnackBar();
-    messenger.showSnackBar(SnackBar(content: Text(message)));
+    AppToast.show(context, message);
   }
 
   @override
   Widget build(BuildContext context) {
     final title = _book == null ? '新建账簿' : '编辑账簿';
+    final isReadonlyDefault = _book?.isDefault == 1;
     final themeColor = _parseHexColor(_themeColor);
     final icon = _iconByReasonType(_reasonType);
-    final reasonTypeLabel = _labelByReasonType(_reasonType);
+    final reasonTypeLabel = isReadonlyDefault ? '全部事由' : _labelByReasonType(_reasonType);
 
     return Column(
       children: [
@@ -568,16 +475,16 @@ class _CanvasState extends State<_Canvas> {
                 ),
               ),
               PressableScale(
-                onTap: _saving ? null : _save,
+                onTap: (_saving || isReadonlyDefault) ? null : _save,
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                   decoration: BoxDecoration(
-                    color: AppColors.brandPrimary,
+                    color: isReadonlyDefault ? AppColors.gray300 : AppColors.brandPrimary,
                     borderRadius: BorderRadius.circular(9999),
-                    boxShadow: AppShadows.sm,
+                    boxShadow: isReadonlyDefault ? null : AppShadows.sm,
                   ),
                   child: Text(
-                    _saving ? '保存中' : '保存',
+                    isReadonlyDefault ? '不可修改' : (_saving ? '保存中' : '保存'),
                     style: AppTypography.base(
                       fontSize: 14,
                       fontWeight: AppTypography.medium,
@@ -600,6 +507,7 @@ class _CanvasState extends State<_Canvas> {
                     _BasicCard(
                       nameCtrl: _nameCtrl,
                       reasonTypeLabel: reasonTypeLabel,
+                      editable: !isReadonlyDefault,
                       onPickReasonType: _pickReasonType,
                     ),
                     const SizedBox(height: 24),
@@ -608,20 +516,19 @@ class _CanvasState extends State<_Canvas> {
                     _ColorPickerCard(
                       options: _themes,
                       selectedHex: _themeColor,
-                      onPick: (hex) => setState(() => _themeColor = hex),
+                      onPick: isReadonlyDefault ? null : (hex) => setState(() => _themeColor = hex),
                     ),
                     const SizedBox(height: 24),
-                    _NoteCard(noteCtrl: _noteCtrl),
-                    const SizedBox(height: 24),
-                    _DefaultToggleCard(
-                      value: _isDefault,
-                      onChanged: (v) => setState(() => _isDefault = v),
-                    ),
-                    if (_book != null) ...[
+                    _NoteCard(noteCtrl: _noteCtrl, editable: !isReadonlyDefault),
+                    if (_book != null && !isReadonlyDefault) ...[
                       const SizedBox(height: 24),
                       _DeleteButton(disabled: _deleting, onTap: _delete),
                       const SizedBox(height: 8),
                       const _DeleteHint(),
+                    ],
+                    if (_book != null && isReadonlyDefault) ...[
+                      const SizedBox(height: 24),
+                      const _ReadonlyHint(text: '默认账簿为系统保留账簿，不支持编辑或删除。'),
                     ],
                   ],
                 ),
@@ -673,11 +580,13 @@ class _BasicCard extends StatelessWidget {
   const _BasicCard({
     required this.nameCtrl,
     required this.reasonTypeLabel,
+    required this.editable,
     required this.onPickReasonType,
   });
 
   final TextEditingController nameCtrl;
   final String reasonTypeLabel;
+  final bool editable;
   final VoidCallback onPickReasonType;
 
   @override
@@ -696,13 +605,14 @@ class _BasicCard extends StatelessWidget {
             controller: nameCtrl,
             hintText: '请输入账簿名称',
             multiline: false,
+            editable: editable,
           ),
           const PrototypeDivider(color: AppColors.borderDivider),
           _SelectRow(
             label: '事由类型',
             value: reasonTypeLabel,
             borderBottom: false,
-            onTap: onPickReasonType,
+            onTap: editable ? onPickReasonType : null,
           ),
         ],
       ),
@@ -717,6 +627,7 @@ class _TextFieldRow extends StatelessWidget {
     required this.controller,
     required this.hintText,
     required this.multiline,
+    required this.editable,
   });
 
   final String label;
@@ -724,6 +635,7 @@ class _TextFieldRow extends StatelessWidget {
   final TextEditingController controller;
   final String hintText;
   final bool multiline;
+  final bool editable;
 
   @override
   Widget build(BuildContext context) {
@@ -749,12 +661,13 @@ class _TextFieldRow extends StatelessWidget {
           const SizedBox(height: 8),
           TextField(
             controller: controller,
+            readOnly: !editable,
             maxLines: multiline ? 4 : 1,
             minLines: multiline ? 3 : 1,
             style: AppTypography.base(
               fontSize: 16,
               fontWeight: AppTypography.medium,
-              color: AppColors.textPrimary,
+              color: editable ? AppColors.textPrimary : AppColors.textMuted,
             ),
             decoration: InputDecoration(
               isDense: true,
@@ -792,13 +705,13 @@ class _SelectRow extends StatelessWidget {
     required this.label,
     required this.value,
     this.borderBottom = true,
-    required this.onTap,
+    this.onTap,
   });
 
   final String label;
   final String value;
   final bool borderBottom;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -831,7 +744,7 @@ class _SelectRow extends StatelessWidget {
               ],
             ),
           ),
-          const FaIcon(FontAwesomeIcons.chevronRight, size: 10, color: AppColors.gray300),
+          if (onTap != null) const FaIcon(FontAwesomeIcons.chevronRight, size: 10, color: AppColors.gray300),
         ],
       ),
     );
@@ -860,16 +773,185 @@ class _Overline extends StatelessWidget {
   }
 }
 
+class _ReasonTypePickerSheet extends StatefulWidget {
+  const _ReasonTypePickerSheet({
+    required this.reasons,
+    required this.selectedReasonType,
+  });
+
+  static const String manageAction = '__manage_reason__';
+
+  final List<Reason> reasons;
+  final String selectedReasonType;
+
+  @override
+  State<_ReasonTypePickerSheet> createState() => _ReasonTypePickerSheetState();
+}
+
+class _ReasonTypePickerSheetState extends State<_ReasonTypePickerSheet> {
+  final TextEditingController _searchController = TextEditingController();
+  String _keyword = '';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final filtered = widget.reasons.where((reason) {
+      final key = _keyword.trim().toLowerCase();
+      if (key.isEmpty) return true;
+      return reason.name.toLowerCase().contains(key);
+    }).toList();
+    return Padding(
+      padding: EdgeInsets.only(
+        left: 12,
+        right: 12,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 12,
+      ),
+      child: SafeArea(
+        top: false,
+        child: Container(
+          constraints: const BoxConstraints(maxHeight: 620),
+          decoration: const BoxDecoration(
+            color: AppColors.white,
+            borderRadius: AppRadii.br2xl,
+            boxShadow: AppShadows.lg,
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Column(
+            children: [
+              Container(
+                width: 48,
+                height: 5,
+                margin: const EdgeInsets.only(top: 10, bottom: 6),
+                decoration: BoxDecoration(
+                  color: AppColors.gray200,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        '选择事由',
+                        style: AppTypography.base(
+                          fontSize: 18,
+                          fontWeight: AppTypography.bold,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                    ),
+                    PrototypeIconButton(
+                      icon: const FaIcon(FontAwesomeIcons.xmark, size: 14),
+                      backgroundColor: AppColors.gray100,
+                      foregroundColor: AppColors.textSecondary,
+                      onPressed: () => Navigator.of(context).pop(),
+                      radius: 12,
+                    ),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+                child: PrototypeSearchField(
+                  controller: _searchController,
+                  hintText: '搜索事由',
+                  onChanged: (v) => setState(() => _keyword = v),
+                ),
+              ),
+              Expanded(
+                child: filtered.isEmpty
+                    ? Center(
+                        child: Text(
+                          widget.reasons.isEmpty ? '暂无可选事由' : '没有匹配结果',
+                          style: AppTypography.base(
+                            fontSize: 13,
+                            fontWeight: AppTypography.regular,
+                            color: AppColors.textMuted,
+                          ),
+                        ),
+                      )
+                    : ListView.builder(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        itemCount: filtered.length,
+                        itemBuilder: (context, index) {
+                          final reason = filtered[index];
+                          return PrototypePressableRow(
+                            borderBottom: index != filtered.length - 1,
+                            onTap: () => Navigator.of(context).pop(reason.name),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    reason.name,
+                                    style: AppTypography.base(
+                                      fontSize: 14,
+                                      fontWeight: AppTypography.medium,
+                                      color: AppColors.textPrimary,
+                                    ),
+                                  ),
+                                ),
+                                if (reason.name == widget.selectedReasonType)
+                                  const FaIcon(
+                                    FontAwesomeIcons.check,
+                                    size: 14,
+                                    color: AppColors.indigo600,
+                                  ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                child: PrototypeSecondaryButton(
+                  label: '管理事由',
+                  onTap: () => Navigator.of(context).pop(_ReasonTypePickerSheet.manageAction),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ReadonlyHint extends StatelessWidget {
+  const _ReadonlyHint({required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      text,
+      style: AppTypography.base(
+        fontSize: 12,
+        fontWeight: AppTypography.regular,
+        color: AppColors.textMuted,
+      ),
+      textAlign: TextAlign.center,
+    );
+  }
+}
+
 class _ColorPickerCard extends StatelessWidget {
   const _ColorPickerCard({
     required this.options,
     required this.selectedHex,
-    required this.onPick,
+    this.onPick,
   });
 
   final List<_ThemeOption> options;
   final String selectedHex;
-  final ValueChanged<String> onPick;
+  final ValueChanged<String>? onPick;
 
   @override
   Widget build(BuildContext context) {
@@ -883,7 +965,7 @@ class _ColorPickerCard extends StatelessWidget {
               key: ValueKey<String>('book_theme_${opt.hex}'),
               color: opt.color,
               selected: opt.hex == selectedHex,
-              onTap: () => onPick(opt.hex),
+              onTap: onPick == null ? null : () => onPick!(opt.hex),
             ),
         ],
       ),
@@ -896,12 +978,12 @@ class _ColorDot extends StatelessWidget {
     super.key,
     required this.color,
     required this.selected,
-    required this.onTap,
+    this.onTap,
   });
 
   final Color color;
   final bool selected;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -939,9 +1021,13 @@ class _Dot extends StatelessWidget {
 }
 
 class _NoteCard extends StatelessWidget {
-  const _NoteCard({required this.noteCtrl});
+  const _NoteCard({
+    required this.noteCtrl,
+    required this.editable,
+  });
 
   final TextEditingController noteCtrl;
+  final bool editable;
 
   @override
   Widget build(BuildContext context) {
@@ -961,12 +1047,13 @@ class _NoteCard extends StatelessWidget {
           const SizedBox(height: 8),
           TextField(
             controller: noteCtrl,
+            readOnly: !editable,
             maxLines: 5,
             minLines: 3,
             style: AppTypography.base(
               fontSize: 14,
               fontWeight: AppTypography.regular,
-              color: AppColors.textPrimary,
+              color: editable ? AppColors.textPrimary : AppColors.textMuted,
             ),
             decoration: InputDecoration(
               isDense: true,

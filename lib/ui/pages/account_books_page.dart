@@ -131,9 +131,6 @@ class _CanvasState extends State<_Canvas> {
                           if (!context.mounted) return;
                           setState(() {});
                         },
-                        onSwitch: () {
-                          AppDatabaseScope.of(context).accountBooksDao.setDefaultBook(b.bookId);
-                        },
                       );
                     },
                   );
@@ -153,14 +150,12 @@ class _BookCardDb extends StatelessWidget {
     required this.book,
     required this.onOpen,
     required this.onEdit,
-    required this.onSwitch,
   });
 
   final AppDatabase db;
   final AccountBook book;
   final VoidCallback onOpen;
   final VoidCallback onEdit;
-  final VoidCallback onSwitch;
 
   @override
   Widget build(BuildContext context) {
@@ -256,7 +251,7 @@ class _BookCardDb extends StatelessWidget {
                               borderRadius: BorderRadius.circular(999),
                             ),
                             child: Text(
-                              '事由：${book.reasonType}',
+                              '事由：${isDefault ? '全部事由' : book.reasonType}',
                               style: AppTypography.base(
                                 fontSize: 11,
                                 fontWeight: AppTypography.medium,
@@ -290,15 +285,6 @@ class _BookCardDb extends StatelessWidget {
                       },
                     ),
                     const Spacer(),
-                    if (!isDefault) ...[
-                      _MiniTextButton(
-                        label: '切换',
-                        fg: AppColors.textMuted,
-                        bg: AppColors.gray50,
-                        onTap: onSwitch,
-                      ),
-                      const SizedBox(width: 8),
-                    ],
                     _MiniTextButton(
                       label: '编辑',
                       fg: AppColors.indigo600,

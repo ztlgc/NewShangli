@@ -4,6 +4,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../app_tokens.dart';
 import '../app_scaffold.dart';
 import '../app_session.dart';
+import '../app_toast.dart';
 import '../components.dart';
 import '../navigation.dart';
 import '../prototype_kit.dart';
@@ -17,7 +18,7 @@ import 'record_home_page.dart';
 import 'reason_manage_page.dart';
 import 'reminder_type_settings_page.dart';
 import 'stats_page.dart';
-import 'contact_relation_manage_page.dart';
+import 'relation_type_manage_page.dart';
 import 'recycle_bin_page.dart';
 
 /// 页面：系统设置 - 设置首页
@@ -74,7 +75,7 @@ class _Canvas extends StatelessWidget {
                     icon: FontAwesomeIcons.diagramProject,
                     title: '联系人关系管理',
                     borderBottom: false,
-                    onTap: () => AppNav.push(context, const ContactRelationManagePage(), requiresLogin: true),
+                    onTap: () => AppNav.push(context, const RelationTypeManagePage(), requiresLogin: true),
                   ),
                 ],
               ),
@@ -110,9 +111,7 @@ class _Canvas extends StatelessWidget {
                     title: '隐私与安全',
                     borderBottom: false,
                     onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('隐私与安全：仅原型展示，暂未实现')),
-                      );
+                      AppToast.show(context, '隐私与安全：仅原型展示，暂未实现');
                     },
                   ),
                 ],
@@ -138,7 +137,7 @@ class _Canvas extends StatelessWidget {
                     iconBg: AppColors.indigo50,
                     iconFg: AppColors.indigo700,
                     icon: FontAwesomeIcons.fileImport,
-                    title: '导入数据 (Excel/CSV)',
+                    title: '导入数据 (Excel)',
                     onTap: () => AppNav.push(context, const DataImportPage(), requiresLogin: true),
                   ),
                   _SettingRow(
@@ -220,14 +219,10 @@ class _UserCard extends StatelessWidget {
           final session = AppSessionScope.of(context);
           if (!session.loggedIn) {
             session.setLoggedIn(true);
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('已切换为登录状态（演示）')),
-            );
+            AppToast.show(context, '已切换为登录状态（演示）');
             return;
           }
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('用户信息：仅原型展示')),
-          );
+          AppToast.show(context, '用户信息：仅原型展示');
         },
         borderBottom: false,
         padding: const EdgeInsets.all(16),
@@ -428,9 +423,7 @@ class _LogoutButton extends StatelessWidget {
       onTap: () {
         final session = AppSessionScope.of(context);
         session.setLoggedIn(false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('已退出登录（演示）')),
-        );
+        AppToast.show(context, '已退出登录（演示）');
       },
       child: Container(
         height: 52,
