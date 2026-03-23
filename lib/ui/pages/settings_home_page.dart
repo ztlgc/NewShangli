@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../app_tokens.dart';
 import '../app_scaffold.dart';
@@ -20,6 +21,9 @@ import 'reminder_type_settings_page.dart';
 import 'stats_page.dart';
 import 'relation_type_manage_page.dart';
 import 'recycle_bin_page.dart';
+import 'user_login_page.dart';
+import 'user_profile_page.dart';
+import 'cloud_sync_page.dart';
 
 /// 页面：系统设置 - 设置首页
 /// 对照原型：prototype/index.html -> "设置首页"
@@ -120,10 +124,17 @@ class _Canvas extends StatelessWidget {
               _GroupCard(
                 rows: [
                   _SettingRow(
+                    iconBg: AppColors.blue50,
+                    iconFg: AppColors.blue500,
+                    icon: FontAwesomeIcons.cloud,
+                    title: '云同步管理',
+                    onTap: () => AppNav.push(context, const CloudSyncPage()),
+                  ),
+                  _SettingRow(
                     iconBg: AppColors.orange50,
                     iconFg: AppColors.orange500,
                     icon: FontAwesomeIcons.cloudArrowUp,
-                    title: '数据备份',
+                    title: 'WebDAV 数据备份',
                     onTap: () => AppNav.push(context, const DataBackupPage(), requiresLogin: true),
                   ),
                   _SettingRow(
@@ -175,7 +186,7 @@ class _Canvas extends StatelessWidget {
                   );
                 },
               ),
-              SizedBox(height: 24),
+              const SizedBox(height: 24),
               const _LogoutButton(),
             ],
           ),
@@ -203,8 +214,29 @@ class _Canvas extends StatelessWidget {
   }
 }
 
-class _UserCard extends StatelessWidget {
+class _UserCard extends StatefulWidget {
   const _UserCard();
+
+  @override
+  State<_UserCard> createState() => _UserCardState();
+}
+
+class _UserCardState extends State<_UserCard> {
+  User? _user;
+
+  @override
+  void initState() {
+    super.initState();
+    _user = Supabase.instance.client.auth.currentUser;
+    // 监听认证状态变化
+    Supabase.instance.client.auth.onAuthStateChange.listen((data) {
+      if (mounted) {
+        setState(() {
+          _user = data.session?.user;
+        });
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -215,25 +247,30 @@ class _UserCard extends StatelessWidget {
         boxShadow: AppShadows.sm,
       ),
       child: PrototypePressableRow(
-        onTap: () {
-          final session = AppSessionScope.of(context);
-          if (!session.loggedIn) {
-            session.setLoggedIn(true);
-            AppToast.show(context, '已切换为登录状态（演示）');
-            return;
+        onTap: () async {
+          if (_user == null) {
+            // 未登录，前往登录页面
+            await AppNav.push(context, const UserLoginPage());
+          } else {
+            // 已登录，前往用户信息页面
+            await AppNav.push(context, const UserProfilePage());
           }
-          AppToast.show(context, '用户信息：仅原型展示');
         },
         borderBottom: false,
         padding: const EdgeInsets.all(16),
         child: Row(
           children: [
-            ClipOval(
-              child: const PrototypeNetworkImage(
-                url: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop',
-                width: 56,
-                height: 56,
-                fit: BoxFit.cover,
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                color: _user == null ? AppColors.gray100 : AppColors.blue50,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.person,
+                size: 32,
+                color: _user == null ? AppColors.gray400 : AppColors.blue500,
               ),
             ),
             const SizedBox(width: 16),
@@ -242,20 +279,22 @@ class _UserCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    '用户_9527',
+                    _user == null ? '未登录' : (_user!.email ?? '已登录用户'),
                     style: AppTypography.base(
                       fontSize: 18,
                       fontWeight: AppTypography.bold,
                       color: AppColors.textPrimary,
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    '已登录',
+                    _user == null ? '点击登录享受云端同步' : '已连接到云端数据库',
                     style: AppTypography.base(
                       fontSize: 12,
                       fontWeight: AppTypography.regular,
-                      color: AppColors.textTertiary,
+                      color: _user == null ? AppColors.textTertiary : AppColors.green600,
                     ),
                   ),
                 ],
@@ -414,16 +453,45 @@ class _RowContent extends StatelessWidget {
   }
 }
 
-class _LogoutButton extends StatelessWidget {
+class _LogoutButton extends StatefulWidget {
   const _LogoutButton();
 
   @override
+  State<_LogoutButton> createState() => _LogoutButtonState();
+}
+
+class _LogoutButtonState extends State<_LogoutButton> {
+  bool _isLoggedIn = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _isLoggedIn = Supabase.instance.client.auth.currentUser != null;
+    Supabase.instance.client.auth.onAuthStateChange.listen((data) {
+      if (mounted) {
+        setState(() {
+          _isLoggedIn = data.session?.user != null;
+        });
+      }
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
+    if (!_isLoggedIn) return const SizedBox.shrink();
+
     return PressableScale(
-      onTap: () {
-        final session = AppSessionScope.of(context);
-        session.setLoggedIn(false);
-        AppToast.show(context, '已退出登录（演示）');
+      onTap: () async {
+        try {
+          await Supabase.instance.client.auth.signOut();
+          if (mounted) {
+            AppToast.show(context, '已退出登录');
+          }
+        } catch (e) {
+          if (mounted) {
+            AppToast.show(context, '退出登录失败');
+          }
+        }
       },
       child: Container(
         height: 52,

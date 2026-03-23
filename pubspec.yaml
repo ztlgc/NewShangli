@@ -54,6 +54,7 @@ dependencies:
   crypto: ^3.0.3
   lpinyin: ^2.0.3
   azlistview: ^2.0.0
+  supabase_flutter: ^2.12.0
 
 dev_dependencies:
   flutter_test:

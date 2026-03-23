@@ -119,11 +119,15 @@ class DataBackupService {
 
   Future<File> buildLocalBackupZip({
     required void Function(BackupProgress progress) onProgress,
+    bool includeMedia = true,
   }) {
-    return _createBackupZip(onProgress: onProgress);
+    return _createBackupZip(onProgress: onProgress, includeMedia: includeMedia);
   }
 
-  Future<File> _createBackupZip({required void Function(BackupProgress progress) onProgress}) async {
+  Future<File> _createBackupZip({
+    required void Function(BackupProgress progress) onProgress,
+    bool includeMedia = true,
+  }) async {
     final dir = await _documentsDirectoryProvider();
     final backupDir = Directory(p.join(dir.path, 'backups'));
     await backupDir.create(recursive: true);
@@ -150,7 +154,11 @@ class DataBackupService {
         await snapshot.file.delete();
       }
     }
-    final mediaSummary = await _addMediaToArchive(archive: archive, docsDir: dir, included: included);
+    
+    _MediaArchiveSummary mediaSummary = const _MediaArchiveSummary(fileCount: 0, totalBytes: 0);
+    if (includeMedia) {
+      mediaSummary = await _addMediaToArchive(archive: archive, docsDir: dir, included: included);
+    }
 
     final manifest = <String, Object?>{
       'createdAt': ts.toIso8601String(),

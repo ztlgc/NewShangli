@@ -59,6 +59,23 @@ class DataRestoreService {
     }
   }
 
+  Future<void> restoreFromLocalZip({
+    required File zipFile,
+    required void Function(String message) onProgress,
+  }) async {
+    final docs = await _documentsDirectoryProvider();
+    final guardDir = Directory(p.join(docs.path, 'backups', 'restore_guard', DateTime.now().millisecondsSinceEpoch.toString()));
+    await guardDir.create(recursive: true);
+
+    onProgress('正在校验备份包…');
+    await _restoreFromZip(
+      zipFile: zipFile,
+      docsDir: docs,
+      guardDir: guardDir,
+      onProgress: onProgress,
+    );
+  }
+
   Future<void> _restoreFromZip({
     required File zipFile,
     required Directory docsDir,
