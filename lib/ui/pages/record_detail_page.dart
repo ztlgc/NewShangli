@@ -539,6 +539,42 @@ class _BottomActions extends StatelessWidget {
 
   final String recordId;
 
+  Future<void> _confirmDelete(BuildContext context) async {
+    final db = AppDatabaseScope.maybeOf(context);
+    if (db == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('当前页面无法执行删除')),
+      );
+      return;
+    }
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('删除记录'),
+          content: const Text('确认删除该记录？删除后将进入回收站。'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('取消'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('删除'),
+            ),
+          ],
+        );
+      },
+    );
+    if (ok != true) return;
+    await db.giftRecordsDao.deleteById(recordId);
+    if (!context.mounted) return;
+    AppNav.pop(context);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('记录已移入回收站')),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -551,11 +587,7 @@ class _BottomActions extends StatelessWidget {
         children: [
           Expanded(
             child: PressableScale(
-              onTap: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('仅原型展示：删除未实现')),
-                );
-              },
+              onTap: () => _confirmDelete(context),
               child: Container(
                 height: 48,
                 decoration: const BoxDecoration(

@@ -1,10 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../app_tokens.dart';
 import '../app_scaffold.dart';
-import '../app_session.dart';
 import '../app_toast.dart';
 import '../components.dart';
 import '../navigation.dart';
@@ -39,11 +40,77 @@ class SettingsHomePage extends StatelessWidget {
   }
 }
 
-class _Canvas extends StatelessWidget {
+class _Canvas extends StatefulWidget {
   const _Canvas();
 
   @override
+  State<_Canvas> createState() => _CanvasState();
+}
+
+class _CanvasState extends State<_Canvas> {
+  User? _user;
+  StreamSubscription<AuthState>? _authStateSubscription;
+
+  @override
+  void initState() {
+    super.initState();
+    _user = Supabase.instance.client.auth.currentUser;
+    _authStateSubscription = Supabase.instance.client.auth.onAuthStateChange.listen((data) {
+      if (!mounted) return;
+      setState(() {
+        _user = data.session?.user;
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _authStateSubscription?.cancel();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final syncRows = <_SettingRow>[
+      if (_user != null)
+        _SettingRow(
+          iconBg: AppColors.blue50,
+          iconFg: AppColors.blue500,
+          icon: FontAwesomeIcons.cloud,
+          title: '云同步管理',
+          onTap: () => AppNav.push(context, const CloudSyncPage(), requiresLogin: true),
+        ),
+      _SettingRow(
+        iconBg: AppColors.orange50,
+        iconFg: AppColors.orange500,
+        icon: FontAwesomeIcons.cloudArrowUp,
+        title: 'WebDAV 数据备份',
+        onTap: () => AppNav.push(context, const DataBackupPage(), requiresLogin: true),
+      ),
+      _SettingRow(
+        iconBg: AppColors.purple50,
+        iconFg: AppColors.purple500,
+        icon: FontAwesomeIcons.fileExport,
+        title: '导出数据 (Excel)',
+        onTap: () => AppNav.push(context, const DataExportPage(), requiresLogin: true),
+      ),
+      _SettingRow(
+        iconBg: AppColors.indigo50,
+        iconFg: AppColors.indigo700,
+        icon: FontAwesomeIcons.fileImport,
+        title: '导入数据 (Excel)',
+        onTap: () => AppNav.push(context, const DataImportPage(), requiresLogin: true),
+      ),
+      _SettingRow(
+        iconBg: AppColors.red100,
+        iconFg: AppColors.red600,
+        icon: FontAwesomeIcons.trashCan,
+        title: '回收站',
+        borderBottom: false,
+        onTap: () => AppNav.push(context, const RecycleBinPage(), requiresLogin: true),
+      ),
+    ];
+
     return Column(
       children: [
         Container(
@@ -122,44 +189,7 @@ class _Canvas extends StatelessWidget {
               ),
               SizedBox(height: 24),
               _GroupCard(
-                rows: [
-                  _SettingRow(
-                    iconBg: AppColors.blue50,
-                    iconFg: AppColors.blue500,
-                    icon: FontAwesomeIcons.cloud,
-                    title: '云同步管理',
-                    onTap: () => AppNav.push(context, const CloudSyncPage()),
-                  ),
-                  _SettingRow(
-                    iconBg: AppColors.orange50,
-                    iconFg: AppColors.orange500,
-                    icon: FontAwesomeIcons.cloudArrowUp,
-                    title: 'WebDAV 数据备份',
-                    onTap: () => AppNav.push(context, const DataBackupPage(), requiresLogin: true),
-                  ),
-                  _SettingRow(
-                    iconBg: AppColors.purple50,
-                    iconFg: AppColors.purple500,
-                    icon: FontAwesomeIcons.fileExport,
-                    title: '导出数据 (Excel)',
-                    onTap: () => AppNav.push(context, const DataExportPage(), requiresLogin: true),
-                  ),
-                  _SettingRow(
-                    iconBg: AppColors.indigo50,
-                    iconFg: AppColors.indigo700,
-                    icon: FontAwesomeIcons.fileImport,
-                    title: '导入数据 (Excel)',
-                    onTap: () => AppNav.push(context, const DataImportPage(), requiresLogin: true),
-                  ),
-                  _SettingRow(
-                    iconBg: AppColors.red100,
-                    iconFg: AppColors.red600,
-                    icon: FontAwesomeIcons.trashCan,
-                    title: '回收站',
-                    borderBottom: false,
-                    onTap: () => AppNav.push(context, const RecycleBinPage(), requiresLogin: true),
-                  ),
-                ],
+                rows: syncRows,
               ),
               SizedBox(height: 24),
               _SingleRowCard(
@@ -462,12 +492,24 @@ class _LogoutButton extends StatefulWidget {
 
 class _LogoutButtonState extends State<_LogoutButton> {
   bool _isLoggedIn = false;
+  StreamSubscription<AuthState>? _authStateSubscription;
+
+  Future<void> _signOut() async {
+    try {
+      await Supabase.instance.client.auth.signOut();
+      if (!mounted) return;
+      AppToast.show(context, '已退出登录');
+    } catch (e) {
+      if (!mounted) return;
+      AppToast.show(context, '退出登录失败');
+    }
+  }
 
   @override
   void initState() {
     super.initState();
     _isLoggedIn = Supabase.instance.client.auth.currentUser != null;
-    Supabase.instance.client.auth.onAuthStateChange.listen((data) {
+    _authStateSubscription = Supabase.instance.client.auth.onAuthStateChange.listen((data) {
       if (mounted) {
         setState(() {
           _isLoggedIn = data.session?.user != null;
@@ -477,22 +519,17 @@ class _LogoutButtonState extends State<_LogoutButton> {
   }
 
   @override
+  void dispose() {
+    _authStateSubscription?.cancel();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     if (!_isLoggedIn) return const SizedBox.shrink();
 
     return PressableScale(
-      onTap: () async {
-        try {
-          await Supabase.instance.client.auth.signOut();
-          if (mounted) {
-            AppToast.show(context, '已退出登录');
-          }
-        } catch (e) {
-          if (mounted) {
-            AppToast.show(context, '退出登录失败');
-          }
-        }
-      },
+      onTap: _signOut,
       child: Container(
         height: 52,
         decoration: const BoxDecoration(

@@ -271,7 +271,9 @@ class _BookCardDb extends StatelessWidget {
                 Row(
                   children: [
                     StreamBuilder<int>(
-                      stream: db.giftRecordsDao.watchCountInBook(book.bookId),
+                      stream: isDefault
+                          ? db.giftRecordsDao.watchCountInAllBooks()
+                          : db.giftRecordsDao.watchCountInBook(book.bookId),
                       builder: (context, snapshot) {
                         final count = snapshot.data ?? 0;
                         return Text(

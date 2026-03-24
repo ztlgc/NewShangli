@@ -22,8 +22,9 @@ class NewShangliApp extends StatelessWidget {
             debugShowCheckedModeBanner: false,
             title: '尚礼',
             theme: AppTheme.light(),
-            darkTheme: AppTheme.dark(),
-            themeMode: ThemeMode.system,
+            // 暂时取消深色模式显示，固定使用浅色模式
+            // darkTheme: AppTheme.dark(),
+            themeMode: ThemeMode.light,
             home: const RecordHomePage(),
           ),
         ),

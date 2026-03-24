@@ -44,6 +44,10 @@ class _Canvas extends StatelessWidget {
           return const Center(child: CircularProgressIndicator());
         }
         final book = bookSnapshot.data!;
+        final isDefaultBook = book.isDefault == 1;
+        final recordsStream = isDefaultBook
+            ? db.giftRecordsDao.watchAllWithPersonInAllBooks()
+            : db.giftRecordsDao.watchAllWithPersonInBook(bookId);
 
         return Column(
           children: [
@@ -87,26 +91,25 @@ class _Canvas extends StatelessWidget {
               ),
             ),
             Expanded(
-              child: StreamBuilder<Map<String, int>>(
-                stream: db.giftRecordsDao.watchStats(bookId),
-                builder: (context, statsSnapshot) {
-                  final stats = statsSnapshot.data ?? const <String, int>{'income': 0, 'expense': 0, 'count': 0};
-                  final income = stats['income'] ?? 0;
-                  final count = stats['count'] ?? 0;
+              child: StreamBuilder<List<GiftRecordWithPerson>>(
+                stream: recordsStream,
+                builder: (context, rowsSnapshot) {
+                  final rows = rowsSnapshot.data ?? const <GiftRecordWithPerson>[];
+                  var income = 0;
+                  for (final row in rows) {
+                    if (row.record.direction == '收入') {
+                      income += row.record.amountCent;
+                    }
+                  }
+                  final count = rows.length;
 
-                  return StreamBuilder<List<GiftRecordWithPerson>>(
-                    stream: db.giftRecordsDao.watchAllWithPersonInBook(bookId),
-                    builder: (context, rowsSnapshot) {
-                      final rows = rowsSnapshot.data ?? const <GiftRecordWithPerson>[];
-                      return ListView(
-                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
-                        children: [
-                          _OverviewCard(incomeCent: income, recordCount: count),
-                          const SizedBox(height: 16),
-                          _RecordsSection(rows: rows),
-                        ],
-                      );
-                    },
+                  return ListView(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
+                    children: [
+                      _OverviewCard(incomeCent: income, recordCount: count),
+                      const SizedBox(height: 16),
+                      _RecordsSection(rows: rows),
+                    ],
                   );
                 },
               ),
@@ -244,8 +247,8 @@ class _RecordsSection extends StatelessWidget {
                   name: rows[i].person.name,
                   direction: rows[i].record.direction == '收入' ? RecordDirection.income : RecordDirection.expense,
                   amountCent: rows[i].record.amountCent,
-                  subtitle: (rows[i].record.paymentMethod == null || rows[i].record.paymentMethod!.isEmpty || rows[i].record.paymentMethod == '未设置') 
-                      ? '${rows[i].record.eventName ?? '未设置事由'}' 
+                  subtitle: (rows[i].record.paymentMethod == null || rows[i].record.paymentMethod!.isEmpty || rows[i].record.paymentMethod == '未设置')
+                      ? (rows[i].record.eventName ?? '未设置事由')
                       : '${rows[i].record.eventName ?? '未设置事由'} - ${rows[i].record.paymentMethod}',
                   occurredAt: DateTime.fromMillisecondsSinceEpoch(rows[i].record.occurredAt),
                   borderBottom: i != rows.length - 1,

@@ -19,6 +19,23 @@ class _UserLoginPageState extends State<UserLoginPage> {
   final _passwordController = TextEditingController();
   bool _isLoading = false;
 
+  String _buildLoginErrorMessage(AuthException e) {
+    final message = e.message.toLowerCase();
+    if (message.contains('invalid login credentials')) {
+      return '登录失败：邮箱或密码错误';
+    }
+    if (message.contains('email not confirmed')) {
+      return '登录失败：邮箱尚未完成验证';
+    }
+    if (message.contains('too many requests')) {
+      return '登录失败：操作过于频繁，请稍后再试';
+    }
+    if (message.contains('network')) {
+      return '登录失败：网络异常，请检查网络后重试';
+    }
+    return '登录失败，请检查账号信息后重试';
+  }
+
   @override
   void dispose() {
     _emailController.dispose();
@@ -57,50 +74,7 @@ class _UserLoginPageState extends State<UserLoginPage> {
       AppToast.show(context, '登录超时，请检查网络或稍后重试');
     } on AuthException catch (e) {
       if (!mounted) return;
-      AppToast.show(context, '登录失败: ${e.message}');
-    } catch (e) {
-      if (!mounted) return;
-      AppToast.show(context, '发生未知错误: $e');
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-    }
-  }
-
-  /// 注册逻辑（方便测试）
-  Future<void> _signUp() async {
-    final email = _emailController.text.trim();
-    final password = _passwordController.text;
-
-    if (email.isEmpty || password.isEmpty) {
-      AppToast.show(context, '请输入邮箱和密码');
-      return;
-    }
-
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      // 调用 Supabase 的注册接口
-      await Supabase.instance.client.auth
-          .signUp(
-            email: email,
-            password: password,
-          )
-          .timeout(const Duration(seconds: 15));
-      
-      if (!mounted) return;
-      AppToast.show(context, '注册成功，请重新点击登录');
-    } on TimeoutException {
-      if (!mounted) return;
-      AppToast.show(context, '注册超时，请检查网络或稍后重试');
-    } on AuthException catch (e) {
-      if (!mounted) return;
-      AppToast.show(context, '注册失败: ${e.message}');
+      AppToast.show(context, _buildLoginErrorMessage(e));
     } catch (e) {
       if (!mounted) return;
       AppToast.show(context, '发生未知错误: $e');
@@ -201,16 +175,13 @@ class _UserLoginPageState extends State<UserLoginPage> {
                 ),
               ),
               const SizedBox(height: 16),
-              // 注册按钮
-              TextButton(
-                onPressed: _isLoading ? null : _signUp,
-                child: Text(
-                  '没有账号？点击注册',
-                  style: AppTypography.base(
-                    color: AppColors.textSecondary,
-                    fontSize: 14,
-                    fontWeight: AppTypography.regular,
-                  ),
+              Text(
+                '如需开通账号，请联系管理员。',
+                textAlign: TextAlign.center,
+                style: AppTypography.base(
+                  color: AppColors.textSecondary,
+                  fontSize: 14,
+                  fontWeight: AppTypography.regular,
                 ),
               ),
             ],
