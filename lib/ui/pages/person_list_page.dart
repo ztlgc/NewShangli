@@ -189,19 +189,22 @@ class _CanvasState extends State<_Canvas> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (context) {
-        return AlertDialog(
-          title: const Text('删除联系人'),
-          content: Text('确认删除已选择的${ids.length}位联系人？删除后将进入回收站。'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('取消'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('删除'),
-            ),
-          ],
+        return Align(
+          alignment: Alignment.center,
+          child: AlertDialog(
+            title: const Text('删除联系人'),
+            content: Text('确认删除已选择的${ids.length}位联系人？删除后将进入回收站。'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('取消'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                child: const Text('删除'),
+              ),
+            ],
+          ),
         );
       },
     );
@@ -273,11 +276,9 @@ class _CanvasBody extends StatelessWidget {
 
     // 搜索过滤
     final filtered = isSearching
-        ? personDataList.where((p) {
-            final kw = trimmed.toLowerCase();
-            return p.name.toLowerCase().contains(kw) ||
-                (p.phone ?? '').toLowerCase().contains(kw);
-          }).toList()
+        ? personDataList
+            .where((p) => _matchesPersonKeyword(p, trimmed))
+            .toList()
         : null;
 
     return Column(
@@ -582,6 +583,18 @@ String _namePinyin(String name) {
     format: PinyinFormat.WITHOUT_TONE,
   );
   return source.toUpperCase().replaceAll(RegExp(r'[^A-Z0-9]'), '');
+}
+
+bool _matchesPersonKeyword(PersonData person, String keyword) {
+  final normalized = keyword.trim().toLowerCase();
+  if (normalized.isEmpty) return true;
+
+  final pinyinKeyword = normalized.replaceAll(RegExp(r'\s+'), '').toUpperCase();
+  return person.name.toLowerCase().contains(normalized) ||
+      person.relationship.toLowerCase().contains(normalized) ||
+      (person.phone ?? '').toLowerCase().contains(normalized) ||
+      (person.note ?? '').toLowerCase().contains(normalized) ||
+      _namePinyin(person.name).contains(pinyinKeyword);
 }
 
 // ──────────────────────────────────────────────

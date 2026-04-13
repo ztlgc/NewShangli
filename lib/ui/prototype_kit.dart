@@ -205,7 +205,9 @@ class PrototypeBottomNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bottomInset = MediaQuery.paddingOf(context).bottom;
+    final bottomInset = (MediaQuery.paddingOf(context).bottom - 12)
+        .clamp(0.0, double.infinity)
+        .toDouble();
     return Container(
       height: AppTokens.tabBarHeight + bottomInset,
       decoration: const BoxDecoration(

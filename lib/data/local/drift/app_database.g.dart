@@ -77,6 +77,19 @@ class $AccountBooksTable extends AccountBooks
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _bookTimeMeta = const VerificationMeta(
+    'bookTime',
+  );
+  @override
+  late final GeneratedColumn<int> bookTime = GeneratedColumn<int>(
+    'book_time',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    $customConstraints: 'NOT NULL',
+    clientDefault: () => DateTime.now().millisecondsSinceEpoch,
+  );
   static const VerificationMeta _isDefaultMeta = const VerificationMeta(
     'isDefault',
   );
@@ -133,6 +146,7 @@ class $AccountBooksTable extends AccountBooks
     themeColor,
     icon,
     description,
+    bookTime,
     isDefault,
     createdAt,
     updatedAt,
@@ -189,6 +203,12 @@ class $AccountBooksTable extends AccountBooks
           data['description']!,
           _descriptionMeta,
         ),
+      );
+    }
+    if (data.containsKey('book_time')) {
+      context.handle(
+        _bookTimeMeta,
+        bookTime.isAcceptableOrUnknown(data['book_time']!, _bookTimeMeta),
       );
     }
     if (data.containsKey('is_default')) {
@@ -252,6 +272,10 @@ class $AccountBooksTable extends AccountBooks
         DriftSqlType.string,
         data['${effectivePrefix}description'],
       ),
+      bookTime: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}book_time'],
+      )!,
       isDefault: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}is_default'],
@@ -284,6 +308,7 @@ class AccountBook extends DataClass implements Insertable<AccountBook> {
   final String themeColor;
   final String? icon;
   final String? description;
+  final int bookTime;
   final int isDefault;
   final int createdAt;
   final int updatedAt;
@@ -295,6 +320,7 @@ class AccountBook extends DataClass implements Insertable<AccountBook> {
     required this.themeColor,
     this.icon,
     this.description,
+    required this.bookTime,
     required this.isDefault,
     required this.createdAt,
     required this.updatedAt,
@@ -313,6 +339,7 @@ class AccountBook extends DataClass implements Insertable<AccountBook> {
     if (!nullToAbsent || description != null) {
       map['description'] = Variable<String>(description);
     }
+    map['book_time'] = Variable<int>(bookTime);
     map['is_default'] = Variable<int>(isDefault);
     map['created_at'] = Variable<int>(createdAt);
     map['updated_at'] = Variable<int>(updatedAt);
@@ -332,6 +359,7 @@ class AccountBook extends DataClass implements Insertable<AccountBook> {
       description: description == null && nullToAbsent
           ? const Value.absent()
           : Value(description),
+      bookTime: Value(bookTime),
       isDefault: Value(isDefault),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
@@ -353,6 +381,7 @@ class AccountBook extends DataClass implements Insertable<AccountBook> {
       themeColor: serializer.fromJson<String>(json['themeColor']),
       icon: serializer.fromJson<String?>(json['icon']),
       description: serializer.fromJson<String?>(json['description']),
+      bookTime: serializer.fromJson<int>(json['bookTime']),
       isDefault: serializer.fromJson<int>(json['isDefault']),
       createdAt: serializer.fromJson<int>(json['createdAt']),
       updatedAt: serializer.fromJson<int>(json['updatedAt']),
@@ -369,6 +398,7 @@ class AccountBook extends DataClass implements Insertable<AccountBook> {
       'themeColor': serializer.toJson<String>(themeColor),
       'icon': serializer.toJson<String?>(icon),
       'description': serializer.toJson<String?>(description),
+      'bookTime': serializer.toJson<int>(bookTime),
       'isDefault': serializer.toJson<int>(isDefault),
       'createdAt': serializer.toJson<int>(createdAt),
       'updatedAt': serializer.toJson<int>(updatedAt),
@@ -383,6 +413,7 @@ class AccountBook extends DataClass implements Insertable<AccountBook> {
     String? themeColor,
     Value<String?> icon = const Value.absent(),
     Value<String?> description = const Value.absent(),
+    int? bookTime,
     int? isDefault,
     int? createdAt,
     int? updatedAt,
@@ -394,6 +425,7 @@ class AccountBook extends DataClass implements Insertable<AccountBook> {
     themeColor: themeColor ?? this.themeColor,
     icon: icon.present ? icon.value : this.icon,
     description: description.present ? description.value : this.description,
+    bookTime: bookTime ?? this.bookTime,
     isDefault: isDefault ?? this.isDefault,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
@@ -413,6 +445,7 @@ class AccountBook extends DataClass implements Insertable<AccountBook> {
       description: data.description.present
           ? data.description.value
           : this.description,
+      bookTime: data.bookTime.present ? data.bookTime.value : this.bookTime,
       isDefault: data.isDefault.present ? data.isDefault.value : this.isDefault,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
@@ -429,6 +462,7 @@ class AccountBook extends DataClass implements Insertable<AccountBook> {
           ..write('themeColor: $themeColor, ')
           ..write('icon: $icon, ')
           ..write('description: $description, ')
+          ..write('bookTime: $bookTime, ')
           ..write('isDefault: $isDefault, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
@@ -445,6 +479,7 @@ class AccountBook extends DataClass implements Insertable<AccountBook> {
     themeColor,
     icon,
     description,
+    bookTime,
     isDefault,
     createdAt,
     updatedAt,
@@ -460,6 +495,7 @@ class AccountBook extends DataClass implements Insertable<AccountBook> {
           other.themeColor == this.themeColor &&
           other.icon == this.icon &&
           other.description == this.description &&
+          other.bookTime == this.bookTime &&
           other.isDefault == this.isDefault &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
@@ -473,6 +509,7 @@ class AccountBooksCompanion extends UpdateCompanion<AccountBook> {
   final Value<String> themeColor;
   final Value<String?> icon;
   final Value<String?> description;
+  final Value<int> bookTime;
   final Value<int> isDefault;
   final Value<int> createdAt;
   final Value<int> updatedAt;
@@ -485,6 +522,7 @@ class AccountBooksCompanion extends UpdateCompanion<AccountBook> {
     this.themeColor = const Value.absent(),
     this.icon = const Value.absent(),
     this.description = const Value.absent(),
+    this.bookTime = const Value.absent(),
     this.isDefault = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -498,6 +536,7 @@ class AccountBooksCompanion extends UpdateCompanion<AccountBook> {
     this.themeColor = const Value.absent(),
     this.icon = const Value.absent(),
     this.description = const Value.absent(),
+    this.bookTime = const Value.absent(),
     this.isDefault = const Value.absent(),
     required int createdAt,
     required int updatedAt,
@@ -513,6 +552,7 @@ class AccountBooksCompanion extends UpdateCompanion<AccountBook> {
     Expression<String>? themeColor,
     Expression<String>? icon,
     Expression<String>? description,
+    Expression<int>? bookTime,
     Expression<int>? isDefault,
     Expression<int>? createdAt,
     Expression<int>? updatedAt,
@@ -526,6 +566,7 @@ class AccountBooksCompanion extends UpdateCompanion<AccountBook> {
       if (themeColor != null) 'theme_color': themeColor,
       if (icon != null) 'icon': icon,
       if (description != null) 'description': description,
+      if (bookTime != null) 'book_time': bookTime,
       if (isDefault != null) 'is_default': isDefault,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
@@ -541,6 +582,7 @@ class AccountBooksCompanion extends UpdateCompanion<AccountBook> {
     Value<String>? themeColor,
     Value<String?>? icon,
     Value<String?>? description,
+    Value<int>? bookTime,
     Value<int>? isDefault,
     Value<int>? createdAt,
     Value<int>? updatedAt,
@@ -554,6 +596,7 @@ class AccountBooksCompanion extends UpdateCompanion<AccountBook> {
       themeColor: themeColor ?? this.themeColor,
       icon: icon ?? this.icon,
       description: description ?? this.description,
+      bookTime: bookTime ?? this.bookTime,
       isDefault: isDefault ?? this.isDefault,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -583,6 +626,9 @@ class AccountBooksCompanion extends UpdateCompanion<AccountBook> {
     if (description.present) {
       map['description'] = Variable<String>(description.value);
     }
+    if (bookTime.present) {
+      map['book_time'] = Variable<int>(bookTime.value);
+    }
     if (isDefault.present) {
       map['is_default'] = Variable<int>(isDefault.value);
     }
@@ -610,6 +656,7 @@ class AccountBooksCompanion extends UpdateCompanion<AccountBook> {
           ..write('themeColor: $themeColor, ')
           ..write('icon: $icon, ')
           ..write('description: $description, ')
+          ..write('bookTime: $bookTime, ')
           ..write('isDefault: $isDefault, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
@@ -5957,6 +6004,7 @@ typedef $$AccountBooksTableCreateCompanionBuilder =
       Value<String> themeColor,
       Value<String?> icon,
       Value<String?> description,
+      Value<int> bookTime,
       Value<int> isDefault,
       required int createdAt,
       required int updatedAt,
@@ -5971,6 +6019,7 @@ typedef $$AccountBooksTableUpdateCompanionBuilder =
       Value<String> themeColor,
       Value<String?> icon,
       Value<String?> description,
+      Value<int> bookTime,
       Value<int> isDefault,
       Value<int> createdAt,
       Value<int> updatedAt,
@@ -6121,6 +6170,11 @@ class $$AccountBooksTableFilterComposer
 
   ColumnFilters<String> get description => $composableBuilder(
     column: $table.description,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get bookTime => $composableBuilder(
+    column: $table.bookTime,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -6309,6 +6363,11 @@ class $$AccountBooksTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get bookTime => $composableBuilder(
+    column: $table.bookTime,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get isDefault => $composableBuilder(
     column: $table.isDefault,
     builder: (column) => ColumnOrderings(column),
@@ -6362,6 +6421,9 @@ class $$AccountBooksTableAnnotationComposer
     column: $table.description,
     builder: (column) => column,
   );
+
+  GeneratedColumn<int> get bookTime =>
+      $composableBuilder(column: $table.bookTime, builder: (column) => column);
 
   GeneratedColumn<int> get isDefault =>
       $composableBuilder(column: $table.isDefault, builder: (column) => column);
@@ -6541,6 +6603,7 @@ class $$AccountBooksTableTableManager
                 Value<String> themeColor = const Value.absent(),
                 Value<String?> icon = const Value.absent(),
                 Value<String?> description = const Value.absent(),
+                Value<int> bookTime = const Value.absent(),
                 Value<int> isDefault = const Value.absent(),
                 Value<int> createdAt = const Value.absent(),
                 Value<int> updatedAt = const Value.absent(),
@@ -6553,6 +6616,7 @@ class $$AccountBooksTableTableManager
                 themeColor: themeColor,
                 icon: icon,
                 description: description,
+                bookTime: bookTime,
                 isDefault: isDefault,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
@@ -6567,6 +6631,7 @@ class $$AccountBooksTableTableManager
                 Value<String> themeColor = const Value.absent(),
                 Value<String?> icon = const Value.absent(),
                 Value<String?> description = const Value.absent(),
+                Value<int> bookTime = const Value.absent(),
                 Value<int> isDefault = const Value.absent(),
                 required int createdAt,
                 required int updatedAt,
@@ -6579,6 +6644,7 @@ class $$AccountBooksTableTableManager
                 themeColor: themeColor,
                 icon: icon,
                 description: description,
+                bookTime: bookTime,
                 isDefault: isDefault,
                 createdAt: createdAt,
                 updatedAt: updatedAt,

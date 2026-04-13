@@ -59,7 +59,7 @@ class AppDatabase extends _$AppDatabase {
   ///
   /// 版本升级时在 [migration] 中补齐迁移逻辑，并同步单元测试。
   @override
-  int get schemaVersion => 9;
+  int get schemaVersion => 10;
 
   /// 统一注入迁移策略：
   /// - onCreate：创建所有表与索引
@@ -67,88 +67,116 @@ class AppDatabase extends _$AppDatabase {
   /// - beforeOpen：开启外键约束
   @override
   MigrationStrategy get migration => MigrationStrategy(
-        onCreate: (m) async {
-          await m.createAll();
-          await _ensureIndexes();
-        },
-        onUpgrade: (m, from, to) async {
-          if (from < 1) {
-            await m.createAll();
-            await _ensureIndexes();
-            return;
-          }
-          if (from < 2) {
-            await m.createTable(dataImportJobs);
-            await _ensureIndexes();
-          }
-          if (from < 3) {
-            final cols = await customSelect('PRAGMA table_info(account_book);').get();
-            final names = cols.map((e) => (e.data['name'] as String?) ?? '').toSet();
+    onCreate: (m) async {
+      await m.createAll();
+      await _ensureIndexes();
+    },
+    onUpgrade: (m, from, to) async {
+      if (from < 1) {
+        await m.createAll();
+        await _ensureIndexes();
+        return;
+      }
+      if (from < 2) {
+        await m.createTable(dataImportJobs);
+        await _ensureIndexes();
+      }
+      if (from < 3) {
+        final cols = await customSelect(
+          'PRAGMA table_info(account_book);',
+        ).get();
+        final names = cols
+            .map((e) => (e.data['name'] as String?) ?? '')
+            .toSet();
 
-            if (names.contains('reason_type')) {
-              await customStatement(
-                "UPDATE account_book SET reason_type = CASE reason_type WHEN 'default' THEN '结婚礼金' WHEN 'wedding' THEN '结婚礼金' WHEN 'business' THEN '商务往来' ELSE reason_type END;",
-              );
-            } else if (names.contains('type')) {
-              await customStatement(
-                "UPDATE account_book SET type = CASE type WHEN 'default' THEN '结婚礼金' WHEN 'wedding' THEN '结婚礼金' WHEN 'business' THEN '商务往来' ELSE type END;",
-              );
-              try {
-                await customStatement('ALTER TABLE account_book RENAME COLUMN type TO reason_type;');
-              } catch (_) {
-                await customStatement('ALTER TABLE account_book RENAME TO account_book__old;');
-                await m.createTable(accountBooks);
-                await customStatement(
-                  'INSERT INTO account_book(book_id, name, reason_type, theme_color, icon, description, is_default, created_at, updated_at) '
-                  'SELECT book_id, name, type, theme_color, icon, description, is_default, created_at, updated_at FROM account_book__old;',
-                );
-                await customStatement('DROP TABLE account_book__old;');
-              }
-            }
-          }
-          if (from < 4) {
-            await m.addColumn(eventReminders, eventReminders.title as GeneratedColumn<Object>);
-          }
-          if (from < 5) {
-            await m.addColumn(eventReminders, eventReminders.relationPersonIds as GeneratedColumn<Object>);
-          }
-          if (from < 6) {
-            await m.createTable(reminderTypes);
-          }
-          if (from < 7) {
-            Future<void> addDeletedAtIfNeeded(String tableName) async {
-              final tableExistsRows = await customSelect(
-                "SELECT name FROM sqlite_master WHERE type='table' AND name=?;",
-                variables: [Variable<String>(tableName)],
-              ).get();
-              if (tableExistsRows.isEmpty) return;
-              final cols = await customSelect('PRAGMA table_info($tableName);').get();
-              final hasDeletedAt = cols.any((e) => (e.data['name'] as String?) == 'deleted_at');
-              if (hasDeletedAt) return;
-              await customStatement('ALTER TABLE $tableName ADD COLUMN deleted_at INTEGER;');
-            }
-
-            await addDeletedAtIfNeeded('account_book');
-            await addDeletedAtIfNeeded('person');
-            await addDeletedAtIfNeeded('gift_record');
-          }
-          if (from < 8) {
-            await m.createTable(reasons);
-            await m.createTable(relationTypes);
-            await m.createTable(contactRelations);
-          }
-          if (from < 9) {
+        if (names.contains('reason_type')) {
+          await customStatement(
+            "UPDATE account_book SET reason_type = CASE reason_type WHEN 'default' THEN '结婚礼金' WHEN 'wedding' THEN '结婚礼金' WHEN 'business' THEN '商务往来' ELSE reason_type END;",
+          );
+        } else if (names.contains('type')) {
+          await customStatement(
+            "UPDATE account_book SET type = CASE type WHEN 'default' THEN '结婚礼金' WHEN 'wedding' THEN '结婚礼金' WHEN 'business' THEN '商务往来' ELSE type END;",
+          );
+          try {
             await customStatement(
-              "UPDATE account_book SET reason_type = '' WHERE is_default = 1;",
+              'ALTER TABLE account_book RENAME COLUMN type TO reason_type;',
             );
+          } catch (_) {
+            await customStatement(
+              'ALTER TABLE account_book RENAME TO account_book__old;',
+            );
+            await m.createTable(accountBooks);
+            await customStatement(
+              'INSERT INTO account_book(book_id, name, reason_type, theme_color, icon, description, is_default, created_at, updated_at) '
+              'SELECT book_id, name, type, theme_color, icon, description, is_default, created_at, updated_at FROM account_book__old;',
+            );
+            await customStatement('DROP TABLE account_book__old;');
           }
-        },
-        beforeOpen: (details) async {
-          await customStatement('PRAGMA foreign_keys = ON;');
-          await customStatement('PRAGMA journal_mode = WAL;');
-          await customStatement('PRAGMA synchronous = NORMAL;');
-        },
-      );
+        }
+      }
+      if (from < 4) {
+        await m.addColumn(
+          eventReminders,
+          eventReminders.title as GeneratedColumn<Object>,
+        );
+      }
+      if (from < 5) {
+        await m.addColumn(
+          eventReminders,
+          eventReminders.relationPersonIds as GeneratedColumn<Object>,
+        );
+      }
+      if (from < 6) {
+        await m.createTable(reminderTypes);
+      }
+      if (from < 7) {
+        Future<void> addDeletedAtIfNeeded(String tableName) async {
+          final tableExistsRows = await customSelect(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name=?;",
+            variables: [Variable<String>(tableName)],
+          ).get();
+          if (tableExistsRows.isEmpty) return;
+          final cols = await customSelect(
+            'PRAGMA table_info($tableName);',
+          ).get();
+          final hasDeletedAt = cols.any(
+            (e) => (e.data['name'] as String?) == 'deleted_at',
+          );
+          if (hasDeletedAt) return;
+          await customStatement(
+            'ALTER TABLE $tableName ADD COLUMN deleted_at INTEGER;',
+          );
+        }
+
+        await addDeletedAtIfNeeded('account_book');
+        await addDeletedAtIfNeeded('person');
+        await addDeletedAtIfNeeded('gift_record');
+      }
+      if (from < 8) {
+        await m.createTable(reasons);
+        await m.createTable(relationTypes);
+        await m.createTable(contactRelations);
+      }
+      if (from < 9) {
+        await customStatement(
+          "UPDATE account_book SET reason_type = '' WHERE is_default = 1;",
+        );
+      }
+      if (from < 10) {
+        await customStatement(
+          'ALTER TABLE account_book ADD COLUMN book_time INTEGER NOT NULL DEFAULT 0;',
+        );
+        await customStatement(
+          'UPDATE account_book SET book_time = COALESCE(NULLIF(book_time, 0), created_at, updated_at, ${DateTime.now().millisecondsSinceEpoch});',
+        );
+      }
+    },
+    beforeOpen: (details) async {
+      await customStatement('PRAGMA foreign_keys = ON;');
+      await customStatement('PRAGMA journal_mode = WAL;');
+      await customStatement('PRAGMA synchronous = NORMAL;');
+    },
+  );
 
   /// 统一生成 UUID（TEXT 主键）。
   String newId() => const Uuid().v4();

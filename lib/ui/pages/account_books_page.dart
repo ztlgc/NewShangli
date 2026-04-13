@@ -3,6 +3,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import '../../data/local/drift/app_database.dart';
 import '../../import/default_book_service.dart';
+import '../../utils/date_util.dart';
 import '../app_database_scope.dart';
 import '../app_tokens.dart';
 import '../app_scaffold.dart';
@@ -60,7 +61,9 @@ class _CanvasState extends State<_Canvas> {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: const BoxDecoration(
             color: AppColors.white,
-            border: Border(bottom: BorderSide(color: AppColors.gray100, width: 1)),
+            border: Border(
+              bottom: BorderSide(color: AppColors.gray100, width: 1),
+            ),
           ),
           child: Row(
             children: [
@@ -87,7 +90,11 @@ class _CanvasState extends State<_Canvas> {
                 backgroundColor: Colors.transparent,
                 foregroundColor: AppColors.textPrimary,
                 onPressed: () async {
-                  await AppNav.push<bool>(context, const AccountBookEditPage(), requiresLogin: true);
+                  await AppNav.push<bool>(
+                    context,
+                    const AccountBookEditPage(),
+                    requiresLogin: true,
+                  );
                   if (!context.mounted) return;
                   setState(() {});
                 },
@@ -97,7 +104,9 @@ class _CanvasState extends State<_Canvas> {
         ),
         Expanded(
           child: FutureBuilder<String>(
-            future: DefaultBookService().ensureDefaultBookId(AppDatabaseScope.of(context)),
+            future: DefaultBookService().ensureDefaultBookId(
+              AppDatabaseScope.of(context),
+            ),
             builder: (context, _) {
               return StreamBuilder<List<AccountBook>>(
                 stream: AppDatabaseScope.of(context).accountBooksDao.watchAll(),
@@ -119,7 +128,8 @@ class _CanvasState extends State<_Canvas> {
                   return ListView.separated(
                     padding: const EdgeInsets.all(16),
                     itemCount: books.length,
-                    separatorBuilder: (context, index) => const SizedBox(height: 16),
+                    separatorBuilder: (context, index) =>
+                        const SizedBox(height: 16),
                     itemBuilder: (context, i) {
                       final b = books[i];
                       return _BookCardDb(
@@ -127,7 +137,11 @@ class _CanvasState extends State<_Canvas> {
                         book: b,
                         onOpen: () => _openBook(b),
                         onEdit: () async {
-                          await AppNav.push<bool>(context, AccountBookEditPage(bookId: b.bookId), requiresLogin: true);
+                          await AppNav.push<bool>(
+                            context,
+                            AccountBookEditPage(bookId: b.bookId),
+                            requiresLogin: true,
+                          );
                           if (!context.mounted) return;
                           setState(() {});
                         },
@@ -166,7 +180,9 @@ class _BookCardDb extends StatelessWidget {
     final iconBg = theme.withValues(alpha: 0.14);
     final iconFg = theme;
 
-    final subtitle = (book.description ?? '').trim().isEmpty ? '点击查看该账簿记录' : book.description!.trim();
+    final subtitle = (book.description ?? '').trim().isEmpty
+        ? '点击查看该账簿记录'
+        : book.description!.trim();
 
     return PressableScale(
       onTap: onOpen,
@@ -189,10 +205,15 @@ class _BookCardDb extends StatelessWidget {
                 top: -16,
                 right: -16,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 2,
+                  ),
                   decoration: const BoxDecoration(
                     color: AppColors.indigo600,
-                    borderRadius: BorderRadius.only(bottomLeft: Radius.circular(8)),
+                    borderRadius: BorderRadius.only(
+                      bottomLeft: Radius.circular(8),
+                    ),
                   ),
                   child: Text(
                     '当前使用',
@@ -243,9 +264,22 @@ class _BookCardDb extends StatelessWidget {
                             ),
                             overflow: TextOverflow.ellipsis,
                           ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '账簿时间：${_formatBookTime(book.bookTime)}',
+                            style: AppTypography.base(
+                              fontSize: 11,
+                              fontWeight: AppTypography.regular,
+                              color: AppColors.textTertiary,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
                           const SizedBox(height: 6),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 3,
+                            ),
                             decoration: BoxDecoration(
                               color: AppColors.indigo50,
                               borderRadius: BorderRadius.circular(999),
@@ -272,7 +306,9 @@ class _BookCardDb extends StatelessWidget {
                   children: [
                     StreamBuilder<int>(
                       stream: isDefault
-                          ? db.giftRecordsDao.watchCountInAllBooks()
+                          ? db.giftRecordsDao.watchCountInDefaultScope(
+                              book.bookId,
+                            )
                           : db.giftRecordsDao.watchCountInBook(book.bookId),
                       builder: (context, snapshot) {
                         final count = snapshot.data ?? 0;
@@ -306,8 +342,10 @@ class _BookCardDb extends StatelessWidget {
 
 IconData _iconByReasonType(String reasonType) {
   final v = reasonType.trim();
-  if (v.contains('婚') || v.contains('宴') || v.contains('喜')) return FontAwesomeIcons.heart;
-  if (v.contains('商务') || v.contains('公司') || v.contains('企业')) return FontAwesomeIcons.briefcase;
+  if (v.contains('婚') || v.contains('宴') || v.contains('喜'))
+    return FontAwesomeIcons.heart;
+  if (v.contains('商务') || v.contains('公司') || v.contains('企业'))
+    return FontAwesomeIcons.briefcase;
   return FontAwesomeIcons.book;
 }
 
@@ -318,6 +356,10 @@ Color? _parseHexColorOrNull(String hex) {
   if (clean.length != 6 && clean.length != 8) return null;
   final full = clean.length == 6 ? 'FF$clean' : clean;
   return Color(int.parse(full, radix: 16));
+}
+
+String _formatBookTime(int timestamp) {
+  return DateUtil.format(DateTime.fromMillisecondsSinceEpoch(timestamp));
 }
 
 class _MiniTextButton extends StatelessWidget {
@@ -339,7 +381,10 @@ class _MiniTextButton extends StatelessWidget {
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(8)),
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(8),
+        ),
         child: Text(
           label,
           style: AppTypography.base(

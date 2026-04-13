@@ -8,21 +8,23 @@ class AccountBooksDao extends DatabaseAccessor<AppDatabase>
 
   /// 监听单个账簿变化。
   Stream<AccountBook> watchBook(String bookId) {
-    return (select(accountBooks)..where((t) => t.bookId.equals(bookId)))
-        .watchSingle();
+    return (select(
+      accountBooks,
+    )..where((t) => t.bookId.equals(bookId))).watchSingle();
   }
 
   /// 查询所有账簿（按创建时间倒序）。
   Stream<List<AccountBook>> watchAll() {
-    return (select(accountBooks)
-          ..orderBy([(t) => OrderingTerm.desc(t.createdAt)]))
-        .watch();
+    return (select(
+      accountBooks,
+    )..orderBy([(t) => OrderingTerm.desc(t.createdAt)])).watch();
   }
 
   /// 根据 bookId 查询单个账簿。
   Future<AccountBook?> findById(String bookId) {
-    return (select(accountBooks)..where((t) => t.bookId.equals(bookId)))
-        .getSingleOrNull();
+    return (select(
+      accountBooks,
+    )..where((t) => t.bookId.equals(bookId))).getSingleOrNull();
   }
 
   /// 插入账簿。
@@ -32,10 +34,9 @@ class AccountBooksDao extends DatabaseAccessor<AppDatabase>
     final int now = DateTime.now().millisecondsSinceEpoch;
     final AccountBooksCompanion withDefaults = companion.copyWith(
       bookId: companion.bookId.present ? companion.bookId : Value(db.newId()),
-      createdAt:
-          companion.createdAt.present ? companion.createdAt : Value(now),
-      updatedAt:
-          companion.updatedAt.present ? companion.updatedAt : Value(now),
+      bookTime: companion.bookTime.present ? companion.bookTime : Value(now),
+      createdAt: companion.createdAt.present ? companion.createdAt : Value(now),
+      updatedAt: companion.updatedAt.present ? companion.updatedAt : Value(now),
     );
 
     await into(accountBooks).insert(withDefaults);

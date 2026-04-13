@@ -32,13 +32,11 @@ void main() {
     await tester.pump(const Duration(seconds: 1));
   });
 
-  testWidgets('Tap dummy record row shows snackbar', (WidgetTester tester) async {
+  testWidgets('Empty record list shows placeholder', (WidgetTester tester) async {
     await tester.pumpWidget(const NewShangliApp());
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('张伟'));
-    await tester.pumpAndSettle();
-    expect(find.text('这是演示数据，添加真实记录后将自动消失'), findsOneWidget);
+    expect(find.text('暂无记录'), findsOneWidget);
 
     await tester.pumpWidget(const SizedBox());
     await tester.pump(const Duration(seconds: 1));

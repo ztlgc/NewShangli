@@ -59,32 +59,48 @@ class StatsRepository implements IStatsRepository {
     StatsDateRange? customRange,
   }) async {
     final range = resolveStatsDateRange(preset, now: now, customRange: customRange);
-    final startS = range.start.millisecondsSinceEpoch ~/ 1000;
-    final endS = range.endExclusive.millisecondsSinceEpoch ~/ 1000;
-
-    final targetBookId = _normalizeBookId(bookId);
-    final cacheKey = '${preset.name}|$targetBookId|$startS|$endS';
-    final cached = _cache[cacheKey];
-    final nowMs = DateTime.now().millisecondsSinceEpoch;
-    if (cached != null && cached.expiresAtMs > nowMs) {
-      return cached.data;
-    }
-
-    final lite = await _queryRecords(targetBookId, startS, endS);
-
-    final snapshot = computeStatsSnapshot(
+    final lite = _filterRecordsInMemory(
+      records,
+      bookId: bookId,
+      start: range.start,
+      endExclusive: range.endExclusive,
+    );
+    return computeStatsSnapshot(
       preset: preset,
       start: range.start,
       endExclusive: range.endExclusive,
       records: lite,
     );
+  }
 
-    _cache[cacheKey] = _CacheEntry(
-      data: snapshot,
-      expiresAtMs: nowMs + _cacheTtl.inMilliseconds,
-    );
-
-    return snapshot;
+  List<StatsRecordLite> _filterRecordsInMemory(
+    List<StatsSourceRecord> records, {
+    required String? bookId,
+    required DateTime start,
+    required DateTime endExclusive,
+  }) {
+    final normalizedBookId = _normalizeFilterBookId(bookId);
+    final out = <StatsRecordLite>[];
+    for (final record in records) {
+      final recordBookId = _normalizeFilterBookId(record.bookId);
+      if (normalizedBookId != null && recordBookId != normalizedBookId) {
+        continue;
+      }
+      if (record.occurredAt.isBefore(start) ||
+          !record.occurredAt.isBefore(endExclusive)) {
+        continue;
+      }
+      out.add(
+        StatsRecordLite(
+          direction: record.direction,
+          amountCent: record.amountCent,
+          eventName: record.eventName,
+          personName: record.personName,
+          occurredAt: record.occurredAt,
+        ),
+      );
+    }
+    return out;
   }
 
   /// 将源记录同步到统计数据库。应在加载统计数据前调用一次。
@@ -135,6 +151,12 @@ class StatsRepository implements IStatsRepository {
     return v;
   }
 
+  String? _normalizeFilterBookId(String? bookId) {
+    final v = bookId?.trim();
+    if (v == null || v.isEmpty) return null;
+    return v;
+  }
+
   Future<List<StatsRecordLite>> _queryRecords(String bookId, int startS, int endS) async {
     final rows = await _db.query(
       'SELECT direction, amount_cent, event_name, person_name, occurred_at_s FROM records WHERE book_id = ? AND occurred_at_s >= ? AND occurred_at_s < ?',
@@ -165,4 +187,3 @@ class _CacheEntry {
   final StatsSnapshot data;
   final int expiresAtMs;
 }
-

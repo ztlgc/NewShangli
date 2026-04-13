@@ -3,11 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import '../../data/local/drift/app_database.dart';
+import '../../utils/date_util.dart';
 import '../app_toast.dart';
 import '../app_database_scope.dart';
 import '../app_tokens.dart';
 import '../app_scaffold.dart';
 import '../components.dart';
+import '../lunar_date_picker.dart';
 import '../navigation.dart';
 import '../prototype_kit.dart';
 import 'reason_manage_page.dart';
@@ -44,6 +46,7 @@ class _CanvasState extends State<_Canvas> {
   late final TextEditingController _nameCtrl;
   String _reasonType = '';
   String _themeColor = '#312E81';
+  DateTime _bookTime = DateTime.now();
   late final TextEditingController _noteCtrl;
   bool _loadedOnce = false;
 
@@ -105,8 +108,36 @@ class _CanvasState extends State<_Canvas> {
       _nameCtrl.text = book.name;
       _reasonType = book.reasonType;
       _themeColor = book.themeColor;
+      _bookTime = DateTime.fromMillisecondsSinceEpoch(book.bookTime);
       _noteCtrl.text = book.description ?? '';
       _loading = false;
+    });
+  }
+
+  Future<void> _pickBookTime() async {
+    final initialDate = DateTime(
+      _bookTime.year,
+      _bookTime.month,
+      _bookTime.day,
+    );
+    final picked = await showLunarDatePicker(
+      context: context,
+      initialDate: initialDate,
+      firstDate: DateTime(2000, 1, 1),
+      lastDate: DateTime(DateTime.now().year + 10, 12, 31),
+    );
+    if (picked == null) return;
+    setState(() {
+      _bookTime = DateTime(
+        picked.year,
+        picked.month,
+        picked.day,
+        _bookTime.hour,
+        _bookTime.minute,
+        _bookTime.second,
+        _bookTime.millisecond,
+        _bookTime.microsecond,
+      );
     });
   }
 
@@ -136,6 +167,7 @@ class _CanvasState extends State<_Canvas> {
             reasonType: Value(_reasonType),
             themeColor: Value(_themeColor),
             description: note.isEmpty ? const Value.absent() : Value(note),
+            bookTime: Value(_bookTime.millisecondsSinceEpoch),
             isDefault: const Value(0),
           ),
         );
@@ -145,11 +177,21 @@ class _CanvasState extends State<_Canvas> {
           reasonType: _reasonType,
           themeColor: _themeColor,
           description: Value(note.isEmpty ? null : note),
+          bookTime: _bookTime.millisecondsSinceEpoch,
           isDefault: _book!.isDefault,
         );
         await _db.accountBooksDao.updateOne(updated);
         if (_book!.reasonType != _reasonType) {
-          await _db.giftRecordsDao.updateEventNameByBookId(updated.bookId, _reasonType);
+          await _db.giftRecordsDao.updateEventNameByBookId(
+            updated.bookId,
+            _reasonType,
+          );
+        }
+        if (_book!.bookTime != updated.bookTime) {
+          await _db.giftRecordsDao.updateOccurredAtByBookId(
+            updated.bookId,
+            updated.bookTime,
+          );
         }
       }
       if (!mounted) return;
@@ -182,10 +224,15 @@ class _CanvasState extends State<_Canvas> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
                   decoration: const BoxDecoration(
                     color: AppColors.white,
-                    border: Border(bottom: BorderSide(color: AppColors.gray100, width: 1)),
+                    border: Border(
+                      bottom: BorderSide(color: AppColors.gray100, width: 1),
+                    ),
                   ),
                   child: Row(
                     children: [
@@ -312,10 +359,15 @@ class _CanvasState extends State<_Canvas> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
                   decoration: const BoxDecoration(
                     color: AppColors.white,
-                    border: Border(bottom: BorderSide(color: AppColors.gray100, width: 1)),
+                    border: Border(
+                      bottom: BorderSide(color: AppColors.gray100, width: 1),
+                    ),
                   ),
                   child: Row(
                     children: [
@@ -382,18 +434,30 @@ class _CanvasState extends State<_Canvas> {
                             fontWeight: AppTypography.regular,
                             color: AppColors.textMuted,
                           ),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 12,
+                          ),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: AppColors.borderSubtle, width: 1),
+                            borderSide: const BorderSide(
+                              color: AppColors.borderSubtle,
+                              width: 1,
+                            ),
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: AppColors.borderSubtle, width: 1),
+                            borderSide: const BorderSide(
+                              color: AppColors.borderSubtle,
+                              width: 1,
+                            ),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: AppColors.borderFocus, width: 1),
+                            borderSide: const BorderSide(
+                              color: AppColors.borderFocus,
+                              width: 1,
+                            ),
                           ),
                         ),
                       ),
@@ -435,7 +499,10 @@ class _CanvasState extends State<_Canvas> {
     final isReadonlyDefault = _book?.isDefault == 1;
     final themeColor = _parseHexColor(_themeColor);
     final icon = _iconByReasonType(_reasonType);
-    final reasonTypeLabel = isReadonlyDefault ? '全部事由' : _labelByReasonType(_reasonType);
+    final reasonTypeLabel = isReadonlyDefault
+        ? '全部事由'
+        : _labelByReasonType(_reasonType);
+    final bookTimeLabel = _formatBookTime(_bookTime);
 
     return Column(
       children: [
@@ -443,7 +510,9 @@ class _CanvasState extends State<_Canvas> {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: const BoxDecoration(
             color: AppColors.white,
-            border: Border(bottom: BorderSide(color: AppColors.gray100, width: 1)),
+            border: Border(
+              bottom: BorderSide(color: AppColors.gray100, width: 1),
+            ),
           ),
           child: Row(
             children: [
@@ -477,9 +546,14 @@ class _CanvasState extends State<_Canvas> {
               PressableScale(
                 onTap: (_saving || isReadonlyDefault) ? null : _save,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
-                    color: isReadonlyDefault ? AppColors.gray300 : AppColors.brandPrimary,
+                    color: isReadonlyDefault
+                        ? AppColors.gray300
+                        : AppColors.brandPrimary,
                     borderRadius: BorderRadius.circular(9999),
                     boxShadow: isReadonlyDefault ? null : AppShadows.sm,
                   ),
@@ -507,8 +581,10 @@ class _CanvasState extends State<_Canvas> {
                     _BasicCard(
                       nameCtrl: _nameCtrl,
                       reasonTypeLabel: reasonTypeLabel,
+                      bookTimeLabel: bookTimeLabel,
                       editable: !isReadonlyDefault,
                       onPickReasonType: _pickReasonType,
+                      onPickBookTime: _pickBookTime,
                     ),
                     const SizedBox(height: 24),
                     const _Overline(title: '主题颜色'),
@@ -516,10 +592,15 @@ class _CanvasState extends State<_Canvas> {
                     _ColorPickerCard(
                       options: _themes,
                       selectedHex: _themeColor,
-                      onPick: isReadonlyDefault ? null : (hex) => setState(() => _themeColor = hex),
+                      onPick: isReadonlyDefault
+                          ? null
+                          : (hex) => setState(() => _themeColor = hex),
                     ),
                     const SizedBox(height: 24),
-                    _NoteCard(noteCtrl: _noteCtrl, editable: !isReadonlyDefault),
+                    _NoteCard(
+                      noteCtrl: _noteCtrl,
+                      editable: !isReadonlyDefault,
+                    ),
                     if (_book != null && !isReadonlyDefault) ...[
                       const SizedBox(height: 24),
                       _DeleteButton(disabled: _deleting, onTap: _delete),
@@ -539,10 +620,7 @@ class _CanvasState extends State<_Canvas> {
 }
 
 class _IconPreview extends StatelessWidget {
-  const _IconPreview({
-    required this.color,
-    required this.icon,
-  });
+  const _IconPreview({required this.color, required this.icon});
 
   final Color color;
   final IconData icon;
@@ -580,14 +658,18 @@ class _BasicCard extends StatelessWidget {
   const _BasicCard({
     required this.nameCtrl,
     required this.reasonTypeLabel,
+    required this.bookTimeLabel,
     required this.editable,
     required this.onPickReasonType,
+    required this.onPickBookTime,
   });
 
   final TextEditingController nameCtrl;
   final String reasonTypeLabel;
+  final String bookTimeLabel;
   final bool editable;
   final VoidCallback onPickReasonType;
+  final VoidCallback onPickBookTime;
 
   @override
   Widget build(BuildContext context) {
@@ -611,8 +693,14 @@ class _BasicCard extends StatelessWidget {
           _SelectRow(
             label: '事由类型',
             value: reasonTypeLabel,
-            borderBottom: false,
             onTap: editable ? onPickReasonType : null,
+          ),
+          const PrototypeDivider(color: AppColors.borderDivider),
+          _SelectRow(
+            label: '账簿时间',
+            value: bookTimeLabel,
+            borderBottom: false,
+            onTap: editable ? onPickBookTime : null,
           ),
         ],
       ),
@@ -654,7 +742,10 @@ class _TextFieldRow extends StatelessWidget {
               children: [
                 TextSpan(text: label),
                 if (requiredMark)
-                  const TextSpan(text: ' *', style: TextStyle(color: AppColors.red500)),
+                  const TextSpan(
+                    text: ' *',
+                    style: TextStyle(color: AppColors.red500),
+                  ),
               ],
             ),
           ),
@@ -679,18 +770,30 @@ class _TextFieldRow extends StatelessWidget {
                 fontWeight: AppTypography.regular,
                 color: AppColors.textMuted,
               ),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 12,
+              ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: AppColors.borderSubtle, width: 1),
+                borderSide: const BorderSide(
+                  color: AppColors.borderSubtle,
+                  width: 1,
+                ),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: AppColors.borderSubtle, width: 1),
+                borderSide: const BorderSide(
+                  color: AppColors.borderSubtle,
+                  width: 1,
+                ),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: AppColors.borderFocus, width: 1),
+                borderSide: const BorderSide(
+                  color: AppColors.borderFocus,
+                  width: 1,
+                ),
               ),
             ),
           ),
@@ -744,7 +847,12 @@ class _SelectRow extends StatelessWidget {
               ],
             ),
           ),
-          if (onTap != null) const FaIcon(FontAwesomeIcons.chevronRight, size: 10, color: AppColors.gray300),
+          if (onTap != null)
+            const FaIcon(
+              FontAwesomeIcons.chevronRight,
+              size: 10,
+              color: AppColors.gray300,
+            ),
         ],
       ),
     );
@@ -786,6 +894,10 @@ class _ReasonTypePickerSheet extends StatefulWidget {
 
   @override
   State<_ReasonTypePickerSheet> createState() => _ReasonTypePickerSheetState();
+}
+
+String _formatBookTime(DateTime dt) {
+  return DateUtil.format(dt);
 }
 
 class _ReasonTypePickerSheetState extends State<_ReasonTypePickerSheet> {
@@ -912,7 +1024,9 @@ class _ReasonTypePickerSheetState extends State<_ReasonTypePickerSheet> {
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
                 child: PrototypeSecondaryButton(
                   label: '管理事由',
-                  onTap: () => Navigator.of(context).pop(_ReasonTypePickerSheet.manageAction),
+                  onTap: () => Navigator.of(
+                    context,
+                  ).pop(_ReasonTypePickerSheet.manageAction),
                 ),
               ),
             ],
@@ -1003,7 +1117,11 @@ class _Dot extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (!selected) {
-      return Container(width: 32, height: 32, decoration: BoxDecoration(color: color, shape: BoxShape.circle));
+      return Container(
+        width: 32,
+        height: 32,
+        decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+      );
     }
 
     return Container(
@@ -1015,16 +1133,15 @@ class _Dot extends StatelessWidget {
         shape: BoxShape.circle,
         border: Border.all(color: AppColors.indigo500, width: 2),
       ),
-      child: Container(decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+      child: Container(
+        decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+      ),
     );
   }
 }
 
 class _NoteCard extends StatelessWidget {
-  const _NoteCard({
-    required this.noteCtrl,
-    required this.editable,
-  });
+  const _NoteCard({required this.noteCtrl, required this.editable});
 
   final TextEditingController noteCtrl;
   final bool editable;
@@ -1065,18 +1182,30 @@ class _NoteCard extends StatelessWidget {
                 fontWeight: AppTypography.regular,
                 color: AppColors.textMuted,
               ),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 12,
+              ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: AppColors.borderSubtle, width: 1),
+                borderSide: const BorderSide(
+                  color: AppColors.borderSubtle,
+                  width: 1,
+                ),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: AppColors.borderSubtle, width: 1),
+                borderSide: const BorderSide(
+                  color: AppColors.borderSubtle,
+                  width: 1,
+                ),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: AppColors.borderFocus, width: 1),
+                borderSide: const BorderSide(
+                  color: AppColors.borderFocus,
+                  width: 1,
+                ),
               ),
             ),
           ),
@@ -1087,10 +1216,7 @@ class _NoteCard extends StatelessWidget {
 }
 
 class _DefaultToggleCard extends StatelessWidget {
-  const _DefaultToggleCard({
-    required this.value,
-    required this.onChanged,
-  });
+  const _DefaultToggleCard({required this.value, required this.onChanged});
 
   final bool value;
   final ValueChanged<bool> onChanged;
@@ -1139,10 +1265,7 @@ class _DefaultToggleCard extends StatelessWidget {
 }
 
 class _DeleteButton extends StatelessWidget {
-  const _DeleteButton({
-    required this.disabled,
-    required this.onTap,
-  });
+  const _DeleteButton({required this.disabled, required this.onTap});
 
   final bool disabled;
   final VoidCallback onTap;
@@ -1205,8 +1328,10 @@ String _labelByReasonType(String reasonType) {
 
 IconData _iconByReasonType(String reasonType) {
   final v = reasonType.trim();
-  if (v.contains('婚') || v.contains('宴') || v.contains('喜')) return FontAwesomeIcons.heart;
-  if (v.contains('商务') || v.contains('公司') || v.contains('企业')) return FontAwesomeIcons.briefcase;
+  if (v.contains('婚') || v.contains('宴') || v.contains('喜'))
+    return FontAwesomeIcons.heart;
+  if (v.contains('商务') || v.contains('公司') || v.contains('企业'))
+    return FontAwesomeIcons.briefcase;
   return FontAwesomeIcons.book;
 }
 
@@ -1215,4 +1340,3 @@ Color _parseHexColor(String hex) {
   final full = clean.length == 6 ? 'FF$clean' : clean;
   return Color(int.parse(full, radix: 16));
 }
-

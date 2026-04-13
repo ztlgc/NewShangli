@@ -6,10 +6,7 @@ part of '../app_database.dart';
 /// - UI 层展示账簿记录列表时通常需要同时展示关系人姓名/关系等信息；
 /// - 这里用一个轻量 DTO 承接 join 的结果，避免 UI 自己拼 SQL。
 class GiftRecordWithPerson {
-  const GiftRecordWithPerson({
-    required this.record,
-    required this.person,
-  });
+  const GiftRecordWithPerson({required this.record, required this.person});
 
   final GiftRecord record;
   final Person person;
@@ -69,11 +66,7 @@ class GiftRecordsDao extends DatabaseAccessor<AppDatabase>
           expense += r.amountCent;
         }
       }
-      return {
-        'income': income,
-        'expense': expense,
-        'count': records.length,
-      };
+      return {'income': income, 'expense': expense, 'count': records.length};
     });
   }
 
@@ -82,17 +75,18 @@ class GiftRecordsDao extends DatabaseAccessor<AppDatabase>
   /// - 用于“账簿记录页面”展示：姓名、金额、收支方向、发生时间等。
   /// - 这里额外约束 persons.bookId，与 gift_record.book_id 一致，防止异常数据污染。
   Stream<List<GiftRecordWithPerson>> watchAllWithPersonInBook(String bookId) {
-    final joined = select(giftRecords).join([
-      innerJoin(
-        persons,
-        persons.personId.equalsExp(giftRecords.personId),
-      ),
-    ])
-      ..where(giftRecords.bookId.equals(bookId))
-      ..where(giftRecords.deletedAt.isNull())
-      ..where(persons.bookId.equals(bookId))
-      ..where(persons.deletedAt.isNull())
-      ..orderBy([OrderingTerm.desc(giftRecords.occurredAt)]);
+    final joined =
+        select(giftRecords).join([
+            innerJoin(
+              persons,
+              persons.personId.equalsExp(giftRecords.personId),
+            ),
+          ])
+          ..where(giftRecords.bookId.equals(bookId))
+          ..where(giftRecords.deletedAt.isNull())
+          ..where(persons.bookId.equals(bookId))
+          ..where(persons.deletedAt.isNull())
+          ..orderBy([OrderingTerm.desc(giftRecords.occurredAt)]);
 
     return joined.watch().map((rows) {
       return rows
@@ -106,21 +100,78 @@ class GiftRecordsDao extends DatabaseAccessor<AppDatabase>
     });
   }
 
-  /// 默认账簿视角：展示所有记录（用于“默认账簿包含未指定账簿的记录/全部记录”的需求）。
-  ///
-  /// 说明：
-  /// - 当前表结构 gift_record.book_id 必填，因此“未指定账簿”的含义在 UI 上等价为“默认账簿汇总视角”
-  /// - 这里不按 bookId 过滤，直接返回所有记录
+  Expression<bool> _defaultScopeFilter(String defaultBookId) {
+    return giftRecords.bookId.equals(defaultBookId) |
+        giftRecords.direction.equals('支出');
+  }
+
+  /// 默认账簿视角：
+  /// - 统计/展示主动选择默认账簿的所有收支记录
+  /// - 同时统计其他账簿中的支出记录
+  Stream<List<GiftRecordWithPerson>> watchAllWithPersonInDefaultScope(
+    String defaultBookId,
+  ) {
+    final joined =
+        select(giftRecords).join([
+            innerJoin(
+              persons,
+              persons.personId.equalsExp(giftRecords.personId),
+            ),
+          ])
+          ..where(giftRecords.deletedAt.isNull())
+          ..where(persons.deletedAt.isNull())
+          ..where(_defaultScopeFilter(defaultBookId))
+          ..orderBy([OrderingTerm.desc(giftRecords.occurredAt)]);
+
+    return joined.watch().map((rows) {
+      return rows
+          .map(
+            (row) => GiftRecordWithPerson(
+              record: row.readTable(giftRecords),
+              person: row.readTable(persons),
+            ),
+          )
+          .toList();
+    });
+  }
+
+  Future<List<GiftRecordWithPerson>> listAllWithPersonInDefaultScope(
+    String defaultBookId,
+  ) async {
+    final joined =
+        select(giftRecords).join([
+            innerJoin(
+              persons,
+              persons.personId.equalsExp(giftRecords.personId),
+            ),
+          ])
+          ..where(giftRecords.deletedAt.isNull())
+          ..where(persons.deletedAt.isNull())
+          ..where(_defaultScopeFilter(defaultBookId))
+          ..orderBy([OrderingTerm.desc(giftRecords.occurredAt)]);
+    final rows = await joined.get();
+    return rows
+        .map(
+          (row) => GiftRecordWithPerson(
+            record: row.readTable(giftRecords),
+            person: row.readTable(persons),
+          ),
+        )
+        .toList();
+  }
+
+  /// 全局视角：展示所有记录。
   Stream<List<GiftRecordWithPerson>> watchAllWithPersonInAllBooks() {
-    final joined = select(giftRecords).join([
-      innerJoin(
-        persons,
-        persons.personId.equalsExp(giftRecords.personId),
-      ),
-    ])
-      ..where(giftRecords.deletedAt.isNull())
-      ..where(persons.deletedAt.isNull())
-      ..orderBy([OrderingTerm.desc(giftRecords.occurredAt)]);
+    final joined =
+        select(giftRecords).join([
+            innerJoin(
+              persons,
+              persons.personId.equalsExp(giftRecords.personId),
+            ),
+          ])
+          ..where(giftRecords.deletedAt.isNull())
+          ..where(persons.deletedAt.isNull())
+          ..orderBy([OrderingTerm.desc(giftRecords.occurredAt)]);
 
     return joined.watch().map((rows) {
       return rows
@@ -135,15 +186,16 @@ class GiftRecordsDao extends DatabaseAccessor<AppDatabase>
   }
 
   Future<List<GiftRecordWithPerson>> listAllWithPersonInAllBooks() async {
-    final joined = select(giftRecords).join([
-      innerJoin(
-        persons,
-        persons.personId.equalsExp(giftRecords.personId),
-      ),
-    ])
-      ..where(giftRecords.deletedAt.isNull())
-      ..where(persons.deletedAt.isNull())
-      ..orderBy([OrderingTerm.desc(giftRecords.occurredAt)]);
+    final joined =
+        select(giftRecords).join([
+            innerJoin(
+              persons,
+              persons.personId.equalsExp(giftRecords.personId),
+            ),
+          ])
+          ..where(giftRecords.deletedAt.isNull())
+          ..where(persons.deletedAt.isNull())
+          ..orderBy([OrderingTerm.desc(giftRecords.occurredAt)]);
     final rows = await joined.get();
     return rows
         .map(
@@ -169,7 +221,20 @@ class GiftRecordsDao extends DatabaseAccessor<AppDatabase>
     });
   }
 
-  /// 默认账簿视角：统计所有记录数。
+  /// 默认账簿视角：统计“默认账簿收支 + 其他账簿支出”记录数。
+  Stream<int> watchCountInDefaultScope(String defaultBookId) {
+    final countExp = giftRecords.recordId.count();
+    final query = selectOnly(giftRecords)
+      ..addColumns([countExp])
+      ..where(_defaultScopeFilter(defaultBookId))
+      ..where(giftRecords.deletedAt.isNull());
+    return query.watch().map((rows) {
+      if (rows.isEmpty) return 0;
+      return rows.first.read(countExp) ?? 0;
+    });
+  }
+
+  /// 全局视角：统计所有记录数。
   Stream<int> watchCountInAllBooks() {
     final countExp = giftRecords.recordId.count();
     final query = selectOnly(giftRecords)
@@ -189,19 +254,19 @@ class GiftRecordsDao extends DatabaseAccessor<AppDatabase>
   }
 
   Future<GiftRecord?> findByIdAny(String recordId) {
-    return (select(giftRecords)..where((t) => t.recordId.equals(recordId)))
-        .getSingleOrNull();
+    return (select(
+      giftRecords,
+    )..where((t) => t.recordId.equals(recordId))).getSingleOrNull();
   }
 
   Future<String> insertOne(GiftRecordsCompanion companion) async {
     final int now = DateTime.now().millisecondsSinceEpoch;
     final GiftRecordsCompanion withDefaults = companion.copyWith(
-      recordId:
-          companion.recordId.present ? companion.recordId : Value(db.newId()),
-      createdAt:
-          companion.createdAt.present ? companion.createdAt : Value(now),
-      updatedAt:
-          companion.updatedAt.present ? companion.updatedAt : Value(now),
+      recordId: companion.recordId.present
+          ? companion.recordId
+          : Value(db.newId()),
+      createdAt: companion.createdAt.present ? companion.createdAt : Value(now),
+      updatedAt: companion.updatedAt.present ? companion.updatedAt : Value(now),
     );
 
     await into(giftRecords).insert(withDefaults);
@@ -217,37 +282,41 @@ class GiftRecordsDao extends DatabaseAccessor<AppDatabase>
 
   Future<int> deleteById(String recordId) {
     final now = DateTime.now().millisecondsSinceEpoch;
-    return (update(giftRecords)..where((t) => t.recordId.equals(recordId))).write(
-      GiftRecordsCompanion(
-        deletedAt: Value(now),
-        updatedAt: Value(now),
-      ),
+    return (update(
+      giftRecords,
+    )..where((t) => t.recordId.equals(recordId))).write(
+      GiftRecordsCompanion(deletedAt: Value(now), updatedAt: Value(now)),
     );
   }
 
   Future<int> restoreById(String recordId) {
     final now = DateTime.now().millisecondsSinceEpoch;
-    return (update(giftRecords)..where((t) => t.recordId.equals(recordId))).write(
-      GiftRecordsCompanion(
-        deletedAt: const Value(null),
-        updatedAt: Value(now),
-      ),
+    return (update(
+      giftRecords,
+    )..where((t) => t.recordId.equals(recordId))).write(
+      GiftRecordsCompanion(deletedAt: const Value(null), updatedAt: Value(now)),
     );
   }
 
   Future<int> purgeById(String recordId) {
-    return (delete(giftRecords)..where((t) => t.recordId.equals(recordId))).go();
+    return (delete(
+      giftRecords,
+    )..where((t) => t.recordId.equals(recordId))).go();
   }
 
   Stream<List<DeletedGiftRecordWithPerson>> watchDeletedWithPerson() {
-    final joined = select(giftRecords).join([
-      leftOuterJoin(
-        persons,
-        persons.personId.equalsExp(giftRecords.personId),
-      ),
-    ])
-      ..where(giftRecords.deletedAt.isNotNull())
-      ..orderBy([OrderingTerm.desc(giftRecords.deletedAt), OrderingTerm.desc(giftRecords.occurredAt)]);
+    final joined =
+        select(giftRecords).join([
+            leftOuterJoin(
+              persons,
+              persons.personId.equalsExp(giftRecords.personId),
+            ),
+          ])
+          ..where(giftRecords.deletedAt.isNotNull())
+          ..orderBy([
+            OrderingTerm.desc(giftRecords.deletedAt),
+            OrderingTerm.desc(giftRecords.occurredAt),
+          ]);
 
     return joined.watch().map((rows) {
       return rows
@@ -319,6 +388,16 @@ class GiftRecordsDao extends DatabaseAccessor<AppDatabase>
     return (update(giftRecords)..where((t) => t.bookId.equals(bookId))).write(
       GiftRecordsCompanion(
         eventName: Value(newEventName),
+        updatedAt: Value(now),
+      ),
+    );
+  }
+
+  Future<int> updateOccurredAtByBookId(String bookId, int occurredAt) {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    return (update(giftRecords)..where((t) => t.bookId.equals(bookId))).write(
+      GiftRecordsCompanion(
+        occurredAt: Value(occurredAt),
         updatedAt: Value(now),
       ),
     );

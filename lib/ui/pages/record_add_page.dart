@@ -42,6 +42,7 @@ class _RecordAddPageState extends State<RecordAddPage> {
   String _eventName = '';
   String _paymentMethod = '微信支付';
   DateTime _occurredAt = DateTime.now();
+  bool _occurredAtLockedByBookTime = false;
   bool _dirty = false;
   bool _saving = false;
   bool _loaded = false;
@@ -110,8 +111,14 @@ class _RecordAddPageState extends State<RecordAddPage> {
           title: const Text('放弃编辑？'),
           content: const Text('当前修改尚未保存，确认放弃？'),
           actions: [
-            TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('取消')),
-            TextButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('放弃')),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('取消'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('放弃'),
+            ),
           ],
         );
       },
@@ -131,22 +138,30 @@ class _RecordAddPageState extends State<RecordAddPage> {
     await _ensureRequiredDefaults();
     final amountCent = _parseAmountCent(_amountController.text);
     if (amountCent == null || amountCent <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('请输入正确金额')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('请输入正确金额')));
       return;
     }
     final pid = _personId;
     if (pid == null || pid.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('请选择关系人')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('请选择关系人')));
       return;
     }
     final eventName = _eventName.trim();
     if (eventName.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('请选择事由')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('请选择事由')));
       return;
     }
     final payment = _paymentMethod.trim();
     if (payment.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('请选择支付方式')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('请选择支付方式')));
       return;
     }
 
@@ -158,7 +173,9 @@ class _RecordAddPageState extends State<RecordAddPage> {
           data.createRecord(
             bookId: _bookId,
             personId: pid,
-            direction: _isIncome ? RecordDirection.income : RecordDirection.expense,
+            direction: _isIncome
+                ? RecordDirection.income
+                : RecordDirection.expense,
             amountCent: amountCent,
             eventName: eventName,
             paymentMethod: payment,
@@ -170,7 +187,9 @@ class _RecordAddPageState extends State<RecordAddPage> {
             id: widget.recordId!,
             bookId: _bookId,
             personId: pid,
-            direction: _isIncome ? RecordDirection.income : RecordDirection.expense,
+            direction: _isIncome
+                ? RecordDirection.income
+                : RecordDirection.expense,
             amountCent: amountCent,
             eventName: eventName,
             paymentMethod: payment,
@@ -187,6 +206,11 @@ class _RecordAddPageState extends State<RecordAddPage> {
     setState(() => _saving = true);
     try {
       final dbBookId = await _resolveDbBookId(db, _bookId);
+      final book = await db.accountBooksDao.findById(dbBookId);
+      final occurredAtMs =
+          (book != null && book.isDefault != 1)
+          ? book.bookTime
+          : _occurredAt.millisecondsSinceEpoch;
       final now = DateTime.now().millisecondsSinceEpoch;
       if (widget.recordId == null) {
         await db.giftRecordsDao.insertOne(
@@ -197,8 +221,12 @@ class _RecordAddPageState extends State<RecordAddPage> {
             direction: Value(_isIncome ? '收入' : '支出'),
             eventName: Value(eventName),
             paymentMethod: Value(payment),
-            occurredAt: _occurredAt.millisecondsSinceEpoch,
-            note: Value(_noteController.text.trim().isEmpty ? null : _noteController.text.trim()),
+            occurredAt: occurredAtMs,
+            note: Value(
+              _noteController.text.trim().isEmpty
+                  ? null
+                  : _noteController.text.trim(),
+            ),
             attachments: Value(_attachments.isEmpty ? null : _attachments),
             createdAt: now,
             updatedAt: now,
@@ -217,8 +245,12 @@ class _RecordAddPageState extends State<RecordAddPage> {
             direction: _isIncome ? '收入' : '支出',
             eventName: Value(eventName),
             paymentMethod: Value(payment),
-            occurredAt: _occurredAt.millisecondsSinceEpoch,
-            note: Value(_noteController.text.trim().isEmpty ? null : _noteController.text.trim()),
+            occurredAt: occurredAtMs,
+            note: Value(
+              _noteController.text.trim().isEmpty
+                  ? null
+                  : _noteController.text.trim(),
+            ),
             attachments: Value(_attachments.isEmpty ? null : _attachments),
             deletedAt: const Value(null),
           ),
@@ -229,7 +261,9 @@ class _RecordAddPageState extends State<RecordAddPage> {
       _closeAfterSave();
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('保存失败：$e')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('保存失败：$e')));
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -238,11 +272,13 @@ class _RecordAddPageState extends State<RecordAddPage> {
   Future<void> _pickPerson() async {
     final db = AppDatabaseScope.maybeOf(context);
     if (db == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('数据库未初始化')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('数据库未初始化')));
       return;
     }
     while (mounted) {
-      final persons = await db.select(db.persons).get();
+      final persons = await db.personsDao.watchAllInAllBooks().first;
       persons.sort((a, b) => a.name.compareTo(b.name));
       if (!mounted) return;
       final result = await showModalBottomSheet<_PersonPickerResult>(
@@ -289,13 +325,17 @@ class _RecordAddPageState extends State<RecordAddPage> {
   Future<void> _pickBook() async {
     final db = AppDatabaseScope.maybeOf(context);
     if (db == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('数据库未初始化')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('数据库未初始化')));
       return;
     }
     final books = await db.select(db.accountBooks).get();
     if (!mounted) return;
     if (books.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('暂无账簿，请先创建')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('暂无账簿，请先创建')));
       return;
     }
     final picked = await showDialog<String>(
@@ -316,10 +356,15 @@ class _RecordAddPageState extends State<RecordAddPage> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
                     decoration: const BoxDecoration(
                       color: AppColors.white,
-                      border: Border(bottom: BorderSide(color: AppColors.gray100, width: 1)),
+                      border: Border(
+                        bottom: BorderSide(color: AppColors.gray100, width: 1),
+                      ),
                     ),
                     child: Row(
                       children: [
@@ -353,7 +398,9 @@ class _RecordAddPageState extends State<RecordAddPage> {
                           for (final b in books)
                             PrototypePressableRow(
                               onTap: () {
-                                final id = (b.isDefault == 1) ? _defaultBookSelectionId : b.bookId;
+                                final id = (b.isDefault == 1)
+                                    ? _defaultBookSelectionId
+                                    : b.bookId;
                                 Navigator.of(context).pop(id);
                               },
                               child: Row(
@@ -368,8 +415,15 @@ class _RecordAddPageState extends State<RecordAddPage> {
                                       ),
                                     ),
                                   ),
-                                  if (((b.isDefault == 1) ? _defaultBookSelectionId : b.bookId) == _bookId)
-                                    const FaIcon(FontAwesomeIcons.check, size: 14, color: AppColors.indigo600),
+                                  if (((b.isDefault == 1)
+                                          ? _defaultBookSelectionId
+                                          : b.bookId) ==
+                                      _bookId)
+                                    const FaIcon(
+                                      FontAwesomeIcons.check,
+                                      size: 14,
+                                      color: AppColors.indigo600,
+                                    ),
                                 ],
                               ),
                             ),
@@ -387,6 +441,27 @@ class _RecordAddPageState extends State<RecordAddPage> {
     if (picked == null) return;
     setState(() {
       _bookId = picked;
+      _dirty = true;
+    });
+    await _syncOccurredAtFromBookTime();
+  }
+
+  Future<void> _syncOccurredAtFromBookTime() async {
+    final db = AppDatabaseScope.maybeOf(context);
+    if (db == null) return;
+    final dbBookId = await _resolveDbBookId(db, _bookId);
+    final book = await db.accountBooksDao.findById(dbBookId);
+    if (book == null || !mounted) return;
+    if (book.isDefault == 1) {
+      setState(() {
+        _occurredAtLockedByBookTime = false;
+        _dirty = true;
+      });
+      return;
+    }
+    setState(() {
+      _occurredAt = DateTime.fromMillisecondsSinceEpoch(book.bookTime);
+      _occurredAtLockedByBookTime = true;
       _dirty = true;
     });
   }
@@ -424,35 +499,42 @@ class _RecordAddPageState extends State<RecordAddPage> {
   Color _reasonIconBgColor(String name) {
     final n = name.trim();
     if (n.contains('婚')) return AppColors.pink100;
-    if (n.contains('满月') || n.contains('周岁') || n.contains('孩子')) return AppColors.blue100;
+    if (n.contains('满月') || n.contains('周岁') || n.contains('孩子'))
+      return AppColors.blue100;
     if (n.contains('生日')) return AppColors.orange100;
-    if (n.contains('乔迁') || n.contains('搬家') || n.contains('新居')) return AppColors.green100;
+    if (n.contains('乔迁') || n.contains('搬家') || n.contains('新居'))
+      return AppColors.green100;
     if (n.contains('年') || n.contains('节')) return AppColors.red100;
-    if (n.contains('白事') || n.contains('丧') || n.contains('祭')) return AppColors.gray200;
+    if (n.contains('白事') || n.contains('丧') || n.contains('祭'))
+      return AppColors.gray200;
     return AppColors.purple100;
   }
 
   Color _reasonIconColor(String name) {
     final n = name.trim();
     if (n.contains('婚')) return AppColors.pink600;
-    if (n.contains('满月') || n.contains('周岁') || n.contains('孩子')) return AppColors.blue600;
+    if (n.contains('满月') || n.contains('周岁') || n.contains('孩子'))
+      return AppColors.blue600;
     if (n.contains('生日')) return AppColors.orange600;
-    if (n.contains('乔迁') || n.contains('搬家') || n.contains('新居')) return AppColors.green600;
+    if (n.contains('乔迁') || n.contains('搬家') || n.contains('新居'))
+      return AppColors.green600;
     if (n.contains('年') || n.contains('节')) return AppColors.red600;
-    if (n.contains('白事') || n.contains('丧') || n.contains('祭')) return AppColors.gray600;
+    if (n.contains('白事') || n.contains('丧') || n.contains('祭'))
+      return AppColors.gray600;
     return AppColors.purple600;
   }
 
   Future<void> _pickReason() async {
     final db = AppDatabaseScope.maybeOf(context);
     if (db == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('数据库未初始化')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('数据库未初始化')));
       return;
     }
-    final reasons = (await db.reasonsDao.listAll())
-        .where((e) => e.enabled)
-        .toList()
-      ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+    final reasons =
+        (await db.reasonsDao.listAll()).where((e) => e.enabled).toList()
+          ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
 
     final picked = await showModalBottomSheet<String>(
       context: context,
@@ -480,7 +562,17 @@ class _RecordAddPageState extends State<RecordAddPage> {
   }
 
   Future<void> _pickDate() async {
-    final initialDate = DateTime(_occurredAt.year, _occurredAt.month, _occurredAt.day);
+    if (_occurredAtLockedByBookTime) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('该账簿已设置账簿时间，记录时间将与账簿时间一致')));
+      return;
+    }
+    final initialDate = DateTime(
+      _occurredAt.year,
+      _occurredAt.month,
+      _occurredAt.day,
+    );
     final picked = await showLunarDatePicker(
       context: context,
       initialDate: initialDate,
@@ -512,12 +604,17 @@ class _RecordAddPageState extends State<RecordAddPage> {
             children: [
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                child: Text('选择支付方式', style: AppTypography.h2().copyWith(fontSize: 16)),
+                child: Text(
+                  '选择支付方式',
+                  style: AppTypography.h2().copyWith(fontSize: 16),
+                ),
               ),
               for (final m in methods)
                 ListTile(
                   title: Text(m),
-                  trailing: (_paymentMethod == m) ? const Icon(Icons.check) : null,
+                  trailing: (_paymentMethod == m)
+                      ? const Icon(Icons.check)
+                      : null,
                   onTap: () => Navigator.of(context).pop(m),
                 ),
             ],
@@ -539,8 +636,14 @@ class _RecordAddPageState extends State<RecordAddPage> {
               decoration: const InputDecoration(hintText: '请输入支付方式'),
             ),
             actions: [
-              TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('取消')),
-              TextButton(onPressed: () => Navigator.of(context).pop(controller.text), child: const Text('确定')),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('取消'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(controller.text),
+                child: const Text('确定'),
+              ),
             ],
           );
         },
@@ -605,13 +708,19 @@ class _RecordAddPageState extends State<RecordAddPage> {
                     builder: (context) {
                       final db = AppDatabaseScope.maybeOf(context);
                       if (db == null) {
-                        final name = _bookId == _defaultBookSelectionId ? '默认账簿' : '未选择';
+                        final name = _bookId == _defaultBookSelectionId
+                            ? '默认账簿'
+                            : '未选择';
                         return _FormCard(
                           bookName: name,
                           personName: displayPersonName,
-                          eventName: _eventName.trim().isEmpty ? '请选择' : _eventName,
+                          eventName: _eventName.trim().isEmpty
+                              ? '请选择'
+                              : _eventName,
                           dateLabel: _formatDate(_occurredAt),
-                          paymentMethod: _paymentMethod.trim().isEmpty ? '请选择' : _paymentMethod,
+                          paymentMethod: _paymentMethod.trim().isEmpty
+                              ? '请选择'
+                              : _paymentMethod,
                           onTapBook: () {},
                           onTapPerson: _pickPerson,
                           onTapReason: _pickReason,
@@ -626,9 +735,13 @@ class _RecordAddPageState extends State<RecordAddPage> {
                           return _FormCard(
                             bookName: _resolveBookName(books),
                             personName: displayPersonName,
-                            eventName: _eventName.trim().isEmpty ? '请选择' : _eventName,
+                            eventName: _eventName.trim().isEmpty
+                                ? '请选择'
+                                : _eventName,
                             dateLabel: _formatDate(_occurredAt),
-                            paymentMethod: _paymentMethod.trim().isEmpty ? '请选择' : _paymentMethod,
+                            paymentMethod: _paymentMethod.trim().isEmpty
+                                ? '请选择'
+                                : _paymentMethod,
                             onTapBook: _pickBook,
                             onTapPerson: _pickPerson,
                             onTapReason: _pickReason,
@@ -670,6 +783,7 @@ class _RecordAddPageState extends State<RecordAddPage> {
             _eventName = record.eventName;
             _paymentMethod = record.paymentMethod;
             _occurredAt = record.occurredAt;
+            _occurredAtLockedByBookTime = false;
             _amountController.text = _formatAmountInput(record.amountCent);
             _noteController.text = record.note ?? '';
             _attachments = <String>[];
@@ -686,15 +800,28 @@ class _RecordAddPageState extends State<RecordAddPage> {
       _suppressDirty = true;
       setState(() {
         _isIncome = record.direction != '支出';
-        _bookId = (book?.isDefault == 1) ? _defaultBookSelectionId : record.bookId;
+        _bookId = (book?.isDefault == 1)
+            ? _defaultBookSelectionId
+            : record.bookId;
         _personId = record.personId;
         _personName = person?.name ?? '';
-        _eventName = (record.eventName ?? '').trim().isEmpty ? '' : record.eventName!.trim();
-        _paymentMethod = (record.paymentMethod ?? '').trim().isEmpty ? '微信支付' : record.paymentMethod!.trim();
-        _occurredAt = DateTime.fromMillisecondsSinceEpoch(record.occurredAt);
+        _eventName = (record.eventName ?? '').trim().isEmpty
+            ? ''
+            : record.eventName!.trim();
+        _paymentMethod = (record.paymentMethod ?? '').trim().isEmpty
+            ? '微信支付'
+            : record.paymentMethod!.trim();
+        _occurredAt = DateTime.fromMillisecondsSinceEpoch(
+          (book != null && book.isDefault != 1)
+          ? book.bookTime
+          : record.occurredAt,
+        );
+        _occurredAtLockedByBookTime = book != null && book.isDefault != 1;
         _amountController.text = _formatAmountInput(record.amountCent);
         _noteController.text = record.note ?? '';
-        _attachments = List<String>.from(record.attachments ?? const <String>[]);
+        _attachments = List<String>.from(
+          record.attachments ?? const <String>[],
+        );
         _dirty = false;
       });
     } finally {
@@ -726,9 +853,9 @@ class _RecordAddPageState extends State<RecordAddPage> {
       });
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('添加附件失败：$e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('添加附件失败：$e')));
     }
   }
 
@@ -771,6 +898,17 @@ class _RecordAddPageState extends State<RecordAddPage> {
       _personId = persons.first.personId;
       _personName = persons.first.name;
     }
+    final dbBookId = await _resolveDbBookId(db, _bookId);
+    final book = await db.accountBooksDao.findById(dbBookId);
+    if (!mounted) return;
+    if (book != null) {
+      if (book.isDefault == 1) {
+        _occurredAtLockedByBookTime = false;
+      } else {
+        _occurredAt = DateTime.fromMillisecondsSinceEpoch(book.bookTime);
+        _occurredAtLockedByBookTime = true;
+      }
+    }
     final reasons = await db.reasonsDao.listAll();
     if (!mounted) return;
     if (_eventName.trim().isEmpty && reasons.isNotEmpty) {
@@ -780,14 +918,17 @@ class _RecordAddPageState extends State<RecordAddPage> {
   }
 
   Future<void> _ensureRequiredDefaults() async {
-    if (_personId != null && _personId!.trim().isNotEmpty && _eventName.trim().isNotEmpty) {
+    if (_personId != null &&
+        _personId!.trim().isNotEmpty &&
+        _eventName.trim().isNotEmpty) {
       return;
     }
     await _initDefaultsFromDrift();
   }
 
   AppData? _appDataMaybe(BuildContext context) {
-    final element = context.getElementForInheritedWidgetOfExactType<AppDataScope>();
+    final element = context
+        .getElementForInheritedWidgetOfExactType<AppDataScope>();
     final widget = element?.widget;
     if (widget is! AppDataScope) return null;
     return widget.notifier;
@@ -871,10 +1012,7 @@ class _Header extends StatelessWidget {
 }
 
 class _Segmented extends StatelessWidget {
-  const _Segmented({
-    required this.isIncome,
-    required this.onChange,
-  });
+  const _Segmented({required this.isIncome, required this.onChange});
 
   final bool isIncome;
   final ValueChanged<bool> onChange;
@@ -905,7 +1043,9 @@ class _Segmented extends StatelessWidget {
                   style: AppTypography.base(
                     fontSize: 14,
                     fontWeight: AppTypography.medium,
-                    color: isIncome ? AppColors.brandPrimary : AppColors.textTertiary,
+                    color: isIncome
+                        ? AppColors.brandPrimary
+                        : AppColors.textTertiary,
                   ),
                 ),
               ),
@@ -927,7 +1067,9 @@ class _Segmented extends StatelessWidget {
                   style: AppTypography.base(
                     fontSize: 14,
                     fontWeight: AppTypography.medium,
-                    color: !isIncome ? AppColors.brandPrimary : AppColors.textTertiary,
+                    color: !isIncome
+                        ? AppColors.brandPrimary
+                        : AppColors.textTertiary,
                   ),
                 ),
               ),
@@ -940,10 +1082,7 @@ class _Segmented extends StatelessWidget {
 }
 
 class _AmountCard extends StatelessWidget {
-  const _AmountCard({
-    required this.controller,
-    required this.onPresetTap,
-  });
+  const _AmountCard({required this.controller, required this.onPresetTap});
 
   final TextEditingController controller;
   final ValueChanged<int> onPresetTap;
@@ -968,7 +1107,9 @@ class _AmountCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.only(bottom: 8),
             decoration: const BoxDecoration(
-              border: Border(bottom: BorderSide(color: AppColors.gray100, width: 1)),
+              border: Border(
+                bottom: BorderSide(color: AppColors.gray100, width: 1),
+              ),
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.end,
@@ -988,7 +1129,9 @@ class _AmountCard extends StatelessWidget {
                 Expanded(
                   child: TextField(
                     controller: controller,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
                     inputFormatters: const [_AmountInputFormatter()],
                     decoration: const InputDecoration(
                       border: InputBorder.none,
@@ -1013,15 +1156,35 @@ class _AmountCard extends StatelessWidget {
             child: ListView(
               scrollDirection: Axis.horizontal,
               children: [
-                _PresetChip(label: '200', selected: controller.text.trim() == '200', onTap: () => onPresetTap(200)),
+                _PresetChip(
+                  label: '200',
+                  selected: controller.text.trim() == '200',
+                  onTap: () => onPresetTap(200),
+                ),
                 const SizedBox(width: 8),
-                _PresetChip(label: '500', selected: controller.text.trim() == '500', onTap: () => onPresetTap(500)),
+                _PresetChip(
+                  label: '500',
+                  selected: controller.text.trim() == '500',
+                  onTap: () => onPresetTap(500),
+                ),
                 const SizedBox(width: 8),
-                _PresetChip(label: '1000', selected: controller.text.trim() == '1000', onTap: () => onPresetTap(1000)),
+                _PresetChip(
+                  label: '1000',
+                  selected: controller.text.trim() == '1000',
+                  onTap: () => onPresetTap(1000),
+                ),
                 const SizedBox(width: 8),
-                _PresetChip(label: '2000', selected: controller.text.trim() == '2000', onTap: () => onPresetTap(2000)),
+                _PresetChip(
+                  label: '2000',
+                  selected: controller.text.trim() == '2000',
+                  onTap: () => onPresetTap(2000),
+                ),
                 const SizedBox(width: 8),
-                _PresetChip(label: '5000', selected: controller.text.trim() == '5000', onTap: () => onPresetTap(5000)),
+                _PresetChip(
+                  label: '5000',
+                  selected: controller.text.trim() == '5000',
+                  onTap: () => onPresetTap(5000),
+                ),
               ],
             ),
           ),
@@ -1032,7 +1195,11 @@ class _AmountCard extends StatelessWidget {
 }
 
 class _PresetChip extends StatelessWidget {
-  const _PresetChip({required this.label, required this.onTap, this.selected = false});
+  const _PresetChip({
+    required this.label,
+    required this.onTap,
+    this.selected = false,
+  });
 
   final String label;
   final VoidCallback onTap;
@@ -1047,7 +1214,10 @@ class _PresetChip extends StatelessWidget {
         decoration: BoxDecoration(
           color: selected ? AppColors.indigo50 : AppColors.gray50,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: selected ? AppColors.indigo100 : AppColors.gray100, width: 1),
+          border: Border.all(
+            color: selected ? AppColors.indigo100 : AppColors.gray100,
+            width: 1,
+          ),
         ),
         child: Center(
           child: Text(
@@ -1329,7 +1499,11 @@ class _NoteCard extends StatelessWidget {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const FaIcon(FontAwesomeIcons.camera, color: AppColors.textMuted, size: 16),
+                        const FaIcon(
+                          FontAwesomeIcons.camera,
+                          color: AppColors.textMuted,
+                          size: 16,
+                        ),
                         const SizedBox(height: 4),
                         Text(
                           '添加图片',
@@ -1355,16 +1529,16 @@ class _NoteCard extends StatelessWidget {
 enum _PersonPickerAction { pick, add, manage }
 
 class _PersonPickerResult {
-  const _PersonPickerResult._({
-    required this.action,
-    this.personId,
-  });
+  const _PersonPickerResult._({required this.action, this.personId});
 
   final _PersonPickerAction action;
   final String? personId;
 
   factory _PersonPickerResult.pick(String personId) {
-    return _PersonPickerResult._(action: _PersonPickerAction.pick, personId: personId);
+    return _PersonPickerResult._(
+      action: _PersonPickerAction.pick,
+      personId: personId,
+    );
   }
 
   factory _PersonPickerResult.add() {
@@ -1414,7 +1588,7 @@ class _ReasonPickerSheetState extends State<_ReasonPickerSheet> {
       if (key.isEmpty) return true;
       return reason.name.toLowerCase().contains(key);
     }).toList();
-    
+
     return Padding(
       padding: EdgeInsets.only(
         left: 12,
@@ -1488,12 +1662,13 @@ class _ReasonPickerSheetState extends State<_ReasonPickerSheet> {
                       )
                     : GridView.builder(
                         padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
-                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          mainAxisSpacing: 12,
-                          crossAxisSpacing: 12,
-                          childAspectRatio: 2.6,
-                        ),
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 2,
+                              mainAxisSpacing: 12,
+                              crossAxisSpacing: 12,
+                              childAspectRatio: 2.6,
+                            ),
                         itemCount: filtered.length,
                         itemBuilder: (context, index) {
                           final r = filtered[index];
@@ -1505,11 +1680,15 @@ class _ReasonPickerSheetState extends State<_ReasonPickerSheet> {
                               borderRadius: BorderRadius.circular(16),
                               onTap: () => Navigator.of(context).pop(r.name),
                               child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                ),
                                 decoration: BoxDecoration(
                                   borderRadius: BorderRadius.circular(16),
                                   border: Border.all(
-                                    color: selected ? AppColors.indigo600 : AppColors.gray100,
+                                    color: selected
+                                        ? AppColors.indigo600
+                                        : AppColors.gray100,
                                     width: selected ? 1.4 : 1,
                                   ),
                                 ),
@@ -1552,7 +1731,9 @@ class _ReasonPickerSheetState extends State<_ReasonPickerSheet> {
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
                 child: PrototypeSecondaryButton(
                   label: '管理事由',
-                  onTap: () => Navigator.of(context).pop(_ReasonPickerSheet.manageAction),
+                  onTap: () => Navigator.of(
+                    context,
+                  ).pop(_ReasonPickerSheet.manageAction),
                 ),
               ),
             ],
@@ -1673,14 +1854,15 @@ class _PersonPickerSheetState extends State<_PersonPickerSheet> {
                           final person = filtered[index];
                           return PrototypePressableRow(
                             borderBottom: index != filtered.length - 1,
-                            onTap: () => Navigator.of(context).pop(
-                              _PersonPickerResult.pick(person.personId),
-                            ),
+                            onTap: () => Navigator.of(
+                              context,
+                            ).pop(_PersonPickerResult.pick(person.personId)),
                             child: PersonDisplayRow(
                               name: person.name,
                               subtitle: person.relationshipType,
                               avatarUrl: person.avatarUri,
-                              trailing: widget.selectedPersonId == person.personId
+                              trailing:
+                                  widget.selectedPersonId == person.personId
                                   ? const FaIcon(
                                       FontAwesomeIcons.check,
                                       size: 14,
@@ -1699,7 +1881,9 @@ class _PersonPickerSheetState extends State<_PersonPickerSheet> {
                     Expanded(
                       child: PrototypeSecondaryButton(
                         label: '管理关系人',
-                        onTap: () => Navigator.of(context).pop(_PersonPickerResult.manage()),
+                        onTap: () => Navigator.of(
+                          context,
+                        ).pop(_PersonPickerResult.manage()),
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -1707,7 +1891,9 @@ class _PersonPickerSheetState extends State<_PersonPickerSheet> {
                       child: PrototypePrimaryButton(
                         label: '添加关系人',
                         icon: FontAwesomeIcons.userPlus,
-                        onTap: () => Navigator.of(context).pop(_PersonPickerResult.add()),
+                        onTap: () => Navigator.of(
+                          context,
+                        ).pop(_PersonPickerResult.add()),
                       ),
                     ),
                   ],
@@ -1727,7 +1913,10 @@ class _AmountInputFormatter extends TextInputFormatter {
   static final RegExp _reg = RegExp(r'^\d{0,12}(\.\d{0,2})?$');
 
   @override
-  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
     final text = newValue.text;
     if (text.isEmpty) return newValue;
     if (text.startsWith('.')) return oldValue;
@@ -1782,4 +1971,3 @@ String _formatDate(DateTime dt) {
 
   return '${DateUtil.format(dt)}$suffix';
 }
-

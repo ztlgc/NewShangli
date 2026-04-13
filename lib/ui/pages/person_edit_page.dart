@@ -536,13 +536,16 @@ class _PersonEditPageState extends State<PersonEditPage> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (context) {
-        return AlertDialog(
-          title: const Text('删除联系人'),
-          content: Text('确认删除「$name」？删除后将进入回收站。'),
-          actions: [
-            TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('取消')),
-            TextButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('删除')),
-          ],
+        return Align(
+          alignment: Alignment.center,
+          child: AlertDialog(
+            title: const Text('删除联系人'),
+            content: Text('确认删除「$name」？删除后将进入回收站。'),
+            actions: [
+              TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('取消')),
+              TextButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('删除')),
+            ],
+          ),
         );
       },
     );

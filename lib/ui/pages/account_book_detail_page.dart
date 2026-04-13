@@ -8,6 +8,7 @@ import '../app_scaffold.dart';
 import '../app_tokens.dart';
 import '../navigation.dart';
 import '../prototype_kit.dart';
+import '../../utils/date_util.dart';
 import '../widgets/record_list_row.dart';
 import 'account_book_data_import_page.dart';
 import 'record_detail_page.dart';
@@ -46,7 +47,7 @@ class _Canvas extends StatelessWidget {
         final book = bookSnapshot.data!;
         final isDefaultBook = book.isDefault == 1;
         final recordsStream = isDefaultBook
-            ? db.giftRecordsDao.watchAllWithPersonInAllBooks()
+            ? db.giftRecordsDao.watchAllWithPersonInDefaultScope(book.bookId)
             : db.giftRecordsDao.watchAllWithPersonInBook(bookId);
 
         return Column(
@@ -106,7 +107,11 @@ class _Canvas extends StatelessWidget {
                   return ListView(
                     padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
                     children: [
-                      _OverviewCard(incomeCent: income, recordCount: count),
+                      _OverviewCard(
+                        incomeCent: income,
+                        recordCount: count,
+                        bookTime: book.bookTime,
+                      ),
                       const SizedBox(height: 16),
                       _RecordsSection(rows: rows),
                     ],
@@ -122,10 +127,15 @@ class _Canvas extends StatelessWidget {
 }
 
 class _OverviewCard extends StatelessWidget {
-  const _OverviewCard({required this.incomeCent, required this.recordCount});
+  const _OverviewCard({
+    required this.incomeCent,
+    required this.recordCount,
+    required this.bookTime,
+  });
 
   final int incomeCent;
   final int recordCount;
+  final int bookTime;
 
   @override
   Widget build(BuildContext context) {
@@ -136,22 +146,42 @@ class _OverviewCard extends StatelessWidget {
         borderRadius: AppRadii.br2xl,
         boxShadow: AppShadows.sm,
       ),
-      child: Row(
+      child: Column(
         children: [
-          Expanded(
-            child: _MetricItem(
-              title: '总收入',
-              value: (incomeCent / 100).toStringAsFixed(2),
-              color: AppColors.red600,
-            ),
+          Row(
+            children: [
+              Expanded(
+                child: _MetricItem(
+                  title: '总收入',
+                  value: (incomeCent / 100).toStringAsFixed(2),
+                  color: AppColors.red600,
+                ),
+              ),
+              Container(width: 1, height: 44, color: AppColors.gray100),
+              Expanded(
+                child: _MetricItem(
+                  title: '记录数量',
+                  value: '$recordCount 笔',
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ],
           ),
-          Container(width: 1, height: 44, color: AppColors.gray100),
-          Expanded(
-            child: _MetricItem(
-              title: '记录数量',
-              value: '$recordCount 笔',
-              color: AppColors.textPrimary,
-            ),
+          const SizedBox(height: 12),
+          Container(height: 1, color: AppColors.gray100),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Text(
+                '账簿时间：${DateUtil.format(DateTime.fromMillisecondsSinceEpoch(bookTime))}',
+                style: AppTypography.base(
+                  fontSize: 12,
+                  fontWeight: AppTypography.regular,
+                  color: AppColors.textSecondary,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
           ),
         ],
       ),

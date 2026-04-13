@@ -88,19 +88,22 @@ class _CanvasState extends State<_Canvas> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (context) {
-        return AlertDialog(
-          title: const Text('批量删除'),
-          content: Text('确认删除 ${_selectedRecordIds.length} 条记录？删除后将进入回收站。'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('取消'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('永久删除'),
-            ),
-          ],
+        return Align(
+          alignment: Alignment.center,
+          child: AlertDialog(
+            title: const Text('批量删除'),
+            content: Text('确认删除 ${_selectedRecordIds.length} 条记录？删除后将进入回收站。'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('取消'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                child: const Text('永久删除'),
+              ),
+            ],
+          ),
         );
       },
     );

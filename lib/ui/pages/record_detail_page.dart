@@ -550,19 +550,22 @@ class _BottomActions extends StatelessWidget {
     final ok = await showDialog<bool>(
       context: context,
       builder: (context) {
-        return AlertDialog(
-          title: const Text('删除记录'),
-          content: const Text('确认删除该记录？删除后将进入回收站。'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('取消'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('删除'),
-            ),
-          ],
+        return Align(
+          alignment: Alignment.center,
+          child: AlertDialog(
+            title: const Text('删除记录'),
+            content: const Text('确认删除该记录？删除后将进入回收站。'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('取消'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                child: const Text('删除'),
+              ),
+            ],
+          ),
         );
       },
     );

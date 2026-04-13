@@ -20,10 +20,12 @@ void main() {
     });
 
     test('AccountBook：CRUD + 默认账簿保护', () async {
+      final bookTime = DateTime(2024, 2, 3).millisecondsSinceEpoch;
       final defaultBookId = await DefaultBookService().ensureDefaultBookId(db);
       final String bookId = await db.accountBooksDao.insertOne(
         AccountBooksCompanion.insert(
           name: '家庭账簿',
+          bookTime: Value(bookTime),
           createdAt: DateTime.now().millisecondsSinceEpoch,
           updatedAt: DateTime.now().millisecondsSinceEpoch,
         ),
@@ -34,9 +36,12 @@ void main() {
       expect(book!.name, '家庭账簿');
       expect(book.reasonType, '');
       expect(book.themeColor, '#312E81');
+      expect(book.bookTime, bookTime);
       expect(book.isDefault, 0);
 
-      final AccountBook? defaultBook = await db.accountBooksDao.findById(defaultBookId);
+      final AccountBook? defaultBook = await db.accountBooksDao.findById(
+        defaultBookId,
+      );
       expect(defaultBook, isNotNull);
       expect(defaultBook!.reasonType, '');
 
@@ -44,7 +49,8 @@ void main() {
         () => db.accountBooksDao.setDefaultBook(bookId),
         throwsA(isA<StateError>()),
       );
-      final AccountBook? currentDefaultBook = await db.accountBooksDao.findDefault();
+      final AccountBook? currentDefaultBook = await db.accountBooksDao
+          .findDefault();
       expect(currentDefaultBook?.bookId, defaultBookId);
       expect(currentDefaultBook?.isDefault, 1);
 
@@ -54,6 +60,7 @@ void main() {
           reasonType: '商务往来',
           themeColor: '#22C55E',
           description: const Value('备注'),
+          bookTime: DateTime(2024, 5, 6).millisecondsSinceEpoch,
         ),
       );
       expect(updatedOk, isTrue);
@@ -63,6 +70,7 @@ void main() {
       expect(book2?.reasonType, '商务往来');
       expect(book2?.themeColor, '#22C55E');
       expect(book2?.description, '备注');
+      expect(book2?.bookTime, DateTime(2024, 5, 6).millisecondsSinceEpoch);
 
       expect(
         () => db.accountBooksDao.deleteById(defaultBookId),
@@ -252,8 +260,9 @@ void main() {
       expect(await db.accountBooksDao.findById(bookId), isNull);
       expect(await db.personsDao.findById(personId), isNull);
       expect(await db.eventRemindersDao.findById(reminderId), isNull);
-      final int recordCount =
-          await (db.select(db.giftRecords).get()).then((v) => v.length);
+      final int recordCount = await (db.select(db.giftRecords).get()).then(
+        (v) => v.length,
+      );
       expect(recordCount, 0);
     });
 
@@ -319,28 +328,29 @@ void main() {
         ),
       );
 
-      final List<QueryRow> indexRows = await db.customSelect(
-        "PRAGMA index_list('gift_record')",
-      ).get();
+      final List<QueryRow> indexRows = await db
+          .customSelect("PRAGMA index_list('gift_record')")
+          .get();
 
       final bool hasIndex = indexRows.any(
-        (r) => (r.data['name'] ?? '').toString() == 'idx_gift_record_book_occurred',
+        (r) =>
+            (r.data['name'] ?? '').toString() ==
+            'idx_gift_record_book_occurred',
       );
       expect(hasIndex, isTrue);
 
-      final List<QueryRow> planRows = await db.customSelect(
-        'EXPLAIN QUERY PLAN SELECT * FROM gift_record INDEXED BY idx_gift_record_book_occurred WHERE book_id = ? ORDER BY occurred_at DESC',
-        variables: [Variable<String>(bookId)],
-      ).get();
+      final List<QueryRow> planRows = await db
+          .customSelect(
+            'EXPLAIN QUERY PLAN SELECT * FROM gift_record INDEXED BY idx_gift_record_book_occurred WHERE book_id = ? ORDER BY occurred_at DESC',
+            variables: [Variable<String>(bookId)],
+          )
+          .get();
 
       final String planText = planRows
           .map((r) => (r.data['detail'] ?? '').toString())
           .join('\n');
 
-      expect(
-        planText,
-        contains('idx_gift_record_book_occurred'),
-      );
+      expect(planText, contains('idx_gift_record_book_occurred'));
     });
   });
 }

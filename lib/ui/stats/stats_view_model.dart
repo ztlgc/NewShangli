@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import '../../data/local/drift/app_database.dart';
@@ -30,8 +32,8 @@ class StatsViewModel extends ChangeNotifier {
   int? _minRecordYear;
   bool _refreshPending = false;
   Future<void>? _refreshLoopFuture;
-  bool _recordsSynced = false;
   String? _cachedBookId;
+  StreamSubscription<List<GiftRecordWithPerson>>? _recordsSubscription;
 
   StatsTimePreset get preset => _preset;
   StatsDateRange? get customRange => _customRange;
@@ -42,7 +44,17 @@ class StatsViewModel extends ChangeNotifier {
   int? get minRecordYear => _minRecordYear;
 
   Future<void> init() async {
+    final defaultBook = await _db.accountBooksDao.findDefault();
+    _cachedBookId = defaultBook?.bookId;
+    await _reloadRecords();
+    _subscribeToRecords();
     await refresh();
+  }
+
+  @override
+  void dispose() {
+    _recordsSubscription?.cancel();
+    super.dispose();
   }
 
   Future<void> setPreset(StatsTimePreset preset) async {
@@ -89,18 +101,6 @@ class StatsViewModel extends ChangeNotifier {
       notifyListeners();
       try {
         final now = _now();
-        // 首次加载或强制刷新时同步数据；切换 Tab 时跳过
-        if (!_recordsSynced) {
-          await _loadRecordsFromDb();
-          final repo = _repository;
-          if (repo is StatsRepository) {
-            await repo.ensureSynced(_records);
-          }
-          _recordsSynced = true;
-          // 同时缓存默认账簿，避免每次 refresh 都查库
-          final defaultBook = await _db.accountBooksDao.findDefault();
-          _cachedBookId = defaultBook?.bookId;
-        }
         final targetBookId = _cachedBookId;
         final range = resolveStatsDateRange(
           _preset,
@@ -134,6 +134,22 @@ class StatsViewModel extends ChangeNotifier {
         notifyListeners();
       }
     }
+  }
+
+  void _subscribeToRecords() {
+    final defaultBookId = _cachedBookId;
+    if (defaultBookId == null) {
+      _recordsSubscription?.cancel();
+      _recordsSubscription = null;
+      return;
+    }
+    _recordsSubscription?.cancel();
+    _recordsSubscription = _db.giftRecordsDao
+        .watchAllWithPersonInDefaultScope(defaultBookId)
+        .listen((rows) {
+          _replaceRecords(rows, defaultBookId);
+          unawaited(refresh());
+        });
   }
 
   bool _isSameRange(StatsDateRange? left, StatsDateRange right) {
@@ -185,13 +201,28 @@ class StatsViewModel extends ChangeNotifier {
     }
   }
 
-  Future<void> _loadRecordsFromDb() async {
-    final rows = await _db.giftRecordsDao.listAllWithPersonInAllBooks();
+  Future<void> _reloadRecords() async {
+    final defaultBookId = _cachedBookId;
+    if (defaultBookId == null) {
+      _records = const <StatsSourceRecord>[];
+      _minRecordYear = null;
+      return;
+    }
+    final rows = await _db.giftRecordsDao.listAllWithPersonInDefaultScope(
+      defaultBookId,
+    );
+    _replaceRecords(rows, defaultBookId);
+  }
+
+  void _replaceRecords(
+    List<GiftRecordWithPerson> rows,
+    String defaultBookId,
+  ) {
     _records = rows
         .map(
           (row) => StatsSourceRecord(
             id: row.record.recordId,
-            bookId: row.record.bookId,
+            bookId: defaultBookId,
             direction: row.record.direction == '支出' ? 1 : 0,
             amountCent: row.record.amountCent,
             eventName: (row.record.eventName ?? '').trim().isEmpty ? '未设置' : row.record.eventName!.trim(),

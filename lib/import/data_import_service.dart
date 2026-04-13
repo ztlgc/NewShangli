@@ -64,8 +64,9 @@ class DataImportService {
   DataImportService({
     required AppDatabase db,
     Future<Directory> Function()? documentsDirectoryProvider,
-  })  : _db = db,
-        _documentsDirectoryProvider = documentsDirectoryProvider ?? getApplicationDocumentsDirectory;
+  }) : _db = db,
+       _documentsDirectoryProvider =
+           documentsDirectoryProvider ?? getApplicationDocumentsDirectory;
 
   final AppDatabase _db;
   final Future<Directory> Function() _documentsDirectoryProvider;
@@ -102,7 +103,8 @@ class DataImportService {
     final now = DateTime.now().millisecondsSinceEpoch;
     final normalizedMapping = <String, String>{
       for (final entry in (fieldMapping ?? const <String, String?>{}).entries)
-        if ((entry.value ?? '').trim().isNotEmpty) entry.key.trim(): entry.value!.trim(),
+        if ((entry.value ?? '').trim().isNotEmpty)
+          entry.key.trim(): entry.value!.trim(),
     };
     if ((mediaZipPath ?? '').trim().isNotEmpty) {
       final zip = File(mediaZipPath!.trim());
@@ -117,7 +119,9 @@ class DataImportService {
       );
       normalizedMapping[_kMediaZipPathField] = zipDest.path;
     }
-    final mappingJson = normalizedMapping.isEmpty ? null : jsonEncode(normalizedMapping);
+    final mappingJson = normalizedMapping.isEmpty
+        ? null
+        : jsonEncode(normalizedMapping);
 
     final jobId = await _db.dataImportJobsDao.insertOne(
       DataImportJobsCompanion.insert(
@@ -129,7 +133,9 @@ class DataImportService {
         format: format.name,
         status: DataImportStatus.pending.name,
         importKind: kind.name,
-        mappingJson: mappingJson == null ? const Value.absent() : Value(mappingJson),
+        mappingJson: mappingJson == null
+            ? const Value.absent()
+            : Value(mappingJson),
         errorLogPath: Value(logFile.path),
         startedAt: now,
         updatedAt: now,
@@ -156,12 +162,14 @@ class DataImportService {
     var canceled = false;
 
     Future<void> setStatus(DataImportStatus status, {int? finishedAt}) async {
-      await (_db.update(_db.dataImportJobs)
-            ..where((t) => t.jobId.equals(jobId)))
-          .write(
+      await (_db.update(
+        _db.dataImportJobs,
+      )..where((t) => t.jobId.equals(jobId))).write(
         DataImportJobsCompanion(
           status: Value(status.name),
-          finishedAt: finishedAt == null ? const Value.absent() : Value(finishedAt),
+          finishedAt: finishedAt == null
+              ? const Value.absent()
+              : Value(finishedAt),
           updatedAt: Value(DateTime.now().millisecondsSinceEpoch),
         ),
       );
@@ -206,18 +214,18 @@ class DataImportService {
 
         final now = DateTime.now().millisecondsSinceEpoch;
         if (endStatus == DataImportStatus.paused) {
-          await (_db.update(_db.dataImportJobs)
-                ..where((t) => t.jobId.equals(jobId)))
-              .write(
+          await (_db.update(
+            _db.dataImportJobs,
+          )..where((t) => t.jobId.equals(jobId))).write(
             DataImportJobsCompanion(
               status: Value(DataImportStatus.paused.name),
               updatedAt: Value(now),
             ),
           );
         } else {
-          await (_db.update(_db.dataImportJobs)
-                ..where((t) => t.jobId.equals(jobId)))
-              .write(
+          await (_db.update(
+            _db.dataImportJobs,
+          )..where((t) => t.jobId.equals(jobId))).write(
             DataImportJobsCompanion(
               status: Value(endStatus.name),
               finishedAt: Value(now),
@@ -238,9 +246,9 @@ class DataImportService {
         );
       } catch (e) {
         final now = DateTime.now().millisecondsSinceEpoch;
-        await (_db.update(_db.dataImportJobs)
-              ..where((t) => t.jobId.equals(jobId)))
-            .write(
+        await (_db.update(
+          _db.dataImportJobs,
+        )..where((t) => t.jobId.equals(jobId))).write(
           DataImportJobsCompanion(
             status: Value(DataImportStatus.failed.name),
             finishedAt: Value(now),
@@ -327,20 +335,20 @@ class _ImportRunner {
     required bool Function() shouldCancel,
     required void Function(DataImportProgress) onProgress,
     required Future<void> Function(String) onLog,
-  })  : _db = db,
-        _job = job,
-        _kind = kind,
-        _format = format,
-        _shouldPause = shouldPause,
-        _shouldCancel = shouldCancel,
-        _onProgress = onProgress,
-        _onLog = onLog,
-        _processedRows = job.processedRows,
-        _successRows = job.successRows,
-        _skippedRows = job.skippedRows,
-        _failedRows = job.failedRows,
-        _lastRowIndex = job.lastRowIndex,
-        _fieldMapping = _parseMapping(job.mappingJson) {
+  }) : _db = db,
+       _job = job,
+       _kind = kind,
+       _format = format,
+       _shouldPause = shouldPause,
+       _shouldCancel = shouldCancel,
+       _onProgress = onProgress,
+       _onLog = onLog,
+       _processedRows = job.processedRows,
+       _successRows = job.successRows,
+       _skippedRows = job.skippedRows,
+       _failedRows = job.failedRows,
+       _lastRowIndex = job.lastRowIndex,
+       _fieldMapping = _parseMapping(job.mappingJson) {
     _mediaStorageService = MediaStorageService(
       documentsDirectoryProvider: () async {
         final parent = File(job.filePath).parent;
@@ -402,24 +410,25 @@ class _ImportRunner {
   }
 
   Future<void> _loadExistingPersons() async {
-    final list = await (_db.select(_db.persons)
-          ..where((t) => t.bookId.equals(_job.bookId)))
-        .get();
+    final list = await (_db.select(
+      _db.persons,
+    )..where((t) => t.bookId.equals(_job.bookId))).get();
     for (final p in list) {
       final key = _personKey(name: p.name, phone: p.phone);
       _personIdByKey[key] = p.personId;
       _existingPersonIds.add(p.personId);
     }
-    final records = await (_db.select(_db.giftRecords)
-          ..where((t) => t.bookId.equals(_job.bookId))
-          ..where((t) => t.deletedAt.isNull()))
-        .get();
+    final records =
+        await (_db.select(_db.giftRecords)
+              ..where((t) => t.bookId.equals(_job.bookId))
+              ..where((t) => t.deletedAt.isNull()))
+            .get();
     for (final r in records) {
       _existingRecordIds.add(r.recordId);
     }
-    final books = await (_db.select(_db.accountBooks)
-          ..where((t) => t.deletedAt.isNull()))
-        .get();
+    final books = await (_db.select(
+      _db.accountBooks,
+    )..where((t) => t.deletedAt.isNull())).get();
     for (final b in books) {
       _bookIdByName[b.name] = b.bookId;
     }
@@ -431,7 +440,10 @@ class _ImportRunner {
       throw const DataImportException('导入文件不存在');
     }
 
-    final lines = file.openRead().transform(utf8.decoder).transform(const LineSplitter());
+    final lines = file
+        .openRead()
+        .transform(utf8.decoder)
+        .transform(const LineSplitter());
     var lineNo = 0;
     var dataIndex = 0;
     List<String>? headers;
@@ -448,11 +460,19 @@ class _ImportRunner {
       }
 
       if (_shouldCancel()) {
-        await _flush(rowIndex: dataIndex, persons: chunkPersons, records: chunkRecords);
+        await _flush(
+          rowIndex: dataIndex,
+          persons: chunkPersons,
+          records: chunkRecords,
+        );
         return DataImportStatus.canceled;
       }
       if (_shouldPause()) {
-        await _flush(rowIndex: dataIndex, persons: chunkPersons, records: chunkRecords);
+        await _flush(
+          rowIndex: dataIndex,
+          persons: chunkPersons,
+          records: chunkRecords,
+        );
         return DataImportStatus.paused;
       }
 
@@ -462,15 +482,28 @@ class _ImportRunner {
 
       final cells = _parseCsvLine(raw);
       final row = _rowMap(headers, cells);
-      await _consumeRow(rowIndex: lineNo, row: row, persons: chunkPersons, records: chunkRecords);
+      await _consumeRow(
+        rowIndex: lineNo,
+        row: row,
+        persons: chunkPersons,
+        records: chunkRecords,
+      );
       if (chunkPersons.length + chunkRecords.length >= 2000) {
-        await _flush(rowIndex: dataIndex, persons: chunkPersons, records: chunkRecords);
+        await _flush(
+          rowIndex: dataIndex,
+          persons: chunkPersons,
+          records: chunkRecords,
+        );
       }
     }
     if (headers == null) {
       throw const DataImportException('CSV 为空，未找到表头');
     }
-    await _flush(rowIndex: dataIndex, persons: chunkPersons, records: chunkRecords);
+    await _flush(
+      rowIndex: dataIndex,
+      persons: chunkPersons,
+      records: chunkRecords,
+    );
     return DataImportStatus.completed;
   }
 
@@ -495,7 +528,9 @@ class _ImportRunner {
     final all = sheet.rows;
     if (all.isEmpty) throw const DataImportException('Excel 表格为空');
 
-    final headers = all.first.map((c) => (c?.value?.toString() ?? '').trim()).toList();
+    final headers = all.first
+        .map((c) => (c?.value?.toString() ?? '').trim())
+        .toList();
     _validateHeaders(headers);
 
     final chunkPersons = <PersonsCompanion>[];
@@ -504,11 +539,19 @@ class _ImportRunner {
     for (var i = 1; i < all.length; i++) {
       final dataIndex = i;
       if (_shouldCancel()) {
-        await _flush(rowIndex: dataIndex - 1, persons: chunkPersons, records: chunkRecords);
+        await _flush(
+          rowIndex: dataIndex - 1,
+          persons: chunkPersons,
+          records: chunkRecords,
+        );
         return DataImportStatus.canceled;
       }
       if (_shouldPause()) {
-        await _flush(rowIndex: dataIndex - 1, persons: chunkPersons, records: chunkRecords);
+        await _flush(
+          rowIndex: dataIndex - 1,
+          persons: chunkPersons,
+          records: chunkRecords,
+        );
         return DataImportStatus.paused;
       }
 
@@ -516,12 +559,25 @@ class _ImportRunner {
       final rowIndex = i + 1;
       final rowCells = all[i].map((c) => (c?.value?.toString() ?? '')).toList();
       final row = _rowMap(headers, rowCells);
-      await _consumeRow(rowIndex: rowIndex, row: row, persons: chunkPersons, records: chunkRecords);
+      await _consumeRow(
+        rowIndex: rowIndex,
+        row: row,
+        persons: chunkPersons,
+        records: chunkRecords,
+      );
       if (chunkPersons.length + chunkRecords.length >= 2000) {
-        await _flush(rowIndex: dataIndex, persons: chunkPersons, records: chunkRecords);
+        await _flush(
+          rowIndex: dataIndex,
+          persons: chunkPersons,
+          records: chunkRecords,
+        );
       }
     }
-    await _flush(rowIndex: all.length - 1, persons: chunkPersons, records: chunkRecords);
+    await _flush(
+      rowIndex: all.length - 1,
+      persons: chunkPersons,
+      records: chunkRecords,
+    );
     return DataImportStatus.completed;
   }
 
@@ -540,17 +596,29 @@ class _ImportRunner {
     if (personSheet != null && _kind != DataImportKind.recordsOnly) {
       final rows = personSheet.rows;
       if (rows.isNotEmpty) {
-        final headers = rows.first.map((c) => (c?.value?.toString() ?? '').trim()).toList();
+        final headers = rows.first
+            .map((c) => (c?.value?.toString() ?? '').trim())
+            .toList();
         for (var i = 1; i < rows.length; i++) {
           if (_shouldCancel()) {
-            await _flush(rowIndex: rowIndex, persons: chunkPersons, records: chunkRecords);
+            await _flush(
+              rowIndex: rowIndex,
+              persons: chunkPersons,
+              records: chunkRecords,
+            );
             return DataImportStatus.canceled;
           }
           if (_shouldPause()) {
-            await _flush(rowIndex: rowIndex, persons: chunkPersons, records: chunkRecords);
+            await _flush(
+              rowIndex: rowIndex,
+              persons: chunkPersons,
+              records: chunkRecords,
+            );
             return DataImportStatus.paused;
           }
-          final cells = rows[i].map((c) => (c?.value?.toString() ?? '').trim()).toList();
+          final cells = rows[i]
+              .map((c) => (c?.value?.toString() ?? '').trim())
+              .toList();
           final row = _rowMap(headers, cells);
           _processedRows += 1;
           final person = await _parsePersonRowV2(rowIndex: i + 1, row: row);
@@ -559,7 +627,11 @@ class _ImportRunner {
           }
           rowIndex++;
           if (chunkPersons.length + chunkRecords.length >= 2000) {
-            await _flush(rowIndex: rowIndex, persons: chunkPersons, records: chunkRecords);
+            await _flush(
+              rowIndex: rowIndex,
+              persons: chunkPersons,
+              records: chunkRecords,
+            );
           }
         }
       }
@@ -568,17 +640,29 @@ class _ImportRunner {
     if (recordSheet != null && _kind != DataImportKind.personsOnly) {
       final rows = recordSheet.rows;
       if (rows.isNotEmpty) {
-        final headers = rows.first.map((c) => (c?.value?.toString() ?? '').trim()).toList();
+        final headers = rows.first
+            .map((c) => (c?.value?.toString() ?? '').trim())
+            .toList();
         for (var i = 1; i < rows.length; i++) {
           if (_shouldCancel()) {
-            await _flush(rowIndex: rowIndex, persons: chunkPersons, records: chunkRecords);
+            await _flush(
+              rowIndex: rowIndex,
+              persons: chunkPersons,
+              records: chunkRecords,
+            );
             return DataImportStatus.canceled;
           }
           if (_shouldPause()) {
-            await _flush(rowIndex: rowIndex, persons: chunkPersons, records: chunkRecords);
+            await _flush(
+              rowIndex: rowIndex,
+              persons: chunkPersons,
+              records: chunkRecords,
+            );
             return DataImportStatus.paused;
           }
-          final cells = rows[i].map((c) => (c?.value?.toString() ?? '').trim()).toList();
+          final cells = rows[i]
+              .map((c) => (c?.value?.toString() ?? '').trim())
+              .toList();
           final row = _rowMap(headers, cells);
           _processedRows += 1;
           final record = await _parseRecordRow(
@@ -591,12 +675,20 @@ class _ImportRunner {
           }
           rowIndex++;
           if (chunkPersons.length + chunkRecords.length >= 2000) {
-            await _flush(rowIndex: rowIndex, persons: chunkPersons, records: chunkRecords);
+            await _flush(
+              rowIndex: rowIndex,
+              persons: chunkPersons,
+              records: chunkRecords,
+            );
           }
         }
       }
     }
-    await _flush(rowIndex: rowIndex, persons: chunkPersons, records: chunkRecords);
+    await _flush(
+      rowIndex: rowIndex,
+      persons: chunkPersons,
+      records: chunkRecords,
+    );
     return DataImportStatus.completed;
   }
 
@@ -604,7 +696,8 @@ class _ImportRunner {
     if (!_hasHeader(headers, _kType)) {
       throw const DataImportException('缺少列：数据类型');
     }
-    if (!_hasHeader(headers, _kPersonName) && !_hasHeader(headers, _kPersonId)) {
+    if (!_hasHeader(headers, _kPersonName) &&
+        !_hasHeader(headers, _kPersonId)) {
       throw const DataImportException('缺少列：关系人姓名/关系人ID（至少一个）');
     }
   }
@@ -706,7 +799,8 @@ class _ImportRunner {
     }
     final base = _parsePersonRow(rowIndex: rowIndex, row: normalized);
     if (base == null) return null;
-    final avatarName = (normalized[_kAvatarFile] ?? normalized['头像'] ?? '').trim();
+    final avatarName = (normalized[_kAvatarFile] ?? normalized['头像'] ?? '')
+        .trim();
     if (avatarName.isEmpty) {
       return base;
     }
@@ -717,7 +811,9 @@ class _ImportRunner {
       return base;
     }
     try {
-      final avatarUri = await _mediaStorageService.saveAvatarFromPath(mediaPath);
+      final avatarUri = await _mediaStorageService.saveAvatarFromPath(
+        mediaPath,
+      );
       return base.copyWith(avatarUri: Value(avatarUri));
     } catch (e) {
       _failedRows += 1;
@@ -761,14 +857,17 @@ class _ImportRunner {
       } else {
         effectiveBookId = _db.newId();
         final now = DateTime.now().millisecondsSinceEpoch;
-        await _db.into(_db.accountBooks).insert(
-          AccountBooksCompanion.insert(
-            bookId: Value(effectiveBookId),
-            name: bookNameRaw,
-            createdAt: now,
-            updatedAt: now,
-          ),
-        );
+        await _db
+            .into(_db.accountBooks)
+            .insert(
+              AccountBooksCompanion.insert(
+                bookId: Value(effectiveBookId),
+                name: bookNameRaw,
+                bookTime: Value(occurredAt.millisecondsSinceEpoch),
+                createdAt: now,
+                updatedAt: now,
+              ),
+            );
         _bookIdByName[bookNameRaw] = effectiveBookId;
       }
     }
@@ -783,8 +882,13 @@ class _ImportRunner {
 
     final phone = _read(row, _kPhone).trim();
     final relationship = _read(row, _kRelationship).trim();
-    final key = _personKey(name: personName, phone: phone.isEmpty ? null : phone);
-    var personId = personIdRaw.isEmpty ? (_personIdByKey[key] ?? '') : personIdRaw;
+    final key = _personKey(
+      name: personName,
+      phone: phone.isEmpty ? null : phone,
+    );
+    var personId = personIdRaw.isEmpty
+        ? (_personIdByKey[key] ?? '')
+        : personIdRaw;
     if (personId.isEmpty) {
       personId = _db.newId();
     }
@@ -818,9 +922,14 @@ class _ImportRunner {
       return null;
     }
     final eventName = _read(row, _kEvent).trim();
+    final book = await _db.accountBooksDao.findById(effectiveBookId);
+    final effectiveOccurredAt =
+        (book != null && book.isDefault != 1)
+        ? book.bookTime
+        : occurredAt.millisecondsSinceEpoch;
     final recordKey = recordId.isNotEmpty
         ? 'id:$id'
-        : 'k:$personId|${occurredAt.millisecondsSinceEpoch}|$amountCent|$direction|$eventName';
+        : 'k:$personId|$effectiveOccurredAt|$amountCent|$direction|$eventName';
     if (_seenRecordKeys.contains(recordKey)) {
       _skippedRows += 1;
       return null;
@@ -841,16 +950,22 @@ class _ImportRunner {
       amountCent: amountCent,
       currency: const Value('CNY'),
       eventName: eventName.isEmpty ? const Value.absent() : Value(eventName),
-      occurredAt: occurredAt.millisecondsSinceEpoch,
-      paymentMethod: paymentMethod.isEmpty ? const Value.absent() : Value(paymentMethod),
+      occurredAt: effectiveOccurredAt,
+      paymentMethod: paymentMethod.isEmpty
+          ? const Value.absent()
+          : Value(paymentMethod),
       note: note.isEmpty ? const Value.absent() : Value(note),
-      attachments: attachments.isEmpty ? const Value.absent() : Value(attachments),
+      attachments: attachments.isEmpty
+          ? const Value.absent()
+          : Value(attachments),
       createdAt: now,
       updatedAt: now,
     );
   }
 
-  Future<List<String>> _resolveAttachmentsFromRow(Map<String, String> row) async {
+  Future<List<String>> _resolveAttachmentsFromRow(
+    Map<String, String> row,
+  ) async {
     final out = <String>[];
     for (var i = 1; i <= 20; i++) {
       final fileName = _read(row, '附件${i}名称').trim();
@@ -878,7 +993,9 @@ class _ImportRunner {
     if (s.isEmpty) return null;
     final dt = DateTime.tryParse(s.replaceAll('/', '-'));
     if (dt != null) return dt;
-    final m = RegExp(r'^(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2})').firstMatch(s);
+    final m = RegExp(
+      r'^(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2})',
+    ).firstMatch(s);
     if (m == null) return null;
     return DateTime(
       int.parse(m.group(1)!),
@@ -922,7 +1039,11 @@ class _ImportRunner {
           b.insertAll(_db.persons, persons, mode: InsertMode.insertOrIgnore);
         }
         if (records.isNotEmpty) {
-          b.insertAll(_db.giftRecords, records, mode: InsertMode.insertOrIgnore);
+          b.insertAll(
+            _db.giftRecords,
+            records,
+            mode: InsertMode.insertOrIgnore,
+          );
         }
       });
     });
@@ -931,7 +1052,9 @@ class _ImportRunner {
 
     final insertedDelta = (after.$1 + after.$2) - (before.$1 + before.$2);
     _successRows += insertedDelta;
-    await (_db.update(_db.dataImportJobs)..where((t) => t.jobId.equals(_job.jobId))).write(
+    await (_db.update(
+      _db.dataImportJobs,
+    )..where((t) => t.jobId.equals(_job.jobId))).write(
       DataImportJobsCompanion(
         processedRows: Value(_processedRows),
         successRows: Value(_successRows),
@@ -960,14 +1083,18 @@ class _ImportRunner {
   }
 
   Future<(int, int)> _countInsertedRowsSnapshot() async {
-    final personRows = await _db.customSelect(
-      'SELECT COUNT(1) AS c FROM person WHERE book_id = ? AND deleted_at IS NULL;',
-      variables: <Variable<Object>>[Variable<String>(_job.bookId)],
-    ).getSingle();
-    final recordRows = await _db.customSelect(
-      'SELECT COUNT(1) AS c FROM gift_record WHERE book_id = ? AND deleted_at IS NULL;',
-      variables: <Variable<Object>>[Variable<String>(_job.bookId)],
-    ).getSingle();
+    final personRows = await _db
+        .customSelect(
+          'SELECT COUNT(1) AS c FROM person WHERE book_id = ? AND deleted_at IS NULL;',
+          variables: <Variable<Object>>[Variable<String>(_job.bookId)],
+        )
+        .getSingle();
+    final recordRows = await _db
+        .customSelect(
+          'SELECT COUNT(1) AS c FROM gift_record WHERE book_id = ? AND deleted_at IS NULL;',
+          variables: <Variable<Object>>[Variable<String>(_job.bookId)],
+        )
+        .getSingle();
     final persons = (personRows.data['c'] as int?) ?? 0;
     final records = (recordRows.data['c'] as int?) ?? 0;
     return (persons, records);
@@ -993,7 +1120,9 @@ class _ImportRunner {
       _mediaNamePathIndex = <String, String>{};
       return;
     }
-    final base = Directory(p.join(File(_job.filePath).parent.path, 'unzipped', _job.jobId));
+    final base = Directory(
+      p.join(File(_job.filePath).parent.path, 'unzipped', _job.jobId),
+    );
     final temp = base;
     await temp.create(recursive: true);
     final bytes = await file.readAsBytes();
@@ -1001,7 +1130,9 @@ class _ImportRunner {
     final map = <String, String>{};
     for (final entry in archive.files) {
       if (!entry.isFile) continue;
-      final outFile = File(p.join(temp.path, entry.name.replaceAll('/', p.separator)));
+      final outFile = File(
+        p.join(temp.path, entry.name.replaceAll('/', p.separator)),
+      );
       await outFile.parent.create(recursive: true);
       await outFile.writeAsBytes(entry.content as List<int>, flush: true);
       final baseName = p.basename(outFile.path);
@@ -1036,7 +1167,9 @@ class _ImportRunner {
   }
 
   Future<void> _persistCheckpoint(int rowIndex) async {
-    await (_db.update(_db.dataImportJobs)..where((t) => t.jobId.equals(_job.jobId))).write(
+    await (_db.update(
+      _db.dataImportJobs,
+    )..where((t) => t.jobId.equals(_job.jobId))).write(
       DataImportJobsCompanion(
         processedRows: Value(_processedRows),
         successRows: Value(_successRows),

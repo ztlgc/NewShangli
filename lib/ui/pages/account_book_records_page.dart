@@ -71,7 +71,10 @@ class _CanvasState extends State<_Canvas> {
           ? const <RecordData>[]
           : data.records.where((r) {
               final recordBookId = data.resolveBookId(r.bookId);
-              if (widget.isDefaultBook) return true;
+              if (widget.isDefaultBook) {
+                return recordBookId == widget.bookId ||
+                    r.direction == RecordDirection.expense;
+              }
               return recordBookId == widget.bookId;
             }).toList();
       return Column(
@@ -122,7 +125,7 @@ class _CanvasState extends State<_Canvas> {
       );
     }
     final stream = widget.isDefaultBook
-        ? db.giftRecordsDao.watchAllWithPersonInAllBooks()
+        ? db.giftRecordsDao.watchAllWithPersonInDefaultScope(widget.bookId)
         : db.giftRecordsDao.watchAllWithPersonInBook(widget.bookId);
 
     return Column(

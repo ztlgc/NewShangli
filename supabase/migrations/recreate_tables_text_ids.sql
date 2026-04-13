@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS public.account_book (
   theme_color TEXT DEFAULT '#312E81',
   icon TEXT,
   description TEXT,
+  book_time BIGINT NOT NULL,
   is_default INTEGER NOT NULL DEFAULT 0 CHECK(is_default IN (0, 1)),
   created_at BIGINT NOT NULL,
   updated_at BIGINT NOT NULL,
@@ -170,4 +171,3 @@ CREATE POLICY "Users can view their own reminder_type" ON public.reminder_type F
 CREATE POLICY "Users can insert their own reminder_type" ON public.reminder_type FOR INSERT WITH CHECK (auth.uid() = user_id);
 CREATE POLICY "Users can update their own reminder_type" ON public.reminder_type FOR UPDATE USING (auth.uid() = user_id);
 CREATE POLICY "Users can delete their own reminder_type" ON public.reminder_type FOR DELETE USING (auth.uid() = user_id);
-

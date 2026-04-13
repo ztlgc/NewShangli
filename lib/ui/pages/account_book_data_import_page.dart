@@ -22,7 +22,8 @@ class AccountBookDataImportPage extends StatefulWidget {
   final String bookName;
 
   @override
-  State<AccountBookDataImportPage> createState() => _AccountBookDataImportPageState();
+  State<AccountBookDataImportPage> createState() =>
+      _AccountBookDataImportPageState();
 }
 
 class _AccountBookDataImportPageState extends State<AccountBookDataImportPage> {
@@ -45,7 +46,9 @@ class _AccountBookDataImportPageState extends State<AccountBookDataImportPage> {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: const BoxDecoration(
               color: AppColors.white,
-              border: Border(bottom: BorderSide(color: AppColors.gray100, width: 1)),
+              border: Border(
+                bottom: BorderSide(color: AppColors.gray100, width: 1),
+              ),
             ),
             child: Row(
               children: [
@@ -90,10 +93,16 @@ class _AccountBookDataImportPageState extends State<AccountBookDataImportPage> {
                             height: 44,
                             decoration: const BoxDecoration(
                               color: AppColors.orange100,
-                              borderRadius: BorderRadius.all(Radius.circular(12)),
+                              borderRadius: BorderRadius.all(
+                                Radius.circular(12),
+                              ),
                             ),
                             alignment: Alignment.center,
-                            child: const FaIcon(FontAwesomeIcons.paste, size: 20, color: AppColors.orange600),
+                            child: const FaIcon(
+                              FontAwesomeIcons.paste,
+                              size: 20,
+                              color: AppColors.orange600,
+                            ),
                           ),
                           const SizedBox(width: 12),
                           Expanded(
@@ -143,15 +152,24 @@ class _AccountBookDataImportPageState extends State<AccountBookDataImportPage> {
                           contentPadding: const EdgeInsets.all(14),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(14),
-                            borderSide: const BorderSide(color: AppColors.orange100, width: 1.5),
+                            borderSide: const BorderSide(
+                              color: AppColors.orange100,
+                              width: 1.5,
+                            ),
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(14),
-                            borderSide: const BorderSide(color: AppColors.orange100, width: 1.5),
+                            borderSide: const BorderSide(
+                              color: AppColors.orange100,
+                              width: 1.5,
+                            ),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(14),
-                            borderSide: const BorderSide(color: AppColors.orange500, width: 1.5),
+                            borderSide: const BorderSide(
+                              color: AppColors.orange500,
+                              width: 1.5,
+                            ),
                           ),
                         ),
                       ),
@@ -166,7 +184,11 @@ class _AccountBookDataImportPageState extends State<AccountBookDataImportPage> {
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const FaIcon(FontAwesomeIcons.circleInfo, size: 14, color: AppColors.orange600),
+                            const FaIcon(
+                              FontAwesomeIcons.circleInfo,
+                              size: 14,
+                              color: AppColors.orange600,
+                            ),
                             const SizedBox(width: 8),
                             Expanded(
                               child: Text(
@@ -225,7 +247,10 @@ class _AccountBookDataImportPageState extends State<AccountBookDataImportPage> {
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('知道了')),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('知道了'),
+            ),
           ],
         );
       },
@@ -252,21 +277,35 @@ class _AccountBookDataImportPageState extends State<AccountBookDataImportPage> {
         return;
       }
 
-      final persons = await (db.select(db.persons)..where((t) => t.bookId.equals(widget.bookId))).get();
-      final personByName = <String, Person>{for (final p in persons) p.name.trim(): p};
-      final existing = await (db.select(db.giftRecords)..where((t) => t.bookId.equals(widget.bookId))).get();
+      final persons = await (db.select(
+        db.persons,
+      )..where((t) => t.bookId.equals(widget.bookId))).get();
+      final personByName = <String, Person>{
+        for (final p in persons) p.name.trim(): p,
+      };
+      final existing = await (db.select(
+        db.giftRecords,
+      )..where((t) => t.bookId.equals(widget.bookId))).get();
       final book = await db.accountBooksDao.findById(widget.bookId);
-      final defaultReason = (book?.reasonType.trim().isNotEmpty ?? false) ? book!.reasonType.trim() : '粘贴导入';
+      final now = DateTime.now().millisecondsSinceEpoch;
+      final defaultReason = (book?.reasonType.trim().isNotEmpty ?? false)
+          ? book!.reasonType.trim()
+          : '粘贴导入';
+      final bookTime = book?.bookTime ?? now;
+      final lockByBookTime = book != null && book.isDefault != 1;
       final existedKeys = <String>{
-        for (final r in existing.where((e) => e.direction == '收入')) '${r.personId}|${r.amountCent}',
+        for (final r in existing.where((e) => e.direction == '收入'))
+          '${r.personId}|${r.amountCent}',
       };
 
       var success = 0;
       var duplicate = 0;
       var invalid = 0;
-      final now = DateTime.now().millisecondsSinceEpoch;
+      final duplicateRecords = <String>[];
 
-      for (final line in lines) {
+      for (final entry in lines.asMap().entries) {
+        final lineNo = entry.key + 1;
+        final line = entry.value;
         final parsed = _parseLine(line);
         if (parsed == null) {
           invalid++;
@@ -294,6 +333,9 @@ class _AccountBookDataImportPageState extends State<AccountBookDataImportPage> {
         final key = '${person.personId}|${parsed.amountCent}';
         if (existedKeys.contains(key)) {
           duplicate++;
+          duplicateRecords.add(
+            '第$lineNo行：${parsed.name} ${((parsed.amountCent) / 100).toStringAsFixed(2)}元',
+          );
           continue;
         }
 
@@ -305,7 +347,9 @@ class _AccountBookDataImportPageState extends State<AccountBookDataImportPage> {
             direction: const Value('收入'),
             eventName: Value(defaultReason),
             note: Value(parsed.note),
-            occurredAt: now,
+            occurredAt: lockByBookTime
+                ? bookTime
+                : DateTime.now().millisecondsSinceEpoch,
             paymentMethod: const Value('未设置'),
             createdAt: now,
             updatedAt: now,
@@ -316,13 +360,21 @@ class _AccountBookDataImportPageState extends State<AccountBookDataImportPage> {
       }
 
       if (!mounted) return;
+      final duplicateDetails = duplicateRecords.isEmpty
+          ? ''
+          : '\n\n重复记录：\n${duplicateRecords.take(10).join('\n')}${duplicateRecords.length > 10 ? '\n…等 ${duplicateRecords.length} 条' : ''}';
       showDialog<void>(
         context: context,
         builder: (context) => AlertDialog(
           title: const Text('导入完成'),
-          content: Text('成功 $success 条\n重复跳过 $duplicate 条\n解析失败 $invalid 条'),
+          content: Text(
+            '成功 $success 条\n重复跳过 $duplicate 条\n解析失败 $invalid 条$duplicateDetails',
+          ),
           actions: [
-            TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('确定')),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('确定'),
+            ),
           ],
         ),
       );
@@ -335,8 +387,12 @@ class _AccountBookDataImportPageState extends State<AccountBookDataImportPage> {
 
   _ParsedLine? _parseLine(String raw) {
     final line = raw.trim();
-    final p1 = RegExp(r'^\s*(.+?)\s*[,，]\s*([+-]?\d+(?:\.\d{1,2})?)\s*(?:元|块|RMB|rmb|¥|￥)?\s*(?:[（(](.*?)[）)])?\s*$');
-    final p2 = RegExp(r'^\s*(.+?)\s+([+-]?\d+(?:\.\d{1,2})?)\s*(?:元|块|RMB|rmb|¥|￥)?\s*(?:[（(](.*?)[）)])?\s*$');
+    final p1 = RegExp(
+      r'^\s*(.+?)\s*[,，]\s*([+-]?\d+(?:\.\d{1,2})?)\s*(?:元|块|RMB|rmb|¥|￥)?\s*(?:[（(](.*?)[）)])?\s*$',
+    );
+    final p2 = RegExp(
+      r'^\s*(.+?)\s+([+-]?\d+(?:\.\d{1,2})?)\s*(?:元|块|RMB|rmb|¥|￥)?\s*(?:[（(](.*?)[）)])?\s*$',
+    );
     final m = p1.firstMatch(line) ?? p2.firstMatch(line);
     if (m == null) return null;
     final name = (m.group(1) ?? '').trim();
@@ -344,7 +400,11 @@ class _AccountBookDataImportPageState extends State<AccountBookDataImportPage> {
     final note = (m.group(3) ?? '').trim();
     final amount = double.tryParse(amountText);
     if (name.isEmpty || amount == null || amount <= 0) return null;
-    return _ParsedLine(name: name, amountCent: (amount * 100).round(), note: note.isEmpty ? null : note);
+    return _ParsedLine(
+      name: name,
+      amountCent: (amount * 100).round(),
+      note: note.isEmpty ? null : note,
+    );
   }
 
   void _toast(String msg) {
