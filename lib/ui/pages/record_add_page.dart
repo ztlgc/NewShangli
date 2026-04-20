@@ -892,7 +892,11 @@ class _RecordAddPageState extends State<RecordAddPage> {
       }
       return;
     }
-    final persons = await (db.select(db.persons)..limit(1)).get();
+    // 仅从未删除联系人中选择默认值，避免软删除联系人被再次默认选中。
+    final persons = await (db.select(db.persons)
+          ..where((t) => t.deletedAt.isNull())
+          ..limit(1))
+        .get();
     if (!mounted) return;
     if (_personId == null && persons.isNotEmpty) {
       _personId = persons.first.personId;

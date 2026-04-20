@@ -32,9 +32,15 @@ class AccountBooksDao extends DatabaseAccessor<AppDatabase>
   /// - 若未提供 createdAt/updatedAt，自动以当前时间填充（毫秒时间戳）。
   Future<String> insertOne(AccountBooksCompanion companion) async {
     final int now = DateTime.now().millisecondsSinceEpoch;
+    final Expression<int> countExp = accountBooks.bookId.count();
+    final TypedResult row =
+        await (selectOnly(accountBooks)..addColumns([countExp])).getSingle();
+    final bool hasAnyBook = (row.read(countExp) ?? 0) > 0;
     final AccountBooksCompanion withDefaults = companion.copyWith(
       bookId: companion.bookId.present ? companion.bookId : Value(db.newId()),
       bookTime: companion.bookTime.present ? companion.bookTime : Value(now),
+      // 业务规则：首个账簿自动设为默认，后续账簿默认状态由系统托管。
+      isDefault: Value(hasAnyBook ? 0 : 1),
       createdAt: companion.createdAt.present ? companion.createdAt : Value(now),
       updatedAt: companion.updatedAt.present ? companion.updatedAt : Value(now),
     );
@@ -61,17 +67,6 @@ class AccountBooksDao extends DatabaseAccessor<AppDatabase>
       throw StateError('默认账簿不可删除');
     }
     return (delete(accountBooks)..where((t) => t.bookId.equals(bookId))).go();
-  }
-
-  /// 将指定账簿设置为默认账簿（事务保证只有一个默认）。
-  Future<void> setDefaultBook(String bookId) async {
-    final target = await findById(bookId);
-    if (target == null) {
-      throw StateError('账簿不存在');
-    }
-    if (target.isDefault != 1) {
-      throw StateError('不允许将其他账簿设为默认账簿');
-    }
   }
 
   /// 获取默认账簿（若存在多个，返回 updatedAt 最新的一个）。

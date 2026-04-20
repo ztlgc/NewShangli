@@ -167,13 +167,13 @@ class ContactAvatar extends StatelessWidget {
   }
 }
 
-/// 从姓名中提取用于头像展示的“首字/首字母”。
+/// 从姓名中提取用于头像展示的“最后一个字/字母”。
 ///
 /// 规则（尽量贴合用户认知，同时对极端输入保持稳定）：
 /// - 空/全空白：返回 '—'；
-/// - 以中文（汉字）为主：取第一个出现的汉字（通常就是姓氏首字，兼容复姓/空格分隔）；
-/// - 英文：取第一个“单词”中出现的英文字母（A-Z），并转为大写；
-/// - 中英文混合：优先使用首个有效片段的规则；若首片段无效，则在全名中继续查找；
+/// - 以中文（汉字）为主：取最后一个出现的汉字；
+/// - 英文：取最后一个“单词”中出现的英文字母（A-Z），并转为大写；
+/// - 中英文混合：优先使用末尾片段的规则；若末尾片段无效，则在全名中逆向查找；
 /// - 仍无法提取：返回 '#'.
 String contactAvatarTextFromName(String? rawName) {
   final name = (rawName ?? '').trim();
@@ -182,13 +182,14 @@ String contactAvatarTextFromName(String? rawName) {
   // 将连续空白统一为单空格，便于按“单词/片段”处理。
   final normalized = name.replaceAll(RegExp(r'\s+'), ' ');
 
-  // “英文取第一个单词首字母”：这里优先以第一个非空片段为候选。
-  final firstSegment = normalized.split(' ').firstWhere((s) => s.trim().isNotEmpty, orElse: () => normalized);
+  // “最后一个字”规则：优先以最后一个非空片段为候选（如 "Tom Hanks" 优先取 "Hanks"）。
+  final parts = normalized.split(' ').where((s) => s.trim().isNotEmpty).toList();
+  final lastSegment = parts.isNotEmpty ? parts.last : normalized;
 
-  final fromSegment = _extractAvatarTextFromSegment(firstSegment);
+  final fromSegment = _extractAvatarTextFromSegment(lastSegment);
   if (fromSegment != null) return fromSegment;
 
-  // 若首片段无法提取（例如以表情/符号开头），则退而求其次扫描全名。
+  // 若末片段无法提取（例如以表情/符号结尾），则退而求其次逆向扫描全名。
   final fromAll = _extractAvatarTextFromSegment(normalized);
   if (fromAll != null) return fromAll;
 
@@ -198,16 +199,17 @@ String contactAvatarTextFromName(String? rawName) {
 String? _extractAvatarTextFromSegment(String segment) {
   if (segment.trim().isEmpty) return null;
 
-  // 1) 若存在汉字：取第一个汉字。
-  final hanMatch = RegExp(r'[\u4E00-\u9FFF]').firstMatch(segment);
-  if (hanMatch != null) {
-    return segment.substring(hanMatch.start, hanMatch.end);
+  // 1) 若存在汉字：取最后一个汉字。
+  final hanMatches = RegExp(r'[\u4E00-\u9FFF]').allMatches(segment).toList();
+  if (hanMatches.isNotEmpty) {
+    final last = hanMatches.last;
+    return segment.substring(last.start, last.end);
   }
 
-  // 2) 若存在英文字母：取第一个字母，并大写。
-  final latinMatch = RegExp(r'[A-Za-z]').firstMatch(segment);
-  if (latinMatch != null) {
-    return latinMatch.group(0)!.toUpperCase();
+  // 2) 若存在英文字母：取最后一个字母，并大写。
+  final latinMatches = RegExp(r'[A-Za-z]').allMatches(segment).toList();
+  if (latinMatches.isNotEmpty) {
+    return latinMatches.last.group(0)!.toUpperCase();
   }
 
   return null;

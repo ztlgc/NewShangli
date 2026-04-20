@@ -45,10 +45,6 @@ void main() {
       expect(defaultBook, isNotNull);
       expect(defaultBook!.reasonType, '');
 
-      expect(
-        () => db.accountBooksDao.setDefaultBook(bookId),
-        throwsA(isA<StateError>()),
-      );
       final AccountBook? currentDefaultBook = await db.accountBooksDao
           .findDefault();
       expect(currentDefaultBook?.bookId, defaultBookId);
@@ -79,6 +75,39 @@ void main() {
       final int deleted = await db.accountBooksDao.deleteById(bookId);
       expect(deleted, 1);
       expect(await db.accountBooksDao.findById(bookId), isNull);
+    });
+
+    test('应用托管默认账簿：首个账簿为默认且可自动修复', () async {
+      final now = DateTime.now().millisecondsSinceEpoch;
+      final firstBookId = await db.into(db.accountBooks).insert(
+        AccountBooksCompanion.insert(
+          bookId: const Value('b_first'),
+          name: '第一账簿',
+          isDefault: const Value(0),
+          createdAt: now - 1000,
+          updatedAt: now - 1000,
+        ),
+      );
+      expect(firstBookId, greaterThan(0));
+      await db.into(db.accountBooks).insert(
+        AccountBooksCompanion.insert(
+          bookId: const Value('b_second'),
+          name: '第二账簿',
+          isDefault: const Value(1),
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+
+      final ensuredId = await DefaultBookService().ensureDefaultBookId(db);
+      expect(ensuredId, 'b_first');
+
+      final books = await (db.select(
+        db.accountBooks,
+      )..orderBy([(t) => OrderingTerm.asc(t.createdAt)])).get();
+      final defaults = books.where((b) => b.isDefault == 1).toList();
+      expect(defaults.length, 1);
+      expect(defaults.first.bookId, 'b_first');
     });
 
     test('外键约束：Person 必须绑定存在的 Book', () async {
@@ -216,6 +245,7 @@ void main() {
 
     test('级联删除：删除 Book 会删除 Person/Record/Reminder', () async {
       final int now = DateTime.now().millisecondsSinceEpoch;
+      await DefaultBookService().ensureDefaultBookId(db);
       final String bookId = await db.accountBooksDao.insertOne(
         AccountBooksCompanion.insert(
           name: '测试账簿',

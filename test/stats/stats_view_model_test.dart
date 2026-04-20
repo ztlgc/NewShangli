@@ -49,7 +49,7 @@ class _FakeStatsRepository implements IStatsRepository {
 }
 
 void main() {
-  test('StatsViewModel 会实时纳入默认账簿范围内的新记录', () async {
+  test('StatsViewModel 会实时纳入全账簿范围内的新记录', () async {
     final db = AppDatabase.forTesting(NativeDatabase.memory());
     addTearDown(() async => db.close());
 
@@ -128,7 +128,8 @@ void main() {
 
     await vm.init();
 
-    expect(vm.data?.incomeTotalCent, 1000);
+    // 统计口径为全账簿：应同时包含默认账簿与其他账簿收入。
+    expect(vm.data?.incomeTotalCent, 3000);
     expect(vm.data?.expenseTotalCent, 0);
 
     await db.giftRecordsDao.insertOne(
@@ -145,7 +146,7 @@ void main() {
 
     await Future<void>.delayed(const Duration(milliseconds: 50));
 
-    expect(vm.data?.incomeTotalCent, 1000);
+    expect(vm.data?.incomeTotalCent, 3000);
     expect(vm.data?.expenseTotalCent, 500);
   });
 }

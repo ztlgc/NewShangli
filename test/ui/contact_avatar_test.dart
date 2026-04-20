@@ -11,25 +11,25 @@ void main() {
       expect(contactAvatarTextFromName('\n\t'), '—');
     });
 
-    test('中文姓名：取第一个汉字（通常为姓氏首字）', () {
-      expect(contactAvatarTextFromName('张三'), '张');
-      expect(contactAvatarTextFromName(' 欧阳娜娜 '), '欧');
-      expect(contactAvatarTextFromName('欧阳 娜娜'), '欧');
-      expect(contactAvatarTextFromName('王小明Tom'), '王');
-      expect(contactAvatarTextFromName('123张三'), '张');
+    test('中文姓名：取最后一个汉字', () {
+      expect(contactAvatarTextFromName('张三'), '三');
+      expect(contactAvatarTextFromName(' 欧阳娜娜 '), '娜');
+      expect(contactAvatarTextFromName('欧阳 娜娜'), '娜');
+      expect(contactAvatarTextFromName('王小明Tom'), '明');
+      expect(contactAvatarTextFromName('123张三'), '三');
     });
 
-    test('英文姓名：取第一个单词中的首个英文字母并大写', () {
-      expect(contactAvatarTextFromName('Tom Hanks'), 'T');
-      expect(contactAvatarTextFromName('tom hanks'), 'T');
-      expect(contactAvatarTextFromName('Tom·Hanks'), 'T');
-      expect(contactAvatarTextFromName('  Tom   Hanks  '), 'T');
+    test('英文姓名：取最后一个单词中的最后一个英文字母并大写', () {
+      expect(contactAvatarTextFromName('Tom Hanks'), 'S');
+      expect(contactAvatarTextFromName('tom hanks'), 'S');
+      expect(contactAvatarTextFromName('Tom·Hanks'), 'S');
+      expect(contactAvatarTextFromName('  Tom   Hanks  '), 'S');
     });
 
-    test('中英文混合：按首个有效片段规则；首片段无效则扫描全名', () {
-      expect(contactAvatarTextFromName('Tom 张三'), 'T');
-      expect(contactAvatarTextFromName('张三 Tom'), '张');
-      expect(contactAvatarTextFromName('😀 Tom'), 'T');
+    test('中英文混合：按末尾有效片段规则；末片段无效则逆向扫描全名', () {
+      expect(contactAvatarTextFromName('Tom 张三'), '三');
+      expect(contactAvatarTextFromName('张三 Tom'), 'M');
+      expect(contactAvatarTextFromName('😀 Tom'), 'M');
     });
 
     test('无法识别：返回 #', () {
@@ -74,7 +74,7 @@ void main() {
         ),
       );
 
-      expect(find.text('张'), findsOneWidget);
+      expect(find.text('三'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
 
@@ -94,16 +94,15 @@ void main() {
       );
 
       // 首帧加载中即展示 fallback（文字头像）。
-      expect(find.text('T'), findsOneWidget);
+      expect(find.text('S'), findsOneWidget);
 
       // 继续推进几帧，覆盖“加载失败 -> errorBuilder 回退”的路径。
       await tester.pump(const Duration(milliseconds: 100));
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 600));
 
-      expect(find.text('T'), findsOneWidget);
+      expect(find.text('S'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
   });
 }
-

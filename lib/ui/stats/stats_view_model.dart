@@ -32,7 +32,6 @@ class StatsViewModel extends ChangeNotifier {
   int? _minRecordYear;
   bool _refreshPending = false;
   Future<void>? _refreshLoopFuture;
-  String? _cachedBookId;
   StreamSubscription<List<GiftRecordWithPerson>>? _recordsSubscription;
 
   StatsTimePreset get preset => _preset;
@@ -44,8 +43,6 @@ class StatsViewModel extends ChangeNotifier {
   int? get minRecordYear => _minRecordYear;
 
   Future<void> init() async {
-    final defaultBook = await _db.accountBooksDao.findDefault();
-    _cachedBookId = defaultBook?.bookId;
     await _reloadRecords();
     _subscribeToRecords();
     await refresh();
@@ -101,7 +98,8 @@ class StatsViewModel extends ChangeNotifier {
       notifyListeners();
       try {
         final now = _now();
-        final targetBookId = _cachedBookId;
+        // 统计页按“全账簿”口径聚合，避免非默认账簿数据漏统。
+        const String? targetBookId = null;
         final range = resolveStatsDateRange(
           _preset,
           now: now,
@@ -137,19 +135,13 @@ class StatsViewModel extends ChangeNotifier {
   }
 
   void _subscribeToRecords() {
-    final defaultBookId = _cachedBookId;
-    if (defaultBookId == null) {
-      _recordsSubscription?.cancel();
-      _recordsSubscription = null;
-      return;
-    }
     _recordsSubscription?.cancel();
-    _recordsSubscription = _db.giftRecordsDao
-        .watchAllWithPersonInDefaultScope(defaultBookId)
-        .listen((rows) {
-          _replaceRecords(rows, defaultBookId);
-          unawaited(refresh());
-        });
+    _recordsSubscription = _db.giftRecordsDao.watchAllWithPersonInAllBooks().listen((
+      rows,
+    ) {
+      _replaceRecords(rows);
+      unawaited(refresh());
+    });
   }
 
   bool _isSameRange(StatsDateRange? left, StatsDateRange right) {
@@ -202,27 +194,18 @@ class StatsViewModel extends ChangeNotifier {
   }
 
   Future<void> _reloadRecords() async {
-    final defaultBookId = _cachedBookId;
-    if (defaultBookId == null) {
-      _records = const <StatsSourceRecord>[];
-      _minRecordYear = null;
-      return;
-    }
-    final rows = await _db.giftRecordsDao.listAllWithPersonInDefaultScope(
-      defaultBookId,
-    );
-    _replaceRecords(rows, defaultBookId);
+    final rows = await _db.giftRecordsDao.listAllWithPersonInAllBooks();
+    _replaceRecords(rows);
   }
 
   void _replaceRecords(
     List<GiftRecordWithPerson> rows,
-    String defaultBookId,
   ) {
     _records = rows
         .map(
           (row) => StatsSourceRecord(
             id: row.record.recordId,
-            bookId: defaultBookId,
+            bookId: row.record.bookId,
             direction: row.record.direction == '支出' ? 1 : 0,
             amountCent: row.record.amountCent,
             eventName: (row.record.eventName ?? '').trim().isEmpty ? '未设置' : row.record.eventName!.trim(),
