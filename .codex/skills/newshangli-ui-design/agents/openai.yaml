@@ -1,0 +1,4 @@
+interface:
+  display_name: "NewShangli UI Design"
+  short_description: "统一尚礼 Flutter 页面 UI 的设计语言"
+  default_prompt: "Use $newshangli-ui-design to redesign or add a NewShangli Flutter page with the project design language."

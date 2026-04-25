@@ -719,7 +719,7 @@ class $PersonsTable extends Persons with TableInfo<$PersonsTable, Person> {
     false,
     type: DriftSqlType.string,
     requiredDuringInsert: false,
-    defaultValue: const Constant('闁稿繑婀圭划?),
+    defaultValue: const Constant('其他'),
   );
   static const VerificationMeta _phoneMeta = const VerificationMeta('phone');
   @override
@@ -1439,8 +1439,8 @@ class $GiftRecordsTable extends GiftRecords
     type: DriftSqlType.string,
     requiredDuringInsert: false,
     $customConstraints:
-        'NOT NULL DEFAULT \'闁衡偓鐠哄搫寮砛' CHECK(direction IN (\'闁衡偓鐠哄搫寮砛', \'闁衡偓椤栨艾姣塡'))',
-    defaultValue: const CustomExpression('\'闁衡偓鐠哄搫寮砛''),
+        "NOT NULL DEFAULT '收入' CHECK(direction IN ('收入', '支出'))",
+    defaultValue: const CustomExpression("'收入'"),
   );
   static const VerificationMeta _amountCentMeta = const VerificationMeta(
     'amountCent',
@@ -4714,7 +4714,8 @@ mixin _$ContactRelationsDaoMixin on DatabaseAccessor<AppDatabase> {
   $AccountBooksTable get accountBooks => attachedDatabase.accountBooks;
   $PersonsTable get persons => attachedDatabase.persons;
   $RelationTypesTable get relationTypes => attachedDatabase.relationTypes;
-  $ContactRelationsTable get contactRelations => attachedDatabase.contactRelations;
+  $ContactRelationsTable get contactRelations =>
+      attachedDatabase.contactRelations;
 }
 
 mixin _$DataImportJobsDaoMixin on DatabaseAccessor<AppDatabase> {
