@@ -6,8 +6,6 @@
 -- 先移除旧表（包含外键依赖）
 DROP TABLE IF EXISTS public.contact_relation CASCADE;
 DROP TABLE IF EXISTS public.gift_record CASCADE;
-DROP TABLE IF EXISTS public.event_reminder CASCADE;
-DROP TABLE IF EXISTS public.reminder_type CASCADE;
 DROP TABLE IF EXISTS public.person CASCADE;
 DROP TABLE IF EXISTS public.reason CASCADE;
 DROP TABLE IF EXISTS public.relation_type CASCADE;
@@ -44,30 +42,10 @@ CREATE TABLE IF NOT EXISTS public.person (
   deleted_at BIGINT,
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE
 );
-
-CREATE TABLE IF NOT EXISTS public.event_reminder (
-  reminder_id TEXT PRIMARY KEY,
-  book_id TEXT NOT NULL REFERENCES public.account_book(book_id) ON DELETE CASCADE,
-  person_id TEXT REFERENCES public.person(person_id) ON DELETE SET NULL,
-  relation_person_ids TEXT DEFAULT '[]',
-  reminder_type TEXT DEFAULT '自定义',
-  title TEXT DEFAULT '',
-  target_date TEXT NOT NULL,
-  remind_at BIGINT NOT NULL,
-  repeat_rule TEXT DEFAULT 'none',
-  status TEXT DEFAULT 'active',
-  channel TEXT DEFAULT 'notification',
-  note TEXT,
-  created_at BIGINT NOT NULL,
-  updated_at BIGINT NOT NULL,
-  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE
-);
-
 CREATE TABLE IF NOT EXISTS public.gift_record (
   record_id TEXT PRIMARY KEY,
   book_id TEXT NOT NULL REFERENCES public.account_book(book_id) ON DELETE CASCADE,
   person_id TEXT NOT NULL REFERENCES public.person(person_id) ON DELETE CASCADE,
-  reminder_id TEXT,
   direction TEXT NOT NULL DEFAULT '收入' CHECK(direction IN ('收入', '支出')),
   amount_cent BIGINT NOT NULL CHECK(amount_cent > 0),
   currency TEXT DEFAULT 'CNY',
@@ -111,25 +89,13 @@ CREATE TABLE IF NOT EXISTS public.contact_relation (
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS public.reminder_type (
-  type_id TEXT PRIMARY KEY,
-  book_id TEXT NOT NULL REFERENCES public.account_book(book_id) ON DELETE CASCADE,
-  name TEXT NOT NULL,
-  is_custom BOOLEAN DEFAULT FALSE,
-  created_at BIGINT NOT NULL,
-  updated_at BIGINT NOT NULL,
-  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE
-);
-
 -- 启用 RLS
 ALTER TABLE public.account_book ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.person ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.gift_record ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.event_reminder ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.reason ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.relation_type ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.contact_relation ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.reminder_type ENABLE ROW LEVEL SECURITY;
 
 -- 重新创建策略
 CREATE POLICY "Users can view their own account_book" ON public.account_book FOR SELECT USING (auth.uid() = user_id);
@@ -147,11 +113,6 @@ CREATE POLICY "Users can insert their own gift_record" ON public.gift_record FOR
 CREATE POLICY "Users can update their own gift_record" ON public.gift_record FOR UPDATE USING (auth.uid() = user_id);
 CREATE POLICY "Users can delete their own gift_record" ON public.gift_record FOR DELETE USING (auth.uid() = user_id);
 
-CREATE POLICY "Users can view their own event_reminder" ON public.event_reminder FOR SELECT USING (auth.uid() = user_id);
-CREATE POLICY "Users can insert their own event_reminder" ON public.event_reminder FOR INSERT WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "Users can update their own event_reminder" ON public.event_reminder FOR UPDATE USING (auth.uid() = user_id);
-CREATE POLICY "Users can delete their own event_reminder" ON public.event_reminder FOR DELETE USING (auth.uid() = user_id);
-
 CREATE POLICY "Users can view their own reason" ON public.reason FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "Users can insert their own reason" ON public.reason FOR INSERT WITH CHECK (auth.uid() = user_id);
 CREATE POLICY "Users can update their own reason" ON public.reason FOR UPDATE USING (auth.uid() = user_id);
@@ -166,8 +127,3 @@ CREATE POLICY "Users can view their own contact_relation" ON public.contact_rela
 CREATE POLICY "Users can insert their own contact_relation" ON public.contact_relation FOR INSERT WITH CHECK (auth.uid() = user_id);
 CREATE POLICY "Users can update their own contact_relation" ON public.contact_relation FOR UPDATE USING (auth.uid() = user_id);
 CREATE POLICY "Users can delete their own contact_relation" ON public.contact_relation FOR DELETE USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can view their own reminder_type" ON public.reminder_type FOR SELECT USING (auth.uid() = user_id);
-CREATE POLICY "Users can insert their own reminder_type" ON public.reminder_type FOR INSERT WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "Users can update their own reminder_type" ON public.reminder_type FOR UPDATE USING (auth.uid() = user_id);
-CREATE POLICY "Users can delete their own reminder_type" ON public.reminder_type FOR DELETE USING (auth.uid() = user_id);

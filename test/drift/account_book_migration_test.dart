@@ -42,23 +42,6 @@ CREATE TABLE person (
 ''');
 
       raw.execute('''
-CREATE TABLE event_reminder (
-  reminder_id TEXT NOT NULL PRIMARY KEY,
-  book_id TEXT NOT NULL,
-  person_id TEXT NULL,
-  reminder_type TEXT NOT NULL DEFAULT '自定义',
-  target_date TEXT NOT NULL,
-  remind_at INTEGER NOT NULL,
-  repeat_rule TEXT NOT NULL DEFAULT 'none',
-  status TEXT NOT NULL DEFAULT 'active',
-  channel TEXT NOT NULL DEFAULT 'notification',
-  note TEXT NULL,
-  created_at INTEGER NOT NULL,
-  updated_at INTEGER NOT NULL
-);
-''');
-
-      raw.execute('''
 INSERT INTO account_book(book_id, name, type, theme_color, is_default, created_at, updated_at) VALUES
 ('b1', 'A', 'default',  '#312E81', 1, 1, 1),
 ('b2', 'B', 'wedding',  '#312E81', 0, 1, 1),

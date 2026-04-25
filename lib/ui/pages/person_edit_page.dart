@@ -49,7 +49,6 @@ class _PersonEditPageState extends State<PersonEditPage> {
   String? _avatarUrl;
   DateTime? _birthday;
   bool _isLunarBirthday = false;
-  bool _birthdayReminder = false;
 
   bool _nameEditing = false;
   bool _phoneEditing = false;
@@ -90,7 +89,6 @@ class _PersonEditPageState extends State<PersonEditPage> {
     _avatarUrl = null;
     _birthday = null;
     _isLunarBirthday = false;
-    _birthdayReminder = false;
     _relationship = '朋友';
     _loadDefaultRelationshipFromDrift();
     if (widget.personId != null) {
@@ -196,10 +194,8 @@ class _PersonEditPageState extends State<PersonEditPage> {
                   onPhoneFocusChange: _saving ? null : _onPhoneFocusChange,
                   birthday: _birthday,
                   isLunarBirthday: _isLunarBirthday,
-                  birthdayReminder: _birthdayReminder,
                   onPickBirthday: _saving ? null : _pickBirthday,
                   onLunarBirthdayChanged: _saving ? null : (v) => setState(() => _isLunarBirthday = v),
-                  onBirthdayReminderChanged: _saving ? null : (v) => setState(() => _birthdayReminder = v),
                 ),
                 const SizedBox(height: 24),
                 const _SectionOverline(title: '其他信息'),
@@ -850,10 +846,8 @@ class _BasicInfoCard extends StatelessWidget {
     required this.onPhoneFocusChange,
     required this.birthday,
     required this.isLunarBirthday,
-    required this.birthdayReminder,
     required this.onPickBirthday,
     required this.onLunarBirthdayChanged,
-    required this.onBirthdayReminderChanged,
   });
 
   final TextEditingController nameCtrl;
@@ -877,10 +871,8 @@ class _BasicInfoCard extends StatelessWidget {
   final ValueChanged<bool>? onPhoneFocusChange;
   final DateTime? birthday;
   final bool isLunarBirthday;
-  final bool birthdayReminder;
   final VoidCallback? onPickBirthday;
   final ValueChanged<bool>? onLunarBirthdayChanged;
-  final ValueChanged<bool>? onBirthdayReminderChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -939,10 +931,8 @@ class _BasicInfoCard extends StatelessWidget {
           _BirthdayRow(
             birthday: birthday,
             isLunar: isLunarBirthday,
-            reminder: birthdayReminder,
             onTap: onPickBirthday,
             onLunarChanged: onLunarBirthdayChanged,
-            onReminderChanged: onBirthdayReminderChanged,
           ),
         ],
       ),
@@ -1333,18 +1323,14 @@ class _BirthdayRow extends StatelessWidget {
   const _BirthdayRow({
     required this.birthday,
     required this.isLunar,
-    required this.reminder,
     required this.onTap,
     required this.onLunarChanged,
-    required this.onReminderChanged,
   });
 
   final DateTime? birthday;
   final bool isLunar;
-  final bool reminder;
   final VoidCallback? onTap;
   final ValueChanged<bool>? onLunarChanged;
-  final ValueChanged<bool>? onReminderChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -1431,8 +1417,6 @@ class _BirthdayRow extends StatelessWidget {
             Row(
               children: [
                 _SwitchItem(label: '农历', value: isLunar, onChanged: onLunarChanged),
-                const SizedBox(width: 24),
-                _SwitchItem(label: '生日提醒', value: reminder, onChanged: onReminderChanged),
               ],
             ),
           ],

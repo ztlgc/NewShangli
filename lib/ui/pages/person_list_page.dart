@@ -116,7 +116,6 @@ class _CanvasState extends State<_Canvas> {
             avatarUrl: p.avatarUri,
             birthday: DateTime.tryParse(p.birthday ?? ''),
             isLunarBirthday: false,
-            birthdayReminder: false,
             createdAt: DateTime.fromMillisecondsSinceEpoch(p.createdAt),
           ),
         )

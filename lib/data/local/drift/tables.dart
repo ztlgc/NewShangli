@@ -120,13 +120,6 @@ class GiftRecords extends Table {
         'NOT NULL REFERENCES person(person_id) ON DELETE CASCADE',
       )();
 
-  TextColumn get reminderId => text()
-      .named('reminder_id')
-      .nullable()
-      .customConstraint(
-        'NULL REFERENCES event_reminder(reminder_id) ON DELETE SET NULL',
-      )();
-
   TextColumn get direction => text().customConstraint(
     "NOT NULL DEFAULT '收入' CHECK(direction IN ('收入', '支出'))",
   )();
@@ -170,78 +163,6 @@ class GiftRecords extends Table {
 
   @override
   Set<Column> get primaryKey => {recordId};
-}
-
-/// 事件提醒表：event_reminder
-class EventReminders extends Table {
-  @override
-  String get tableName => 'event_reminder';
-
-  TextColumn get reminderId =>
-      text().named('reminder_id').clientDefault(() => const Uuid().v4())();
-
-  TextColumn get bookId => text()
-      .named('book_id')
-      .customConstraint(
-        'NOT NULL REFERENCES account_book(book_id) ON DELETE CASCADE',
-      )();
-
-  TextColumn get personId => text()
-      .named('person_id')
-      .nullable()
-      .customConstraint(
-        'NULL REFERENCES person(person_id) ON DELETE SET NULL',
-      )();
-
-  TextColumn get relationPersonIds =>
-      text().named('relation_person_ids').withDefault(const Constant('[]'))();
-
-  TextColumn get reminderType =>
-      text().named('reminder_type').withDefault(const Constant('自定义'))();
-
-  /// 提醒标题（UI 展示用）。
-  ///
-  /// 说明：
-  /// - 历史上 reminder_type 既被当作“类型”也被当作“名称”使用，语义容易混淆；
-  /// - 这里新增 title 作为稳定的展示字段，类型仍保留在 reminder_type。
-  TextColumn get title =>
-      text().named('title').withDefault(const Constant(''))();
-
-  TextColumn get targetDate =>
-      text().named('target_date').customConstraint('NOT NULL')();
-
-  IntColumn get remindAt =>
-      integer().named('remind_at').customConstraint('NOT NULL')();
-
-  TextColumn get repeatRule =>
-      text().named('repeat_rule').withDefault(const Constant('none'))();
-
-  TextColumn get status => text().withDefault(const Constant('active'))();
-
-  TextColumn get channel =>
-      text().withDefault(const Constant('notification'))();
-
-  TextColumn get note => text().nullable()();
-
-  IntColumn get createdAt =>
-      integer().named('created_at').customConstraint('NOT NULL')();
-
-  IntColumn get updatedAt =>
-      integer().named('updated_at').customConstraint('NOT NULL')();
-
-  List<Index> get indexes => [
-    Index(
-      'idx_event_reminder_book_remind_at',
-      'CREATE INDEX idx_event_reminder_book_remind_at ON event_reminder(book_id, remind_at)',
-    ),
-    Index(
-      'idx_event_reminder_book_target_date',
-      'CREATE INDEX idx_event_reminder_book_target_date ON event_reminder(book_id, target_date)',
-    ),
-  ];
-
-  @override
-  Set<Column> get primaryKey => {reminderId};
 }
 
 class Reasons extends Table {
@@ -352,32 +273,6 @@ class ContactRelations extends Table {
 
   @override
   Set<Column> get primaryKey => {relationId};
-}
-
-class ReminderTypes extends Table {
-  @override
-  String get tableName => 'reminder_type';
-
-  TextColumn get typeId =>
-      text().named('type_id').clientDefault(() => const Uuid().v4())();
-
-  TextColumn get bookId => text()
-      .named('book_id')
-      .customConstraint(
-        'NOT NULL REFERENCES account_book(book_id) ON DELETE CASCADE',
-      )();
-
-  TextColumn get name => text().named('name')();
-  BoolColumn get isCustom =>
-      boolean().named('is_custom').withDefault(const Constant(false))();
-
-  IntColumn get createdAt =>
-      integer().named('created_at').customConstraint('NOT NULL')();
-  IntColumn get updatedAt =>
-      integer().named('updated_at').customConstraint('NOT NULL')();
-
-  @override
-  Set<Column> get primaryKey => {typeId};
 }
 
 class DataImportJobs extends Table {

@@ -46,7 +46,6 @@ class PersonData {
     this.avatarUrl,
     this.birthday,
     this.isLunarBirthday = false,
-    this.birthdayReminder = false,
     required this.createdAt,
   });
 
@@ -58,7 +57,6 @@ class PersonData {
   final String? avatarUrl;
   final DateTime? birthday;
   final bool isLunarBirthday;
-  final bool birthdayReminder;
   final DateTime createdAt;
 
   Map<String, Object?> toJson() => <String, Object?>{
@@ -70,7 +68,6 @@ class PersonData {
     'avatarUrl': avatarUrl,
     'birthday': birthday?.toIso8601String(),
     'isLunarBirthday': isLunarBirthday,
-    'birthdayReminder': birthdayReminder,
     'createdAt': createdAt.toIso8601String(),
   };
 
@@ -85,7 +82,6 @@ class PersonData {
       avatarUrl: map['avatarUrl'] as String?,
       birthday: DateTime.tryParse((map['birthday'] as String?) ?? ''),
       isLunarBirthday: (map['isLunarBirthday'] as bool?) ?? false,
-      birthdayReminder: (map['birthdayReminder'] as bool?) ?? false,
       createdAt:
           DateTime.tryParse((map['createdAt'] as String?) ?? '') ??
           DateTime.fromMillisecondsSinceEpoch(0),
@@ -411,7 +407,6 @@ class AppData extends ChangeNotifier {
     String? avatarUrl,
     DateTime? birthday,
     bool isLunarBirthday = false,
-    bool birthdayReminder = false,
   }) {
     final trimmedName = name.trim();
     if (trimmedName.isEmpty) {
@@ -429,7 +424,6 @@ class AppData extends ChangeNotifier {
         avatarUrl: avatarUrl?.trim().isEmpty == true ? null : avatarUrl?.trim(),
         birthday: birthday,
         isLunarBirthday: isLunarBirthday,
-        birthdayReminder: birthdayReminder,
         createdAt: now,
       ),
     );
@@ -446,7 +440,6 @@ class AppData extends ChangeNotifier {
     String? avatarUrl,
     DateTime? birthday,
     bool isLunarBirthday = false,
-    bool birthdayReminder = false,
   }) {
     final trimmedName = name.trim();
     if (trimmedName.isEmpty) {
@@ -473,7 +466,6 @@ class AppData extends ChangeNotifier {
       avatarUrl: avatarUrl?.trim().isEmpty == true ? null : avatarUrl?.trim(),
       birthday: birthday,
       isLunarBirthday: isLunarBirthday,
-      birthdayReminder: birthdayReminder,
       createdAt: old.createdAt,
     );
     if (inTrash) {
@@ -1018,7 +1010,6 @@ class AppData extends ChangeNotifier {
           avatarUrl: person.avatarUrl,
           birthday: person.birthday,
           isLunarBirthday: person.isLunarBirthday,
-          birthdayReminder: person.birthdayReminder,
           createdAt: person.createdAt,
         );
         personsChanged = true;
@@ -1037,7 +1028,6 @@ class AppData extends ChangeNotifier {
           avatarUrl: person.avatarUrl,
           birthday: person.birthday,
           isLunarBirthday: person.isLunarBirthday,
-          birthdayReminder: person.birthdayReminder,
           createdAt: person.createdAt,
         );
         personsChanged = true;

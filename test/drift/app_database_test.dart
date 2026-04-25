@@ -196,54 +196,7 @@ void main() {
       );
     });
 
-    test('外键动作：删除 reminder 时 gift_record.reminder_id 置空', () async {
-      final int now = DateTime.now().millisecondsSinceEpoch;
-      final String bookId = await db.accountBooksDao.insertOne(
-        AccountBooksCompanion.insert(
-          name: '测试账簿',
-          createdAt: now,
-          updatedAt: now,
-        ),
-      );
-      final String personId = await db.personsDao.insertOne(
-        PersonsCompanion.insert(
-          bookId: bookId,
-          name: '王五',
-          createdAt: now,
-          updatedAt: now,
-        ),
-      );
-      final String reminderId = await db.eventRemindersDao.insertOne(
-        EventRemindersCompanion.insert(
-          bookId: bookId,
-          personId: Value(personId),
-          targetDate: '2026-03-02',
-          remindAt: now + 1000,
-          createdAt: now,
-          updatedAt: now,
-        ),
-      );
-      final String recordId = await db.giftRecordsDao.insertOne(
-        GiftRecordsCompanion.insert(
-          bookId: bookId,
-          personId: personId,
-          reminderId: Value(reminderId),
-          direction: const Value('收入'),
-          amountCent: 100,
-          currency: const Value('CNY'),
-          occurredAt: now,
-          createdAt: now,
-          updatedAt: now,
-        ),
-      );
-
-      await db.eventRemindersDao.deleteById(reminderId);
-      final GiftRecord? record = await db.giftRecordsDao.findById(recordId);
-      expect(record, isNotNull);
-      expect(record!.reminderId, isNull);
-    });
-
-    test('级联删除：删除 Book 会删除 Person/Record/Reminder', () async {
+    test('级联删除：删除 Book 会删除 Person/Record', () async {
       final int now = DateTime.now().millisecondsSinceEpoch;
       await DefaultBookService().ensureDefaultBookId(db);
       final String bookId = await db.accountBooksDao.insertOne(
@@ -261,21 +214,10 @@ void main() {
           updatedAt: now,
         ),
       );
-      final String reminderId = await db.eventRemindersDao.insertOne(
-        EventRemindersCompanion.insert(
-          bookId: bookId,
-          personId: Value(personId),
-          targetDate: '2026-03-02',
-          remindAt: now + 1000,
-          createdAt: now,
-          updatedAt: now,
-        ),
-      );
       await db.giftRecordsDao.insertOne(
         GiftRecordsCompanion.insert(
           bookId: bookId,
           personId: personId,
-          reminderId: Value(reminderId),
           direction: const Value('支出'),
           amountCent: 200,
           currency: const Value('CNY'),
@@ -289,7 +231,6 @@ void main() {
 
       expect(await db.accountBooksDao.findById(bookId), isNull);
       expect(await db.personsDao.findById(personId), isNull);
-      expect(await db.eventRemindersDao.findById(reminderId), isNull);
       final int recordCount = await (db.select(db.giftRecords).get()).then(
         (v) => v.length,
       );

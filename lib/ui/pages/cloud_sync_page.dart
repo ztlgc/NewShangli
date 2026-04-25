@@ -126,9 +126,7 @@ class _CloudSyncPageState extends State<CloudSyncPage> {
         (SELECT COUNT(*) FROM gift_record) +
         (SELECT COUNT(*) FROM reason) +
         (SELECT COUNT(*) FROM relation_type) +
-        (SELECT COUNT(*) FROM contact_relation) +
-        (SELECT COUNT(*) FROM reminder_type) +
-        (SELECT COUNT(*) FROM event_reminder) AS total
+        (SELECT COUNT(*) FROM contact_relation) AS total
       ''',
     ).getSingle();
     return row.read<int>('total');
@@ -143,9 +141,7 @@ class _CloudSyncPageState extends State<CloudSyncPage> {
         (SELECT COUNT(*) FROM gift_record) +
         (SELECT COUNT(*) FROM reason) +
         (SELECT COUNT(*) FROM relation_type) +
-        (SELECT COUNT(*) FROM contact_relation) +
-        (SELECT COUNT(*) FROM reminder_type) +
-        (SELECT COUNT(*) FROM event_reminder) AS total
+        (SELECT COUNT(*) FROM contact_relation) AS total
       ''',
       readsFrom: {
         db.accountBooks,
@@ -154,8 +150,6 @@ class _CloudSyncPageState extends State<CloudSyncPage> {
         db.reasons,
         db.relationTypes,
         db.contactRelations,
-        db.reminderTypes,
-        db.eventReminders,
       },
     ).watch().map((rows) {
       if (rows.isEmpty) return 0;
@@ -631,7 +625,7 @@ class _CloudSyncPageState extends State<CloudSyncPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '恢复保护提醒',
+                  '恢复保护提示',
                   style: AppTypography.base(
                     fontSize: 13,
                     fontWeight: AppTypography.semibold,

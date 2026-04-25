@@ -357,107 +357,6 @@
                             </div>
                         </div>
                     </div>
-                    <!-- Reminders (Linked from Home) -->
-                    <div class="flex flex-col items-center">
-                        <span class="mb-2 text-sm font-medium text-gray-500 bg-gray-100 px-3 py-1 rounded-full">功能模块</span>
-                        <h3 class="text-lg font-semibold mb-4 text-gray-800">事件提醒</h3>
-                        <div class="w-[393px] h-[852px] rounded-2xl shadow-lg overflow-hidden bg-white relative">
-                            <div class="bg-gray-50 h-full flex flex-col overflow-hidden select-none">
-                                <div class="h-[47px] w-full bg-white flex justify-between items-center px-6 pt-2 text-sm font-medium z-50">
-                                    <span>9:41</span>
-                                    <div class="flex gap-2 text-xs">
-                                        <i class="fas fa-signal"></i>
-                                        <i class="fas fa-wifi"></i>
-                                        <i class="fas fa-battery-full text-lg"></i>
-                                    </div>
-                                </div>
-                                <header class="bg-white px-4 py-3 flex items-center justify-between sticky top-0 z-40 border-b border-gray-100">
-                                    <h1 class="text-xl font-bold text-gray-900">提醒</h1>
-                                    <button class="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-600">
-                                        <i class="fas fa-plus"></i>
-                                    </button>
-                                </header>
-                                <div class="px-4 py-3 bg-white border-b border-gray-50 flex gap-4 overflow-x-auto hide-scrollbar">
-                                    <button class="bg-indigo-900 text-white px-4 py-1.5 rounded-full text-xs font-medium whitespace-nowrap shadow-sm shadow-indigo-200">全部</button>
-                                    <button class="bg-gray-100 text-gray-600 px-4 py-1.5 rounded-full text-xs font-medium whitespace-nowrap">生日</button>
-                                    <button class="bg-gray-100 text-gray-600 px-4 py-1.5 rounded-full text-xs font-medium whitespace-nowrap">回礼</button>
-                                    <button class="bg-gray-100 text-gray-600 px-4 py-1.5 rounded-full text-xs font-medium whitespace-nowrap">纪念日</button>
-                                </div>
-                                <main class="flex-1 overflow-y-auto hide-scrollbar pb-24 p-4 space-y-6">
-                                    <div>
-                                        <h2 class="text-xs font-bold text-gray-500 mb-3 ml-1 uppercase tracking-wider">本周</h2>
-                                        <div class="space-y-3">
-                                            <div class="bg-white p-4 rounded-2xl shadow-sm border-l-4 border-red-500 flex items-center">
-                                                <div class="flex-1">
-                                                    <div class="flex items-center gap-2 mb-1">
-                                                        <span class="bg-red-100 text-red-600 text-[10px] px-1.5 py-0.5 rounded font-bold">明天</span>
-                                                        <h3 class="font-bold text-gray-900">张伟 生日</h3>
-                                                    </div>
-                                                    <p class="text-xs text-gray-500">建议红包 ¥600</p>
-                                                </div>
-                                                <button class="w-8 h-8 rounded-full bg-green-50 text-green-600 flex items-center justify-center">
-                                                    <i class="fas fa-check text-xs"></i>
-                                                </button>
-                                            </div>
-                                            <div class="bg-white p-4 rounded-2xl shadow-sm border-l-4 border-orange-400 flex items-center">
-                                                <div class="flex-1">
-                                                    <div class="flex items-center gap-2 mb-1">
-                                                        <span class="bg-orange-100 text-orange-600 text-[10px] px-1.5 py-0.5 rounded font-bold">3天后</span>
-                                                        <h3 class="font-bold text-gray-900">李娜 孩子百日宴</h3>
-                                                    </div>
-                                                    <p class="text-xs text-gray-500">上次她送了 ¥800</p>
-                                                </div>
-                                                <button class="w-8 h-8 rounded-full bg-green-50 text-green-600 flex items-center justify-center">
-                                                    <i class="fas fa-check text-xs"></i>
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <h2 class="text-xs font-bold text-gray-500 mb-3 ml-1 uppercase tracking-wider">未来</h2>
-                                        <div class="space-y-3">
-                                            <div class="bg-white p-4 rounded-2xl shadow-sm flex items-center">
-                                                <div class="w-10 h-10 rounded-full bg-pink-50 text-pink-500 flex items-center justify-center mr-3">
-                                                    <i class="fas fa-heart"></i>
-                                                </div>
-                                                <div class="flex-1">
-                                                    <h3 class="font-bold text-gray-900 text-sm">结婚纪念日</h3>
-                                                    <p class="text-xs text-gray-500">2月28日 (16天后)</p>
-                                                </div>
-                                            </div>
-                                            <div class="bg-white p-4 rounded-2xl shadow-sm flex items-center">
-                                                <div class="w-10 h-10 rounded-full bg-blue-50 text-blue-500 flex items-center justify-center mr-3">
-                                                    <i class="fas fa-gift"></i>
-                                                </div>
-                                                <div class="flex-1">
-                                                    <h3 class="font-bold text-gray-900 text-sm">王强 乔迁</h3>
-                                                    <p class="text-xs text-gray-500">3月15日</p>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </main>
-                                <nav class="h-[83px] bg-white border-t border-gray-200 flex justify-around items-start pt-3 pb-8 absolute bottom-0 w-full z-50">
-                                    <div class="flex flex-col items-center text-gray-400 w-16 hover:text-indigo-900 transition-colors">
-                                        <i class="fas fa-book text-xl mb-1"></i>
-                                        <span class="text-[10px] font-medium">记录</span>
-                                    </div>
-                                    <div class="flex flex-col items-center text-gray-400 w-16 hover:text-indigo-900 transition-colors">
-                                        <i class="fas fa-user-friends text-xl mb-1"></i>
-                                        <span class="text-[10px] font-medium">关系</span>
-                                    </div>
-                                    <div class="flex flex-col items-center text-gray-400 w-16 hover:text-indigo-900 transition-colors">
-                                        <i class="fas fa-chart-pie text-xl mb-1"></i>
-                                        <span class="text-[10px] font-medium">统计</span>
-                                    </div>
-                                    <div class="flex flex-col items-center text-gray-400 w-16 hover:text-indigo-900 transition-colors">
-                                        <i class="fas fa-cog text-xl mb-1"></i>
-                                        <span class="text-[10px] font-medium">设置</span>
-                                    </div>
-                                </nav>
-                            </div>
-                        </div>
-                    </div>
                 </div>
             </div>
 
@@ -728,9 +627,6 @@
                                     </div>
                                 </main>
                                 <div class="p-4 bg-white border-t border-gray-100 flex gap-3">
-                                    <button class="flex-1 py-3 rounded-xl bg-indigo-50 text-indigo-700 font-medium text-sm flex items-center justify-center gap-2">
-                                        <i class="fas fa-bell"></i> 设提醒
-                                    </button>
                                     <button class="flex-1 py-3 rounded-xl bg-indigo-900 text-white font-medium text-sm flex items-center justify-center gap-2 shadow-lg shadow-indigo-200">
                                         <i class="fas fa-plus"></i> 记一笔
                                     </button>
@@ -1037,13 +933,6 @@
                                         </div>
                                     </div>
                                     <div class="bg-white rounded-2xl overflow-hidden shadow-sm">
-                                        <div class="flex items-center p-4 border-b border-gray-50 active:bg-gray-50 transition-colors">
-                                            <div class="w-8 h-8 rounded-lg bg-blue-50 text-blue-500 flex items-center justify-center mr-3">
-                                                <i class="fas fa-bell text-sm"></i>
-                                            </div>
-                                            <div class="flex-1 text-sm font-medium text-gray-800">通知提醒</div>
-                                            <i class="fas fa-chevron-right text-gray-300 text-xs"></i>
-                                        </div>
                                         <div class="flex items-center p-4 border-b border-gray-50 active:bg-gray-50 transition-colors">
                                             <div class="w-8 h-8 rounded-lg bg-green-50 text-green-500 flex items-center justify-center mr-3">
                                                 <i class="fas fa-shield-alt text-sm"></i>

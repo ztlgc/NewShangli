@@ -14,7 +14,6 @@ import '../widgets/record_list_row.dart';
 import 'person_list_page.dart';
 import 'record_add_page.dart';
 import 'record_detail_page.dart';
-import 'reminders_page.dart';
 import 'settings_home_page.dart';
 import 'stats_page.dart';
 
@@ -153,18 +152,8 @@ class _CanvasState extends State<_Canvas> {
                         ),
                       ),
                     )
-                  else ...[
-                    PrototypeIconButton(
-                      icon: const FaIcon(FontAwesomeIcons.bell, size: 16),
-                      backgroundColor: AppColors.gray100,
-                      foregroundColor: AppColors.textSecondary,
-                      onPressed: () => AppNav.push(
-                        context,
-                        const RemindersPage(),
-                        requiresLogin: true,
-                      ),
-                    ),
-                  ],
+                  else
+                    const SizedBox.shrink(),
                 ],
               ),
             ),

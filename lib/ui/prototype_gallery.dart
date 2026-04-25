@@ -13,7 +13,6 @@ import 'pages/person_list_page.dart';
 import 'pages/record_add_page.dart';
 import 'pages/record_detail_page.dart';
 import 'pages/record_home_page.dart';
-import 'pages/reminders_page.dart';
 import 'pages/settings_home_page.dart';
 import 'pages/stats_page.dart';
 
@@ -48,7 +47,6 @@ class PrototypeGalleryHome extends StatelessWidget {
       _GalleryItem('收支记录-首页', (context) => const RecordHomePage()),
       _GalleryItem('收支记录-收支录入', (context) => const RecordAddPage()),
       _GalleryItem('收支记录-收支详情', (context) => const RecordDetailPage(recordId: 'r_20260210_zw')),
-      _GalleryItem('事件提醒', (context) => const RemindersPage()),
       _GalleryItem('关系人-列表页', (context) => const PersonListPage()),
       _GalleryItem('关系人-详情页', (context) => const PersonDetailPage()),
       _GalleryItem('关系人-编辑/新增', (context) => const PersonEditPage()),

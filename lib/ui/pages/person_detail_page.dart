@@ -14,7 +14,6 @@ import '../prototype_kit.dart';
 import 'person_edit_page.dart';
 import 'record_add_page.dart';
 import 'record_detail_page.dart';
-import 'reminders_page.dart';
 import '../../utils/date_util.dart';
 
 /// 页面：关系人管理 - 详情页
@@ -97,7 +96,6 @@ class PersonDetailPage extends StatelessWidget {
           avatarUrl: person.avatarUri,
           birthday: DateTime.tryParse(person.birthday ?? ''),
           isLunarBirthday: false,
-          birthdayReminder: false,
           createdAt: DateTime.fromMillisecondsSinceEpoch(person.createdAt),
         ),
         incomeCent: incomeCent,
@@ -758,17 +756,6 @@ class _BottomActions extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Expanded(
-            child: _ActionButton(
-              bg: AppColors.indigo50,
-              fg: AppColors.indigo700,
-              icon: FontAwesomeIcons.bell,
-              label: '设提醒',
-              shadow: false,
-              onTap: () => AppNav.push(context, const RemindersPage(), requiresLogin: true),
-            ),
-          ),
-          SizedBox(width: 12),
           Expanded(
             child: _ActionButton(
               bg: AppColors.brandPrimary,

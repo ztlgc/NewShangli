@@ -13,8 +13,6 @@ part 'app_database.g.dart';
 part 'daos/account_books_dao.dart';
 part 'daos/persons_dao.dart';
 part 'daos/gift_records_dao.dart';
-part 'daos/event_reminders_dao.dart';
-part 'daos/reminder_types_dao.dart';
 part 'daos/data_import_jobs_dao.dart';
 part 'daos/reasons_dao.dart';
 part 'daos/relation_types_dao.dart';
@@ -23,29 +21,25 @@ part 'daos/contact_relations_dao.dart';
 /// 应用主数据库（Drift）。
 ///
 /// 设计规范要点：
-/// - 账簿是一级上下文：person / gift_record / event_reminder 都必须归属 book_id
+/// - 账簿是一级上下文：person / gift_record 都必须归属 book_id
 /// - 外键约束必须生效：在 SQLite 中需要显式开启 `PRAGMA foreign_keys = ON`
 @DriftDatabase(
   tables: [
     AccountBooks,
     Persons,
     GiftRecords,
-    EventReminders,
     Reasons,
     RelationTypes,
     ContactRelations,
-    ReminderTypes,
     DataImportJobs,
   ],
   daos: [
     AccountBooksDao,
     PersonsDao,
     GiftRecordsDao,
-    EventRemindersDao,
     ReasonsDao,
     RelationTypesDao,
     ContactRelationsDao,
-    ReminderTypesDao,
     DataImportJobsDao,
   ],
 )
@@ -114,21 +108,6 @@ class AppDatabase extends _$AppDatabase {
           }
         }
       }
-      if (from < 4) {
-        await m.addColumn(
-          eventReminders,
-          eventReminders.title as GeneratedColumn<Object>,
-        );
-      }
-      if (from < 5) {
-        await m.addColumn(
-          eventReminders,
-          eventReminders.relationPersonIds as GeneratedColumn<Object>,
-        );
-      }
-      if (from < 6) {
-        await m.createTable(reminderTypes);
-      }
       if (from < 7) {
         Future<void> addDeletedAtIfNeeded(String tableName) async {
           final tableExistsRows = await customSelect(
@@ -190,12 +169,6 @@ class AppDatabase extends _$AppDatabase {
     );
     await customStatement(
       'CREATE INDEX IF NOT EXISTS idx_gift_record_book_person ON gift_record(book_id, person_id);',
-    );
-    await customStatement(
-      'CREATE INDEX IF NOT EXISTS idx_event_reminder_book_remind_at ON event_reminder(book_id, remind_at);',
-    );
-    await customStatement(
-      'CREATE INDEX IF NOT EXISTS idx_event_reminder_book_target_date ON event_reminder(book_id, target_date);',
     );
     await customStatement(
       'CREATE INDEX IF NOT EXISTS idx_import_job_book_started ON data_import_job(book_id, started_at);',

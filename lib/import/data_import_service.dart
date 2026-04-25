@@ -945,7 +945,6 @@ class _ImportRunner {
       recordId: Value(id),
       bookId: effectiveBookId,
       personId: personId,
-      reminderId: const Value.absent(),
       direction: Value(direction),
       amountCent: amountCent,
       currency: const Value('CNY'),

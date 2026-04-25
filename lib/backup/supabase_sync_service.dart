@@ -100,7 +100,6 @@ class SupabaseSyncService {
               'record_id': r.recordId,
               'book_id': r.bookId,
               'person_id': r.personId,
-              'reminder_id': r.reminderId,
               'direction': r.direction,
               'amount_cent': r.amountCent,
               'currency': r.currency,
@@ -178,55 +177,7 @@ class SupabaseSyncService {
       await _supabase.from('contact_relation').upsert(contactRelationsData);
     }
 
-    // 7. 同步提醒类型
-    onProgress('正在同步提醒类型...');
-    final reminderTypes = await _db.select(_db.reminderTypes).get();
-    if (reminderTypes.isNotEmpty) {
-      final reminderTypesData = reminderTypes
-          .map(
-            (rt) => {
-              'type_id': rt.typeId,
-              'book_id': rt.bookId,
-              'name': rt.name,
-              'is_custom': rt.isCustom,
-              'created_at': rt.createdAt,
-              'updated_at': rt.updatedAt,
-              'user_id': user.id,
-            },
-          )
-          .toList();
-      await _supabase.from('reminder_type').upsert(reminderTypesData);
-    }
-
-    // 8. 同步事件提醒
-    onProgress('正在同步事件提醒...');
-    final eventReminders = await _db.select(_db.eventReminders).get();
-    if (eventReminders.isNotEmpty) {
-      final eventRemindersData = eventReminders
-          .map(
-            (er) => {
-              'reminder_id': er.reminderId,
-              'book_id': er.bookId,
-              'person_id': er.personId,
-              'relation_person_ids': er.relationPersonIds,
-              'reminder_type': er.reminderType,
-              'title': er.title,
-              'target_date': er.targetDate,
-              'remind_at': er.remindAt,
-              'repeat_rule': er.repeatRule,
-              'status': er.status,
-              'channel': er.channel,
-              'note': er.note,
-              'created_at': er.createdAt,
-              'updated_at': er.updatedAt,
-              'user_id': user.id,
-            },
-          )
-          .toList();
-      await _supabase.from('event_reminder').upsert(eventRemindersData);
-    }
-
-    // 9. 同步附件媒体
+    // 7. 同步附件媒体
     onProgress('正在同步附件媒体...');
     await _syncMediaToCloud(user.id, onProgress);
 
@@ -318,7 +269,6 @@ class SupabaseSyncService {
               recordId: r['record_id'] as String,
               bookId: r['book_id'] as String,
               personId: r['person_id'] as String,
-              reminderId: r['reminder_id'] as String?,
               direction: r['direction'] as String,
               amountCent: r['amount_cent'] as int,
               currency: r['currency'] as String,
@@ -413,65 +363,7 @@ class SupabaseSyncService {
       });
     }
 
-    // 7. 恢复提醒类型
-    onProgress('正在拉取提醒类型...');
-    final reminderTypesData = await _supabase
-        .from('reminder_type')
-        .select()
-        .eq('user_id', user.id);
-    if (reminderTypesData.isNotEmpty) {
-      await _db.batch((batch) {
-        batch.insertAll(
-          _db.reminderTypes,
-          reminderTypesData.map(
-            (rt) => ReminderType(
-              typeId: rt['type_id'] as String,
-              bookId: rt['book_id'] as String,
-              name: rt['name'] as String,
-              isCustom: rt['is_custom'] as bool,
-              createdAt: rt['created_at'] as int,
-              updatedAt: rt['updated_at'] as int,
-            ),
-          ),
-          mode: InsertMode.insertOrReplace,
-        );
-      });
-    }
-
-    // 8. 恢复事件提醒
-    onProgress('正在拉取事件提醒...');
-    final eventRemindersData = await _supabase
-        .from('event_reminder')
-        .select()
-        .eq('user_id', user.id);
-    if (eventRemindersData.isNotEmpty) {
-      await _db.batch((batch) {
-        batch.insertAll(
-          _db.eventReminders,
-          eventRemindersData.map(
-            (er) => EventReminder(
-              reminderId: er['reminder_id'] as String,
-              bookId: er['book_id'] as String,
-              personId: er['person_id'] as String?,
-              relationPersonIds: er['relation_person_ids'] as String,
-              reminderType: er['reminder_type'] as String,
-              title: er['title'] as String,
-              targetDate: er['target_date'] as String,
-              remindAt: er['remind_at'] as int,
-              repeatRule: er['repeat_rule'] as String,
-              status: er['status'] as String,
-              channel: er['channel'] as String,
-              note: er['note'] as String?,
-              createdAt: er['created_at'] as int,
-              updatedAt: er['updated_at'] as int,
-            ),
-          ),
-          mode: InsertMode.insertOrReplace,
-        );
-      });
-    }
-
-    // 9. 恢复附件媒体
+    // 7. 恢复附件媒体
     onProgress('正在拉取附件媒体...');
     await _syncMediaFromCloud(user.id, onProgress);
 

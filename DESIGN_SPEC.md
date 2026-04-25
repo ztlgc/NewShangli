@@ -6,13 +6,13 @@
 采用"Flutter 分层架构 + 响应式数据流"，在保证关注点分离的前提下保持轻量灵活。
 
 - **UI 层**：使用 Flutter Widget 构建界面，StatefulWidget / StatelessWidget 负责渲染与交互派发；页面状态通过 `StreamBuilder` / `ValueListenableBuilder` 订阅 Drift 实时流获取。
-- **数据层**：Drift 提供类型安全的 ORM，DAO 负责数据库读写与实时流暴露；业务逻辑内聚在各 Service（如 `DataImportService`、`DataExportService`、`DataBackupService`、`RemindersService` 等）中。
+- **数据层**：Drift 提供类型安全的 ORM，DAO 负责数据库读写与实时流暴露；业务逻辑内聚在各 Service（如 `DataImportService`、`DataExportService`、`DataBackupService` 等）中。
 - **状态管理**：Provider（`ChangeNotifierProvider` / `InheritedWidget`）用于全局会话与账簿作用域注入；页面内状态使用 `setState` + Drift 实时流驱动。
 
 > **说明**：项目没有引入独立 Domain/UseCase 层。简单 CRUD 由页面直接调用 DAO；涉及组合逻辑的场景（如数据导入解析、统计计算、备份/恢复）封装在对应 Service 中。如后续需求膨胀，可考虑抽取 UseCase 层。
 
 **关键约束**：
-- **账簿是一级上下文**：核心数据（关系人、收支记录、提醒）必须归属 `book_id`，所有查询/写入必须在账簿范围内执行。
+- **账簿是一级上下文**：核心数据（关系人、收支记录）必须归属 `book_id`，所有查询/写入必须在账簿范围内执行。
 - **备份走 WebDAV**：备份能力封装在 `DataBackupService` + `WebDavClient`（基于 HTTP），统一管理配置、上传、下载与恢复。
 
 ### 1.2 技术栈与依赖
@@ -57,23 +57,22 @@ lib/
     contact_avatar.dart           # 联系人头像组件
     lunar_date_picker.dart        # 农历日期选择器
     navigation.dart               # 路由导航工具
-    pages/                        # 全部页面（24 个）
+    pages/                        # 全部页面
     widgets/                      # 可复用小部件
     stats/                        # 统计页视图模型
   data/
     local/
       drift/
-        tables.dart               # Drift 表定义（9 张表）
+        tables.dart               # Drift 表定义
         app_database.dart         # 数据库配置与迁移
         app_database.g.dart       # Drift 生成代码
         converters.dart           # 类型转换器
         reason_relation_migrator.dart  # 事由/关系数据迁移
-        daos/                     # 数据访问对象（9 个 DAO）
+        daos/                     # 数据访问对象
   backup/                         # WebDAV 备份模块
   export/                         # 数据导出模块
   import/                         # 数据导入模块
   media/                          # 媒体存储服务
-  reminders/                      # 提醒调度服务
   stats/                          # 统计引擎与数据仓库
   utils/                          # 工具函数
 ```
@@ -125,7 +124,6 @@ lib/
 | record_id | TEXT | 主键 | UUID | 记录唯一标识 | 主键 |
 | book_id | TEXT | 外键→account_book, CASCADE | - | 所属账簿 | idx…book_occurred |
 | person_id | TEXT | 外键→person, CASCADE | - | 关联关系人 | idx…book_person |
-| reminder_id | TEXT | 外键→event_reminder, SET NULL | 可空 | 关联提醒 | - |
 | direction | TEXT | 非空, CHECK('收入'/'支出') | 收入 | 收/支类型 | - |
 | amount_cent | INTEGER | 非空, CHECK(>0) | - | 金额（分） | - |
 | currency | TEXT | 非空 | CNY | 币种 | - |
@@ -138,26 +136,7 @@ lib/
 | updated_at | INTEGER | 非空 | - | 更新时间戳 | - |
 | deleted_at | INTEGER | 可空 | NULL | 软删除时间戳 | - |
 
-### 2.4 事件提醒表 event_reminder
-
-| 字段 | 类型 | 约束 | 默认值 | 说明 | 索引 |
-| --- | --- | --- | --- | --- | --- |
-| reminder_id | TEXT | 主键 | UUID | 提醒唯一标识 | 主键 |
-| book_id | TEXT | 外键→account_book, CASCADE | - | 所属账簿 | idx…book_remind_at |
-| person_id | TEXT | 外键→person, SET NULL | 可空 | 关联关系人 | - |
-| relation_person_ids | TEXT | 非空 | [] | 关联多人ID列表（JSON数组） | - |
-| reminder_type | TEXT | 非空 | 自定义 | 提醒类型 | - |
-| title | TEXT | 非空 | '' | 提醒标题（UI展示用） | - |
-| target_date | TEXT | 非空 | - | 目标日期 | idx…book_target_date |
-| remind_at | INTEGER | 非空 | - | 提醒触发时间戳 | idx…book_remind_at |
-| repeat_rule | TEXT | 非空 | none | 重复规则 | - |
-| status | TEXT | 非空 | active | 状态 | - |
-| channel | TEXT | 非空 | notification | 通知渠道 | - |
-| note | TEXT | 可空 | - | 备注 | - |
-| created_at | INTEGER | 非空 | - | 创建时间戳 | - |
-| updated_at | INTEGER | 非空 | - | 更新时间戳 | - |
-
-### 2.5 事由表 reason
+### 2.4 事由表 reason
 
 | 字段 | 类型 | 约束 | 默认值 | 说明 | 索引 |
 | --- | --- | --- | --- | --- | --- |
@@ -168,7 +147,7 @@ lib/
 | created_at | INTEGER | 非空 | - | 创建时间戳 | - |
 | updated_at | INTEGER | 非空 | - | 更新时间戳 | idx_reason_updated_at |
 
-### 2.6 关系类型表 relation_type
+### 2.5 关系类型表 relation_type
 
 | 字段 | 类型 | 约束 | 默认值 | 说明 | 索引 |
 | --- | --- | --- | --- | --- | --- |
@@ -177,7 +156,7 @@ lib/
 | created_at | INTEGER | 非空 | - | 创建时间戳 | - |
 | updated_at | INTEGER | 非空 | - | 更新时间戳 | idx_relation_type_updated_at |
 
-### 2.7 联系人关系表 contact_relation
+### 2.6 联系人关系表 contact_relation
 
 | 字段 | 类型 | 约束 | 默认值 | 说明 | 索引 |
 | --- | --- | --- | --- | --- | --- |
@@ -189,18 +168,7 @@ lib/
 | created_at | INTEGER | 非空 | - | 创建时间戳 | - |
 | updated_at | INTEGER | 非空 | - | 更新时间戳 | idx…updated_at |
 
-### 2.8 提醒类型表 reminder_type
-
-| 字段 | 类型 | 约束 | 默认值 | 说明 | 索引 |
-| --- | --- | --- | --- | --- | --- |
-| type_id | TEXT | 主键 | UUID | 类型唯一标识 | 主键 |
-| book_id | TEXT | 外键→account_book, CASCADE | - | 所属账簿 | - |
-| name | TEXT | 非空 | - | 类型名称 | - |
-| is_custom | INTEGER(BOOL) | 非空 | false | 是否用户自定义 | - |
-| created_at | INTEGER | 非空 | - | 创建时间戳 | - |
-| updated_at | INTEGER | 非空 | - | 更新时间戳 | - |
-
-### 2.9 数据导入任务表 data_import_job
+### 2.7 数据导入任务表 data_import_job
 
 | 字段 | 类型 | 约束 | 默认值 | 说明 | 索引 |
 | --- | --- | --- | --- | --- | --- |
@@ -226,30 +194,29 @@ lib/
 | finished_at | INTEGER | 可空 | - | 完成时间戳 | - |
 | updated_at | INTEGER | 非空 | - | 更新时间戳 | idx…status_updated |
 
-### 2.10 数据实体与转换规则
+### 2.8 数据实体与转换规则
 - 金额统一使用**分**为单位（`amount_cent`），CHECK 约束确保 > 0
 - 时间统一使用 **Unix 时间戳**（毫秒级 INTEGER）
 - attachments 使用 `JsonStringListConverter` 存储为 JSON 数组字符串
 - 软删除通过 `deleted_at` 实现（`account_book`、`person`、`gift_record` 支持软删除）
 
-### 2.11 数据校验策略
+### 2.9 数据校验策略
 - 金额必须大于 0（数据库 CHECK 约束）
 - 姓名/账簿名长度 1-32 字符（数据库 CHECK 约束）
 - direction 仅允许 '收入' / '支出'（数据库 CHECK 约束）
 - is_default 仅允许 0 / 1（数据库 CHECK 约束）
-- 外键级联规则：account_book 删除时 CASCADE 关联数据；person 删除时 CASCADE 记录但 SET NULL 提醒
+- 外键级联规则：account_book 删除时 CASCADE 关联数据；person 删除时 CASCADE 记录
 - 每个用户至少保留一个默认账簿
 
-### 2.12 数据库版本管理
+### 2.10 数据库版本管理
 - 使用 Drift 的 `MigrationStrategy` 处理 schema 升级
 - 当前版本：**schema version 8**
-- 迁移历史：v1（核心四表）→ v2（data_import_job）→ v3（reason_type 重命名）→ v4（reminder title）→ v5（relation_person_ids）→ v6（reminder_type 表）→ v7（软删除 deleted_at）→ v8（reason/relation_type/contact_relation 表）
+- 迁移历史：v1（核心四表）→ v2（data_import_job）→ v3（reason_type 重命名）→ v7（软删除 deleted_at）→ v8（reason/relation_type/contact_relation 表）
 - `beforeOpen` 统一开启 `PRAGMA foreign_keys = ON`、`journal_mode = WAL`、`synchronous = NORMAL`
 
-### 2.13 索引策略
+### 2.11 索引策略
 - person：`(book_id, name)`
 - gift_record：`(book_id, occurred_at)`、`(book_id, person_id)`
-- event_reminder：`(book_id, remind_at)`、`(book_id, target_date)`
 - reason：`UNIQUE (name COLLATE NOCASE)`、`(updated_at DESC)`
 - relation_type：`UNIQUE (name COLLATE NOCASE)`、`(updated_at DESC)`
 - contact_relation：`UNIQUE (person_a_id, person_b_id, type_id)`、`(updated_at DESC)`
@@ -371,7 +338,7 @@ lib/
 - **统计信息**：总收礼/总送礼/差额（从 Drift 实时计算）
 - **信息列表**：生日（含农历）、纪念日、备注
 - **历史记录**：按时间倒序展示往来记录
-- **底部操作栏**：设提醒、记一笔
+- **底部操作栏**：记一笔
 
 #### 3.2.6 关系人编辑页（person_edit_page）
 **布局结构**：
@@ -393,34 +360,7 @@ lib/
   - 支出分类占比（饼图）
 - **排行榜**：人情往来 Top 列表
 
-#### 3.2.8 事件提醒页（reminders_page）
-**布局结构**：
-- **顶部应用栏**：标题"事件提醒" + 添加按钮
-- **筛选 Tab**：全部 | 按类型筛选
-- **列表区域**：
-  - 紧急提醒高亮
-  - 未来提醒列表
-  - 支持关联多个关系人
-
-#### 3.2.9 提醒编辑页（reminder_edit_page）
-**布局结构**：
-- **顶部应用栏**：标题"编辑提醒" + 保存按钮
-- **表单区域**：
-  - 提醒标题
-  - 提醒类型选择
-  - 目标日期（含农历选择器）
-  - 提醒时间
-  - 重复规则
-  - 关联关系人（支持多选，三分之二屏高度+搜索）
-  - 备注
-
-#### 3.2.10 提醒类型设置页（reminder_type_settings_page）
-**布局结构**：
-- **顶部应用栏**：标题"提醒类型管理"
-- **类型列表**：系统预置 + 用户自定义
-- **操作**：添加/编辑/删除自定义类型
-
-#### 3.2.11 设置页（settings_home_page）
+#### 3.2.8 设置页（settings_home_page）
 **布局结构**：
 - **顶部应用栏**：标题"设置"
 - **设置列表**：
@@ -526,7 +466,7 @@ lib/
 
 ### 4.2 UI 自动化测试
 - 使用 `integration_test` 覆盖核心路径
-- 覆盖录入收支、查看关系人详情、查看统计、处理提醒
+- 覆盖录入收支、查看关系人详情、查看统计
 
 ### 4.3 静态分析
 - 使用 `flutter_lints` 6.x 提供的 lint 规则集
