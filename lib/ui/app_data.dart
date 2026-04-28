@@ -531,7 +531,9 @@ class AppData extends ChangeNotifier {
     required Iterable<RecordData> records,
   }) {
     var changed = false;
-    final personIndex = <String, int>{for (var i = 0; i < _persons.length; i++) _persons[i].id: i};
+    final personIndex = <String, int>{
+      for (var i = 0; i < _persons.length; i++) _persons[i].id: i,
+    };
     for (final person in persons) {
       if (person.id.trim().isEmpty || person.name.trim().isEmpty) {
         continue;
@@ -547,7 +549,9 @@ class AppData extends ChangeNotifier {
         changed = true;
       }
     }
-    final recordIndex = <String, int>{for (var i = 0; i < _records.length; i++) _records[i].id: i};
+    final recordIndex = <String, int>{
+      for (var i = 0; i < _records.length; i++) _records[i].id: i,
+    };
     for (final record in records) {
       if (record.id.trim().isEmpty || record.personId.trim().isEmpty) {
         continue;
@@ -664,6 +668,15 @@ class AppData extends ChangeNotifier {
   void trashPerson(String id) {
     final index = _persons.indexWhere((e) => e.id == id);
     if (index < 0) return;
+    final movedRecords = <RecordData>[];
+    _records.removeWhere((e) {
+      if (e.personId != id) return false;
+      movedRecords.add(e);
+      return true;
+    });
+    if (movedRecords.isNotEmpty) {
+      _trashedRecords.insertAll(0, movedRecords);
+    }
     _trashedPersons.insert(0, _persons.removeAt(index));
     _persistCoreDataSoon();
     notifyListeners();
@@ -709,7 +722,29 @@ class AppData extends ChangeNotifier {
   void restoreRecord(String id) {
     final index = _trashedRecords.indexWhere((e) => e.id == id);
     if (index < 0) return;
-    _records.insert(0, _trashedRecords.removeAt(index));
+    final record = _trashedRecords.removeAt(index);
+    if (!_persons.any((e) => e.id == record.personId)) {
+      final personIndex = _trashedPersons.indexWhere(
+        (e) => e.id == record.personId,
+      );
+      if (personIndex >= 0) {
+        _persons.insert(0, _trashedPersons.removeAt(personIndex));
+      } else {
+        _persons.insert(
+          0,
+          PersonData(
+            id: record.personId,
+            name: record.personName.trim().isEmpty
+                ? 'Unknown'
+                : record.personName.trim(),
+            relationship: 'Other',
+            avatarUrl: record.personAvatarUrl,
+            createdAt: DateTime.now(),
+          ),
+        );
+      }
+    }
+    _records.insert(0, record);
     _persistCoreDataSoon();
     notifyListeners();
   }

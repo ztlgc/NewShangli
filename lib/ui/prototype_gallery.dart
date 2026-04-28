@@ -46,7 +46,10 @@ class PrototypeGalleryHome extends StatelessWidget {
     final items = <_GalleryItem>[
       _GalleryItem('收支记录-首页', (context) => const RecordHomePage()),
       _GalleryItem('收支记录-收支录入', (context) => const RecordAddPage()),
-      _GalleryItem('收支记录-收支详情', (context) => const RecordDetailPage(recordId: 'r_20260210_zw')),
+      _GalleryItem(
+        '收支记录-收支详情',
+        (context) => const RecordDetailPage(recordId: 'r_20260210_zw'),
+      ),
       _GalleryItem('关系人-列表页', (context) => const PersonListPage()),
       _GalleryItem('关系人-详情页', (context) => const PersonDetailPage()),
       _GalleryItem('关系人-编辑/新增', (context) => const PersonEditPage()),
@@ -68,9 +71,9 @@ class PrototypeGalleryHome extends StatelessWidget {
           return ListTile(
             title: Text(item.title),
             trailing: const Icon(Icons.chevron_right),
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: item.builder),
-            ),
+            onTap: () => Navigator.of(
+              context,
+            ).push(MaterialPageRoute(builder: item.builder)),
           );
         },
       ),
@@ -84,4 +87,3 @@ class _GalleryItem {
   final String title;
   final WidgetBuilder builder;
 }
-

@@ -53,12 +53,13 @@ class _CanvasState extends State<_Canvas> {
   void initState() {
     super.initState();
     _user = Supabase.instance.client.auth.currentUser;
-    _authStateSubscription = Supabase.instance.client.auth.onAuthStateChange.listen((data) {
-      if (!mounted) return;
-      setState(() {
-        _user = data.session?.user;
-      });
-    });
+    _authStateSubscription = Supabase.instance.client.auth.onAuthStateChange
+        .listen((data) {
+          if (!mounted) return;
+          setState(() {
+            _user = data.session?.user;
+          });
+        });
   }
 
   @override
@@ -76,28 +77,32 @@ class _CanvasState extends State<_Canvas> {
           iconFg: AppColors.blue500,
           icon: FontAwesomeIcons.cloud,
           title: '云同步管理',
-          onTap: () => AppNav.push(context, const CloudSyncPage(), requiresLogin: true),
+          onTap: () =>
+              AppNav.push(context, const CloudSyncPage(), requiresLogin: true),
         ),
       _SettingRow(
         iconBg: AppColors.orange50,
         iconFg: AppColors.orange500,
         icon: FontAwesomeIcons.cloudArrowUp,
         title: 'WebDAV 数据备份',
-        onTap: () => AppNav.push(context, const DataBackupPage(), requiresLogin: true),
+        onTap: () =>
+            AppNav.push(context, const DataBackupPage(), requiresLogin: true),
       ),
       _SettingRow(
         iconBg: AppColors.purple50,
         iconFg: AppColors.purple500,
         icon: FontAwesomeIcons.fileExport,
         title: '导出数据 (Excel)',
-        onTap: () => AppNav.push(context, const DataExportPage(), requiresLogin: true),
+        onTap: () =>
+            AppNav.push(context, const DataExportPage(), requiresLogin: true),
       ),
       _SettingRow(
         iconBg: AppColors.indigo50,
         iconFg: AppColors.indigo700,
         icon: FontAwesomeIcons.fileImport,
         title: '导入数据 (Excel)',
-        onTap: () => AppNav.push(context, const DataImportPage(), requiresLogin: true),
+        onTap: () =>
+            AppNav.push(context, const DataImportPage(), requiresLogin: true),
       ),
       _SettingRow(
         iconBg: AppColors.red100,
@@ -105,7 +110,8 @@ class _CanvasState extends State<_Canvas> {
         icon: FontAwesomeIcons.trashCan,
         title: '回收站',
         borderBottom: false,
-        onTap: () => AppNav.push(context, const RecycleBinPage(), requiresLogin: true),
+        onTap: () =>
+            AppNav.push(context, const RecycleBinPage(), requiresLogin: true),
       ),
     ];
 
@@ -115,7 +121,9 @@ class _CanvasState extends State<_Canvas> {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: const BoxDecoration(
             color: AppColors.white,
-            border: Border(bottom: BorderSide(color: AppColors.gray100, width: 1)),
+            border: Border(
+              bottom: BorderSide(color: AppColors.gray100, width: 1),
+            ),
           ),
           child: Row(
             children: [
@@ -136,7 +144,11 @@ class _CanvasState extends State<_Canvas> {
                     iconFg: AppColors.indigo700,
                     icon: FontAwesomeIcons.tags,
                     title: '事由管理',
-                    onTap: () => AppNav.push(context, const ReasonManagePage(), requiresLogin: true),
+                    onTap: () => AppNav.push(
+                      context,
+                      const ReasonManagePage(),
+                      requiresLogin: true,
+                    ),
                   ),
                   _SettingRow(
                     iconBg: AppColors.blue50,
@@ -144,7 +156,11 @@ class _CanvasState extends State<_Canvas> {
                     icon: FontAwesomeIcons.diagramProject,
                     title: '联系人关系管理',
                     borderBottom: false,
-                    onTap: () => AppNav.push(context, const RelationTypeManagePage(), requiresLogin: true),
+                    onTap: () => AppNav.push(
+                      context,
+                      const RelationTypeManagePage(),
+                      requiresLogin: true,
+                    ),
                   ),
                 ],
               ),
@@ -154,27 +170,14 @@ class _CanvasState extends State<_Canvas> {
                 iconFg: AppColors.indigo600,
                 icon: FontAwesomeIcons.book,
                 title: '账簿管理',
-                onTap: () => AppNav.push(context, const AccountBooksPage(), requiresLogin: true),
+                onTap: () => AppNav.push(
+                  context,
+                  const AccountBooksPage(),
+                  requiresLogin: true,
+                ),
               ),
               SizedBox(height: 24),
-              _GroupCard(
-                rows: [
-                  _SettingRow(
-                    iconBg: AppColors.green50,
-                    iconFg: AppColors.green500,
-                    icon: FontAwesomeIcons.shieldHalved,
-                    title: '隐私与安全',
-                    borderBottom: false,
-                    onTap: () {
-                      AppToast.show(context, '隐私与安全：仅原型展示，暂未实现');
-                    },
-                  ),
-                ],
-              ),
-              SizedBox(height: 24),
-              _GroupCard(
-                rows: syncRows,
-              ),
+              _GroupCard(rows: syncRows),
               SizedBox(height: 24),
               _SingleRowCard(
                 iconBg: AppColors.gray100,
@@ -308,13 +311,19 @@ class _UserCardState extends State<_UserCard> {
                     style: AppTypography.base(
                       fontSize: 12,
                       fontWeight: AppTypography.regular,
-                      color: _user == null ? AppColors.textTertiary : AppColors.green600,
+                      color: _user == null
+                          ? AppColors.textTertiary
+                          : AppColors.green600,
                     ),
                   ),
                 ],
               ),
             ),
-            const FaIcon(FontAwesomeIcons.chevronRight, size: 10, color: AppColors.gray300),
+            const FaIcon(
+              FontAwesomeIcons.chevronRight,
+              size: 10,
+              color: AppColors.gray300,
+            ),
           ],
         ),
       ),
@@ -434,7 +443,10 @@ class _RowContent extends StatelessWidget {
         Container(
           width: 32,
           height: 32,
-          decoration: BoxDecoration(color: iconBg, borderRadius: BorderRadius.circular(8)),
+          decoration: BoxDecoration(
+            color: iconBg,
+            borderRadius: BorderRadius.circular(8),
+          ),
           alignment: Alignment.center,
           child: FaIcon(icon, size: 14, color: iconFg),
         ),
@@ -461,7 +473,11 @@ class _RowContent extends StatelessWidget {
               ),
             ),
           ),
-        const FaIcon(FontAwesomeIcons.chevronRight, size: 10, color: AppColors.gray300),
+        const FaIcon(
+          FontAwesomeIcons.chevronRight,
+          size: 10,
+          color: AppColors.gray300,
+        ),
       ],
     );
   }
@@ -493,13 +509,14 @@ class _LogoutButtonState extends State<_LogoutButton> {
   void initState() {
     super.initState();
     _isLoggedIn = Supabase.instance.client.auth.currentUser != null;
-    _authStateSubscription = Supabase.instance.client.auth.onAuthStateChange.listen((data) {
-      if (mounted) {
-        setState(() {
-          _isLoggedIn = data.session?.user != null;
+    _authStateSubscription = Supabase.instance.client.auth.onAuthStateChange
+        .listen((data) {
+          if (mounted) {
+            setState(() {
+              _isLoggedIn = data.session?.user != null;
+            });
+          }
         });
-      }
-    });
   }
 
   @override
@@ -534,4 +551,3 @@ class _LogoutButtonState extends State<_LogoutButton> {
     );
   }
 }
-

@@ -28,26 +28,29 @@ class PersonsDao extends DatabaseAccessor<AppDatabase> with _$PersonsDaoMixin {
   }
 
   Future<Person?> findByIdAny(String personId) {
-    return (select(persons)..where((t) => t.personId.equals(personId)))
-        .getSingleOrNull();
+    return (select(
+      persons,
+    )..where((t) => t.personId.equals(personId))).getSingleOrNull();
   }
 
   Stream<List<Person>> watchDeleted() {
     return (select(persons)
           ..where((t) => t.deletedAt.isNotNull())
-          ..orderBy([(t) => OrderingTerm.desc(t.deletedAt), (t) => OrderingTerm.asc(t.name)]))
+          ..orderBy([
+            (t) => OrderingTerm.desc(t.deletedAt),
+            (t) => OrderingTerm.asc(t.name),
+          ]))
         .watch();
   }
 
   Future<String> insertOne(PersonsCompanion companion) async {
     final int now = DateTime.now().millisecondsSinceEpoch;
     final PersonsCompanion withDefaults = companion.copyWith(
-      personId:
-          companion.personId.present ? companion.personId : Value(db.newId()),
-      createdAt:
-          companion.createdAt.present ? companion.createdAt : Value(now),
-      updatedAt:
-          companion.updatedAt.present ? companion.updatedAt : Value(now),
+      personId: companion.personId.present
+          ? companion.personId
+          : Value(db.newId()),
+      createdAt: companion.createdAt.present ? companion.createdAt : Value(now),
+      updatedAt: companion.updatedAt.present ? companion.updatedAt : Value(now),
     );
 
     await into(persons).insert(withDefaults);
@@ -63,21 +66,29 @@ class PersonsDao extends DatabaseAccessor<AppDatabase> with _$PersonsDaoMixin {
 
   Future<int> deleteById(String personId) {
     final now = DateTime.now().millisecondsSinceEpoch;
-    return (update(persons)..where((t) => t.personId.equals(personId))).write(
-      PersonsCompanion(
-        deletedAt: Value(now),
-        updatedAt: Value(now),
-      ),
-    );
+    return db.transaction(() async {
+      final count =
+          await (update(
+            persons,
+          )..where((t) => t.personId.equals(personId))).write(
+            PersonsCompanion(deletedAt: Value(now), updatedAt: Value(now)),
+          );
+      if (count == 0) return count;
+
+      await (update(db.giftRecords)
+            ..where((t) => t.personId.equals(personId))
+            ..where((t) => t.deletedAt.isNull()))
+          .write(
+            GiftRecordsCompanion(deletedAt: Value(now), updatedAt: Value(now)),
+          );
+      return count;
+    });
   }
 
   Future<int> restoreById(String personId) {
     final now = DateTime.now().millisecondsSinceEpoch;
     return (update(persons)..where((t) => t.personId.equals(personId))).write(
-      PersonsCompanion(
-        deletedAt: const Value(null),
-        updatedAt: Value(now),
-      ),
+      PersonsCompanion(deletedAt: const Value(null), updatedAt: Value(now)),
     );
   }
 

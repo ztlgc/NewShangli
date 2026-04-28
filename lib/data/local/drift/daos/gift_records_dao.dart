@@ -291,11 +291,32 @@ class GiftRecordsDao extends DatabaseAccessor<AppDatabase>
 
   Future<int> restoreById(String recordId) {
     final now = DateTime.now().millisecondsSinceEpoch;
-    return (update(
-      giftRecords,
-    )..where((t) => t.recordId.equals(recordId))).write(
-      GiftRecordsCompanion(deletedAt: const Value(null), updatedAt: Value(now)),
-    );
+    return db.transaction(() async {
+      final record = await (select(
+        giftRecords,
+      )..where((t) => t.recordId.equals(recordId))).getSingleOrNull();
+      if (record == null) return 0;
+
+      final person = await (select(
+        persons,
+      )..where((t) => t.personId.equals(record.personId))).getSingleOrNull();
+      if (person?.deletedAt != null) {
+        await (update(
+          persons,
+        )..where((t) => t.personId.equals(record.personId))).write(
+          PersonsCompanion(deletedAt: const Value(null), updatedAt: Value(now)),
+        );
+      }
+
+      return (update(
+        giftRecords,
+      )..where((t) => t.recordId.equals(recordId))).write(
+        GiftRecordsCompanion(
+          deletedAt: const Value(null),
+          updatedAt: Value(now),
+        ),
+      );
+    });
   }
 
   Future<int> purgeById(String recordId) {

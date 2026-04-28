@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:drift/drift.dart';
 import 'package:path/path.dart' as p;
@@ -20,6 +21,10 @@ class SupabaseSyncService {
   }
 
   int _parseBookTimeMillis(dynamic value) {
+    return _parseBookTimeMillisValue(value);
+  }
+
+  static int _parseBookTimeMillisValue(dynamic value) {
     if (value == null) {
       return DateTime.now().millisecondsSinceEpoch;
     }
@@ -32,7 +37,511 @@ class SupabaseSyncService {
     return DateTime.now().millisecondsSinceEpoch;
   }
 
+  static int _intValue(dynamic value, {int fallback = 0}) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    if (value is bool) return value ? 1 : 0;
+    if (value is String) return int.tryParse(value) ?? fallback;
+    return fallback;
+  }
+
+  static int? _nullableIntValue(dynamic value) {
+    if (value == null) return null;
+    return _intValue(value);
+  }
+
+  static String _stringValue(dynamic value) => (value as String).trim();
+
+  static String? _nullableStringValue(dynamic value) {
+    final text = (value as String?)?.trim();
+    if (text == null || text.isEmpty) return null;
+    return text;
+  }
+
+  static bool _boolValue(dynamic value) {
+    if (value is bool) return value;
+    if (value is num) return value != 0;
+    if (value is String) return value.toLowerCase() == 'true' || value == '1';
+    return false;
+  }
+
+  static List<Map<String, dynamic>> _rows(List<dynamic> data) {
+    return data.map((row) => Map<String, dynamic>.from(row as Map)).toList();
+  }
+
+  static (String, String) _normalizePair(String a, String b) {
+    final x = a.trim();
+    final y = b.trim();
+    if (x.compareTo(y) <= 0) return (x, y);
+    return (y, x);
+  }
+
+  static Future<void> _deleteReasonWithSameName({
+    required AppDatabase db,
+    required String name,
+    required String keepReasonId,
+  }) async {
+    await db.customStatement(
+      'DELETE FROM reason WHERE name = ? COLLATE NOCASE AND reason_id <> ?;',
+      [name, keepReasonId],
+    );
+  }
+
+  static Future<void> _deleteContactRelationWithSamePair({
+    required AppDatabase db,
+    required String personAId,
+    required String personBId,
+    required String typeId,
+    required String keepRelationId,
+  }) async {
+    await db.customStatement(
+      'DELETE FROM contact_relation '
+      'WHERE person_a_id = ? AND person_b_id = ? AND type_id = ? '
+      'AND relation_id <> ?;',
+      [personAId, personBId, typeId, keepRelationId],
+    );
+  }
+
+  static Future<void> _restoreAccountBooks(
+    AppDatabase db,
+    List<Map<String, dynamic>> rows,
+    Map<String, String> bookIdMap,
+  ) async {
+    if (rows.isEmpty) return;
+
+    final defaultRows =
+        rows.where((row) => _intValue(row['is_default']) == 1).toList()..sort(
+          (a, b) =>
+              _intValue(b['updated_at']).compareTo(_intValue(a['updated_at'])),
+        );
+    final cloudDefault = defaultRows.isEmpty ? null : defaultRows.first;
+    final localDefault = await db.accountBooksDao.findDefault();
+    if (cloudDefault != null && localDefault != null) {
+      final cloudDefaultId = _stringValue(cloudDefault['book_id']);
+      if (cloudDefaultId != localDefault.bookId) {
+        bookIdMap[cloudDefaultId] = localDefault.bookId;
+      }
+    }
+
+    await db.transaction(() async {
+      for (final mappedId in bookIdMap.keys) {
+        await (db.delete(
+          db.accountBooks,
+        )..where((t) => t.bookId.equals(mappedId))).go();
+      }
+
+      for (final row in rows) {
+        final sourceBookId = _stringValue(row['book_id']);
+        final bookId = bookIdMap[sourceBookId] ?? sourceBookId;
+        final book = AccountBook(
+          bookId: bookId,
+          name: _stringValue(row['name']),
+          reasonType: _stringValue(row['reason_type'] ?? ''),
+          themeColor: _stringValue(row['theme_color'] ?? '#312E81'),
+          icon: _nullableStringValue(row['icon']),
+          description: _nullableStringValue(row['description']),
+          bookTime: _parseBookTimeMillisValue(row['book_time']),
+          isDefault: _intValue(row['is_default']),
+          createdAt: _intValue(row['created_at']),
+          updatedAt: _intValue(row['updated_at']),
+          deletedAt: _nullableIntValue(row['deleted_at']),
+        );
+        final existing = await db.accountBooksDao.findById(bookId);
+        if (existing == null) {
+          await db.into(db.accountBooks).insert(book);
+        } else {
+          await (db.update(
+            db.accountBooks,
+          )..where((t) => t.bookId.equals(bookId))).write(
+            AccountBooksCompanion(
+              name: Value(book.name),
+              reasonType: Value(book.reasonType),
+              themeColor: Value(book.themeColor),
+              icon: Value(book.icon),
+              description: Value(book.description),
+              bookTime: Value(book.bookTime),
+              isDefault: Value(book.isDefault),
+              createdAt: Value(book.createdAt),
+              updatedAt: Value(book.updatedAt),
+              deletedAt: Value(book.deletedAt),
+            ),
+          );
+        }
+      }
+
+      if (cloudDefault != null) {
+        final defaultId =
+            bookIdMap[_stringValue(cloudDefault['book_id'])] ??
+            _stringValue(cloudDefault['book_id']);
+        await db.customStatement(
+          'UPDATE account_book SET is_default = CASE WHEN book_id = ? THEN 1 ELSE 0 END;',
+          [defaultId],
+        );
+      }
+    });
+  }
+
+  static Future<void> _restorePersons(
+    AppDatabase db,
+    List<Map<String, dynamic>> rows,
+    Map<String, String> bookIdMap,
+  ) async {
+    if (rows.isEmpty) return;
+    await db.batch((batch) {
+      batch.insertAll(
+        db.persons,
+        rows.map(
+          (p) => Person(
+            personId: _stringValue(p['person_id']),
+            bookId:
+                bookIdMap[_stringValue(p['book_id'])] ??
+                _stringValue(p['book_id']),
+            name: _stringValue(p['name']),
+            relationshipType: _stringValue(p['relationship_type'] ?? '其他'),
+            phone: _nullableStringValue(p['phone']),
+            birthday: _nullableStringValue(p['birthday']),
+            anniversary: _nullableStringValue(p['anniversary']),
+            avatarUri: _nullableStringValue(p['avatar_uri']),
+            note: _nullableStringValue(p['note']),
+            createdAt: _intValue(p['created_at']),
+            updatedAt: _intValue(p['updated_at']),
+            deletedAt: _nullableIntValue(p['deleted_at']),
+          ),
+        ),
+        mode: InsertMode.insertOrReplace,
+      );
+    });
+  }
+
+  static Future<void> _restoreGiftRecords(
+    AppDatabase db,
+    List<Map<String, dynamic>> rows,
+    Map<String, String> bookIdMap,
+  ) async {
+    if (rows.isEmpty) return;
+    await db.batch((batch) {
+      batch.insertAll(
+        db.giftRecords,
+        rows.map(
+          (r) => GiftRecord(
+            recordId: _stringValue(r['record_id']),
+            bookId:
+                bookIdMap[_stringValue(r['book_id'])] ??
+                _stringValue(r['book_id']),
+            personId: _stringValue(r['person_id']),
+            direction: _stringValue(r['direction']),
+            amountCent: _intValue(r['amount_cent']),
+            currency: _stringValue(r['currency'] ?? 'CNY'),
+            eventName: _nullableStringValue(r['event_name']),
+            occurredAt: _intValue(r['occurred_at']),
+            paymentMethod: _nullableStringValue(r['payment_method']),
+            note: _nullableStringValue(r['note']),
+            attachments: r['attachments'] != null
+                ? List<String>.from(r['attachments'] as Iterable)
+                : null,
+            createdAt: _intValue(r['created_at']),
+            updatedAt: _intValue(r['updated_at']),
+            deletedAt: _nullableIntValue(r['deleted_at']),
+          ),
+        ),
+        mode: InsertMode.insertOrReplace,
+      );
+    });
+  }
+
+  static Future<void> _restoreReasons(
+    AppDatabase db,
+    List<Map<String, dynamic>> rows,
+  ) async {
+    if (rows.isEmpty) return;
+    await db.transaction(() async {
+      for (final row in rows) {
+        final reasonId = _stringValue(row['reason_id']);
+        final name = _stringValue(row['name']);
+        await _deleteReasonWithSameName(
+          db: db,
+          name: name,
+          keepReasonId: reasonId,
+        );
+        await db
+            .into(db.reasons)
+            .insert(
+              Reason(
+                reasonId: reasonId,
+                name: name,
+                description: _nullableStringValue(row['description']),
+                enabled: _boolValue(row['enabled']),
+                createdAt: _intValue(row['created_at']),
+                updatedAt: _intValue(row['updated_at']),
+              ),
+              mode: InsertMode.insertOrReplace,
+            );
+      }
+    });
+  }
+
+  static Future<void> _restoreRelationTypes(
+    AppDatabase db,
+    List<Map<String, dynamic>> rows,
+    Map<String, String> typeIdMap,
+  ) async {
+    if (rows.isEmpty) return;
+    await db.transaction(() async {
+      for (final row in rows) {
+        final cloudTypeId = _stringValue(row['type_id']);
+        final name = _stringValue(row['name']);
+        final existing = await db.relationTypesDao.findByName(name);
+        final typeId = existing?.typeId ?? cloudTypeId;
+        if (typeId != cloudTypeId) typeIdMap[cloudTypeId] = typeId;
+        final current = await db.relationTypesDao.findById(typeId);
+        if (current == null) {
+          await db
+              .into(db.relationTypes)
+              .insert(
+                RelationType(
+                  typeId: typeId,
+                  name: name,
+                  createdAt: _intValue(row['created_at']),
+                  updatedAt: _intValue(row['updated_at']),
+                ),
+              );
+        } else {
+          await (db.update(
+            db.relationTypes,
+          )..where((t) => t.typeId.equals(typeId))).write(
+            RelationTypesCompanion(
+              name: Value(name),
+              createdAt: Value(_intValue(row['created_at'])),
+              updatedAt: Value(_intValue(row['updated_at'])),
+            ),
+          );
+        }
+      }
+    });
+  }
+
+  static Future<void> _restoreContactRelations(
+    AppDatabase db,
+    List<Map<String, dynamic>> rows,
+    Map<String, String> typeIdMap,
+  ) async {
+    if (rows.isEmpty) return;
+    await db.transaction(() async {
+      for (final row in rows) {
+        final relationId = _stringValue(row['relation_id']);
+        final typeId =
+            typeIdMap[_stringValue(row['type_id'])] ??
+            _stringValue(row['type_id']);
+        final pair = _normalizePair(
+          _stringValue(row['person_a_id']),
+          _stringValue(row['person_b_id']),
+        );
+        await _deleteContactRelationWithSamePair(
+          db: db,
+          personAId: pair.$1,
+          personBId: pair.$2,
+          typeId: typeId,
+          keepRelationId: relationId,
+        );
+        await db
+            .into(db.contactRelations)
+            .insert(
+              ContactRelation(
+                relationId: relationId,
+                personAId: pair.$1,
+                personBId: pair.$2,
+                typeId: typeId,
+                note: _nullableStringValue(row['note']),
+                createdAt: _intValue(row['created_at']),
+                updatedAt: _intValue(row['updated_at']),
+              ),
+              mode: InsertMode.insertOrReplace,
+            );
+      }
+    });
+  }
+
+  static Future<void> _restoreTablesFromCloudData({
+    required AppDatabase db,
+    required List<dynamic> booksData,
+    required List<dynamic> personsData,
+    required List<dynamic> recordsData,
+    required List<dynamic> reasonsData,
+    required List<dynamic> relationTypesData,
+    required List<dynamic> contactRelationsData,
+  }) async {
+    final bookIdMap = <String, String>{};
+    final typeIdMap = <String, String>{};
+    await _restoreAccountBooks(db, _rows(booksData), bookIdMap);
+    await _restorePersons(db, _rows(personsData), bookIdMap);
+    await _restoreGiftRecords(db, _rows(recordsData), bookIdMap);
+    await _restoreReasons(db, _rows(reasonsData));
+    await _restoreRelationTypes(db, _rows(relationTypesData), typeIdMap);
+    await _restoreContactRelations(db, _rows(contactRelationsData), typeIdMap);
+  }
+
+  @visibleForTesting
+  static Future<void> restoreTablesForTesting({
+    required AppDatabase db,
+    required List<dynamic> booksData,
+    List<dynamic> personsData = const [],
+    List<dynamic> recordsData = const [],
+    List<dynamic> reasonsData = const [],
+    List<dynamic> relationTypesData = const [],
+    List<dynamic> contactRelationsData = const [],
+  }) {
+    return _restoreTablesFromCloudData(
+      db: db,
+      booksData: booksData,
+      personsData: personsData,
+      recordsData: recordsData,
+      reasonsData: reasonsData,
+      relationTypesData: relationTypesData,
+      contactRelationsData: contactRelationsData,
+    );
+  }
+
   /// 同步本地数据到云端 (Push)
+  static Future<void> _resolveBusinessKeyConflictsAfterRestore({
+    required AppDatabase db,
+    required AccountBook? localDefaultBeforeRestore,
+    required List<dynamic> booksData,
+    required List<dynamic> reasonsData,
+    required List<dynamic> relationTypesData,
+    required List<dynamic> contactRelationsData,
+  }) async {
+    await _mergeDefaultBookNameAfterRestore(
+      db: db,
+      localDefaultBeforeRestore: localDefaultBeforeRestore,
+      books: _rows(booksData),
+    );
+    await _restoreReasons(db, _rows(reasonsData));
+    await _mergeRelationTypesToCloudIds(db, _rows(relationTypesData));
+    await _restoreContactRelations(
+      db,
+      _rows(contactRelationsData),
+      const <String, String>{},
+    );
+  }
+
+  static Future<void> _mergeDefaultBookNameAfterRestore({
+    required AppDatabase db,
+    required AccountBook? localDefaultBeforeRestore,
+    required List<Map<String, dynamic>> books,
+  }) async {
+    if (localDefaultBeforeRestore == null || books.isEmpty) return;
+    final defaultRows =
+        books.where((row) => _intValue(row['is_default']) == 1).toList()..sort(
+          (a, b) =>
+              _intValue(b['updated_at']).compareTo(_intValue(a['updated_at'])),
+        );
+    if (defaultRows.isEmpty) return;
+
+    final cloudDefault = defaultRows.first;
+    final cloudDefaultId = _stringValue(cloudDefault['book_id']);
+    final localDefaultId = localDefaultBeforeRestore.bookId;
+    if (cloudDefaultId == localDefaultId) {
+      await db.customStatement(
+        'UPDATE account_book SET is_default = CASE WHEN book_id = ? THEN 1 ELSE 0 END;',
+        [localDefaultId],
+      );
+      return;
+    }
+
+    await db.transaction(() async {
+      await (db.update(
+        db.accountBooks,
+      )..where((t) => t.bookId.equals(localDefaultId))).write(
+        AccountBooksCompanion(
+          name: Value(_stringValue(cloudDefault['name'])),
+          reasonType: Value(_stringValue(cloudDefault['reason_type'] ?? '')),
+          themeColor: Value(
+            _stringValue(cloudDefault['theme_color'] ?? '#312E81'),
+          ),
+          icon: Value(_nullableStringValue(cloudDefault['icon'])),
+          description: Value(_nullableStringValue(cloudDefault['description'])),
+          bookTime: Value(_parseBookTimeMillisValue(cloudDefault['book_time'])),
+          isDefault: const Value(1),
+          createdAt: Value(_intValue(cloudDefault['created_at'])),
+          updatedAt: Value(_intValue(cloudDefault['updated_at'])),
+          deletedAt: Value(_nullableIntValue(cloudDefault['deleted_at'])),
+        ),
+      );
+      await db.customStatement(
+        'UPDATE person SET book_id = ? WHERE book_id = ?;',
+        [localDefaultId, cloudDefaultId],
+      );
+      await db.customStatement(
+        'UPDATE gift_record SET book_id = ? WHERE book_id = ?;',
+        [localDefaultId, cloudDefaultId],
+      );
+      await (db.delete(
+        db.accountBooks,
+      )..where((t) => t.bookId.equals(cloudDefaultId))).go();
+      await db.customStatement(
+        'UPDATE account_book SET is_default = CASE WHEN book_id = ? THEN 1 ELSE 0 END;',
+        [localDefaultId],
+      );
+    });
+  }
+
+  static Future<void> _mergeRelationTypesToCloudIds(
+    AppDatabase db,
+    List<Map<String, dynamic>> rows,
+  ) async {
+    if (rows.isEmpty) return;
+    await db.transaction(() async {
+      for (final row in rows) {
+        final cloudTypeId = _stringValue(row['type_id']);
+        final name = _stringValue(row['name']);
+        final duplicates = await db
+            .customSelect(
+              'SELECT type_id FROM relation_type '
+              'WHERE name = ? COLLATE NOCASE AND type_id <> ?;',
+              variables: [
+                Variable<String>(name),
+                Variable<String>(cloudTypeId),
+              ],
+              readsFrom: {db.relationTypes},
+            )
+            .get();
+        for (final duplicate in duplicates) {
+          final duplicateTypeId = duplicate.data['type_id'] as String;
+          await db.customStatement(
+            'UPDATE contact_relation SET type_id = ? WHERE type_id = ?;',
+            [cloudTypeId, duplicateTypeId],
+          );
+          await (db.delete(
+            db.relationTypes,
+          )..where((t) => t.typeId.equals(duplicateTypeId))).go();
+        }
+        final current = await db.relationTypesDao.findById(cloudTypeId);
+        if (current == null) {
+          await db
+              .into(db.relationTypes)
+              .insert(
+                RelationType(
+                  typeId: cloudTypeId,
+                  name: name,
+                  createdAt: _intValue(row['created_at']),
+                  updatedAt: _intValue(row['updated_at']),
+                ),
+              );
+        } else {
+          await (db.update(
+            db.relationTypes,
+          )..where((t) => t.typeId.equals(cloudTypeId))).write(
+            RelationTypesCompanion(
+              name: Value(name),
+              createdAt: Value(_intValue(row['created_at'])),
+              updatedAt: Value(_intValue(row['updated_at'])),
+            ),
+          );
+        }
+      }
+    });
+  }
+
   Future<void> syncToCloud({required void Function(String) onProgress}) async {
     final user = _supabase.auth.currentUser;
     if (user == null) {
@@ -195,6 +704,7 @@ class SupabaseSyncService {
 
     // 1. 恢复账簿
     onProgress('正在拉取账簿...');
+    final localDefaultBeforeRestore = await _db.accountBooksDao.findDefault();
     final booksData = await _supabase
         .from('account_book')
         .select()
@@ -365,6 +875,14 @@ class SupabaseSyncService {
 
     // 7. 恢复附件媒体
     onProgress('正在拉取附件媒体...');
+    await _resolveBusinessKeyConflictsAfterRestore(
+      db: _db,
+      localDefaultBeforeRestore: localDefaultBeforeRestore,
+      booksData: booksData,
+      reasonsData: reasonsData,
+      relationTypesData: relationTypesData,
+      contactRelationsData: contactRelationsData,
+    );
     await _syncMediaFromCloud(user.id, onProgress);
 
     onProgress('本地数据恢复完成！');

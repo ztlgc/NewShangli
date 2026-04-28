@@ -31,15 +31,43 @@ class RecordDetailPage extends StatelessWidget {
   }
 }
 
-class _Canvas extends StatelessWidget {
+class _Canvas extends StatefulWidget {
   const _Canvas({required this.recordId});
 
   final String recordId;
 
   @override
+  State<_Canvas> createState() => _CanvasState();
+}
+
+class _CanvasState extends State<_Canvas> {
+  late Future<_RecordView?> _recordFuture;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _recordFuture = _loadRecord();
+  }
+
+  @override
+  void didUpdateWidget(covariant _Canvas oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.recordId != widget.recordId) {
+      _recordFuture = _loadRecord();
+    }
+  }
+
+  void _reloadRecord() {
+    if (!mounted) return;
+    setState(() {
+      _recordFuture = _loadRecord();
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     return FutureBuilder<_RecordView?>(
-      future: _loadRecord(context),
+      future: _recordFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState != ConnectionState.done) {
           return const Center(child: CircularProgressIndicator());
@@ -53,20 +81,24 @@ class _Canvas extends StatelessWidget {
     );
   }
 
-  Future<_RecordView?> _loadRecord(BuildContext context) async {
-    final fromDb = await _loadFromDb(context);
+  Future<_RecordView?> _loadRecord() async {
+    final fromDb = await _loadFromDb();
     if (fromDb != null) return fromDb;
-    return _loadFromAppData(context);
+    return _loadFromAppData();
   }
 
-  Future<_RecordView?> _loadFromDb(BuildContext context) async {
+  Future<_RecordView?> _loadFromDb() async {
     try {
       final db = AppDatabaseScope.maybeOf(context);
       if (db == null) return null;
-      final GiftRecord? record = await db.giftRecordsDao.findById(recordId);
+      final GiftRecord? record = await db.giftRecordsDao.findById(
+        widget.recordId,
+      );
       if (record == null) return null;
       final Person? person = await db.personsDao.findById(record.personId);
-      final AccountBook? book = await db.accountBooksDao.findById(record.bookId);
+      final AccountBook? book = await db.accountBooksDao.findById(
+        record.bookId,
+      );
       return _RecordView(
         personId: record.personId,
         personName: person?.name ?? '未知联系人',
@@ -84,13 +116,14 @@ class _Canvas extends StatelessWidget {
     }
   }
 
-  Future<_RecordView?> _loadFromAppData(BuildContext context) async {
+  Future<_RecordView?> _loadFromAppData() async {
     try {
-      final element = context.getElementForInheritedWidgetOfExactType<AppDataScope>();
+      final element = context
+          .getElementForInheritedWidgetOfExactType<AppDataScope>();
       final scope = element?.widget;
       if (scope is! AppDataScope) return null;
       final data = scope.notifier!;
-      final record = data.findRecord(recordId);
+      final record = data.findRecord(widget.recordId);
       if (record == null) return null;
       final person = data.findPerson(record.personId);
       final bookName = data.resolveBookName(record.bookId);
@@ -118,7 +151,9 @@ class _Canvas extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: const BoxDecoration(
             color: AppColors.white,
-            border: Border(bottom: BorderSide(color: AppColors.gray100, width: 1)),
+            border: Border(
+              bottom: BorderSide(color: AppColors.gray100, width: 1),
+            ),
           ),
           child: Row(
             children: [
@@ -170,7 +205,10 @@ class _Canvas extends StatelessWidget {
                 left: 0,
                 right: 0,
                 bottom: 0,
-                child: _BottomActions(recordId: recordId),
+                child: _BottomActions(
+                  recordId: widget.recordId,
+                  onEditFinished: _reloadRecord,
+                ),
               ),
             ],
           ),
@@ -186,7 +224,9 @@ class _Canvas extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: const BoxDecoration(
             color: AppColors.white,
-            border: Border(bottom: BorderSide(color: AppColors.gray100, width: 1)),
+            border: Border(
+              bottom: BorderSide(color: AppColors.gray100, width: 1),
+            ),
           ),
           child: Row(
             children: [
@@ -244,7 +284,9 @@ class _AmountSummaryCard extends StatelessWidget {
     final Color accent = isIncome ? AppColors.green500 : AppColors.red500;
     final Color pillBg = isIncome ? AppColors.green50 : AppColors.red100;
     final Color pillFg = isIncome ? AppColors.green600 : AppColors.red600;
-    final IconData pillIcon = isIncome ? FontAwesomeIcons.arrowDown : FontAwesomeIcons.arrowUp;
+    final IconData pillIcon = isIncome
+        ? FontAwesomeIcons.arrowDown
+        : FontAwesomeIcons.arrowUp;
     final String title = isIncome ? '收礼金额' : '送礼金额';
     final String pillLabel = isIncome ? '收入' : '支出';
 
@@ -297,7 +339,10 @@ class _AmountSummaryCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 10),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: pillBg,
                         borderRadius: BorderRadius.circular(9999),
@@ -350,7 +395,11 @@ class _DetailInfoCard extends StatelessWidget {
             title: '关系人',
             value: record.personName,
             chevron: true,
-            onTap: () => AppNav.push(context, PersonDetailPage(personId: record.personId), requiresLogin: true),
+            onTap: () => AppNav.push(
+              context,
+              PersonDetailPage(personId: record.personId),
+              requiresLogin: true,
+            ),
           ),
           const PrototypeDivider(color: AppColors.borderDivider),
           _InfoRow(
@@ -410,7 +459,10 @@ class _InfoRow extends StatelessWidget {
           Container(
             width: 40,
             height: 40,
-            decoration: const BoxDecoration(color: AppColors.gray100, shape: BoxShape.circle),
+            decoration: const BoxDecoration(
+              color: AppColors.gray100,
+              shape: BoxShape.circle,
+            ),
             alignment: Alignment.center,
             child: FaIcon(icon, size: 16, color: AppColors.textTertiary),
           ),
@@ -440,7 +492,11 @@ class _InfoRow extends StatelessWidget {
             ),
           ),
           if (chevron)
-            const FaIcon(FontAwesomeIcons.chevronRight, size: 10, color: AppColors.gray300),
+            const FaIcon(
+              FontAwesomeIcons.chevronRight,
+              size: 10,
+              color: AppColors.gray300,
+            ),
         ],
       ),
     );
@@ -520,11 +576,14 @@ class _AttachmentRow extends StatelessWidget {
             child: Image.file(
               File(path),
               fit: BoxFit.cover,
-              errorBuilder: (context, _, __) {
+              errorBuilder: (context, error, stackTrace) {
                 return Container(
                   color: AppColors.gray100,
                   alignment: Alignment.center,
-                  child: const FaIcon(FontAwesomeIcons.triangleExclamation, size: 14),
+                  child: const FaIcon(
+                    FontAwesomeIcons.triangleExclamation,
+                    size: 14,
+                  ),
                 );
               },
             ),
@@ -535,16 +594,27 @@ class _AttachmentRow extends StatelessWidget {
 }
 
 class _BottomActions extends StatelessWidget {
-  const _BottomActions({required this.recordId});
+  const _BottomActions({required this.recordId, required this.onEditFinished});
 
   final String recordId;
+  final VoidCallback onEditFinished;
+
+  Future<void> _editRecord(BuildContext context) async {
+    await AppNav.push(
+      context,
+      RecordAddPage(recordId: recordId),
+      requiresLogin: true,
+    );
+    if (!context.mounted) return;
+    onEditFinished();
+  }
 
   Future<void> _confirmDelete(BuildContext context) async {
     final db = AppDatabaseScope.maybeOf(context);
     if (db == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('当前页面无法执行删除')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('当前页面无法执行删除')));
       return;
     }
     final ok = await showDialog<bool>(
@@ -573,9 +643,9 @@ class _BottomActions extends StatelessWidget {
     await db.giftRecordsDao.deleteById(recordId);
     if (!context.mounted) return;
     AppNav.pop(context);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('记录已移入回收站')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('记录已移入回收站')));
   }
 
   @override
@@ -601,7 +671,11 @@ class _BottomActions extends StatelessWidget {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const FaIcon(FontAwesomeIcons.trashCan, size: 16, color: AppColors.red500),
+                    const FaIcon(
+                      FontAwesomeIcons.trashCan,
+                      size: 16,
+                      color: AppColors.red500,
+                    ),
                     const SizedBox(width: 8),
                     Text(
                       '删除',
@@ -619,7 +693,7 @@ class _BottomActions extends StatelessWidget {
           const SizedBox(width: 12),
           Expanded(
             child: PressableScale(
-              onTap: () => AppNav.push(context, RecordAddPage(recordId: recordId), requiresLogin: true),
+              onTap: () => _editRecord(context),
               child: Container(
                 height: 48,
                 decoration: const BoxDecoration(
@@ -631,7 +705,11 @@ class _BottomActions extends StatelessWidget {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const FaIcon(FontAwesomeIcons.pen, size: 16, color: AppColors.white),
+                    const FaIcon(
+                      FontAwesomeIcons.pen,
+                      size: 16,
+                      color: AppColors.white,
+                    ),
                     const SizedBox(width: 8),
                     Text(
                       '编辑',
@@ -658,7 +736,10 @@ String _formatCurrency(int cent) {
   final parts = yuan.split('.');
   final intPart = parts[0];
   final fracPart = parts[1];
-  final grouped = intPart.replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (m) => ',');
+  final grouped = intPart.replaceAllMapped(
+    RegExp(r'\B(?=(\d{3})+(?!\d))'),
+    (m) => ',',
+  );
   return '¥$grouped.$fracPart';
 }
 
@@ -667,4 +748,3 @@ String _formatDateTime(DateTime dt) {
   final mm = dt.minute.toString().padLeft(2, '0');
   return '${DateUtil.format(dt)} $hh:$mm';
 }
-
