@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import '../../data/local/drift/app_database.dart';
+import '../../data/local/entity_remarks_store.dart';
 import '../app_data.dart';
 import '../app_database_scope.dart';
 import '../app_scaffold.dart';
@@ -111,6 +112,22 @@ class _Canvas extends StatelessWidget {
                         incomeCent: income,
                         recordCount: count,
                         bookTime: book.bookTime,
+                      ),
+                      const SizedBox(height: 16),
+                      const Padding(
+                        padding: EdgeInsets.only(left: 4, bottom: 8),
+                        child: Text(
+                          '追加备注',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ),
+                      _EntityRemarksCard(
+                        entityType: EntityRemarkType.accountBook,
+                        entityId: book.bookId,
                       ),
                       const SizedBox(height: 16),
                       _RecordsSection(rows: rows),
@@ -292,6 +309,206 @@ class _RecordsSection extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _EntityRemarksCard extends StatefulWidget {
+  const _EntityRemarksCard({required this.entityType, required this.entityId});
+
+  final String entityType;
+  final String entityId;
+
+  @override
+  State<_EntityRemarksCard> createState() => _EntityRemarksCardState();
+}
+
+class _EntityRemarksCardState extends State<_EntityRemarksCard> {
+  late Future<List<EntityRemark>> _future;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _future = _load();
+  }
+
+  Future<List<EntityRemark>> _load() async {
+    final db = AppDatabaseScope.maybeOf(context);
+    if (db == null) return const <EntityRemark>[];
+    return EntityRemarksStore(db).listByEntity(
+      entityType: widget.entityType,
+      entityId: widget.entityId,
+    );
+  }
+
+  void _reload() {
+    if (!mounted) return;
+    setState(() => _future = _load());
+  }
+
+  Future<void> _addRemark(BuildContext context, AppDatabase db) async {
+    final controller = TextEditingController();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('新增备注'),
+          content: TextField(
+            controller: controller,
+            maxLines: 6,
+            minLines: 3,
+            decoration: const InputDecoration(hintText: '请输入备注内容'),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('取消'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('保存'),
+            ),
+          ],
+        );
+      },
+    );
+    final text = controller.text.trim();
+    controller.dispose();
+    if (ok != true) return;
+    if (text.isEmpty) return;
+    await EntityRemarksStore(db).addRemark(
+      entityType: widget.entityType,
+      entityId: widget.entityId,
+      content: text,
+    );
+    if (!context.mounted) return;
+    _reload();
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('备注已添加')),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final db = AppDatabaseScope.maybeOf(context);
+    if (db == null) {
+      return const PrototypeCard(
+        padding: EdgeInsets.all(16),
+        child: Text('数据库未初始化'),
+      );
+    }
+    return PrototypeCard(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '备注列表',
+                  style: AppTypography.base(
+                    fontSize: 12,
+                    fontWeight: AppTypography.bold,
+                    color: AppColors.textTertiary,
+                  ),
+                ),
+              ),
+              PressableScale(
+                onTap: () => _addRemark(context, db),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: AppColors.gray50,
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(color: AppColors.gray200),
+                  ),
+                  child: Text(
+                    '新增',
+                    style: AppTypography.base(
+                      fontSize: 12,
+                      fontWeight: AppTypography.medium,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          FutureBuilder<List<EntityRemark>>(
+            future: _future,
+            builder: (context, snapshot) {
+              final rows = snapshot.data ?? const <EntityRemark>[];
+              if (rows.isEmpty) {
+                return Text(
+                  '暂无追加备注',
+                  style: AppTypography.base(
+                    fontSize: 13,
+                    fontWeight: AppTypography.regular,
+                    color: AppColors.textMuted,
+                  ),
+                );
+              }
+              return Column(
+                children: [
+                  for (final r in rows) ...[
+                    _RemarkRow(content: r.content, createdAt: r.createdAt),
+                    if (r != rows.last) const SizedBox(height: 10),
+                  ],
+                ],
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RemarkRow extends StatelessWidget {
+  const _RemarkRow({required this.content, required this.createdAt});
+
+  final String content;
+  final int createdAt;
+
+  @override
+  Widget build(BuildContext context) {
+    final time = DateTime.fromMillisecondsSinceEpoch(createdAt);
+    final hh = time.hour.toString().padLeft(2, '0');
+    final mm = time.minute.toString().padLeft(2, '0');
+    final label = '${DateUtil.format(time)} $hh:$mm';
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.gray50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.gray100),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: AppTypography.base(
+              fontSize: 11,
+              fontWeight: AppTypography.regular,
+              color: AppColors.textTertiary,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            content,
+            style: AppTypography.base(
+              fontSize: 13,
+              fontWeight: AppTypography.regular,
+              color: AppColors.textPrimary,
+              height: 1.4,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

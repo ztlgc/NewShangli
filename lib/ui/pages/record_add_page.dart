@@ -13,6 +13,7 @@ import '../app_database_scope.dart';
 import '../app_tokens.dart';
 import '../app_scaffold.dart';
 import '../components.dart';
+import '../edit_protection_guard.dart';
 import '../lunar_date_picker.dart';
 import '../navigation.dart';
 import '../prototype_kit.dart';
@@ -46,6 +47,8 @@ class _RecordAddPageState extends State<RecordAddPage> {
   bool _dirty = false;
   bool _saving = false;
   bool _loaded = false;
+  bool _authorized = false;
+  bool _authChecked = false;
   bool _suppressDirty = false;
   String _personName = '';
   final DefaultBookService _defaultBookService = DefaultBookService();
@@ -80,6 +83,7 @@ class _RecordAddPageState extends State<RecordAddPage> {
     super.didChangeDependencies();
     if (_loaded) return;
     _loaded = true;
+    _authorized = widget.recordId == null;
     _suppressDirty = true;
     try {
       if (_amountController.text.trim().isEmpty) {
@@ -93,6 +97,18 @@ class _RecordAddPageState extends State<RecordAddPage> {
       _loadRecordFromDrift(widget.recordId!);
     } else {
       _initDefaultsFromDrift();
+    }
+    if (widget.recordId != null && !_authChecked) {
+      _authChecked = true;
+      Future<void>(() async {
+        final ok = await requireEditProtectionPassword(context, title: '编辑记录');
+        if (!mounted) return;
+        if (!ok) {
+          AppNav.pop(context);
+          return;
+        }
+        setState(() => _authorized = true);
+      });
     }
   }
 
@@ -664,6 +680,12 @@ class _RecordAddPageState extends State<RecordAddPage> {
 
   @override
   Widget build(BuildContext context) {
+    if (widget.recordId != null && !_authorized) {
+      return const AppScaffold(
+        backgroundColor: AppColors.surfaceApp,
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
     final displayPersonName = _personName.trim().isNotEmpty
         ? _personName.trim()
         : '请选择';

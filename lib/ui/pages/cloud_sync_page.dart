@@ -5,6 +5,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../backup/cloud_backup_service.dart';
 import '../../backup/supabase_sync_service.dart';
 import '../../data/local/drift/app_database.dart';
 import '../app_database_scope.dart';
@@ -40,6 +41,10 @@ class _CloudSyncPageState extends State<CloudSyncPage> {
   _SyncDataCounts? _cloudCounts;
   String? _cloudCountError;
   AppDatabase? _db;
+  final CloudBackupService _cloudBackupService = CloudBackupService();
+  bool _backupVersionLoading = false;
+  String? _backupVersionError;
+  List<CloudBackupVersion> _backupVersions = const <CloudBackupVersion>[];
 
   @override
   void initState() {
@@ -57,9 +62,13 @@ class _CloudSyncPageState extends State<CloudSyncPage> {
             }
           });
           unawaited(_refreshCloudCounts(silent: true));
+          unawaited(_refreshBackupVersions(silent: true));
+          unawaited(_maybeRunAutoBackup(silent: true));
         });
     _addLog('云同步模块初始化成功。');
     unawaited(_refreshCloudCounts(silent: true));
+    unawaited(_refreshBackupVersions(silent: true));
+    unawaited(_maybeRunAutoBackup(silent: true));
   }
 
   @override
@@ -367,6 +376,161 @@ class _CloudSyncPageState extends State<CloudSyncPage> {
     }
   }
 
+  Future<void> _refreshBackupVersions({bool silent = false}) async {
+    if (_user == null) {
+      if (!mounted) return;
+      setState(() {
+        _backupVersions = const <CloudBackupVersion>[];
+        _backupVersionError = null;
+        _backupVersionLoading = false;
+      });
+      return;
+    }
+    if (!mounted) return;
+    setState(() {
+      _backupVersionLoading = true;
+      _backupVersionError = null;
+    });
+    try {
+      final rows = await _cloudBackupService.listVersions();
+      if (!mounted) return;
+      setState(() {
+        _backupVersions = rows;
+        _backupVersionLoading = false;
+      });
+      if (!silent) _addLog('备份版本列表已刷新：${rows.length} 条。');
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _backupVersionError = '备份版本读取失败';
+        _backupVersionLoading = false;
+      });
+      if (!silent) _addLog('备份版本读取失败: $e');
+    }
+  }
+
+  Future<void> _manualBackupToCloud() async {
+    if (_user == null) {
+      AppToast.show(context, '请先登录');
+      return;
+    }
+    if (_isWorking) return;
+    _setWorking(true);
+    _addLog('开始手动云端备份…');
+    try {
+      await _cloudBackupService.createManualBackup(
+        onProgress: (msg) => _addLog(msg),
+      );
+      _addLog('手动备份完成。');
+      await _refreshBackupVersions(silent: true);
+      if (mounted) AppToast.show(context, '手动备份成功');
+    } catch (e) {
+      _addLog('手动备份失败: $e');
+      if (mounted) AppToast.show(context, '手动备份失败');
+    } finally {
+      _setWorking(false);
+    }
+  }
+
+  Future<void> _maybeRunAutoBackup({bool silent = false}) async {
+    if (_user == null) return;
+    if (_isWorking) return;
+    try {
+      final v = await _cloudBackupService.runAutoBackupIfNeeded(
+        onProgress: silent ? (_) {} : (msg) => _addLog(msg),
+      );
+      if (v != null) {
+        if (!silent) _addLog('自动备份已更新。');
+        await _refreshBackupVersions(silent: true);
+      }
+    } catch (e) {
+      if (!silent) _addLog('自动备份失败: $e');
+    }
+  }
+
+  Future<void> _restoreFromBackupVersion(CloudBackupVersion version) async {
+    if (_user == null) {
+      AppToast.show(context, '请先登录');
+      return;
+    }
+    if (_isWorking) return;
+    final kindLabel =
+        version.kind == CloudBackupKind.auto ? '自动备份' : '手动备份';
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('按版本恢复'),
+          content: Text('将从云端 $kindLabel 下载备份包并覆盖恢复本地数据（含媒体文件）。是否继续？'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('取消'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: Text(
+                '继续恢复',
+                style: AppTypography.base(
+                  fontSize: AppTypography.fs14,
+                  fontWeight: AppTypography.medium,
+                  color: AppColors.red500,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+    if (confirm != true) return;
+
+    _setWorking(true);
+    _addLog('开始按版本恢复…');
+    try {
+      await _cloudBackupService.restoreVersion(
+        version: version,
+        onProgress: (msg) => _addLog(msg),
+      );
+      final db = _db;
+      if (db != null) {
+        final localCounts = await _queryLocalDataCounts(db);
+        await _saveSyncSnapshot('版本恢复', localCounts: localCounts);
+      }
+      if (!mounted) return;
+      showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => AlertDialog(
+          title: const Text('恢复成功'),
+          content: const Text('数据已恢复。若其它页面仍显示旧数据，请返回后重新进入页面。'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('确定'),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      _addLog('版本恢复失败: $e');
+      if (mounted) AppToast.show(context, '版本恢复失败');
+    } finally {
+      _setWorking(false);
+    }
+  }
+
+  String _formatBytes(int bytes) {
+    if (bytes <= 0) return '0 B';
+    const units = ['B', 'KB', 'MB', 'GB'];
+    var v = bytes.toDouble();
+    var idx = 0;
+    while (v >= 1024 && idx < units.length - 1) {
+      v /= 1024;
+      idx++;
+    }
+    return '${v.toStringAsFixed(idx == 0 ? 0 : 1)} ${units[idx]}';
+  }
+
   @override
   Widget build(BuildContext context) {
     final isLoggedIn = _user != null;
@@ -418,6 +582,10 @@ class _CloudSyncPageState extends State<CloudSyncPage> {
                   onTap: _isWorking || !isLoggedIn ? null : _showRestoreDialog,
                   isPrimary: false,
                 ),
+                const SizedBox(height: 24),
+                _buildSectionTitle('备份版本'),
+                const SizedBox(height: 12),
+                _buildBackupVersionsCard(isLoggedIn),
                 const SizedBox(height: 24),
                 _buildSyncScopeCard(),
                 const SizedBox(height: 24),
@@ -605,6 +773,82 @@ class _CloudSyncPageState extends State<CloudSyncPage> {
             localCounts: _localCounts,
             cloudCounts: _cloudCounts,
             showCloudCounts: isLoggedIn && !_cloudCountLoading,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBackupVersionsCard(bool isLoggedIn) {
+    return PrototypeCard(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '云端备份版本',
+                  style: AppTypography.base(
+                    fontSize: AppTypography.fs16,
+                    fontWeight: AppTypography.bold,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ),
+              PrototypeIconButton(
+                icon: const FaIcon(FontAwesomeIcons.rotate, size: 14),
+                backgroundColor: AppColors.gray50,
+                foregroundColor: AppColors.textSecondary,
+                onPressed: _isWorking || _backupVersionLoading || !isLoggedIn
+                    ? null
+                    : () => _refreshBackupVersions(),
+              ),
+              const SizedBox(width: 8),
+              PrototypeButton(
+                label: '手动备份',
+                background: AppColors.indigo600,
+                foreground: AppColors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                onPressed: _isWorking || !isLoggedIn ? null : _manualBackupToCloud,
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (!isLoggedIn)
+            Text('登录后可查看与创建云端备份版本。', style: AppTypography.caption())
+          else if (_backupVersionLoading)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.all(12),
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            )
+          else if (_backupVersionError != null)
+            Text(_backupVersionError!, style: AppTypography.caption())
+          else if (_backupVersions.isEmpty)
+            Text('暂无备份版本', style: AppTypography.caption())
+          else
+            Column(
+              children: [
+                for (final v in _backupVersions) ...[
+                  _BackupVersionRow(
+                    version: v,
+                    sizeLabel: _formatBytes(v.sizeBytes),
+                    timeLabel: _formatDateTime(
+                      DateTime.fromMillisecondsSinceEpoch(v.createdAt),
+                    ),
+                    onRestore: _isWorking ? null : () => _restoreFromBackupVersion(v),
+                  ),
+                  if (v != _backupVersions.last) const SizedBox(height: 10),
+                ],
+              ],
+            ),
+          const SizedBox(height: 8),
+          Text(
+            '自动备份每 3 天覆盖更新一次；手动备份每次点击生成新版本。',
+            style: AppTypography.caption(),
           ),
         ],
       ),
@@ -1136,6 +1380,79 @@ class _BreakdownCount extends StatelessWidget {
           fontWeight: AppTypography.semibold,
           color: AppColors.textPrimary,
         ),
+      ),
+    );
+  }
+}
+
+class _BackupVersionRow extends StatelessWidget {
+  const _BackupVersionRow({
+    required this.version,
+    required this.sizeLabel,
+    required this.timeLabel,
+    required this.onRestore,
+  });
+
+  final CloudBackupVersion version;
+  final String sizeLabel;
+  final String timeLabel;
+  final VoidCallback? onRestore;
+
+  @override
+  Widget build(BuildContext context) {
+    final isAuto = version.kind == CloudBackupKind.auto;
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.gray50,
+        borderRadius: AppRadii.brLg,
+        border: Border.all(color: AppColors.gray100),
+      ),
+      child: Row(
+        children: [
+          PrototypePill(
+            label: isAuto ? '自动' : '手动',
+            background: isAuto ? AppColors.blue100 : AppColors.green100,
+            foreground: isAuto ? AppColors.blue700 : AppColors.green600,
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  timeLabel,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTypography.base(
+                    fontSize: AppTypography.fs14,
+                    fontWeight: AppTypography.medium,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  sizeLabel,
+                  style: AppTypography.base(
+                    fontSize: AppTypography.fs12,
+                    fontWeight: AppTypography.regular,
+                    color: AppColors.textTertiary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          PrototypeButton(
+            label: '恢复',
+            background: AppColors.white,
+            foreground: AppColors.indigo700,
+            border: Border.all(color: AppColors.indigo200),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            onPressed: onRestore,
+          ),
+        ],
       ),
     );
   }

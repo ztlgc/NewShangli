@@ -15,6 +15,7 @@ import 'data_backup_page.dart';
 import 'data_export_page.dart';
 import 'data_import_page.dart';
 import 'person_list_page.dart';
+import 'edit_protection_page.dart';
 import 'record_home_page.dart';
 import 'reason_manage_page.dart';
 import 'stats_page.dart';
@@ -87,6 +88,13 @@ class _CanvasState extends State<_Canvas> {
         title: 'WebDAV 数据备份',
         onTap: () =>
             AppNav.push(context, const DataBackupPage(), requiresLogin: true),
+      ),
+      _SettingRow(
+        iconBg: AppColors.gray100,
+        iconFg: AppColors.textSecondary,
+        icon: FontAwesomeIcons.lock,
+        title: '编辑保护',
+        onTap: () => AppNav.push(context, const EditProtectionPage()),
       ),
       _SettingRow(
         iconBg: AppColors.purple50,
