@@ -53,7 +53,7 @@ class AppDatabase extends _$AppDatabase {
   ///
   /// 版本升级时在 [migration] 中补齐迁移逻辑，并同步单元测试。
   @override
-  int get schemaVersion => 10;
+  int get schemaVersion => 11;
 
   /// 统一注入迁移策略：
   /// - onCreate：创建所有表与索引
@@ -63,6 +63,15 @@ class AppDatabase extends _$AppDatabase {
   MigrationStrategy get migration => MigrationStrategy(
     onCreate: (m) async {
       await m.createAll();
+      await customStatement('''
+        CREATE TABLE IF NOT EXISTS entity_remark (
+          remark_id TEXT NOT NULL PRIMARY KEY,
+          entity_type TEXT NOT NULL,
+          entity_id TEXT NOT NULL,
+          content TEXT NOT NULL,
+          created_at INTEGER NOT NULL
+        );
+      ''');
       await _ensureIndexes();
     },
     onUpgrade: (m, from, to) async {
@@ -149,6 +158,18 @@ class AppDatabase extends _$AppDatabase {
           'UPDATE account_book SET book_time = COALESCE(NULLIF(book_time, 0), created_at, updated_at, ${DateTime.now().millisecondsSinceEpoch});',
         );
       }
+      if (from < 11) {
+        await customStatement('''
+          CREATE TABLE IF NOT EXISTS entity_remark (
+            remark_id TEXT NOT NULL PRIMARY KEY,
+            entity_type TEXT NOT NULL,
+            entity_id TEXT NOT NULL,
+            content TEXT NOT NULL,
+            created_at INTEGER NOT NULL
+          );
+        ''');
+        await _ensureIndexes();
+      }
     },
     beforeOpen: (details) async {
       await customStatement('PRAGMA foreign_keys = ON;');
@@ -175,6 +196,9 @@ class AppDatabase extends _$AppDatabase {
     );
     await customStatement(
       'CREATE INDEX IF NOT EXISTS idx_import_job_status_updated ON data_import_job(status, updated_at);',
+    );
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_entity_remark_entity_time ON entity_remark(entity_type, entity_id, created_at DESC);',
     );
   }
 }

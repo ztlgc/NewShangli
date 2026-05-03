@@ -1,14 +1,19 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:drift/drift.dart' show Value;
+import 'package:file_picker/file_picker.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import '../../data/local/drift/app_database.dart';
+import '../../data/local/entity_remarks_store.dart';
+import '../../media/media_storage_service.dart';
 import '../app_data.dart';
 import '../app_database_scope.dart';
 import '../app_tokens.dart';
 import '../app_scaffold.dart';
 import '../components.dart';
+import '../edit_protection_guard.dart';
 import '../navigation.dart';
 import '../prototype_kit.dart';
 import '../../utils/date_util.dart';
@@ -42,6 +47,7 @@ class _Canvas extends StatefulWidget {
 
 class _CanvasState extends State<_Canvas> {
   late Future<_RecordView?> _recordFuture;
+  final MediaStorageService _mediaStorageService = MediaStorageService();
 
   @override
   void didChangeDependencies() {
@@ -196,9 +202,19 @@ class _CanvasState extends State<_Canvas> {
                   const SizedBox(height: 12),
                   _NoteCard(note: record.note),
                   const SizedBox(height: 24),
+                  const _SectionTitle(title: '追加备注'),
+                  const SizedBox(height: 12),
+                  _EntityRemarksCard(
+                    entityType: EntityRemarkType.giftRecord,
+                    entityId: widget.recordId,
+                  ),
+                  const SizedBox(height: 24),
                   const _SectionTitle(title: '附件'),
                   const SizedBox(height: 12),
-                  _AttachmentRow(attachments: record.attachments),
+                  _AttachmentRow(
+                    attachments: record.attachments,
+                    onAdd: _addAttachments,
+                  ),
                 ],
               ),
               Positioned(
@@ -244,6 +260,56 @@ class _CanvasState extends State<_Canvas> {
         const Expanded(child: Center(child: Text('记录不存在'))),
       ],
     );
+  }
+
+  Future<void> _addAttachments() async {
+    final db = AppDatabaseScope.maybeOf(context);
+    if (db == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('数据库未初始化')),
+        );
+      }
+      return;
+    }
+    final record = await db.giftRecordsDao.findById(widget.recordId);
+    if (!mounted) return;
+    if (record == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('记录不存在')),
+      );
+      return;
+    }
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: const <String>['jpg', 'jpeg', 'png', 'webp'],
+      allowMultiple: true,
+      withData: false,
+    );
+    if (!mounted) return;
+    if (result == null || result.files.isEmpty) return;
+    final next = List<String>.from(record.attachments ?? const <String>[]);
+    try {
+      for (final f in result.files) {
+        final path = f.path;
+        if (path == null || path.trim().isEmpty) continue;
+        final stored = await _mediaStorageService.saveAttachmentFromPath(path);
+        next.add(stored);
+      }
+      await db.giftRecordsDao.updateOne(
+        record.copyWith(attachments: Value(next.isEmpty ? null : next)),
+      );
+      if (!mounted) return;
+      _reloadRecord();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('已添加附件')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('添加附件失败：$e')),
+      );
+    }
   }
 }
 
@@ -525,6 +591,206 @@ class _SectionTitle extends StatelessWidget {
   }
 }
 
+class _EntityRemarksCard extends StatefulWidget {
+  const _EntityRemarksCard({required this.entityType, required this.entityId});
+
+  final String entityType;
+  final String entityId;
+
+  @override
+  State<_EntityRemarksCard> createState() => _EntityRemarksCardState();
+}
+
+class _EntityRemarksCardState extends State<_EntityRemarksCard> {
+  late Future<List<EntityRemark>> _future;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _future = _load();
+  }
+
+  Future<List<EntityRemark>> _load() async {
+    final db = AppDatabaseScope.maybeOf(context);
+    if (db == null) return const <EntityRemark>[];
+    return EntityRemarksStore(db).listByEntity(
+      entityType: widget.entityType,
+      entityId: widget.entityId,
+    );
+  }
+
+  void _reload() {
+    if (!mounted) return;
+    setState(() => _future = _load());
+  }
+
+  Future<void> _addRemark(BuildContext context, AppDatabase db) async {
+    final controller = TextEditingController();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('新增备注'),
+          content: TextField(
+            controller: controller,
+            maxLines: 6,
+            minLines: 3,
+            decoration: const InputDecoration(hintText: '请输入备注内容'),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('取消'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('保存'),
+            ),
+          ],
+        );
+      },
+    );
+    final text = controller.text.trim();
+    controller.dispose();
+    if (ok != true) return;
+    if (text.isEmpty) return;
+    await EntityRemarksStore(db).addRemark(
+      entityType: widget.entityType,
+      entityId: widget.entityId,
+      content: text,
+    );
+    if (!context.mounted) return;
+    _reload();
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('备注已添加')),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final db = AppDatabaseScope.maybeOf(context);
+    if (db == null) {
+      return const PrototypeCard(
+        padding: EdgeInsets.all(16),
+        child: Text('数据库未初始化'),
+      );
+    }
+    return PrototypeCard(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '备注列表',
+                  style: AppTypography.base(
+                    fontSize: 12,
+                    fontWeight: AppTypography.bold,
+                    color: AppColors.textTertiary,
+                  ),
+                ),
+              ),
+              PressableScale(
+                onTap: () => _addRemark(context, db),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: AppColors.gray50,
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(color: AppColors.gray200),
+                  ),
+                  child: Text(
+                    '新增',
+                    style: AppTypography.base(
+                      fontSize: 12,
+                      fontWeight: AppTypography.medium,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          FutureBuilder<List<EntityRemark>>(
+            future: _future,
+            builder: (context, snapshot) {
+              final rows = snapshot.data ?? const <EntityRemark>[];
+              if (rows.isEmpty) {
+                return Text(
+                  '暂无追加备注',
+                  style: AppTypography.base(
+                    fontSize: 13,
+                    fontWeight: AppTypography.regular,
+                    color: AppColors.textMuted,
+                  ),
+                );
+              }
+              return Column(
+                children: [
+                  for (final r in rows) ...[
+                    _RemarkRow(content: r.content, createdAt: r.createdAt),
+                    if (r != rows.last) const SizedBox(height: 10),
+                  ],
+                ],
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RemarkRow extends StatelessWidget {
+  const _RemarkRow({required this.content, required this.createdAt});
+
+  final String content;
+  final int createdAt;
+
+  @override
+  Widget build(BuildContext context) {
+    final time = DateTime.fromMillisecondsSinceEpoch(createdAt);
+    final hh = time.hour.toString().padLeft(2, '0');
+    final mm = time.minute.toString().padLeft(2, '0');
+    final label = '${DateUtil.format(time)} $hh:$mm';
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.gray50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.gray100),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: AppTypography.base(
+              fontSize: 11,
+              fontWeight: AppTypography.regular,
+              color: AppColors.textTertiary,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            content,
+            style: AppTypography.base(
+              fontSize: 13,
+              fontWeight: AppTypography.regular,
+              color: AppColors.textPrimary,
+              height: 1.4,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _NoteCard extends StatelessWidget {
   const _NoteCard({required this.note});
 
@@ -548,22 +814,31 @@ class _NoteCard extends StatelessWidget {
 }
 
 class _AttachmentRow extends StatelessWidget {
-  const _AttachmentRow({required this.attachments});
+  const _AttachmentRow({required this.attachments, required this.onAdd});
 
   final List<String> attachments;
+  final VoidCallback onAdd;
 
   @override
   Widget build(BuildContext context) {
-    if (attachments.isEmpty) {
-      return const PrototypeCard(
-        padding: EdgeInsets.all(16),
-        child: Text('暂无附件'),
-      );
-    }
     return Wrap(
       spacing: 10,
       runSpacing: 10,
       children: [
+        PressableScale(
+          onTap: onAdd,
+          child: Container(
+            width: 96,
+            height: 96,
+            decoration: BoxDecoration(
+              color: AppColors.gray50,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppColors.gray200),
+            ),
+            alignment: Alignment.center,
+            child: const FaIcon(FontAwesomeIcons.plus, size: 18),
+          ),
+        ),
         for (final path in attachments)
           Container(
             width: 96,
@@ -600,6 +875,8 @@ class _BottomActions extends StatelessWidget {
   final VoidCallback onEditFinished;
 
   Future<void> _editRecord(BuildContext context) async {
+    final ok = await requireEditProtectionPassword(context, title: '编辑记录');
+    if (!ok) return;
     await AppNav.push(
       context,
       RecordAddPage(recordId: recordId),
@@ -610,6 +887,8 @@ class _BottomActions extends StatelessWidget {
   }
 
   Future<void> _confirmDelete(BuildContext context) async {
+    final okAuth = await requireEditProtectionPassword(context, title: '删除记录');
+    if (!okAuth) return;
     final db = AppDatabaseScope.maybeOf(context);
     if (db == null) {
       ScaffoldMessenger.of(

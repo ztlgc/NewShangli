@@ -13,6 +13,7 @@ import '../app_tokens.dart';
 import '../app_scaffold.dart';
 import '../contact_avatar.dart';
 import '../components.dart';
+import '../edit_protection_guard.dart';
 import '../navigation.dart';
 import '../prototype_kit.dart';
 import '../widgets/person_display_row.dart';
@@ -183,6 +184,8 @@ class _CanvasState extends State<_Canvas> {
   }
 
   Future<void> _deleteSelectedPersons(AppDatabase db) async {
+    final okAuth = await requireEditProtectionPassword(context, title: '删除联系人');
+    if (!okAuth) return;
     final ids = _selectedPersonIds.toList();
     if (ids.isEmpty) return;
     final ok = await showDialog<bool>(

@@ -15,6 +15,7 @@ import '../app_database_scope.dart';
 import '../app_toast.dart';
 import '../contact_avatar.dart';
 import '../components.dart';
+import '../edit_protection_guard.dart';
 import '../navigation.dart';
 import '../prototype_kit.dart';
 import '../lunar_date_picker.dart';
@@ -43,6 +44,8 @@ class _PersonEditPageState extends State<PersonEditPage> {
 
   bool _inited = false;
   bool _saving = false;
+  bool _authorized = false;
+  bool _authChecked = false;
   String _relationship = '';
   static const String _defaultBookSelectionId = 'book_default';
   String _personBookId = _defaultBookSelectionId;
@@ -80,6 +83,7 @@ class _PersonEditPageState extends State<PersonEditPage> {
     super.didChangeDependencies();
     if (_inited) return;
     _inited = true;
+    _authorized = widget.personId == null;
     _nameCtrl.text = '';
     _phoneCtrl.text = '';
     _noteCtrl.text = '';
@@ -94,10 +98,28 @@ class _PersonEditPageState extends State<PersonEditPage> {
     if (widget.personId != null) {
       _loadPersonFromDrift(widget.personId!);
     }
+    if (widget.personId != null && !_authChecked) {
+      _authChecked = true;
+      Future<void>(() async {
+        final ok = await requireEditProtectionPassword(context, title: '编辑联系人');
+        if (!mounted) return;
+        if (!ok) {
+          AppNav.pop(context);
+          return;
+        }
+        setState(() => _authorized = true);
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    if (widget.personId != null && !_authorized) {
+      return const AppScaffold(
+        backgroundColor: AppColors.surfaceApp,
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
     return AppScaffold(
       backgroundColor: AppColors.surfaceApp,
       body: Column(
@@ -167,7 +189,7 @@ class _PersonEditPageState extends State<PersonEditPage> {
                   avatarUrl: _avatarUrl,
                   nameForFallback: _nameCtrl.text.trim().isEmpty ? '—' : _nameCtrl.text.trim(),
                   onTap: () {
-                    if (_saving) return;
+                    if (_saving || !_authorized) return;
                     _pickAvatar();
                   },
                 ),
@@ -224,6 +246,10 @@ class _PersonEditPageState extends State<PersonEditPage> {
   }
 
   Future<void> _onSave() async {
+    if (widget.personId != null) {
+      final ok = await requireEditProtectionPassword(context, title: '编辑联系人');
+      if (!ok) return;
+    }
     FocusManager.instance.primaryFocus?.unfocus();
     setState(() {
       _nameEditing = false;
@@ -527,6 +553,8 @@ class _PersonEditPageState extends State<PersonEditPage> {
   }
 
   Future<void> _confirmDelete() async {
+    final okAuth = await requireEditProtectionPassword(context, title: '删除联系人');
+    if (!okAuth) return;
     final db = AppDatabaseScope.of(context);
     final name = _nameCtrl.text.trim().isEmpty ? '该联系人' : _nameCtrl.text.trim();
     final ok = await showDialog<bool>(
@@ -1484,4 +1512,3 @@ class _SwitchItem extends StatelessWidget {
     );
   }
 }
-

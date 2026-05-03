@@ -9,6 +9,7 @@ import '../app_database_scope.dart';
 import '../app_tokens.dart';
 import '../app_scaffold.dart';
 import '../components.dart';
+import '../edit_protection_guard.dart';
 import '../lunar_date_picker.dart';
 import '../navigation.dart';
 import '../prototype_kit.dart';
@@ -143,6 +144,10 @@ class _CanvasState extends State<_Canvas> {
 
   Future<void> _save() async {
     if (_saving) return;
+    if (_book != null) {
+      final okAuth = await requireEditProtectionPassword(context, title: '编辑账簿');
+      if (!okAuth) return;
+    }
     if (_book?.isDefault == 1) {
       _toast('默认账簿不可更改');
       return;
@@ -206,6 +211,8 @@ class _CanvasState extends State<_Canvas> {
 
   Future<void> _delete() async {
     if (_deleting || _book == null) return;
+    final okAuth = await requireEditProtectionPassword(context, title: '删除账簿');
+    if (!okAuth) return;
     final ok = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
