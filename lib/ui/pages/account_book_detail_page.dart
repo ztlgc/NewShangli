@@ -1,12 +1,18 @@
+import 'dart:io';
+
+import 'package:drift/drift.dart' show Value;
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import '../../data/local/drift/app_database.dart';
 import '../../data/local/entity_remarks_store.dart';
+import '../../media/media_storage_service.dart';
 import '../app_data.dart';
 import '../app_database_scope.dart';
 import '../app_scaffold.dart';
 import '../app_tokens.dart';
+import '../components.dart';
 import '../navigation.dart';
 import '../prototype_kit.dart';
 import '../../utils/date_util.dart';
@@ -15,10 +21,7 @@ import 'account_book_data_import_page.dart';
 import 'record_detail_page.dart';
 
 class AccountBookDetailPage extends StatelessWidget {
-  const AccountBookDetailPage({
-    super.key,
-    required this.bookId,
-  });
+  const AccountBookDetailPage({super.key, required this.bookId});
 
   final String bookId;
 
@@ -35,6 +38,47 @@ class _Canvas extends StatelessWidget {
   const _Canvas({required this.bookId});
 
   final String bookId;
+
+  Future<void> _addAttachments(BuildContext context, AccountBook book) async {
+    final db = AppDatabaseScope.maybeOf(context);
+    if (db == null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('数据库未初始化')));
+      return;
+    }
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: const <String>['jpg', 'jpeg', 'png', 'webp'],
+      allowMultiple: true,
+      withData: false,
+    );
+    if (!context.mounted) return;
+    if (result == null || result.files.isEmpty) return;
+
+    final next = List<String>.from(book.attachments ?? const <String>[]);
+    final mediaStorageService = MediaStorageService();
+    try {
+      for (final f in result.files) {
+        final path = f.path;
+        if (path == null || path.trim().isEmpty) continue;
+        final stored = await mediaStorageService.saveAttachmentFromPath(path);
+        next.add(stored);
+      }
+      await db.accountBooksDao.updateOne(
+        book.copyWith(attachments: Value(next.isEmpty ? null : next)),
+      );
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('已添加附件')));
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('添加附件失败：$e')));
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -57,7 +101,9 @@ class _Canvas extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: const BoxDecoration(
                 color: AppColors.white,
-                border: Border(bottom: BorderSide(color: AppColors.gray100, width: 1)),
+                border: Border(
+                  bottom: BorderSide(color: AppColors.gray100, width: 1),
+                ),
               ),
               child: Row(
                 children: [
@@ -85,7 +131,10 @@ class _Canvas extends StatelessWidget {
                     foregroundColor: AppColors.indigo700,
                     onPressed: () => AppNav.push(
                       context,
-                      AccountBookDataImportPage(bookId: bookId, bookName: book.name),
+                      AccountBookDataImportPage(
+                        bookId: bookId,
+                        bookName: book.name,
+                      ),
                       requiresLogin: true,
                     ),
                   ),
@@ -96,7 +145,8 @@ class _Canvas extends StatelessWidget {
               child: StreamBuilder<List<GiftRecordWithPerson>>(
                 stream: recordsStream,
                 builder: (context, rowsSnapshot) {
-                  final rows = rowsSnapshot.data ?? const <GiftRecordWithPerson>[];
+                  final rows =
+                      rowsSnapshot.data ?? const <GiftRecordWithPerson>[];
                   var income = 0;
                   for (final row in rows) {
                     if (row.record.direction == '收入') {
@@ -128,6 +178,22 @@ class _Canvas extends StatelessWidget {
                       _EntityRemarksCard(
                         entityType: EntityRemarkType.accountBook,
                         entityId: book.bookId,
+                      ),
+                      const SizedBox(height: 16),
+                      const Padding(
+                        padding: EdgeInsets.only(left: 4, bottom: 8),
+                        child: Text(
+                          '附件',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ),
+                      _AttachmentRow(
+                        attachments: book.attachments ?? const <String>[],
+                        onAdd: () => _addAttachments(context, book),
                       ),
                       const SizedBox(height: 16),
                       _RecordsSection(rows: rows),
@@ -207,7 +273,11 @@ class _OverviewCard extends StatelessWidget {
 }
 
 class _MetricItem extends StatelessWidget {
-  const _MetricItem({required this.title, required this.value, required this.color});
+  const _MetricItem({
+    required this.title,
+    required this.value,
+    required this.color,
+  });
 
   final String title;
   final String value;
@@ -292,12 +362,19 @@ class _RecordsSection extends StatelessWidget {
                 RecordListRow(
                   avatarUrl: rows[i].person.avatarUri,
                   name: rows[i].person.name,
-                  direction: rows[i].record.direction == '收入' ? RecordDirection.income : RecordDirection.expense,
+                  direction: rows[i].record.direction == '收入'
+                      ? RecordDirection.income
+                      : RecordDirection.expense,
                   amountCent: rows[i].record.amountCent,
-                  subtitle: (rows[i].record.paymentMethod == null || rows[i].record.paymentMethod!.isEmpty || rows[i].record.paymentMethod == '未设置')
+                  subtitle:
+                      (rows[i].record.paymentMethod == null ||
+                          rows[i].record.paymentMethod!.isEmpty ||
+                          rows[i].record.paymentMethod == '未设置')
                       ? (rows[i].record.eventName ?? '未设置事由')
                       : '${rows[i].record.eventName ?? '未设置事由'} - ${rows[i].record.paymentMethod}',
-                  occurredAt: DateTime.fromMillisecondsSinceEpoch(rows[i].record.occurredAt),
+                  occurredAt: DateTime.fromMillisecondsSinceEpoch(
+                    rows[i].record.occurredAt,
+                  ),
                   borderBottom: i != rows.length - 1,
                   onTap: () => AppNav.push(
                     context,
@@ -335,10 +412,9 @@ class _EntityRemarksCardState extends State<_EntityRemarksCard> {
   Future<List<EntityRemark>> _load() async {
     final db = AppDatabaseScope.maybeOf(context);
     if (db == null) return const <EntityRemark>[];
-    return EntityRemarksStore(db).listByEntity(
-      entityType: widget.entityType,
-      entityId: widget.entityId,
-    );
+    return EntityRemarksStore(
+      db,
+    ).listByEntity(entityType: widget.entityType, entityId: widget.entityId);
   }
 
   void _reload() {
@@ -383,9 +459,9 @@ class _EntityRemarksCardState extends State<_EntityRemarksCard> {
     );
     if (!context.mounted) return;
     _reload();
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('备注已添加')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('备注已添加')));
   }
 
   @override
@@ -417,7 +493,10 @@ class _EntityRemarksCardState extends State<_EntityRemarksCard> {
               PressableScale(
                 onTap: () => _addRemark(context, db),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.gray50,
                     borderRadius: BorderRadius.circular(999),
@@ -462,6 +541,61 @@ class _EntityRemarksCardState extends State<_EntityRemarksCard> {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _AttachmentRow extends StatelessWidget {
+  const _AttachmentRow({required this.attachments, required this.onAdd});
+
+  final List<String> attachments;
+  final VoidCallback onAdd;
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 10,
+      runSpacing: 10,
+      children: [
+        PressableScale(
+          onTap: onAdd,
+          child: Container(
+            width: 96,
+            height: 96,
+            decoration: BoxDecoration(
+              color: AppColors.gray50,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppColors.gray200),
+            ),
+            alignment: Alignment.center,
+            child: const FaIcon(FontAwesomeIcons.plus, size: 18),
+          ),
+        ),
+        for (final path in attachments)
+          Container(
+            width: 96,
+            height: 96,
+            decoration: BoxDecoration(
+              color: AppColors.gray200,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: Image.file(
+              File(path),
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) {
+                return Container(
+                  color: AppColors.gray100,
+                  alignment: Alignment.center,
+                  child: const FaIcon(
+                    FontAwesomeIcons.triangleExclamation,
+                    size: 14,
+                  ),
+                );
+              },
+            ),
+          ),
+      ],
     );
   }
 }

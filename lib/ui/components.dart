@@ -84,11 +84,7 @@ class PrototypePrimaryButton extends StatelessWidget {
 }
 
 class PrototypeSecondaryButton extends StatelessWidget {
-  const PrototypeSecondaryButton({
-    super.key,
-    required this.label,
-    this.onTap,
-  });
+  const PrototypeSecondaryButton({super.key, required this.label, this.onTap});
 
   final String label;
   final VoidCallback? onTap;
@@ -110,6 +106,56 @@ class PrototypeSecondaryButton extends StatelessWidget {
             fontSize: 14,
             fontWeight: AppTypography.medium,
             color: AppColors.indigo700,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class PrototypeButton extends StatelessWidget {
+  const PrototypeButton({
+    super.key,
+    required this.label,
+    this.background = AppColors.brandPrimary,
+    this.foreground = AppColors.white,
+    this.border,
+    this.padding = const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+    this.onPressed,
+  });
+
+  final String label;
+  final Color background;
+  final Color foreground;
+  final BoxBorder? border;
+  final EdgeInsets padding;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = onPressed != null;
+    return Opacity(
+      opacity: enabled ? 1 : 0.48,
+      child: PressableScale(
+        onTap: onPressed,
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 36),
+          padding: padding,
+          decoration: BoxDecoration(
+            color: background,
+            borderRadius: AppRadii.brXl,
+            border: border,
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppTypography.base(
+              fontSize: AppTypography.fs12,
+              fontWeight: AppTypography.semibold,
+              color: foreground,
+            ),
           ),
         ),
       ),
@@ -193,7 +239,11 @@ class PrototypeSearchField extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const FaIcon(FontAwesomeIcons.magnifyingGlass, size: 14, color: AppColors.textTertiary),
+          const FaIcon(
+            FontAwesomeIcons.magnifyingGlass,
+            size: 14,
+            color: AppColors.textTertiary,
+          ),
           const SizedBox(width: 8),
           Expanded(
             child: TextField(
@@ -225,7 +275,11 @@ class PrototypeSearchField extends StatelessWidget {
                 controller.clear();
                 onChanged?.call('');
               },
-              child: const FaIcon(FontAwesomeIcons.circleXmark, size: 16, color: AppColors.textTertiary),
+              child: const FaIcon(
+                FontAwesomeIcons.circleXmark,
+                size: 16,
+                color: AppColors.textTertiary,
+              ),
             ),
           ],
         ],
@@ -299,7 +353,9 @@ class PrototypePressableRow extends StatelessWidget {
         padding: padding,
         decoration: BoxDecoration(
           border: borderBottom
-              ? const Border(bottom: BorderSide(color: AppColors.borderDivider, width: 1))
+              ? const Border(
+                  bottom: BorderSide(color: AppColors.borderDivider, width: 1),
+                )
               : null,
         ),
         child: child,
@@ -337,17 +393,22 @@ class _PressedBackgroundState extends State<_PressedBackground> {
     return GestureDetector(
       onTap: widget.onTap,
       onLongPress: widget.onLongPress,
-      onTapDown: feedbackEnabled ? (_) => setState(() => _pressed = true) : null,
-      onTapCancel: feedbackEnabled ? () => setState(() => _pressed = false) : null,
+      onTapDown: feedbackEnabled
+          ? (_) => setState(() => _pressed = true)
+          : null,
+      onTapCancel: feedbackEnabled
+          ? () => setState(() => _pressed = false)
+          : null,
       onTapUp: feedbackEnabled ? (_) => setState(() => _pressed = false) : null,
       behavior: HitTestBehavior.opaque,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
         curve: Curves.easeInOut,
-        color: (_pressed && feedbackEnabled) ? widget.pressedColor : Colors.transparent,
+        color: (_pressed && feedbackEnabled)
+            ? widget.pressedColor
+            : Colors.transparent,
         child: widget.child,
       ),
     );
   }
 }
-

@@ -140,6 +140,9 @@ class SupabaseSyncService {
           themeColor: _stringValue(row['theme_color'] ?? '#312E81'),
           icon: _nullableStringValue(row['icon']),
           description: _nullableStringValue(row['description']),
+          attachments: row['attachments'] != null
+              ? List<String>.from(row['attachments'] as Iterable)
+              : null,
           bookTime: _parseBookTimeMillisValue(row['book_time']),
           isDefault: _intValue(row['is_default']),
           createdAt: _intValue(row['created_at']),
@@ -159,6 +162,7 @@ class SupabaseSyncService {
               themeColor: Value(book.themeColor),
               icon: Value(book.icon),
               description: Value(book.description),
+              attachments: Value(book.attachments),
               bookTime: Value(book.bookTime),
               isDefault: Value(book.isDefault),
               createdAt: Value(book.createdAt),
@@ -460,6 +464,11 @@ class SupabaseSyncService {
           ),
           icon: Value(_nullableStringValue(cloudDefault['icon'])),
           description: Value(_nullableStringValue(cloudDefault['description'])),
+          attachments: Value(
+            cloudDefault['attachments'] != null
+                ? List<String>.from(cloudDefault['attachments'] as Iterable)
+                : null,
+          ),
           bookTime: Value(_parseBookTimeMillisValue(cloudDefault['book_time'])),
           isDefault: const Value(1),
           createdAt: Value(_intValue(cloudDefault['created_at'])),
@@ -561,6 +570,7 @@ class SupabaseSyncService {
               'theme_color': b.themeColor,
               'icon': b.icon,
               'description': b.description,
+              'attachments': b.attachments,
               'book_time': _formatDateYmdFromMillis(b.bookTime),
               'is_default': b.isDefault,
               'created_at': b.createdAt,
@@ -721,6 +731,9 @@ class SupabaseSyncService {
               themeColor: b['theme_color'] as String,
               icon: b['icon'] as String?,
               description: b['description'] as String?,
+              attachments: b['attachments'] != null
+                  ? List<String>.from(b['attachments'] as Iterable)
+                  : null,
               bookTime: _parseBookTimeMillis(b['book_time']),
               isDefault: b['is_default'] as int,
               createdAt: b['created_at'] as int,

@@ -77,6 +77,15 @@ class $AccountBooksTable extends AccountBooks
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  @override
+  late final GeneratedColumnWithTypeConverter<List<String>?, String>
+  attachments = GeneratedColumn<String>(
+    'attachments',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  ).withConverter<List<String>?>($AccountBooksTable.$converterattachmentsn);
   static const VerificationMeta _bookTimeMeta = const VerificationMeta(
     'bookTime',
   );
@@ -146,6 +155,7 @@ class $AccountBooksTable extends AccountBooks
     themeColor,
     icon,
     description,
+    attachments,
     bookTime,
     isDefault,
     createdAt,
@@ -272,6 +282,12 @@ class $AccountBooksTable extends AccountBooks
         DriftSqlType.string,
         data['${effectivePrefix}description'],
       ),
+      attachments: $AccountBooksTable.$converterattachmentsn.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}attachments'],
+        ),
+      ),
       bookTime: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}book_time'],
@@ -299,6 +315,11 @@ class $AccountBooksTable extends AccountBooks
   $AccountBooksTable createAlias(String alias) {
     return $AccountBooksTable(attachedDatabase, alias);
   }
+
+  static TypeConverter<List<String>, String> $converterattachments =
+      const JsonStringListConverter();
+  static TypeConverter<List<String>?, String?> $converterattachmentsn =
+      NullAwareTypeConverter.wrap($converterattachments);
 }
 
 class AccountBook extends DataClass implements Insertable<AccountBook> {
@@ -308,6 +329,7 @@ class AccountBook extends DataClass implements Insertable<AccountBook> {
   final String themeColor;
   final String? icon;
   final String? description;
+  final List<String>? attachments;
   final int bookTime;
   final int isDefault;
   final int createdAt;
@@ -320,6 +342,7 @@ class AccountBook extends DataClass implements Insertable<AccountBook> {
     required this.themeColor,
     this.icon,
     this.description,
+    this.attachments,
     required this.bookTime,
     required this.isDefault,
     required this.createdAt,
@@ -338,6 +361,11 @@ class AccountBook extends DataClass implements Insertable<AccountBook> {
     }
     if (!nullToAbsent || description != null) {
       map['description'] = Variable<String>(description);
+    }
+    if (!nullToAbsent || attachments != null) {
+      map['attachments'] = Variable<String>(
+        $AccountBooksTable.$converterattachmentsn.toSql(attachments),
+      );
     }
     map['book_time'] = Variable<int>(bookTime);
     map['is_default'] = Variable<int>(isDefault);
@@ -359,6 +387,9 @@ class AccountBook extends DataClass implements Insertable<AccountBook> {
       description: description == null && nullToAbsent
           ? const Value.absent()
           : Value(description),
+      attachments: attachments == null && nullToAbsent
+          ? const Value.absent()
+          : Value(attachments),
       bookTime: Value(bookTime),
       isDefault: Value(isDefault),
       createdAt: Value(createdAt),
@@ -381,6 +412,7 @@ class AccountBook extends DataClass implements Insertable<AccountBook> {
       themeColor: serializer.fromJson<String>(json['themeColor']),
       icon: serializer.fromJson<String?>(json['icon']),
       description: serializer.fromJson<String?>(json['description']),
+      attachments: serializer.fromJson<List<String>?>(json['attachments']),
       bookTime: serializer.fromJson<int>(json['bookTime']),
       isDefault: serializer.fromJson<int>(json['isDefault']),
       createdAt: serializer.fromJson<int>(json['createdAt']),
@@ -398,6 +430,7 @@ class AccountBook extends DataClass implements Insertable<AccountBook> {
       'themeColor': serializer.toJson<String>(themeColor),
       'icon': serializer.toJson<String?>(icon),
       'description': serializer.toJson<String?>(description),
+      'attachments': serializer.toJson<List<String>?>(attachments),
       'bookTime': serializer.toJson<int>(bookTime),
       'isDefault': serializer.toJson<int>(isDefault),
       'createdAt': serializer.toJson<int>(createdAt),
@@ -413,6 +446,7 @@ class AccountBook extends DataClass implements Insertable<AccountBook> {
     String? themeColor,
     Value<String?> icon = const Value.absent(),
     Value<String?> description = const Value.absent(),
+    Value<List<String>?> attachments = const Value.absent(),
     int? bookTime,
     int? isDefault,
     int? createdAt,
@@ -425,6 +459,7 @@ class AccountBook extends DataClass implements Insertable<AccountBook> {
     themeColor: themeColor ?? this.themeColor,
     icon: icon.present ? icon.value : this.icon,
     description: description.present ? description.value : this.description,
+    attachments: attachments.present ? attachments.value : this.attachments,
     bookTime: bookTime ?? this.bookTime,
     isDefault: isDefault ?? this.isDefault,
     createdAt: createdAt ?? this.createdAt,
@@ -445,6 +480,9 @@ class AccountBook extends DataClass implements Insertable<AccountBook> {
       description: data.description.present
           ? data.description.value
           : this.description,
+      attachments: data.attachments.present
+          ? data.attachments.value
+          : this.attachments,
       bookTime: data.bookTime.present ? data.bookTime.value : this.bookTime,
       isDefault: data.isDefault.present ? data.isDefault.value : this.isDefault,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
@@ -462,6 +500,7 @@ class AccountBook extends DataClass implements Insertable<AccountBook> {
           ..write('themeColor: $themeColor, ')
           ..write('icon: $icon, ')
           ..write('description: $description, ')
+          ..write('attachments: $attachments, ')
           ..write('bookTime: $bookTime, ')
           ..write('isDefault: $isDefault, ')
           ..write('createdAt: $createdAt, ')
@@ -479,6 +518,7 @@ class AccountBook extends DataClass implements Insertable<AccountBook> {
     themeColor,
     icon,
     description,
+    attachments,
     bookTime,
     isDefault,
     createdAt,
@@ -495,6 +535,7 @@ class AccountBook extends DataClass implements Insertable<AccountBook> {
           other.themeColor == this.themeColor &&
           other.icon == this.icon &&
           other.description == this.description &&
+          other.attachments == this.attachments &&
           other.bookTime == this.bookTime &&
           other.isDefault == this.isDefault &&
           other.createdAt == this.createdAt &&
@@ -509,6 +550,7 @@ class AccountBooksCompanion extends UpdateCompanion<AccountBook> {
   final Value<String> themeColor;
   final Value<String?> icon;
   final Value<String?> description;
+  final Value<List<String>?> attachments;
   final Value<int> bookTime;
   final Value<int> isDefault;
   final Value<int> createdAt;
@@ -522,6 +564,7 @@ class AccountBooksCompanion extends UpdateCompanion<AccountBook> {
     this.themeColor = const Value.absent(),
     this.icon = const Value.absent(),
     this.description = const Value.absent(),
+    this.attachments = const Value.absent(),
     this.bookTime = const Value.absent(),
     this.isDefault = const Value.absent(),
     this.createdAt = const Value.absent(),
@@ -536,6 +579,7 @@ class AccountBooksCompanion extends UpdateCompanion<AccountBook> {
     this.themeColor = const Value.absent(),
     this.icon = const Value.absent(),
     this.description = const Value.absent(),
+    this.attachments = const Value.absent(),
     this.bookTime = const Value.absent(),
     this.isDefault = const Value.absent(),
     required int createdAt,
@@ -552,6 +596,7 @@ class AccountBooksCompanion extends UpdateCompanion<AccountBook> {
     Expression<String>? themeColor,
     Expression<String>? icon,
     Expression<String>? description,
+    Expression<String>? attachments,
     Expression<int>? bookTime,
     Expression<int>? isDefault,
     Expression<int>? createdAt,
@@ -566,6 +611,7 @@ class AccountBooksCompanion extends UpdateCompanion<AccountBook> {
       if (themeColor != null) 'theme_color': themeColor,
       if (icon != null) 'icon': icon,
       if (description != null) 'description': description,
+      if (attachments != null) 'attachments': attachments,
       if (bookTime != null) 'book_time': bookTime,
       if (isDefault != null) 'is_default': isDefault,
       if (createdAt != null) 'created_at': createdAt,
@@ -582,6 +628,7 @@ class AccountBooksCompanion extends UpdateCompanion<AccountBook> {
     Value<String>? themeColor,
     Value<String?>? icon,
     Value<String?>? description,
+    Value<List<String>?>? attachments,
     Value<int>? bookTime,
     Value<int>? isDefault,
     Value<int>? createdAt,
@@ -596,6 +643,7 @@ class AccountBooksCompanion extends UpdateCompanion<AccountBook> {
       themeColor: themeColor ?? this.themeColor,
       icon: icon ?? this.icon,
       description: description ?? this.description,
+      attachments: attachments ?? this.attachments,
       bookTime: bookTime ?? this.bookTime,
       isDefault: isDefault ?? this.isDefault,
       createdAt: createdAt ?? this.createdAt,
@@ -625,6 +673,11 @@ class AccountBooksCompanion extends UpdateCompanion<AccountBook> {
     }
     if (description.present) {
       map['description'] = Variable<String>(description.value);
+    }
+    if (attachments.present) {
+      map['attachments'] = Variable<String>(
+        $AccountBooksTable.$converterattachmentsn.toSql(attachments.value),
+      );
     }
     if (bookTime.present) {
       map['book_time'] = Variable<int>(bookTime.value);
@@ -656,6 +709,7 @@ class AccountBooksCompanion extends UpdateCompanion<AccountBook> {
           ..write('themeColor: $themeColor, ')
           ..write('icon: $icon, ')
           ..write('description: $description, ')
+          ..write('attachments: $attachments, ')
           ..write('bookTime: $bookTime, ')
           ..write('isDefault: $isDefault, ')
           ..write('createdAt: $createdAt, ')
@@ -1439,8 +1493,8 @@ class $GiftRecordsTable extends GiftRecords
     type: DriftSqlType.string,
     requiredDuringInsert: false,
     $customConstraints:
-        "NOT NULL DEFAULT '收入' CHECK(direction IN ('收入', '支出'))",
-    defaultValue: const CustomExpression("'收入'"),
+        'NOT NULL DEFAULT \'收入\' CHECK(direction IN (\'收入\', \'支出\'))',
+    defaultValue: const CustomExpression('\'收入\''),
   );
   static const VerificationMeta _amountCentMeta = const VerificationMeta(
     'amountCent',
@@ -4680,34 +4734,3599 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   ]);
 }
 
+typedef $$AccountBooksTableCreateCompanionBuilder =
+    AccountBooksCompanion Function({
+      Value<String> bookId,
+      required String name,
+      Value<String> reasonType,
+      Value<String> themeColor,
+      Value<String?> icon,
+      Value<String?> description,
+      Value<List<String>?> attachments,
+      Value<int> bookTime,
+      Value<int> isDefault,
+      required int createdAt,
+      required int updatedAt,
+      Value<int?> deletedAt,
+      Value<int> rowid,
+    });
+typedef $$AccountBooksTableUpdateCompanionBuilder =
+    AccountBooksCompanion Function({
+      Value<String> bookId,
+      Value<String> name,
+      Value<String> reasonType,
+      Value<String> themeColor,
+      Value<String?> icon,
+      Value<String?> description,
+      Value<List<String>?> attachments,
+      Value<int> bookTime,
+      Value<int> isDefault,
+      Value<int> createdAt,
+      Value<int> updatedAt,
+      Value<int?> deletedAt,
+      Value<int> rowid,
+    });
+
+final class $$AccountBooksTableReferences
+    extends BaseReferences<_$AppDatabase, $AccountBooksTable, AccountBook> {
+  $$AccountBooksTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static MultiTypedResultKey<$PersonsTable, List<Person>> _personsRefsTable(
+    _$AppDatabase db,
+  ) => MultiTypedResultKey.fromTable(
+    db.persons,
+    aliasName: $_aliasNameGenerator(db.accountBooks.bookId, db.persons.bookId),
+  );
+
+  $$PersonsTableProcessedTableManager get personsRefs {
+    final manager = $$PersonsTableTableManager($_db, $_db.persons).filter(
+      (f) => f.bookId.bookId.sqlEquals($_itemColumn<String>('book_id')!),
+    );
+
+    final cache = $_typedResult.readTableOrNull(_personsRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<$GiftRecordsTable, List<GiftRecord>>
+  _giftRecordsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.giftRecords,
+    aliasName: $_aliasNameGenerator(
+      db.accountBooks.bookId,
+      db.giftRecords.bookId,
+    ),
+  );
+
+  $$GiftRecordsTableProcessedTableManager get giftRecordsRefs {
+    final manager = $$GiftRecordsTableTableManager($_db, $_db.giftRecords)
+        .filter(
+          (f) => f.bookId.bookId.sqlEquals($_itemColumn<String>('book_id')!),
+        );
+
+    final cache = $_typedResult.readTableOrNull(_giftRecordsRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<$DataImportJobsTable, List<DataImportJob>>
+  _dataImportJobsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.dataImportJobs,
+    aliasName: $_aliasNameGenerator(
+      db.accountBooks.bookId,
+      db.dataImportJobs.bookId,
+    ),
+  );
+
+  $$DataImportJobsTableProcessedTableManager get dataImportJobsRefs {
+    final manager = $$DataImportJobsTableTableManager($_db, $_db.dataImportJobs)
+        .filter(
+          (f) => f.bookId.bookId.sqlEquals($_itemColumn<String>('book_id')!),
+        );
+
+    final cache = $_typedResult.readTableOrNull(_dataImportJobsRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+}
+
+class $$AccountBooksTableFilterComposer
+    extends Composer<_$AppDatabase, $AccountBooksTable> {
+  $$AccountBooksTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get bookId => $composableBuilder(
+    column: $table.bookId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get reasonType => $composableBuilder(
+    column: $table.reasonType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get themeColor => $composableBuilder(
+    column: $table.themeColor,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get icon => $composableBuilder(
+    column: $table.icon,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<List<String>?, List<String>, String>
+  get attachments => $composableBuilder(
+    column: $table.attachments,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnFilters<int> get bookTime => $composableBuilder(
+    column: $table.bookTime,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get isDefault => $composableBuilder(
+    column: $table.isDefault,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  Expression<bool> personsRefs(
+    Expression<bool> Function($$PersonsTableFilterComposer f) f,
+  ) {
+    final $$PersonsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.bookId,
+      referencedTable: $db.persons,
+      getReferencedColumn: (t) => t.bookId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PersonsTableFilterComposer(
+            $db: $db,
+            $table: $db.persons,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> giftRecordsRefs(
+    Expression<bool> Function($$GiftRecordsTableFilterComposer f) f,
+  ) {
+    final $$GiftRecordsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.bookId,
+      referencedTable: $db.giftRecords,
+      getReferencedColumn: (t) => t.bookId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$GiftRecordsTableFilterComposer(
+            $db: $db,
+            $table: $db.giftRecords,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> dataImportJobsRefs(
+    Expression<bool> Function($$DataImportJobsTableFilterComposer f) f,
+  ) {
+    final $$DataImportJobsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.bookId,
+      referencedTable: $db.dataImportJobs,
+      getReferencedColumn: (t) => t.bookId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$DataImportJobsTableFilterComposer(
+            $db: $db,
+            $table: $db.dataImportJobs,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$AccountBooksTableOrderingComposer
+    extends Composer<_$AppDatabase, $AccountBooksTable> {
+  $$AccountBooksTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get bookId => $composableBuilder(
+    column: $table.bookId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get reasonType => $composableBuilder(
+    column: $table.reasonType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get themeColor => $composableBuilder(
+    column: $table.themeColor,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get icon => $composableBuilder(
+    column: $table.icon,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get attachments => $composableBuilder(
+    column: $table.attachments,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get bookTime => $composableBuilder(
+    column: $table.bookTime,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get isDefault => $composableBuilder(
+    column: $table.isDefault,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$AccountBooksTableAnnotationComposer
+    extends Composer<_$AppDatabase, $AccountBooksTable> {
+  $$AccountBooksTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get bookId =>
+      $composableBuilder(column: $table.bookId, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get reasonType => $composableBuilder(
+    column: $table.reasonType,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get themeColor => $composableBuilder(
+    column: $table.themeColor,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get icon =>
+      $composableBuilder(column: $table.icon, builder: (column) => column);
+
+  GeneratedColumn<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => column,
+  );
+
+  GeneratedColumnWithTypeConverter<List<String>?, String> get attachments =>
+      $composableBuilder(
+        column: $table.attachments,
+        builder: (column) => column,
+      );
+
+  GeneratedColumn<int> get bookTime =>
+      $composableBuilder(column: $table.bookTime, builder: (column) => column);
+
+  GeneratedColumn<int> get isDefault =>
+      $composableBuilder(column: $table.isDefault, builder: (column) => column);
+
+  GeneratedColumn<int> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<int> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<int> get deletedAt =>
+      $composableBuilder(column: $table.deletedAt, builder: (column) => column);
+
+  Expression<T> personsRefs<T extends Object>(
+    Expression<T> Function($$PersonsTableAnnotationComposer a) f,
+  ) {
+    final $$PersonsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.bookId,
+      referencedTable: $db.persons,
+      getReferencedColumn: (t) => t.bookId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PersonsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.persons,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<T> giftRecordsRefs<T extends Object>(
+    Expression<T> Function($$GiftRecordsTableAnnotationComposer a) f,
+  ) {
+    final $$GiftRecordsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.bookId,
+      referencedTable: $db.giftRecords,
+      getReferencedColumn: (t) => t.bookId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$GiftRecordsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.giftRecords,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<T> dataImportJobsRefs<T extends Object>(
+    Expression<T> Function($$DataImportJobsTableAnnotationComposer a) f,
+  ) {
+    final $$DataImportJobsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.bookId,
+      referencedTable: $db.dataImportJobs,
+      getReferencedColumn: (t) => t.bookId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$DataImportJobsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.dataImportJobs,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$AccountBooksTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $AccountBooksTable,
+          AccountBook,
+          $$AccountBooksTableFilterComposer,
+          $$AccountBooksTableOrderingComposer,
+          $$AccountBooksTableAnnotationComposer,
+          $$AccountBooksTableCreateCompanionBuilder,
+          $$AccountBooksTableUpdateCompanionBuilder,
+          (AccountBook, $$AccountBooksTableReferences),
+          AccountBook,
+          PrefetchHooks Function({
+            bool personsRefs,
+            bool giftRecordsRefs,
+            bool dataImportJobsRefs,
+          })
+        > {
+  $$AccountBooksTableTableManager(_$AppDatabase db, $AccountBooksTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$AccountBooksTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$AccountBooksTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$AccountBooksTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> bookId = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<String> reasonType = const Value.absent(),
+                Value<String> themeColor = const Value.absent(),
+                Value<String?> icon = const Value.absent(),
+                Value<String?> description = const Value.absent(),
+                Value<List<String>?> attachments = const Value.absent(),
+                Value<int> bookTime = const Value.absent(),
+                Value<int> isDefault = const Value.absent(),
+                Value<int> createdAt = const Value.absent(),
+                Value<int> updatedAt = const Value.absent(),
+                Value<int?> deletedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => AccountBooksCompanion(
+                bookId: bookId,
+                name: name,
+                reasonType: reasonType,
+                themeColor: themeColor,
+                icon: icon,
+                description: description,
+                attachments: attachments,
+                bookTime: bookTime,
+                isDefault: isDefault,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                deletedAt: deletedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                Value<String> bookId = const Value.absent(),
+                required String name,
+                Value<String> reasonType = const Value.absent(),
+                Value<String> themeColor = const Value.absent(),
+                Value<String?> icon = const Value.absent(),
+                Value<String?> description = const Value.absent(),
+                Value<List<String>?> attachments = const Value.absent(),
+                Value<int> bookTime = const Value.absent(),
+                Value<int> isDefault = const Value.absent(),
+                required int createdAt,
+                required int updatedAt,
+                Value<int?> deletedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => AccountBooksCompanion.insert(
+                bookId: bookId,
+                name: name,
+                reasonType: reasonType,
+                themeColor: themeColor,
+                icon: icon,
+                description: description,
+                attachments: attachments,
+                bookTime: bookTime,
+                isDefault: isDefault,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                deletedAt: deletedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$AccountBooksTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback:
+              ({
+                personsRefs = false,
+                giftRecordsRefs = false,
+                dataImportJobsRefs = false,
+              }) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [
+                    if (personsRefs) db.persons,
+                    if (giftRecordsRefs) db.giftRecords,
+                    if (dataImportJobsRefs) db.dataImportJobs,
+                  ],
+                  addJoins: null,
+                  getPrefetchedDataCallback: (items) async {
+                    return [
+                      if (personsRefs)
+                        await $_getPrefetchedData<
+                          AccountBook,
+                          $AccountBooksTable,
+                          Person
+                        >(
+                          currentTable: table,
+                          referencedTable: $$AccountBooksTableReferences
+                              ._personsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$AccountBooksTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).personsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.bookId == item.bookId,
+                              ),
+                          typedResults: items,
+                        ),
+                      if (giftRecordsRefs)
+                        await $_getPrefetchedData<
+                          AccountBook,
+                          $AccountBooksTable,
+                          GiftRecord
+                        >(
+                          currentTable: table,
+                          referencedTable: $$AccountBooksTableReferences
+                              ._giftRecordsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$AccountBooksTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).giftRecordsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.bookId == item.bookId,
+                              ),
+                          typedResults: items,
+                        ),
+                      if (dataImportJobsRefs)
+                        await $_getPrefetchedData<
+                          AccountBook,
+                          $AccountBooksTable,
+                          DataImportJob
+                        >(
+                          currentTable: table,
+                          referencedTable: $$AccountBooksTableReferences
+                              ._dataImportJobsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$AccountBooksTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).dataImportJobsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.bookId == item.bookId,
+                              ),
+                          typedResults: items,
+                        ),
+                    ];
+                  },
+                );
+              },
+        ),
+      );
+}
+
+typedef $$AccountBooksTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $AccountBooksTable,
+      AccountBook,
+      $$AccountBooksTableFilterComposer,
+      $$AccountBooksTableOrderingComposer,
+      $$AccountBooksTableAnnotationComposer,
+      $$AccountBooksTableCreateCompanionBuilder,
+      $$AccountBooksTableUpdateCompanionBuilder,
+      (AccountBook, $$AccountBooksTableReferences),
+      AccountBook,
+      PrefetchHooks Function({
+        bool personsRefs,
+        bool giftRecordsRefs,
+        bool dataImportJobsRefs,
+      })
+    >;
+typedef $$PersonsTableCreateCompanionBuilder =
+    PersonsCompanion Function({
+      Value<String> personId,
+      required String bookId,
+      required String name,
+      Value<String> relationshipType,
+      Value<String?> phone,
+      Value<String?> birthday,
+      Value<String?> anniversary,
+      Value<String?> avatarUri,
+      Value<String?> note,
+      required int createdAt,
+      required int updatedAt,
+      Value<int?> deletedAt,
+      Value<int> rowid,
+    });
+typedef $$PersonsTableUpdateCompanionBuilder =
+    PersonsCompanion Function({
+      Value<String> personId,
+      Value<String> bookId,
+      Value<String> name,
+      Value<String> relationshipType,
+      Value<String?> phone,
+      Value<String?> birthday,
+      Value<String?> anniversary,
+      Value<String?> avatarUri,
+      Value<String?> note,
+      Value<int> createdAt,
+      Value<int> updatedAt,
+      Value<int?> deletedAt,
+      Value<int> rowid,
+    });
+
+final class $$PersonsTableReferences
+    extends BaseReferences<_$AppDatabase, $PersonsTable, Person> {
+  $$PersonsTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static $AccountBooksTable _bookIdTable(_$AppDatabase db) =>
+      db.accountBooks.createAlias(
+        $_aliasNameGenerator(db.persons.bookId, db.accountBooks.bookId),
+      );
+
+  $$AccountBooksTableProcessedTableManager get bookId {
+    final $_column = $_itemColumn<String>('book_id')!;
+
+    final manager = $$AccountBooksTableTableManager(
+      $_db,
+      $_db.accountBooks,
+    ).filter((f) => f.bookId.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_bookIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static MultiTypedResultKey<$GiftRecordsTable, List<GiftRecord>>
+  _giftRecordsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.giftRecords,
+    aliasName: $_aliasNameGenerator(
+      db.persons.personId,
+      db.giftRecords.personId,
+    ),
+  );
+
+  $$GiftRecordsTableProcessedTableManager get giftRecordsRefs {
+    final manager = $$GiftRecordsTableTableManager($_db, $_db.giftRecords)
+        .filter(
+          (f) =>
+              f.personId.personId.sqlEquals($_itemColumn<String>('person_id')!),
+        );
+
+    final cache = $_typedResult.readTableOrNull(_giftRecordsRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+}
+
+class $$PersonsTableFilterComposer
+    extends Composer<_$AppDatabase, $PersonsTable> {
+  $$PersonsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get personId => $composableBuilder(
+    column: $table.personId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get relationshipType => $composableBuilder(
+    column: $table.relationshipType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get phone => $composableBuilder(
+    column: $table.phone,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get birthday => $composableBuilder(
+    column: $table.birthday,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get anniversary => $composableBuilder(
+    column: $table.anniversary,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get avatarUri => $composableBuilder(
+    column: $table.avatarUri,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get note => $composableBuilder(
+    column: $table.note,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$AccountBooksTableFilterComposer get bookId {
+    final $$AccountBooksTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.bookId,
+      referencedTable: $db.accountBooks,
+      getReferencedColumn: (t) => t.bookId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$AccountBooksTableFilterComposer(
+            $db: $db,
+            $table: $db.accountBooks,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  Expression<bool> giftRecordsRefs(
+    Expression<bool> Function($$GiftRecordsTableFilterComposer f) f,
+  ) {
+    final $$GiftRecordsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.personId,
+      referencedTable: $db.giftRecords,
+      getReferencedColumn: (t) => t.personId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$GiftRecordsTableFilterComposer(
+            $db: $db,
+            $table: $db.giftRecords,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$PersonsTableOrderingComposer
+    extends Composer<_$AppDatabase, $PersonsTable> {
+  $$PersonsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get personId => $composableBuilder(
+    column: $table.personId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get relationshipType => $composableBuilder(
+    column: $table.relationshipType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get phone => $composableBuilder(
+    column: $table.phone,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get birthday => $composableBuilder(
+    column: $table.birthday,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get anniversary => $composableBuilder(
+    column: $table.anniversary,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get avatarUri => $composableBuilder(
+    column: $table.avatarUri,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get note => $composableBuilder(
+    column: $table.note,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$AccountBooksTableOrderingComposer get bookId {
+    final $$AccountBooksTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.bookId,
+      referencedTable: $db.accountBooks,
+      getReferencedColumn: (t) => t.bookId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$AccountBooksTableOrderingComposer(
+            $db: $db,
+            $table: $db.accountBooks,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$PersonsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $PersonsTable> {
+  $$PersonsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get personId =>
+      $composableBuilder(column: $table.personId, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get relationshipType => $composableBuilder(
+    column: $table.relationshipType,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get phone =>
+      $composableBuilder(column: $table.phone, builder: (column) => column);
+
+  GeneratedColumn<String> get birthday =>
+      $composableBuilder(column: $table.birthday, builder: (column) => column);
+
+  GeneratedColumn<String> get anniversary => $composableBuilder(
+    column: $table.anniversary,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get avatarUri =>
+      $composableBuilder(column: $table.avatarUri, builder: (column) => column);
+
+  GeneratedColumn<String> get note =>
+      $composableBuilder(column: $table.note, builder: (column) => column);
+
+  GeneratedColumn<int> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<int> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<int> get deletedAt =>
+      $composableBuilder(column: $table.deletedAt, builder: (column) => column);
+
+  $$AccountBooksTableAnnotationComposer get bookId {
+    final $$AccountBooksTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.bookId,
+      referencedTable: $db.accountBooks,
+      getReferencedColumn: (t) => t.bookId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$AccountBooksTableAnnotationComposer(
+            $db: $db,
+            $table: $db.accountBooks,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  Expression<T> giftRecordsRefs<T extends Object>(
+    Expression<T> Function($$GiftRecordsTableAnnotationComposer a) f,
+  ) {
+    final $$GiftRecordsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.personId,
+      referencedTable: $db.giftRecords,
+      getReferencedColumn: (t) => t.personId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$GiftRecordsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.giftRecords,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$PersonsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $PersonsTable,
+          Person,
+          $$PersonsTableFilterComposer,
+          $$PersonsTableOrderingComposer,
+          $$PersonsTableAnnotationComposer,
+          $$PersonsTableCreateCompanionBuilder,
+          $$PersonsTableUpdateCompanionBuilder,
+          (Person, $$PersonsTableReferences),
+          Person,
+          PrefetchHooks Function({bool bookId, bool giftRecordsRefs})
+        > {
+  $$PersonsTableTableManager(_$AppDatabase db, $PersonsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$PersonsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$PersonsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$PersonsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> personId = const Value.absent(),
+                Value<String> bookId = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<String> relationshipType = const Value.absent(),
+                Value<String?> phone = const Value.absent(),
+                Value<String?> birthday = const Value.absent(),
+                Value<String?> anniversary = const Value.absent(),
+                Value<String?> avatarUri = const Value.absent(),
+                Value<String?> note = const Value.absent(),
+                Value<int> createdAt = const Value.absent(),
+                Value<int> updatedAt = const Value.absent(),
+                Value<int?> deletedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => PersonsCompanion(
+                personId: personId,
+                bookId: bookId,
+                name: name,
+                relationshipType: relationshipType,
+                phone: phone,
+                birthday: birthday,
+                anniversary: anniversary,
+                avatarUri: avatarUri,
+                note: note,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                deletedAt: deletedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                Value<String> personId = const Value.absent(),
+                required String bookId,
+                required String name,
+                Value<String> relationshipType = const Value.absent(),
+                Value<String?> phone = const Value.absent(),
+                Value<String?> birthday = const Value.absent(),
+                Value<String?> anniversary = const Value.absent(),
+                Value<String?> avatarUri = const Value.absent(),
+                Value<String?> note = const Value.absent(),
+                required int createdAt,
+                required int updatedAt,
+                Value<int?> deletedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => PersonsCompanion.insert(
+                personId: personId,
+                bookId: bookId,
+                name: name,
+                relationshipType: relationshipType,
+                phone: phone,
+                birthday: birthday,
+                anniversary: anniversary,
+                avatarUri: avatarUri,
+                note: note,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                deletedAt: deletedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$PersonsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({bookId = false, giftRecordsRefs = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [if (giftRecordsRefs) db.giftRecords],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (bookId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.bookId,
+                                referencedTable: $$PersonsTableReferences
+                                    ._bookIdTable(db),
+                                referencedColumn: $$PersonsTableReferences
+                                    ._bookIdTable(db)
+                                    .bookId,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [
+                  if (giftRecordsRefs)
+                    await $_getPrefetchedData<
+                      Person,
+                      $PersonsTable,
+                      GiftRecord
+                    >(
+                      currentTable: table,
+                      referencedTable: $$PersonsTableReferences
+                          ._giftRecordsRefsTable(db),
+                      managerFromTypedResult: (p0) => $$PersonsTableReferences(
+                        db,
+                        table,
+                        p0,
+                      ).giftRecordsRefs,
+                      referencedItemsForCurrentItem: (item, referencedItems) =>
+                          referencedItems.where(
+                            (e) => e.personId == item.personId,
+                          ),
+                      typedResults: items,
+                    ),
+                ];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$PersonsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $PersonsTable,
+      Person,
+      $$PersonsTableFilterComposer,
+      $$PersonsTableOrderingComposer,
+      $$PersonsTableAnnotationComposer,
+      $$PersonsTableCreateCompanionBuilder,
+      $$PersonsTableUpdateCompanionBuilder,
+      (Person, $$PersonsTableReferences),
+      Person,
+      PrefetchHooks Function({bool bookId, bool giftRecordsRefs})
+    >;
+typedef $$GiftRecordsTableCreateCompanionBuilder =
+    GiftRecordsCompanion Function({
+      Value<String> recordId,
+      required String bookId,
+      required String personId,
+      Value<String> direction,
+      required int amountCent,
+      Value<String> currency,
+      Value<String?> eventName,
+      required int occurredAt,
+      Value<String?> paymentMethod,
+      Value<String?> note,
+      Value<List<String>?> attachments,
+      required int createdAt,
+      required int updatedAt,
+      Value<int?> deletedAt,
+      Value<int> rowid,
+    });
+typedef $$GiftRecordsTableUpdateCompanionBuilder =
+    GiftRecordsCompanion Function({
+      Value<String> recordId,
+      Value<String> bookId,
+      Value<String> personId,
+      Value<String> direction,
+      Value<int> amountCent,
+      Value<String> currency,
+      Value<String?> eventName,
+      Value<int> occurredAt,
+      Value<String?> paymentMethod,
+      Value<String?> note,
+      Value<List<String>?> attachments,
+      Value<int> createdAt,
+      Value<int> updatedAt,
+      Value<int?> deletedAt,
+      Value<int> rowid,
+    });
+
+final class $$GiftRecordsTableReferences
+    extends BaseReferences<_$AppDatabase, $GiftRecordsTable, GiftRecord> {
+  $$GiftRecordsTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static $AccountBooksTable _bookIdTable(_$AppDatabase db) =>
+      db.accountBooks.createAlias(
+        $_aliasNameGenerator(db.giftRecords.bookId, db.accountBooks.bookId),
+      );
+
+  $$AccountBooksTableProcessedTableManager get bookId {
+    final $_column = $_itemColumn<String>('book_id')!;
+
+    final manager = $$AccountBooksTableTableManager(
+      $_db,
+      $_db.accountBooks,
+    ).filter((f) => f.bookId.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_bookIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static $PersonsTable _personIdTable(_$AppDatabase db) =>
+      db.persons.createAlias(
+        $_aliasNameGenerator(db.giftRecords.personId, db.persons.personId),
+      );
+
+  $$PersonsTableProcessedTableManager get personId {
+    final $_column = $_itemColumn<String>('person_id')!;
+
+    final manager = $$PersonsTableTableManager(
+      $_db,
+      $_db.persons,
+    ).filter((f) => f.personId.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_personIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$GiftRecordsTableFilterComposer
+    extends Composer<_$AppDatabase, $GiftRecordsTable> {
+  $$GiftRecordsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get recordId => $composableBuilder(
+    column: $table.recordId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get direction => $composableBuilder(
+    column: $table.direction,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get amountCent => $composableBuilder(
+    column: $table.amountCent,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get currency => $composableBuilder(
+    column: $table.currency,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get eventName => $composableBuilder(
+    column: $table.eventName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get occurredAt => $composableBuilder(
+    column: $table.occurredAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get paymentMethod => $composableBuilder(
+    column: $table.paymentMethod,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get note => $composableBuilder(
+    column: $table.note,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<List<String>?, List<String>, String>
+  get attachments => $composableBuilder(
+    column: $table.attachments,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnFilters<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$AccountBooksTableFilterComposer get bookId {
+    final $$AccountBooksTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.bookId,
+      referencedTable: $db.accountBooks,
+      getReferencedColumn: (t) => t.bookId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$AccountBooksTableFilterComposer(
+            $db: $db,
+            $table: $db.accountBooks,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$PersonsTableFilterComposer get personId {
+    final $$PersonsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.personId,
+      referencedTable: $db.persons,
+      getReferencedColumn: (t) => t.personId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PersonsTableFilterComposer(
+            $db: $db,
+            $table: $db.persons,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$GiftRecordsTableOrderingComposer
+    extends Composer<_$AppDatabase, $GiftRecordsTable> {
+  $$GiftRecordsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get recordId => $composableBuilder(
+    column: $table.recordId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get direction => $composableBuilder(
+    column: $table.direction,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get amountCent => $composableBuilder(
+    column: $table.amountCent,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get currency => $composableBuilder(
+    column: $table.currency,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get eventName => $composableBuilder(
+    column: $table.eventName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get occurredAt => $composableBuilder(
+    column: $table.occurredAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get paymentMethod => $composableBuilder(
+    column: $table.paymentMethod,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get note => $composableBuilder(
+    column: $table.note,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get attachments => $composableBuilder(
+    column: $table.attachments,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$AccountBooksTableOrderingComposer get bookId {
+    final $$AccountBooksTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.bookId,
+      referencedTable: $db.accountBooks,
+      getReferencedColumn: (t) => t.bookId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$AccountBooksTableOrderingComposer(
+            $db: $db,
+            $table: $db.accountBooks,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$PersonsTableOrderingComposer get personId {
+    final $$PersonsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.personId,
+      referencedTable: $db.persons,
+      getReferencedColumn: (t) => t.personId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PersonsTableOrderingComposer(
+            $db: $db,
+            $table: $db.persons,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$GiftRecordsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $GiftRecordsTable> {
+  $$GiftRecordsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get recordId =>
+      $composableBuilder(column: $table.recordId, builder: (column) => column);
+
+  GeneratedColumn<String> get direction =>
+      $composableBuilder(column: $table.direction, builder: (column) => column);
+
+  GeneratedColumn<int> get amountCent => $composableBuilder(
+    column: $table.amountCent,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get currency =>
+      $composableBuilder(column: $table.currency, builder: (column) => column);
+
+  GeneratedColumn<String> get eventName =>
+      $composableBuilder(column: $table.eventName, builder: (column) => column);
+
+  GeneratedColumn<int> get occurredAt => $composableBuilder(
+    column: $table.occurredAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get paymentMethod => $composableBuilder(
+    column: $table.paymentMethod,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get note =>
+      $composableBuilder(column: $table.note, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<List<String>?, String> get attachments =>
+      $composableBuilder(
+        column: $table.attachments,
+        builder: (column) => column,
+      );
+
+  GeneratedColumn<int> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<int> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<int> get deletedAt =>
+      $composableBuilder(column: $table.deletedAt, builder: (column) => column);
+
+  $$AccountBooksTableAnnotationComposer get bookId {
+    final $$AccountBooksTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.bookId,
+      referencedTable: $db.accountBooks,
+      getReferencedColumn: (t) => t.bookId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$AccountBooksTableAnnotationComposer(
+            $db: $db,
+            $table: $db.accountBooks,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$PersonsTableAnnotationComposer get personId {
+    final $$PersonsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.personId,
+      referencedTable: $db.persons,
+      getReferencedColumn: (t) => t.personId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PersonsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.persons,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$GiftRecordsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $GiftRecordsTable,
+          GiftRecord,
+          $$GiftRecordsTableFilterComposer,
+          $$GiftRecordsTableOrderingComposer,
+          $$GiftRecordsTableAnnotationComposer,
+          $$GiftRecordsTableCreateCompanionBuilder,
+          $$GiftRecordsTableUpdateCompanionBuilder,
+          (GiftRecord, $$GiftRecordsTableReferences),
+          GiftRecord,
+          PrefetchHooks Function({bool bookId, bool personId})
+        > {
+  $$GiftRecordsTableTableManager(_$AppDatabase db, $GiftRecordsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$GiftRecordsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$GiftRecordsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$GiftRecordsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> recordId = const Value.absent(),
+                Value<String> bookId = const Value.absent(),
+                Value<String> personId = const Value.absent(),
+                Value<String> direction = const Value.absent(),
+                Value<int> amountCent = const Value.absent(),
+                Value<String> currency = const Value.absent(),
+                Value<String?> eventName = const Value.absent(),
+                Value<int> occurredAt = const Value.absent(),
+                Value<String?> paymentMethod = const Value.absent(),
+                Value<String?> note = const Value.absent(),
+                Value<List<String>?> attachments = const Value.absent(),
+                Value<int> createdAt = const Value.absent(),
+                Value<int> updatedAt = const Value.absent(),
+                Value<int?> deletedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => GiftRecordsCompanion(
+                recordId: recordId,
+                bookId: bookId,
+                personId: personId,
+                direction: direction,
+                amountCent: amountCent,
+                currency: currency,
+                eventName: eventName,
+                occurredAt: occurredAt,
+                paymentMethod: paymentMethod,
+                note: note,
+                attachments: attachments,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                deletedAt: deletedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                Value<String> recordId = const Value.absent(),
+                required String bookId,
+                required String personId,
+                Value<String> direction = const Value.absent(),
+                required int amountCent,
+                Value<String> currency = const Value.absent(),
+                Value<String?> eventName = const Value.absent(),
+                required int occurredAt,
+                Value<String?> paymentMethod = const Value.absent(),
+                Value<String?> note = const Value.absent(),
+                Value<List<String>?> attachments = const Value.absent(),
+                required int createdAt,
+                required int updatedAt,
+                Value<int?> deletedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => GiftRecordsCompanion.insert(
+                recordId: recordId,
+                bookId: bookId,
+                personId: personId,
+                direction: direction,
+                amountCent: amountCent,
+                currency: currency,
+                eventName: eventName,
+                occurredAt: occurredAt,
+                paymentMethod: paymentMethod,
+                note: note,
+                attachments: attachments,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                deletedAt: deletedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$GiftRecordsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({bookId = false, personId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (bookId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.bookId,
+                                referencedTable: $$GiftRecordsTableReferences
+                                    ._bookIdTable(db),
+                                referencedColumn: $$GiftRecordsTableReferences
+                                    ._bookIdTable(db)
+                                    .bookId,
+                              )
+                              as T;
+                    }
+                    if (personId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.personId,
+                                referencedTable: $$GiftRecordsTableReferences
+                                    ._personIdTable(db),
+                                referencedColumn: $$GiftRecordsTableReferences
+                                    ._personIdTable(db)
+                                    .personId,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$GiftRecordsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $GiftRecordsTable,
+      GiftRecord,
+      $$GiftRecordsTableFilterComposer,
+      $$GiftRecordsTableOrderingComposer,
+      $$GiftRecordsTableAnnotationComposer,
+      $$GiftRecordsTableCreateCompanionBuilder,
+      $$GiftRecordsTableUpdateCompanionBuilder,
+      (GiftRecord, $$GiftRecordsTableReferences),
+      GiftRecord,
+      PrefetchHooks Function({bool bookId, bool personId})
+    >;
+typedef $$ReasonsTableCreateCompanionBuilder =
+    ReasonsCompanion Function({
+      required String reasonId,
+      required String name,
+      Value<String?> description,
+      Value<bool> enabled,
+      required int createdAt,
+      required int updatedAt,
+      Value<int> rowid,
+    });
+typedef $$ReasonsTableUpdateCompanionBuilder =
+    ReasonsCompanion Function({
+      Value<String> reasonId,
+      Value<String> name,
+      Value<String?> description,
+      Value<bool> enabled,
+      Value<int> createdAt,
+      Value<int> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$ReasonsTableFilterComposer
+    extends Composer<_$AppDatabase, $ReasonsTable> {
+  $$ReasonsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get reasonId => $composableBuilder(
+    column: $table.reasonId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get enabled => $composableBuilder(
+    column: $table.enabled,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$ReasonsTableOrderingComposer
+    extends Composer<_$AppDatabase, $ReasonsTable> {
+  $$ReasonsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get reasonId => $composableBuilder(
+    column: $table.reasonId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get enabled => $composableBuilder(
+    column: $table.enabled,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$ReasonsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ReasonsTable> {
+  $$ReasonsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get reasonId =>
+      $composableBuilder(column: $table.reasonId, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get enabled =>
+      $composableBuilder(column: $table.enabled, builder: (column) => column);
+
+  GeneratedColumn<int> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<int> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$ReasonsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $ReasonsTable,
+          Reason,
+          $$ReasonsTableFilterComposer,
+          $$ReasonsTableOrderingComposer,
+          $$ReasonsTableAnnotationComposer,
+          $$ReasonsTableCreateCompanionBuilder,
+          $$ReasonsTableUpdateCompanionBuilder,
+          (Reason, BaseReferences<_$AppDatabase, $ReasonsTable, Reason>),
+          Reason,
+          PrefetchHooks Function()
+        > {
+  $$ReasonsTableTableManager(_$AppDatabase db, $ReasonsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ReasonsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ReasonsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ReasonsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> reasonId = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<String?> description = const Value.absent(),
+                Value<bool> enabled = const Value.absent(),
+                Value<int> createdAt = const Value.absent(),
+                Value<int> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ReasonsCompanion(
+                reasonId: reasonId,
+                name: name,
+                description: description,
+                enabled: enabled,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String reasonId,
+                required String name,
+                Value<String?> description = const Value.absent(),
+                Value<bool> enabled = const Value.absent(),
+                required int createdAt,
+                required int updatedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => ReasonsCompanion.insert(
+                reasonId: reasonId,
+                name: name,
+                description: description,
+                enabled: enabled,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$ReasonsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $ReasonsTable,
+      Reason,
+      $$ReasonsTableFilterComposer,
+      $$ReasonsTableOrderingComposer,
+      $$ReasonsTableAnnotationComposer,
+      $$ReasonsTableCreateCompanionBuilder,
+      $$ReasonsTableUpdateCompanionBuilder,
+      (Reason, BaseReferences<_$AppDatabase, $ReasonsTable, Reason>),
+      Reason,
+      PrefetchHooks Function()
+    >;
+typedef $$RelationTypesTableCreateCompanionBuilder =
+    RelationTypesCompanion Function({
+      required String typeId,
+      required String name,
+      required int createdAt,
+      required int updatedAt,
+      Value<int> rowid,
+    });
+typedef $$RelationTypesTableUpdateCompanionBuilder =
+    RelationTypesCompanion Function({
+      Value<String> typeId,
+      Value<String> name,
+      Value<int> createdAt,
+      Value<int> updatedAt,
+      Value<int> rowid,
+    });
+
+final class $$RelationTypesTableReferences
+    extends BaseReferences<_$AppDatabase, $RelationTypesTable, RelationType> {
+  $$RelationTypesTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static MultiTypedResultKey<$ContactRelationsTable, List<ContactRelation>>
+  _contactRelationsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.contactRelations,
+    aliasName: $_aliasNameGenerator(
+      db.relationTypes.typeId,
+      db.contactRelations.typeId,
+    ),
+  );
+
+  $$ContactRelationsTableProcessedTableManager get contactRelationsRefs {
+    final manager =
+        $$ContactRelationsTableTableManager($_db, $_db.contactRelations).filter(
+          (f) => f.typeId.typeId.sqlEquals($_itemColumn<String>('type_id')!),
+        );
+
+    final cache = $_typedResult.readTableOrNull(
+      _contactRelationsRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+}
+
+class $$RelationTypesTableFilterComposer
+    extends Composer<_$AppDatabase, $RelationTypesTable> {
+  $$RelationTypesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get typeId => $composableBuilder(
+    column: $table.typeId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  Expression<bool> contactRelationsRefs(
+    Expression<bool> Function($$ContactRelationsTableFilterComposer f) f,
+  ) {
+    final $$ContactRelationsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.typeId,
+      referencedTable: $db.contactRelations,
+      getReferencedColumn: (t) => t.typeId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ContactRelationsTableFilterComposer(
+            $db: $db,
+            $table: $db.contactRelations,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$RelationTypesTableOrderingComposer
+    extends Composer<_$AppDatabase, $RelationTypesTable> {
+  $$RelationTypesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get typeId => $composableBuilder(
+    column: $table.typeId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$RelationTypesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $RelationTypesTable> {
+  $$RelationTypesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get typeId =>
+      $composableBuilder(column: $table.typeId, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<int> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<int> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  Expression<T> contactRelationsRefs<T extends Object>(
+    Expression<T> Function($$ContactRelationsTableAnnotationComposer a) f,
+  ) {
+    final $$ContactRelationsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.typeId,
+      referencedTable: $db.contactRelations,
+      getReferencedColumn: (t) => t.typeId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ContactRelationsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.contactRelations,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$RelationTypesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $RelationTypesTable,
+          RelationType,
+          $$RelationTypesTableFilterComposer,
+          $$RelationTypesTableOrderingComposer,
+          $$RelationTypesTableAnnotationComposer,
+          $$RelationTypesTableCreateCompanionBuilder,
+          $$RelationTypesTableUpdateCompanionBuilder,
+          (RelationType, $$RelationTypesTableReferences),
+          RelationType,
+          PrefetchHooks Function({bool contactRelationsRefs})
+        > {
+  $$RelationTypesTableTableManager(_$AppDatabase db, $RelationTypesTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$RelationTypesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$RelationTypesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$RelationTypesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> typeId = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<int> createdAt = const Value.absent(),
+                Value<int> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => RelationTypesCompanion(
+                typeId: typeId,
+                name: name,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String typeId,
+                required String name,
+                required int createdAt,
+                required int updatedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => RelationTypesCompanion.insert(
+                typeId: typeId,
+                name: name,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$RelationTypesTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({contactRelationsRefs = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [
+                if (contactRelationsRefs) db.contactRelations,
+              ],
+              addJoins: null,
+              getPrefetchedDataCallback: (items) async {
+                return [
+                  if (contactRelationsRefs)
+                    await $_getPrefetchedData<
+                      RelationType,
+                      $RelationTypesTable,
+                      ContactRelation
+                    >(
+                      currentTable: table,
+                      referencedTable: $$RelationTypesTableReferences
+                          ._contactRelationsRefsTable(db),
+                      managerFromTypedResult: (p0) =>
+                          $$RelationTypesTableReferences(
+                            db,
+                            table,
+                            p0,
+                          ).contactRelationsRefs,
+                      referencedItemsForCurrentItem: (item, referencedItems) =>
+                          referencedItems.where((e) => e.typeId == item.typeId),
+                      typedResults: items,
+                    ),
+                ];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$RelationTypesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $RelationTypesTable,
+      RelationType,
+      $$RelationTypesTableFilterComposer,
+      $$RelationTypesTableOrderingComposer,
+      $$RelationTypesTableAnnotationComposer,
+      $$RelationTypesTableCreateCompanionBuilder,
+      $$RelationTypesTableUpdateCompanionBuilder,
+      (RelationType, $$RelationTypesTableReferences),
+      RelationType,
+      PrefetchHooks Function({bool contactRelationsRefs})
+    >;
+typedef $$ContactRelationsTableCreateCompanionBuilder =
+    ContactRelationsCompanion Function({
+      required String relationId,
+      required String personAId,
+      required String personBId,
+      required String typeId,
+      Value<String?> note,
+      required int createdAt,
+      required int updatedAt,
+      Value<int> rowid,
+    });
+typedef $$ContactRelationsTableUpdateCompanionBuilder =
+    ContactRelationsCompanion Function({
+      Value<String> relationId,
+      Value<String> personAId,
+      Value<String> personBId,
+      Value<String> typeId,
+      Value<String?> note,
+      Value<int> createdAt,
+      Value<int> updatedAt,
+      Value<int> rowid,
+    });
+
+final class $$ContactRelationsTableReferences
+    extends
+        BaseReferences<_$AppDatabase, $ContactRelationsTable, ContactRelation> {
+  $$ContactRelationsTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $PersonsTable _personAIdTable(_$AppDatabase db) =>
+      db.persons.createAlias(
+        $_aliasNameGenerator(
+          db.contactRelations.personAId,
+          db.persons.personId,
+        ),
+      );
+
+  $$PersonsTableProcessedTableManager get personAId {
+    final $_column = $_itemColumn<String>('person_a_id')!;
+
+    final manager = $$PersonsTableTableManager(
+      $_db,
+      $_db.persons,
+    ).filter((f) => f.personId.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_personAIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static $PersonsTable _personBIdTable(_$AppDatabase db) =>
+      db.persons.createAlias(
+        $_aliasNameGenerator(
+          db.contactRelations.personBId,
+          db.persons.personId,
+        ),
+      );
+
+  $$PersonsTableProcessedTableManager get personBId {
+    final $_column = $_itemColumn<String>('person_b_id')!;
+
+    final manager = $$PersonsTableTableManager(
+      $_db,
+      $_db.persons,
+    ).filter((f) => f.personId.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_personBIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static $RelationTypesTable _typeIdTable(_$AppDatabase db) =>
+      db.relationTypes.createAlias(
+        $_aliasNameGenerator(
+          db.contactRelations.typeId,
+          db.relationTypes.typeId,
+        ),
+      );
+
+  $$RelationTypesTableProcessedTableManager get typeId {
+    final $_column = $_itemColumn<String>('type_id')!;
+
+    final manager = $$RelationTypesTableTableManager(
+      $_db,
+      $_db.relationTypes,
+    ).filter((f) => f.typeId.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_typeIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$ContactRelationsTableFilterComposer
+    extends Composer<_$AppDatabase, $ContactRelationsTable> {
+  $$ContactRelationsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get relationId => $composableBuilder(
+    column: $table.relationId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get note => $composableBuilder(
+    column: $table.note,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$PersonsTableFilterComposer get personAId {
+    final $$PersonsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.personAId,
+      referencedTable: $db.persons,
+      getReferencedColumn: (t) => t.personId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PersonsTableFilterComposer(
+            $db: $db,
+            $table: $db.persons,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$PersonsTableFilterComposer get personBId {
+    final $$PersonsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.personBId,
+      referencedTable: $db.persons,
+      getReferencedColumn: (t) => t.personId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PersonsTableFilterComposer(
+            $db: $db,
+            $table: $db.persons,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$RelationTypesTableFilterComposer get typeId {
+    final $$RelationTypesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.typeId,
+      referencedTable: $db.relationTypes,
+      getReferencedColumn: (t) => t.typeId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$RelationTypesTableFilterComposer(
+            $db: $db,
+            $table: $db.relationTypes,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$ContactRelationsTableOrderingComposer
+    extends Composer<_$AppDatabase, $ContactRelationsTable> {
+  $$ContactRelationsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get relationId => $composableBuilder(
+    column: $table.relationId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get note => $composableBuilder(
+    column: $table.note,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$PersonsTableOrderingComposer get personAId {
+    final $$PersonsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.personAId,
+      referencedTable: $db.persons,
+      getReferencedColumn: (t) => t.personId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PersonsTableOrderingComposer(
+            $db: $db,
+            $table: $db.persons,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$PersonsTableOrderingComposer get personBId {
+    final $$PersonsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.personBId,
+      referencedTable: $db.persons,
+      getReferencedColumn: (t) => t.personId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PersonsTableOrderingComposer(
+            $db: $db,
+            $table: $db.persons,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$RelationTypesTableOrderingComposer get typeId {
+    final $$RelationTypesTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.typeId,
+      referencedTable: $db.relationTypes,
+      getReferencedColumn: (t) => t.typeId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$RelationTypesTableOrderingComposer(
+            $db: $db,
+            $table: $db.relationTypes,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$ContactRelationsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ContactRelationsTable> {
+  $$ContactRelationsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get relationId => $composableBuilder(
+    column: $table.relationId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get note =>
+      $composableBuilder(column: $table.note, builder: (column) => column);
+
+  GeneratedColumn<int> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<int> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  $$PersonsTableAnnotationComposer get personAId {
+    final $$PersonsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.personAId,
+      referencedTable: $db.persons,
+      getReferencedColumn: (t) => t.personId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PersonsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.persons,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$PersonsTableAnnotationComposer get personBId {
+    final $$PersonsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.personBId,
+      referencedTable: $db.persons,
+      getReferencedColumn: (t) => t.personId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PersonsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.persons,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$RelationTypesTableAnnotationComposer get typeId {
+    final $$RelationTypesTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.typeId,
+      referencedTable: $db.relationTypes,
+      getReferencedColumn: (t) => t.typeId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$RelationTypesTableAnnotationComposer(
+            $db: $db,
+            $table: $db.relationTypes,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$ContactRelationsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $ContactRelationsTable,
+          ContactRelation,
+          $$ContactRelationsTableFilterComposer,
+          $$ContactRelationsTableOrderingComposer,
+          $$ContactRelationsTableAnnotationComposer,
+          $$ContactRelationsTableCreateCompanionBuilder,
+          $$ContactRelationsTableUpdateCompanionBuilder,
+          (ContactRelation, $$ContactRelationsTableReferences),
+          ContactRelation,
+          PrefetchHooks Function({bool personAId, bool personBId, bool typeId})
+        > {
+  $$ContactRelationsTableTableManager(
+    _$AppDatabase db,
+    $ContactRelationsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ContactRelationsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ContactRelationsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ContactRelationsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> relationId = const Value.absent(),
+                Value<String> personAId = const Value.absent(),
+                Value<String> personBId = const Value.absent(),
+                Value<String> typeId = const Value.absent(),
+                Value<String?> note = const Value.absent(),
+                Value<int> createdAt = const Value.absent(),
+                Value<int> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ContactRelationsCompanion(
+                relationId: relationId,
+                personAId: personAId,
+                personBId: personBId,
+                typeId: typeId,
+                note: note,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String relationId,
+                required String personAId,
+                required String personBId,
+                required String typeId,
+                Value<String?> note = const Value.absent(),
+                required int createdAt,
+                required int updatedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => ContactRelationsCompanion.insert(
+                relationId: relationId,
+                personAId: personAId,
+                personBId: personBId,
+                typeId: typeId,
+                note: note,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$ContactRelationsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback:
+              ({personAId = false, personBId = false, typeId = false}) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [],
+                  addJoins:
+                      <
+                        T extends TableManagerState<
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic
+                        >
+                      >(state) {
+                        if (personAId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.personAId,
+                                    referencedTable:
+                                        $$ContactRelationsTableReferences
+                                            ._personAIdTable(db),
+                                    referencedColumn:
+                                        $$ContactRelationsTableReferences
+                                            ._personAIdTable(db)
+                                            .personId,
+                                  )
+                                  as T;
+                        }
+                        if (personBId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.personBId,
+                                    referencedTable:
+                                        $$ContactRelationsTableReferences
+                                            ._personBIdTable(db),
+                                    referencedColumn:
+                                        $$ContactRelationsTableReferences
+                                            ._personBIdTable(db)
+                                            .personId,
+                                  )
+                                  as T;
+                        }
+                        if (typeId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.typeId,
+                                    referencedTable:
+                                        $$ContactRelationsTableReferences
+                                            ._typeIdTable(db),
+                                    referencedColumn:
+                                        $$ContactRelationsTableReferences
+                                            ._typeIdTable(db)
+                                            .typeId,
+                                  )
+                                  as T;
+                        }
+
+                        return state;
+                      },
+                  getPrefetchedDataCallback: (items) async {
+                    return [];
+                  },
+                );
+              },
+        ),
+      );
+}
+
+typedef $$ContactRelationsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $ContactRelationsTable,
+      ContactRelation,
+      $$ContactRelationsTableFilterComposer,
+      $$ContactRelationsTableOrderingComposer,
+      $$ContactRelationsTableAnnotationComposer,
+      $$ContactRelationsTableCreateCompanionBuilder,
+      $$ContactRelationsTableUpdateCompanionBuilder,
+      (ContactRelation, $$ContactRelationsTableReferences),
+      ContactRelation,
+      PrefetchHooks Function({bool personAId, bool personBId, bool typeId})
+    >;
+typedef $$DataImportJobsTableCreateCompanionBuilder =
+    DataImportJobsCompanion Function({
+      Value<String> jobId,
+      required String bookId,
+      required String filePath,
+      required String fileName,
+      required String fileHash,
+      required int fileSize,
+      required String format,
+      required String status,
+      required String importKind,
+      Value<String?> mappingJson,
+      Value<int?> totalRows,
+      Value<int> processedRows,
+      Value<int> successRows,
+      Value<int> skippedRows,
+      Value<int> failedRows,
+      Value<int> byteOffset,
+      Value<int> lastRowIndex,
+      Value<String?> errorLogPath,
+      required int startedAt,
+      Value<int?> finishedAt,
+      required int updatedAt,
+      Value<int> rowid,
+    });
+typedef $$DataImportJobsTableUpdateCompanionBuilder =
+    DataImportJobsCompanion Function({
+      Value<String> jobId,
+      Value<String> bookId,
+      Value<String> filePath,
+      Value<String> fileName,
+      Value<String> fileHash,
+      Value<int> fileSize,
+      Value<String> format,
+      Value<String> status,
+      Value<String> importKind,
+      Value<String?> mappingJson,
+      Value<int?> totalRows,
+      Value<int> processedRows,
+      Value<int> successRows,
+      Value<int> skippedRows,
+      Value<int> failedRows,
+      Value<int> byteOffset,
+      Value<int> lastRowIndex,
+      Value<String?> errorLogPath,
+      Value<int> startedAt,
+      Value<int?> finishedAt,
+      Value<int> updatedAt,
+      Value<int> rowid,
+    });
+
+final class $$DataImportJobsTableReferences
+    extends BaseReferences<_$AppDatabase, $DataImportJobsTable, DataImportJob> {
+  $$DataImportJobsTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $AccountBooksTable _bookIdTable(_$AppDatabase db) =>
+      db.accountBooks.createAlias(
+        $_aliasNameGenerator(db.dataImportJobs.bookId, db.accountBooks.bookId),
+      );
+
+  $$AccountBooksTableProcessedTableManager get bookId {
+    final $_column = $_itemColumn<String>('book_id')!;
+
+    final manager = $$AccountBooksTableTableManager(
+      $_db,
+      $_db.accountBooks,
+    ).filter((f) => f.bookId.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_bookIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$DataImportJobsTableFilterComposer
+    extends Composer<_$AppDatabase, $DataImportJobsTable> {
+  $$DataImportJobsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get jobId => $composableBuilder(
+    column: $table.jobId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get filePath => $composableBuilder(
+    column: $table.filePath,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get fileName => $composableBuilder(
+    column: $table.fileName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get fileHash => $composableBuilder(
+    column: $table.fileHash,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get fileSize => $composableBuilder(
+    column: $table.fileSize,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get format => $composableBuilder(
+    column: $table.format,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get importKind => $composableBuilder(
+    column: $table.importKind,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get mappingJson => $composableBuilder(
+    column: $table.mappingJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get totalRows => $composableBuilder(
+    column: $table.totalRows,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get processedRows => $composableBuilder(
+    column: $table.processedRows,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get successRows => $composableBuilder(
+    column: $table.successRows,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get skippedRows => $composableBuilder(
+    column: $table.skippedRows,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get failedRows => $composableBuilder(
+    column: $table.failedRows,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get byteOffset => $composableBuilder(
+    column: $table.byteOffset,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get lastRowIndex => $composableBuilder(
+    column: $table.lastRowIndex,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get errorLogPath => $composableBuilder(
+    column: $table.errorLogPath,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get startedAt => $composableBuilder(
+    column: $table.startedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get finishedAt => $composableBuilder(
+    column: $table.finishedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$AccountBooksTableFilterComposer get bookId {
+    final $$AccountBooksTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.bookId,
+      referencedTable: $db.accountBooks,
+      getReferencedColumn: (t) => t.bookId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$AccountBooksTableFilterComposer(
+            $db: $db,
+            $table: $db.accountBooks,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$DataImportJobsTableOrderingComposer
+    extends Composer<_$AppDatabase, $DataImportJobsTable> {
+  $$DataImportJobsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get jobId => $composableBuilder(
+    column: $table.jobId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get filePath => $composableBuilder(
+    column: $table.filePath,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get fileName => $composableBuilder(
+    column: $table.fileName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get fileHash => $composableBuilder(
+    column: $table.fileHash,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get fileSize => $composableBuilder(
+    column: $table.fileSize,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get format => $composableBuilder(
+    column: $table.format,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get importKind => $composableBuilder(
+    column: $table.importKind,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get mappingJson => $composableBuilder(
+    column: $table.mappingJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get totalRows => $composableBuilder(
+    column: $table.totalRows,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get processedRows => $composableBuilder(
+    column: $table.processedRows,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get successRows => $composableBuilder(
+    column: $table.successRows,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get skippedRows => $composableBuilder(
+    column: $table.skippedRows,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get failedRows => $composableBuilder(
+    column: $table.failedRows,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get byteOffset => $composableBuilder(
+    column: $table.byteOffset,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get lastRowIndex => $composableBuilder(
+    column: $table.lastRowIndex,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get errorLogPath => $composableBuilder(
+    column: $table.errorLogPath,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get startedAt => $composableBuilder(
+    column: $table.startedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get finishedAt => $composableBuilder(
+    column: $table.finishedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$AccountBooksTableOrderingComposer get bookId {
+    final $$AccountBooksTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.bookId,
+      referencedTable: $db.accountBooks,
+      getReferencedColumn: (t) => t.bookId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$AccountBooksTableOrderingComposer(
+            $db: $db,
+            $table: $db.accountBooks,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$DataImportJobsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $DataImportJobsTable> {
+  $$DataImportJobsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get jobId =>
+      $composableBuilder(column: $table.jobId, builder: (column) => column);
+
+  GeneratedColumn<String> get filePath =>
+      $composableBuilder(column: $table.filePath, builder: (column) => column);
+
+  GeneratedColumn<String> get fileName =>
+      $composableBuilder(column: $table.fileName, builder: (column) => column);
+
+  GeneratedColumn<String> get fileHash =>
+      $composableBuilder(column: $table.fileHash, builder: (column) => column);
+
+  GeneratedColumn<int> get fileSize =>
+      $composableBuilder(column: $table.fileSize, builder: (column) => column);
+
+  GeneratedColumn<String> get format =>
+      $composableBuilder(column: $table.format, builder: (column) => column);
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<String> get importKind => $composableBuilder(
+    column: $table.importKind,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get mappingJson => $composableBuilder(
+    column: $table.mappingJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get totalRows =>
+      $composableBuilder(column: $table.totalRows, builder: (column) => column);
+
+  GeneratedColumn<int> get processedRows => $composableBuilder(
+    column: $table.processedRows,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get successRows => $composableBuilder(
+    column: $table.successRows,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get skippedRows => $composableBuilder(
+    column: $table.skippedRows,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get failedRows => $composableBuilder(
+    column: $table.failedRows,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get byteOffset => $composableBuilder(
+    column: $table.byteOffset,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get lastRowIndex => $composableBuilder(
+    column: $table.lastRowIndex,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get errorLogPath => $composableBuilder(
+    column: $table.errorLogPath,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get startedAt =>
+      $composableBuilder(column: $table.startedAt, builder: (column) => column);
+
+  GeneratedColumn<int> get finishedAt => $composableBuilder(
+    column: $table.finishedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  $$AccountBooksTableAnnotationComposer get bookId {
+    final $$AccountBooksTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.bookId,
+      referencedTable: $db.accountBooks,
+      getReferencedColumn: (t) => t.bookId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$AccountBooksTableAnnotationComposer(
+            $db: $db,
+            $table: $db.accountBooks,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$DataImportJobsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $DataImportJobsTable,
+          DataImportJob,
+          $$DataImportJobsTableFilterComposer,
+          $$DataImportJobsTableOrderingComposer,
+          $$DataImportJobsTableAnnotationComposer,
+          $$DataImportJobsTableCreateCompanionBuilder,
+          $$DataImportJobsTableUpdateCompanionBuilder,
+          (DataImportJob, $$DataImportJobsTableReferences),
+          DataImportJob,
+          PrefetchHooks Function({bool bookId})
+        > {
+  $$DataImportJobsTableTableManager(
+    _$AppDatabase db,
+    $DataImportJobsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$DataImportJobsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$DataImportJobsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$DataImportJobsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> jobId = const Value.absent(),
+                Value<String> bookId = const Value.absent(),
+                Value<String> filePath = const Value.absent(),
+                Value<String> fileName = const Value.absent(),
+                Value<String> fileHash = const Value.absent(),
+                Value<int> fileSize = const Value.absent(),
+                Value<String> format = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<String> importKind = const Value.absent(),
+                Value<String?> mappingJson = const Value.absent(),
+                Value<int?> totalRows = const Value.absent(),
+                Value<int> processedRows = const Value.absent(),
+                Value<int> successRows = const Value.absent(),
+                Value<int> skippedRows = const Value.absent(),
+                Value<int> failedRows = const Value.absent(),
+                Value<int> byteOffset = const Value.absent(),
+                Value<int> lastRowIndex = const Value.absent(),
+                Value<String?> errorLogPath = const Value.absent(),
+                Value<int> startedAt = const Value.absent(),
+                Value<int?> finishedAt = const Value.absent(),
+                Value<int> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => DataImportJobsCompanion(
+                jobId: jobId,
+                bookId: bookId,
+                filePath: filePath,
+                fileName: fileName,
+                fileHash: fileHash,
+                fileSize: fileSize,
+                format: format,
+                status: status,
+                importKind: importKind,
+                mappingJson: mappingJson,
+                totalRows: totalRows,
+                processedRows: processedRows,
+                successRows: successRows,
+                skippedRows: skippedRows,
+                failedRows: failedRows,
+                byteOffset: byteOffset,
+                lastRowIndex: lastRowIndex,
+                errorLogPath: errorLogPath,
+                startedAt: startedAt,
+                finishedAt: finishedAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                Value<String> jobId = const Value.absent(),
+                required String bookId,
+                required String filePath,
+                required String fileName,
+                required String fileHash,
+                required int fileSize,
+                required String format,
+                required String status,
+                required String importKind,
+                Value<String?> mappingJson = const Value.absent(),
+                Value<int?> totalRows = const Value.absent(),
+                Value<int> processedRows = const Value.absent(),
+                Value<int> successRows = const Value.absent(),
+                Value<int> skippedRows = const Value.absent(),
+                Value<int> failedRows = const Value.absent(),
+                Value<int> byteOffset = const Value.absent(),
+                Value<int> lastRowIndex = const Value.absent(),
+                Value<String?> errorLogPath = const Value.absent(),
+                required int startedAt,
+                Value<int?> finishedAt = const Value.absent(),
+                required int updatedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => DataImportJobsCompanion.insert(
+                jobId: jobId,
+                bookId: bookId,
+                filePath: filePath,
+                fileName: fileName,
+                fileHash: fileHash,
+                fileSize: fileSize,
+                format: format,
+                status: status,
+                importKind: importKind,
+                mappingJson: mappingJson,
+                totalRows: totalRows,
+                processedRows: processedRows,
+                successRows: successRows,
+                skippedRows: skippedRows,
+                failedRows: failedRows,
+                byteOffset: byteOffset,
+                lastRowIndex: lastRowIndex,
+                errorLogPath: errorLogPath,
+                startedAt: startedAt,
+                finishedAt: finishedAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$DataImportJobsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({bookId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (bookId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.bookId,
+                                referencedTable: $$DataImportJobsTableReferences
+                                    ._bookIdTable(db),
+                                referencedColumn:
+                                    $$DataImportJobsTableReferences
+                                        ._bookIdTable(db)
+                                        .bookId,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$DataImportJobsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $DataImportJobsTable,
+      DataImportJob,
+      $$DataImportJobsTableFilterComposer,
+      $$DataImportJobsTableOrderingComposer,
+      $$DataImportJobsTableAnnotationComposer,
+      $$DataImportJobsTableCreateCompanionBuilder,
+      $$DataImportJobsTableUpdateCompanionBuilder,
+      (DataImportJob, $$DataImportJobsTableReferences),
+      DataImportJob,
+      PrefetchHooks Function({bool bookId})
+    >;
+
 class $AppDatabaseManager {
   final _$AppDatabase _db;
   $AppDatabaseManager(this._db);
+  $$AccountBooksTableTableManager get accountBooks =>
+      $$AccountBooksTableTableManager(_db, _db.accountBooks);
+  $$PersonsTableTableManager get persons =>
+      $$PersonsTableTableManager(_db, _db.persons);
+  $$GiftRecordsTableTableManager get giftRecords =>
+      $$GiftRecordsTableTableManager(_db, _db.giftRecords);
+  $$ReasonsTableTableManager get reasons =>
+      $$ReasonsTableTableManager(_db, _db.reasons);
+  $$RelationTypesTableTableManager get relationTypes =>
+      $$RelationTypesTableTableManager(_db, _db.relationTypes);
+  $$ContactRelationsTableTableManager get contactRelations =>
+      $$ContactRelationsTableTableManager(_db, _db.contactRelations);
+  $$DataImportJobsTableTableManager get dataImportJobs =>
+      $$DataImportJobsTableTableManager(_db, _db.dataImportJobs);
 }
 
 mixin _$AccountBooksDaoMixin on DatabaseAccessor<AppDatabase> {
   $AccountBooksTable get accountBooks => attachedDatabase.accountBooks;
+  AccountBooksDaoManager get managers => AccountBooksDaoManager(this);
+}
+
+class AccountBooksDaoManager {
+  final _$AccountBooksDaoMixin _db;
+  AccountBooksDaoManager(this._db);
+  $$AccountBooksTableTableManager get accountBooks =>
+      $$AccountBooksTableTableManager(_db.attachedDatabase, _db.accountBooks);
 }
 
 mixin _$PersonsDaoMixin on DatabaseAccessor<AppDatabase> {
   $AccountBooksTable get accountBooks => attachedDatabase.accountBooks;
   $PersonsTable get persons => attachedDatabase.persons;
+  PersonsDaoManager get managers => PersonsDaoManager(this);
+}
+
+class PersonsDaoManager {
+  final _$PersonsDaoMixin _db;
+  PersonsDaoManager(this._db);
+  $$AccountBooksTableTableManager get accountBooks =>
+      $$AccountBooksTableTableManager(_db.attachedDatabase, _db.accountBooks);
+  $$PersonsTableTableManager get persons =>
+      $$PersonsTableTableManager(_db.attachedDatabase, _db.persons);
 }
 
 mixin _$GiftRecordsDaoMixin on DatabaseAccessor<AppDatabase> {
   $AccountBooksTable get accountBooks => attachedDatabase.accountBooks;
   $PersonsTable get persons => attachedDatabase.persons;
   $GiftRecordsTable get giftRecords => attachedDatabase.giftRecords;
+  GiftRecordsDaoManager get managers => GiftRecordsDaoManager(this);
+}
+
+class GiftRecordsDaoManager {
+  final _$GiftRecordsDaoMixin _db;
+  GiftRecordsDaoManager(this._db);
+  $$AccountBooksTableTableManager get accountBooks =>
+      $$AccountBooksTableTableManager(_db.attachedDatabase, _db.accountBooks);
+  $$PersonsTableTableManager get persons =>
+      $$PersonsTableTableManager(_db.attachedDatabase, _db.persons);
+  $$GiftRecordsTableTableManager get giftRecords =>
+      $$GiftRecordsTableTableManager(_db.attachedDatabase, _db.giftRecords);
 }
 
 mixin _$ReasonsDaoMixin on DatabaseAccessor<AppDatabase> {
   $ReasonsTable get reasons => attachedDatabase.reasons;
+  ReasonsDaoManager get managers => ReasonsDaoManager(this);
+}
+
+class ReasonsDaoManager {
+  final _$ReasonsDaoMixin _db;
+  ReasonsDaoManager(this._db);
+  $$ReasonsTableTableManager get reasons =>
+      $$ReasonsTableTableManager(_db.attachedDatabase, _db.reasons);
 }
 
 mixin _$RelationTypesDaoMixin on DatabaseAccessor<AppDatabase> {
   $RelationTypesTable get relationTypes => attachedDatabase.relationTypes;
   $AccountBooksTable get accountBooks => attachedDatabase.accountBooks;
   $PersonsTable get persons => attachedDatabase.persons;
+  RelationTypesDaoManager get managers => RelationTypesDaoManager(this);
+}
+
+class RelationTypesDaoManager {
+  final _$RelationTypesDaoMixin _db;
+  RelationTypesDaoManager(this._db);
+  $$RelationTypesTableTableManager get relationTypes =>
+      $$RelationTypesTableTableManager(_db.attachedDatabase, _db.relationTypes);
+  $$AccountBooksTableTableManager get accountBooks =>
+      $$AccountBooksTableTableManager(_db.attachedDatabase, _db.accountBooks);
+  $$PersonsTableTableManager get persons =>
+      $$PersonsTableTableManager(_db.attachedDatabase, _db.persons);
 }
 
 mixin _$ContactRelationsDaoMixin on DatabaseAccessor<AppDatabase> {
@@ -4716,9 +8335,39 @@ mixin _$ContactRelationsDaoMixin on DatabaseAccessor<AppDatabase> {
   $RelationTypesTable get relationTypes => attachedDatabase.relationTypes;
   $ContactRelationsTable get contactRelations =>
       attachedDatabase.contactRelations;
+  ContactRelationsDaoManager get managers => ContactRelationsDaoManager(this);
+}
+
+class ContactRelationsDaoManager {
+  final _$ContactRelationsDaoMixin _db;
+  ContactRelationsDaoManager(this._db);
+  $$AccountBooksTableTableManager get accountBooks =>
+      $$AccountBooksTableTableManager(_db.attachedDatabase, _db.accountBooks);
+  $$PersonsTableTableManager get persons =>
+      $$PersonsTableTableManager(_db.attachedDatabase, _db.persons);
+  $$RelationTypesTableTableManager get relationTypes =>
+      $$RelationTypesTableTableManager(_db.attachedDatabase, _db.relationTypes);
+  $$ContactRelationsTableTableManager get contactRelations =>
+      $$ContactRelationsTableTableManager(
+        _db.attachedDatabase,
+        _db.contactRelations,
+      );
 }
 
 mixin _$DataImportJobsDaoMixin on DatabaseAccessor<AppDatabase> {
   $AccountBooksTable get accountBooks => attachedDatabase.accountBooks;
   $DataImportJobsTable get dataImportJobs => attachedDatabase.dataImportJobs;
+  DataImportJobsDaoManager get managers => DataImportJobsDaoManager(this);
+}
+
+class DataImportJobsDaoManager {
+  final _$DataImportJobsDaoMixin _db;
+  DataImportJobsDaoManager(this._db);
+  $$AccountBooksTableTableManager get accountBooks =>
+      $$AccountBooksTableTableManager(_db.attachedDatabase, _db.accountBooks);
+  $$DataImportJobsTableTableManager get dataImportJobs =>
+      $$DataImportJobsTableTableManager(
+        _db.attachedDatabase,
+        _db.dataImportJobs,
+      );
 }

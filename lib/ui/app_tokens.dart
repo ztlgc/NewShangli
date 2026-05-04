@@ -7,6 +7,7 @@ class AppTokens {
   static const double statusBarHeight = 47;
   static const double tabBarHeight = 64;
   static const double tapTargetMin = 44;
+  static const double bottomSafeSpacing = 0;
 
   static const double space0 = 0;
   static const double space0_5 = 2;
@@ -132,11 +133,7 @@ class AppRadii {
 
 class AppShadows {
   static const sm = <BoxShadow>[
-    BoxShadow(
-      color: Color(0x0D000000),
-      blurRadius: 2,
-      offset: Offset(0, 1),
-    ),
+    BoxShadow(color: Color(0x0D000000), blurRadius: 2, offset: Offset(0, 1)),
   ];
 
   static const lg = <BoxShadow>[
@@ -242,48 +239,33 @@ class AppTypography {
     );
   }
 
-  static TextStyle h1() => _base(
-        fontSize: fs24,
-        fontWeight: bold,
-        color: AppColors.textPrimary,
-      );
+  static TextStyle h1() =>
+      _base(fontSize: fs24, fontWeight: bold, color: AppColors.textPrimary);
 
-  static TextStyle h2() => _base(
-        fontSize: fs20,
-        fontWeight: bold,
-        color: AppColors.textPrimary,
-      );
+  static TextStyle h2() =>
+      _base(fontSize: fs20, fontWeight: bold, color: AppColors.textPrimary);
 
-  static TextStyle h3() => _base(
-        fontSize: fs18,
-        fontWeight: bold,
-        color: AppColors.textPrimary,
-      );
+  static TextStyle h3() =>
+      _base(fontSize: fs18, fontWeight: bold, color: AppColors.textPrimary);
 
   static TextStyle body() => _base(
-        fontSize: fs14,
-        fontWeight: regular,
-        color: AppColors.textSecondary,
-      );
+    fontSize: fs14,
+    fontWeight: regular,
+    color: AppColors.textSecondary,
+  );
 
-  static TextStyle bodyStrong() => _base(
-        fontSize: fs16,
-        fontWeight: medium,
-        color: AppColors.textPrimary,
-      );
+  static TextStyle bodyStrong() =>
+      _base(fontSize: fs16, fontWeight: medium, color: AppColors.textPrimary);
 
-  static TextStyle caption() => _base(
-        fontSize: fs12,
-        fontWeight: regular,
-        color: AppColors.textMuted,
-      );
+  static TextStyle caption() =>
+      _base(fontSize: fs12, fontWeight: regular, color: AppColors.textMuted);
 
   static TextStyle overlineUpper() => _base(
-        fontSize: fs10,
-        fontWeight: bold,
-        color: AppColors.textTertiary,
-        letterSpacing: 0.05 * fs10,
-      );
+    fontSize: fs10,
+    fontWeight: bold,
+    color: AppColors.textTertiary,
+    letterSpacing: 0.05 * fs10,
+  );
 
   static TextStyle _base({
     required double fontSize,
@@ -291,13 +273,11 @@ class AppTypography {
     required Color color,
     double? height,
     double? letterSpacing,
-  }) =>
-      base(
-        fontSize: fontSize,
-        fontWeight: fontWeight,
-        color: color,
-        height: height,
-        letterSpacing: letterSpacing,
-      );
+  }) => base(
+    fontSize: fontSize,
+    fontWeight: fontWeight,
+    color: color,
+    height: height,
+    letterSpacing: letterSpacing,
+  );
 }
-

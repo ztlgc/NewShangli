@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../../security/edit_protection.dart';
 import '../app_scaffold.dart';
 import '../app_tokens.dart';
+import '../components.dart';
+import '../edit_protection_guard.dart';
 import '../prototype_kit.dart';
 import '../navigation.dart';
 
@@ -71,9 +73,9 @@ class _CanvasState extends State<_Canvas> {
       if (!mounted) return;
       setState(() => _config = c);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(value ? '编辑保护已开启' : '编辑保护已关闭')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(value ? '编辑保护已开启' : '编辑保护已关闭')));
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -99,45 +101,24 @@ class _CanvasState extends State<_Canvas> {
     if (!mounted) return;
     setState(() => _config = c);
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('密码已更新')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('密码已更新')));
     }
   }
 
   Future<bool> _verifyPasswordDialog({required String title}) async {
-    final controller = TextEditingController();
-    final password = await showDialog<String>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text(title),
-          content: TextField(
-            controller: controller,
-            obscureText: true,
-            decoration: const InputDecoration(hintText: '请输入编辑密码'),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('取消'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(controller.text),
-              child: const Text('确定'),
-            ),
-          ],
-        );
-      },
+    final password = await showEditProtectionPasswordDialog(
+      context,
+      title: title,
     );
-    controller.dispose();
     final v = password?.trim() ?? '';
     if (v.isEmpty) return false;
     final ok = await _service.verifyPassword(v);
     if (!ok && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('密码错误')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('密码错误')));
     }
     return ok;
   }
@@ -186,17 +167,17 @@ class _CanvasState extends State<_Canvas> {
     if (result != true) return false;
     if (s1.length < 4) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('密码至少 4 位')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('密码至少 4 位')));
       }
       return false;
     }
     if (s1 != s2) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('两次输入不一致')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('两次输入不一致')));
       }
       return false;
     }
@@ -212,7 +193,9 @@ class _CanvasState extends State<_Canvas> {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: const BoxDecoration(
             color: AppColors.white,
-            border: Border(bottom: BorderSide(color: AppColors.gray100, width: 1)),
+            border: Border(
+              bottom: BorderSide(color: AppColors.gray100, width: 1),
+            ),
           ),
           child: Row(
             children: [
@@ -284,11 +267,17 @@ class _CanvasState extends State<_Canvas> {
                                     ),
                                   ),
                                 ),
-                                const Icon(Icons.chevron_right, size: 18, color: AppColors.gray300),
+                                const Icon(
+                                  Icons.chevron_right,
+                                  size: 18,
+                                  color: AppColors.gray300,
+                                ),
                               ],
                             ),
                           ),
-                          const PrototypeDivider(color: AppColors.borderDivider),
+                          const PrototypeDivider(
+                            color: AppColors.borderDivider,
+                          ),
                           PrototypePressableRow(
                             onTap: _busy ? null : () => _toggleEnabled(false),
                             borderBottom: false,
@@ -304,7 +293,11 @@ class _CanvasState extends State<_Canvas> {
                                     ),
                                   ),
                                 ),
-                                const Icon(Icons.chevron_right, size: 18, color: AppColors.gray300),
+                                const Icon(
+                                  Icons.chevron_right,
+                                  size: 18,
+                                  color: AppColors.gray300,
+                                ),
                               ],
                             ),
                           ),
@@ -332,4 +325,3 @@ class _CanvasState extends State<_Canvas> {
     );
   }
 }
-

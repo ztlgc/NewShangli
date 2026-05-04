@@ -133,4 +133,52 @@ INSERT INTO account_book(book_id, name, reason_type, theme_color, is_default, cr
       raw.dispose();
     }
   });
+
+  test('schema v11 -> v12: account_book adds nullable attachments', () async {
+    final raw = sqlite3.openInMemory();
+    try {
+      raw.execute('PRAGMA foreign_keys = ON;');
+      raw.execute('PRAGMA user_version = 11;');
+
+      raw.execute('''
+CREATE TABLE account_book (
+  book_id TEXT NOT NULL PRIMARY KEY,
+  name TEXT NOT NULL,
+  reason_type TEXT NOT NULL DEFAULT '',
+  theme_color TEXT NOT NULL DEFAULT '#312E81',
+  icon TEXT NULL,
+  description TEXT NULL,
+  book_time INTEGER NOT NULL,
+  is_default INTEGER NOT NULL DEFAULT 0 CHECK(is_default IN (0, 1)),
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  deleted_at INTEGER NULL
+);
+''');
+
+      raw.execute('''
+INSERT INTO account_book(book_id, name, reason_type, theme_color, book_time, is_default, created_at, updated_at, deleted_at) VALUES
+('b1', 'A', '', '#312E81', 100, 1, 100, 200, NULL);
+''');
+
+      final db = AppDatabase.forTesting(NativeDatabase.opened(raw));
+      try {
+        final cols = await db
+            .customSelect('PRAGMA table_info(account_book);')
+            .get();
+        final names = cols
+            .map((e) => (e.data['name'] as String?) ?? '')
+            .toSet();
+        expect(names.contains('attachments'), isTrue);
+
+        final b1 = await db.accountBooksDao.findById('b1');
+        expect(b1, isNotNull);
+        expect(b1!.attachments, isNull);
+      } finally {
+        await db.close();
+      }
+    } finally {
+      raw.dispose();
+    }
+  });
 }

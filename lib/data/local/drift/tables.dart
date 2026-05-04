@@ -29,6 +29,9 @@ class AccountBooks extends Table {
 
   TextColumn get description => text().nullable()();
 
+  TextColumn get attachments =>
+      text().nullable().map(const JsonStringListConverter())();
+
   IntColumn get bookTime => integer()
       .named('book_time')
       .clientDefault(() => DateTime.now().millisecondsSinceEpoch)

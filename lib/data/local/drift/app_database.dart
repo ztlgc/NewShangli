@@ -53,7 +53,7 @@ class AppDatabase extends _$AppDatabase {
   ///
   /// 版本升级时在 [migration] 中补齐迁移逻辑，并同步单元测试。
   @override
-  int get schemaVersion => 11;
+  int get schemaVersion => 12;
 
   /// 统一注入迁移策略：
   /// - onCreate：创建所有表与索引
@@ -169,6 +169,11 @@ class AppDatabase extends _$AppDatabase {
           );
         ''');
         await _ensureIndexes();
+      }
+      if (from < 12) {
+        await customStatement(
+          'ALTER TABLE account_book ADD COLUMN attachments TEXT;',
+        );
       }
     },
     beforeOpen: (details) async {

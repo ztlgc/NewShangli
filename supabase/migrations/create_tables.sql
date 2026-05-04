@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS public.account_book (
   theme_color TEXT DEFAULT '#312E81',
   icon TEXT,
   description TEXT,
+  attachments JSONB,
   book_time BIGINT NOT NULL,
   is_default INTEGER NOT NULL DEFAULT 0 CHECK(is_default IN (0, 1)),
   created_at BIGINT NOT NULL,

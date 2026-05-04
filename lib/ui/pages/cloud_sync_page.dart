@@ -454,8 +454,7 @@ class _CloudSyncPageState extends State<CloudSyncPage> {
       return;
     }
     if (_isWorking) return;
-    final kindLabel =
-        version.kind == CloudBackupKind.auto ? '自动备份' : '手动备份';
+    final kindLabel = version.kind == CloudBackupKind.auto ? '自动备份' : '手动备份';
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) {
@@ -810,8 +809,13 @@ class _CloudSyncPageState extends State<CloudSyncPage> {
                 label: '手动备份',
                 background: AppColors.indigo600,
                 foreground: AppColors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                onPressed: _isWorking || !isLoggedIn ? null : _manualBackupToCloud,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
+                onPressed: _isWorking || !isLoggedIn
+                    ? null
+                    : _manualBackupToCloud,
               ),
             ],
           ),
@@ -839,7 +843,9 @@ class _CloudSyncPageState extends State<CloudSyncPage> {
                     timeLabel: _formatDateTime(
                       DateTime.fromMillisecondsSinceEpoch(v.createdAt),
                     ),
-                    onRestore: _isWorking ? null : () => _restoreFromBackupVersion(v),
+                    onRestore: _isWorking
+                        ? null
+                        : () => _restoreFromBackupVersion(v),
                   ),
                   if (v != _backupVersions.last) const SizedBox(height: 10),
                 ],
@@ -1413,7 +1419,7 @@ class _BackupVersionRow extends StatelessWidget {
           PrototypePill(
             label: isAuto ? '自动' : '手动',
             background: isAuto ? AppColors.blue100 : AppColors.green100,
-            foreground: isAuto ? AppColors.blue700 : AppColors.green600,
+            foreground: isAuto ? AppColors.blue600 : AppColors.green600,
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
           ),
           const SizedBox(width: 10),

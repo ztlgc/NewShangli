@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:uuid/uuid.dart';
 
 import 'data_backup_service.dart';
 import 'data_restore_service.dart';
@@ -46,13 +47,15 @@ class CloudBackupService {
     SupabaseClient? supabase,
     DataBackupService? dataBackupService,
     DataRestoreService? dataRestoreService,
-  })  : _supabase = supabase ?? Supabase.instance.client,
-        _dataBackupService = dataBackupService ?? DataBackupService(),
-        _dataRestoreService = dataRestoreService ?? DataRestoreService();
+  }) : _supabase = supabase ?? Supabase.instance.client,
+       _dataBackupService = dataBackupService ?? DataBackupService(),
+       _dataRestoreService = dataRestoreService ?? DataRestoreService();
 
   final SupabaseClient _supabase;
   final DataBackupService _dataBackupService;
   final DataRestoreService _dataRestoreService;
+
+  String _newId() => const Uuid().v4();
 
   static bool isAutoBackupDue({
     required int? lastCreatedAtMs,
@@ -66,7 +69,8 @@ class CloudBackupService {
     return age >= interval.inMilliseconds;
   }
 
-  static String buildAutoStoragePath(String userId) => '$userId/auto/latest.zip';
+  static String buildAutoStoragePath(String userId) =>
+      '$userId/auto/latest.zip';
 
   static String buildManualStoragePath({
     required String userId,
@@ -84,10 +88,8 @@ class CloudBackupService {
         .select()
         .eq('user_id', user.id)
         .order('created_at', ascending: false);
-    if (rows is! List) return const <CloudBackupVersion>[];
     return rows
-        .whereType<Map>()
-        .map((e) => CloudBackupVersion.fromJson(Map<String, dynamic>.from(e)))
+        .map((e) => CloudBackupVersion.fromJson(e))
         .where((e) => e.backupId.trim().isNotEmpty)
         .toList();
   }
@@ -98,7 +100,7 @@ class CloudBackupService {
   }) async {
     final user = _supabase.auth.currentUser;
     if (user == null) throw const CloudBackupException('请先登录');
-    final backupId = _supabase.newId();
+    final backupId = _newId();
     onProgress('正在打包…');
     final zip = await _dataBackupService.buildLocalBackupZip(
       onProgress: (p) => onProgress(p.message),
@@ -112,11 +114,9 @@ class CloudBackupService {
       backupId: backupId,
     );
     onProgress('正在上传…');
-    await _supabase.storage.from('backups').upload(
-          remotePath,
-          zip,
-          fileOptions: const FileOptions(upsert: false),
-        );
+    await _supabase.storage
+        .from('backups')
+        .upload(remotePath, zip, fileOptions: const FileOptions(upsert: false));
     await _supabase.from('cloud_backup_version').insert({
       'backup_id': backupId,
       'kind': CloudBackupKind.manual,
@@ -144,7 +144,10 @@ class CloudBackupService {
     final user = _supabase.auth.currentUser;
     if (user == null) return null;
     final autoRow = await _getAutoVersion(user.id);
-    if (!isAutoBackupDue(lastCreatedAtMs: autoRow?.createdAt, interval: interval)) {
+    if (!isAutoBackupDue(
+      lastCreatedAtMs: autoRow?.createdAt,
+      interval: interval,
+    )) {
       return null;
     }
     return _upsertAutoBackup(
@@ -161,7 +164,8 @@ class CloudBackupService {
   }) async {
     final user = _supabase.auth.currentUser;
     if (user == null) throw const CloudBackupException('请先登录');
-    if (version.storageBucket.trim().isEmpty || version.storagePath.trim().isEmpty) {
+    if (version.storageBucket.trim().isEmpty ||
+        version.storagePath.trim().isEmpty) {
       throw const CloudBackupException('备份版本信息不完整');
     }
     onProgress('正在下载备份包…');
@@ -195,10 +199,8 @@ class CloudBackupService {
         .eq('user_id', userId)
         .eq('kind', CloudBackupKind.auto)
         .limit(1);
-    if (rows is! List || rows.isEmpty) return null;
-    final item = rows.first;
-    if (item is! Map) return null;
-    final v = CloudBackupVersion.fromJson(Map<String, dynamic>.from(item));
+    if (rows.isEmpty) return null;
+    final v = CloudBackupVersion.fromJson(rows.first);
     if (v.backupId.trim().isEmpty) return null;
     return v;
   }
@@ -211,7 +213,7 @@ class CloudBackupService {
   }) async {
     final backupId = existing?.backupId.trim().isNotEmpty == true
         ? existing!.backupId
-        : _supabase.newId();
+        : _newId();
     onProgress('正在打包…');
     final zip = await _dataBackupService.buildLocalBackupZip(
       onProgress: (p) => onProgress(p.message),
@@ -221,11 +223,9 @@ class CloudBackupService {
     final createdAt = DateTime.now().millisecondsSinceEpoch;
     final remotePath = buildAutoStoragePath(userId);
     onProgress('正在上传…');
-    await _supabase.storage.from('backups').upload(
-          remotePath,
-          zip,
-          fileOptions: const FileOptions(upsert: true),
-        );
+    await _supabase.storage
+        .from('backups')
+        .upload(remotePath, zip, fileOptions: const FileOptions(upsert: true));
 
     if (existing == null) {
       await _supabase.from('cloud_backup_version').insert({
@@ -238,12 +238,15 @@ class CloudBackupService {
         'user_id': userId,
       });
     } else {
-      await _supabase.from('cloud_backup_version').update({
-        'storage_bucket': 'backups',
-        'storage_path': remotePath,
-        'size_bytes': sizeBytes,
-        'created_at': createdAt,
-      }).eq('backup_id', backupId);
+      await _supabase
+          .from('cloud_backup_version')
+          .update({
+            'storage_bucket': 'backups',
+            'storage_path': remotePath,
+            'size_bytes': sizeBytes,
+            'created_at': createdAt,
+          })
+          .eq('backup_id', backupId);
     }
     return CloudBackupVersion(
       backupId: backupId,
