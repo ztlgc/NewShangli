@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../data/local/drift/app_database.dart';
 import 'app_data.dart';
 import 'app_database_scope.dart';
 import 'app_session.dart';
@@ -7,7 +8,9 @@ import 'app_theme.dart';
 import 'pages/record_home_page.dart';
 
 class NewShangliApp extends StatelessWidget {
-  const NewShangliApp({super.key});
+  const NewShangliApp({super.key, this.databaseFactory});
+
+  final AppDatabase Function()? databaseFactory;
 
   @override
   Widget build(BuildContext context) {
@@ -18,6 +21,7 @@ class NewShangliApp extends StatelessWidget {
       child: AppDataScope(
         data: data,
         child: AppDatabaseProvider(
+          databaseFactory: databaseFactory,
           child: MaterialApp(
             debugShowCheckedModeBanner: false,
             title: '尚礼',

@@ -119,8 +119,9 @@ class _StatsPageBodyState extends State<_StatsPageBody> {
 
   /// 自定义：用于在页面内展示已选日期范围（与 vm.customRange 同步）。
   StatsDateRange? _customRange;
-  Timer? _rangeCommitDebounce;
+  bool _rangeCommitScheduled = false;
   Completer<void>? _pendingRangeCompleter;
+  Future<void> Function()? _pendingRangeAction;
 
   @override
   void initState() {
@@ -140,7 +141,6 @@ class _StatsPageBodyState extends State<_StatsPageBody> {
 
   @override
   void dispose() {
-    _rangeCommitDebounce?.cancel();
     _pendingRangeCompleter?.complete();
     super.dispose();
   }
@@ -388,13 +388,23 @@ class _StatsPageBodyState extends State<_StatsPageBody> {
   }
 
   Future<void> _scheduleRangeCommit(Future<void> Function() action) {
-    _rangeCommitDebounce?.cancel();
+    _pendingRangeAction = action;
+    final existing = _pendingRangeCompleter;
+    if (_rangeCommitScheduled && existing != null) {
+      return existing.future;
+    }
+
     _pendingRangeCompleter?.complete();
     final completer = Completer<void>();
     _pendingRangeCompleter = completer;
-    _rangeCommitDebounce = Timer(const Duration(milliseconds: 50), () async {
+    _rangeCommitScheduled = true;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      _rangeCommitScheduled = false;
+      final fn = _pendingRangeAction;
+      _pendingRangeAction = null;
       try {
-        await action();
+        await fn?.call();
       } finally {
         if (identical(_pendingRangeCompleter, completer)) {
           _pendingRangeCompleter = null;
@@ -404,6 +414,7 @@ class _StatsPageBodyState extends State<_StatsPageBody> {
         }
       }
     });
+
     return completer.future;
   }
 

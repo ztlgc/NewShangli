@@ -130,6 +130,11 @@ void main() {
     expect(find.text('截止时间'), findsOneWidget);
 
     expect(find.text('收支走势'), findsOneWidget);
+
+    await tester.pump(const Duration(seconds: 3));
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(seconds: 1));
+    await db.close();
   });
 }
 

@@ -118,8 +118,7 @@ class _CanvasState extends State<_Canvas> {
     final id = widget.personId;
     if (id.trim().isEmpty) return null;
     try {
-      final db = AppDatabaseScope.maybeOf(context);
-      if (db == null) return null;
+      final db = AppDatabaseScope.of(context);
       final Person? person = await db.personsDao.findById(id);
       if (person == null) return null;
       final records = await (db.select(db.giftRecords)
@@ -185,8 +184,7 @@ class _CanvasState extends State<_Canvas> {
   }
 
   Future<void> _pickAndSaveAvatar(String personId) async {
-    final db = AppDatabaseScope.maybeOf(context);
-    if (db == null) return;
+    final db = AppDatabaseScope.of(context);
     final person = await db.personsDao.findById(personId);
     if (!mounted) return;
     if (person == null) return;
@@ -518,8 +516,7 @@ class _EntityRemarksCardState extends State<_EntityRemarksCard> {
   }
 
   Future<List<EntityRemark>> _load() async {
-    final db = AppDatabaseScope.maybeOf(context);
-    if (db == null) return const <EntityRemark>[];
+    final db = AppDatabaseScope.of(context);
     return EntityRemarksStore(db).listByEntity(
       entityType: widget.entityType,
       entityId: widget.entityId,
@@ -575,13 +572,7 @@ class _EntityRemarksCardState extends State<_EntityRemarksCard> {
 
   @override
   Widget build(BuildContext context) {
-    final db = AppDatabaseScope.maybeOf(context);
-    if (db == null) {
-      return const PrototypeCard(
-        padding: EdgeInsets.all(16),
-        child: Text('数据库未初始化'),
-      );
-    }
+    final db = AppDatabaseScope.of(context);
     return PrototypeCard(
       padding: const EdgeInsets.all(16),
       child: Column(

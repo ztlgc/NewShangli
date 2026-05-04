@@ -187,22 +187,37 @@ class AppDatabase extends _$AppDatabase {
   String newId() => const Uuid().v4();
 
   Future<void> _ensureIndexes() async {
-    await customStatement(
+    Future<void> createIndexIfTableExists(String tableName, String sql) async {
+      final exists = await customSelect(
+        "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?;",
+        variables: [Variable<String>(tableName)],
+      ).get();
+      if (exists.isEmpty) return;
+      await customStatement(sql);
+    }
+
+    await createIndexIfTableExists(
+      'person',
       'CREATE INDEX IF NOT EXISTS idx_person_book_name ON person(book_id, name);',
     );
-    await customStatement(
+    await createIndexIfTableExists(
+      'gift_record',
       'CREATE INDEX IF NOT EXISTS idx_gift_record_book_occurred ON gift_record(book_id, occurred_at);',
     );
-    await customStatement(
+    await createIndexIfTableExists(
+      'gift_record',
       'CREATE INDEX IF NOT EXISTS idx_gift_record_book_person ON gift_record(book_id, person_id);',
     );
-    await customStatement(
+    await createIndexIfTableExists(
+      'data_import_job',
       'CREATE INDEX IF NOT EXISTS idx_import_job_book_started ON data_import_job(book_id, started_at);',
     );
-    await customStatement(
+    await createIndexIfTableExists(
+      'data_import_job',
       'CREATE INDEX IF NOT EXISTS idx_import_job_status_updated ON data_import_job(status, updated_at);',
     );
-    await customStatement(
+    await createIndexIfTableExists(
+      'entity_remark',
       'CREATE INDEX IF NOT EXISTS idx_entity_remark_entity_time ON entity_remark(entity_type, entity_id, created_at DESC);',
     );
   }

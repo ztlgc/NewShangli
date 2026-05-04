@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
-import 'app_data.dart';
 import 'app_session.dart';
 import 'app_theme.dart';
+import 'prototype_database_provider.dart';
 import 'pages/account_book_edit_page.dart';
 import 'pages/account_books_page.dart';
 import 'pages/data_backup_page.dart';
@@ -22,11 +22,9 @@ class PrototypeGalleryApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final session = AppSession();
-    final data = AppData();
     return AppSessionScope(
       session: session,
-      child: AppDataScope(
-        data: data,
+      child: PrototypeDatabaseProvider(
         child: MaterialApp(
           debugShowCheckedModeBanner: false,
           title: 'NewShangli Prototype',

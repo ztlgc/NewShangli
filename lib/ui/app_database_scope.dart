@@ -7,9 +7,11 @@ class AppDatabaseProvider extends StatefulWidget {
   const AppDatabaseProvider({
     super.key,
     required this.child,
+    this.databaseFactory,
   });
 
   final Widget child;
+  final AppDatabase Function()? databaseFactory;
 
   @override
   State<AppDatabaseProvider> createState() => _AppDatabaseProviderState();
@@ -31,6 +33,11 @@ class _AppDatabaseProviderState extends State<AppDatabaseProvider> {
   }
 
   void _openDb() {
+    final factory = widget.databaseFactory;
+    if (factory != null) {
+      _db = factory();
+      return;
+    }
     _db = AppDatabase();
     ReasonRelationMigrator.migrateIfNeeded(_db);
   }

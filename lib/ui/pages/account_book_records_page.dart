@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import '../../data/local/drift/app_database.dart';
-import '../app_data.dart';
 import '../app_database_scope.dart';
 import '../app_scaffold.dart';
 import '../app_tokens.dart';
@@ -62,68 +61,7 @@ class _CanvasState extends State<_Canvas> {
 
   @override
   Widget build(BuildContext context) {
-    final db = AppDatabaseScope.maybeOf(context);
-    if (db == null) {
-      final element = context.getElementForInheritedWidgetOfExactType<AppDataScope>();
-      final scope = element?.widget;
-      final data = scope is AppDataScope ? scope.notifier : null;
-      final records = data == null
-          ? const <RecordData>[]
-          : data.records.where((r) {
-              final recordBookId = data.resolveBookId(r.bookId);
-              if (widget.isDefaultBook) {
-                return recordBookId == widget.bookId ||
-                    r.direction == RecordDirection.expense;
-              }
-              return recordBookId == widget.bookId;
-            }).toList();
-      return Column(
-        children: [
-          _TopBar(
-            title: widget.bookName,
-            onBack: () => AppNav.pop(context),
-          ),
-          Expanded(
-            child: records.isEmpty
-                ? Center(
-                    child: Text(
-                      widget.isDefaultBook ? '暂无记录' : '该账簿暂无记录',
-                      style: AppTypography.base(
-                        fontSize: AppTypography.fs14,
-                        fontWeight: AppTypography.regular,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  )
-                : ListView.separated(
-                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-                    itemCount: records.length,
-                    separatorBuilder: (context, index) => const SizedBox(height: 12),
-                    itemBuilder: (context, index) {
-                      final r = records[index];
-                      return Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: AppColors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: AppShadows.sm,
-                          border: Border.all(color: AppColors.gray100, width: 1),
-                        ),
-                        child: Text(
-                          '${r.personName} · ${r.eventName}',
-                          style: AppTypography.base(
-                            fontSize: 14,
-                            fontWeight: AppTypography.medium,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-          ),
-        ],
-      );
-    }
+    final db = AppDatabaseScope.of(context);
     final stream = widget.isDefaultBook
         ? db.giftRecordsDao.watchAllWithPersonInDefaultScope(widget.bookId)
         : db.giftRecordsDao.watchAllWithPersonInBook(widget.bookId);

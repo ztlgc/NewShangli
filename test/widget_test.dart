@@ -7,8 +7,9 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:drift/native.dart';
 
+import 'package:newshangli/data/local/drift/app_database.dart';
 import 'package:newshangli/ui/app.dart';
 
 void main() {
@@ -23,7 +24,11 @@ void main() {
     };
     addTearDown(() => FlutterError.onError = oldOnError);
 
-    await tester.pumpWidget(const NewShangliApp());
+    await tester.pumpWidget(
+      NewShangliApp(
+        databaseFactory: () => AppDatabase.forTesting(NativeDatabase.memory()),
+      ),
+    );
     await tester.pumpAndSettle();
 
     expect(find.text('尚礼'), findsOneWidget);
@@ -33,8 +38,12 @@ void main() {
   });
 
   testWidgets('Empty record list shows placeholder', (WidgetTester tester) async {
-    await tester.pumpWidget(const NewShangliApp());
-    await tester.pumpAndSettle();
+    await tester.pumpWidget(
+      NewShangliApp(
+        databaseFactory: () => AppDatabase.forTesting(NativeDatabase.memory()),
+      ),
+    );
+
 
     expect(find.text('暂无记录'), findsOneWidget);
 
@@ -46,7 +55,11 @@ void main() {
     tester.binding.platformDispatcher.platformBrightnessTestValue = Brightness.dark;
     addTearDown(() => tester.binding.platformDispatcher.clearPlatformBrightnessTestValue());
 
-    await tester.pumpWidget(const NewShangliApp());
+    await tester.pumpWidget(
+      NewShangliApp(
+        databaseFactory: () => AppDatabase.forTesting(NativeDatabase.memory()),
+      ),
+    );
     await tester.pumpAndSettle();
     expect(find.text('尚礼'), findsOneWidget);
     

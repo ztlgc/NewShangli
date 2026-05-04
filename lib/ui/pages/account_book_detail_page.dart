@@ -40,13 +40,7 @@ class _Canvas extends StatelessWidget {
   final String bookId;
 
   Future<void> _addAttachments(BuildContext context, AccountBook book) async {
-    final db = AppDatabaseScope.maybeOf(context);
-    if (db == null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('数据库未初始化')));
-      return;
-    }
+    final db = AppDatabaseScope.of(context);
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
       allowedExtensions: const <String>['jpg', 'jpeg', 'png', 'webp'],
@@ -410,8 +404,7 @@ class _EntityRemarksCardState extends State<_EntityRemarksCard> {
   }
 
   Future<List<EntityRemark>> _load() async {
-    final db = AppDatabaseScope.maybeOf(context);
-    if (db == null) return const <EntityRemark>[];
+    final db = AppDatabaseScope.of(context);
     return EntityRemarksStore(
       db,
     ).listByEntity(entityType: widget.entityType, entityId: widget.entityId);
@@ -466,13 +459,7 @@ class _EntityRemarksCardState extends State<_EntityRemarksCard> {
 
   @override
   Widget build(BuildContext context) {
-    final db = AppDatabaseScope.maybeOf(context);
-    if (db == null) {
-      return const PrototypeCard(
-        padding: EdgeInsets.all(16),
-        child: Text('数据库未初始化'),
-      );
-    }
+    final db = AppDatabaseScope.of(context);
     return PrototypeCard(
       padding: const EdgeInsets.all(16),
       child: Column(

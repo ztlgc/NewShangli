@@ -8,7 +8,6 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../../data/local/drift/app_database.dart';
 import '../../data/local/entity_remarks_store.dart';
 import '../../media/media_storage_service.dart';
-import '../app_data.dart';
 import '../app_database_scope.dart';
 import '../app_tokens.dart';
 import '../app_scaffold.dart';
@@ -88,15 +87,12 @@ class _CanvasState extends State<_Canvas> {
   }
 
   Future<_RecordView?> _loadRecord() async {
-    final fromDb = await _loadFromDb();
-    if (fromDb != null) return fromDb;
-    return _loadFromAppData();
+    return _loadFromDb();
   }
 
   Future<_RecordView?> _loadFromDb() async {
     try {
-      final db = AppDatabaseScope.maybeOf(context);
-      if (db == null) return null;
+      final db = AppDatabaseScope.of(context);
       final GiftRecord? record = await db.giftRecordsDao.findById(
         widget.recordId,
       );
@@ -116,34 +112,6 @@ class _CanvasState extends State<_Canvas> {
         note: record.note,
         bookName: book?.name ?? '未知账簿',
         attachments: List<String>.from(record.attachments ?? const <String>[]),
-      );
-    } catch (_) {
-      return null;
-    }
-  }
-
-  Future<_RecordView?> _loadFromAppData() async {
-    try {
-      final element = context
-          .getElementForInheritedWidgetOfExactType<AppDataScope>();
-      final scope = element?.widget;
-      if (scope is! AppDataScope) return null;
-      final data = scope.notifier!;
-      final record = data.findRecord(widget.recordId);
-      if (record == null) return null;
-      final person = data.findPerson(record.personId);
-      final bookName = data.resolveBookName(record.bookId);
-      return _RecordView(
-        personId: record.personId,
-        personName: person?.name ?? record.personName,
-        isIncome: record.direction == RecordDirection.income,
-        amountCent: record.amountCent,
-        eventName: record.eventName,
-        paymentMethod: record.paymentMethod,
-        occurredAt: record.occurredAt,
-        note: record.note,
-        bookName: bookName,
-        attachments: const <String>[],
       );
     } catch (_) {
       return null;
@@ -263,15 +231,7 @@ class _CanvasState extends State<_Canvas> {
   }
 
   Future<void> _addAttachments() async {
-    final db = AppDatabaseScope.maybeOf(context);
-    if (db == null) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('数据库未初始化')),
-        );
-      }
-      return;
-    }
+    final db = AppDatabaseScope.of(context);
     final record = await db.giftRecordsDao.findById(widget.recordId);
     if (!mounted) return;
     if (record == null) {
@@ -611,8 +571,7 @@ class _EntityRemarksCardState extends State<_EntityRemarksCard> {
   }
 
   Future<List<EntityRemark>> _load() async {
-    final db = AppDatabaseScope.maybeOf(context);
-    if (db == null) return const <EntityRemark>[];
+    final db = AppDatabaseScope.of(context);
     return EntityRemarksStore(db).listByEntity(
       entityType: widget.entityType,
       entityId: widget.entityId,
@@ -668,13 +627,7 @@ class _EntityRemarksCardState extends State<_EntityRemarksCard> {
 
   @override
   Widget build(BuildContext context) {
-    final db = AppDatabaseScope.maybeOf(context);
-    if (db == null) {
-      return const PrototypeCard(
-        padding: EdgeInsets.all(16),
-        child: Text('数据库未初始化'),
-      );
-    }
+    final db = AppDatabaseScope.of(context);
     return PrototypeCard(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -889,13 +842,7 @@ class _BottomActions extends StatelessWidget {
   Future<void> _confirmDelete(BuildContext context) async {
     final okAuth = await requireEditProtectionPassword(context, title: '删除记录');
     if (!okAuth) return;
-    final db = AppDatabaseScope.maybeOf(context);
-    if (db == null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('当前页面无法执行删除')));
-      return;
-    }
+    final db = AppDatabaseScope.of(context);
     final ok = await showDialog<bool>(
       context: context,
       builder: (context) {
