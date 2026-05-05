@@ -68,8 +68,13 @@ class ContactAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.appColors;
     final displayText = contactAvatarTextFromName(name);
-    final colorScheme = contactAvatarColorScheme(displayText);
+    final baseColorScheme = contactAvatarColorScheme(displayText);
+    final colorScheme = ContactAvatarColorScheme(
+      background: colors.softFor(baseColorScheme.background),
+      foreground: colors.foregroundFor(baseColorScheme.foreground),
+    );
     final normalizedUrl = avatarUrl?.trim();
 
     final fallback = _buildTextAvatar(
@@ -79,8 +84,12 @@ class ContactAvatar extends StatelessWidget {
 
     // 设计选择：当存在 avatarUrl 时，也始终先渲染文字头像作为“底图”。
     // 这样无论是加载中、无网络、图片 404，界面都不会出现闪烁/空白块。
-    final isFileUri = normalizedUrl != null && normalizedUrl.startsWith('file://');
-    final isLocalPath = normalizedUrl != null && normalizedUrl.isNotEmpty && (normalizedUrl.contains(r'\') || normalizedUrl.contains(':/'));
+    final isFileUri =
+        normalizedUrl != null && normalizedUrl.startsWith('file://');
+    final isLocalPath =
+        normalizedUrl != null &&
+        normalizedUrl.isNotEmpty &&
+        (normalizedUrl.contains(r'\') || normalizedUrl.contains(':/'));
     final content = normalizedUrl != null && normalizedUrl.isNotEmpty
         ? Stack(
             fit: StackFit.expand,
@@ -88,11 +97,18 @@ class ContactAvatar extends StatelessWidget {
               fallback,
               if (isFileUri || isLocalPath)
                 Image.file(
-                  File(isFileUri ? Uri.parse(normalizedUrl).toFilePath(windows: Platform.isWindows) : normalizedUrl),
+                  File(
+                    isFileUri
+                        ? Uri.parse(
+                            normalizedUrl,
+                          ).toFilePath(windows: Platform.isWindows)
+                        : normalizedUrl,
+                  ),
                   width: size,
                   height: size,
                   fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) => const SizedBox.shrink(),
+                  errorBuilder: (context, error, stackTrace) =>
+                      const SizedBox.shrink(),
                 )
               else
                 Image.network(
@@ -100,16 +116,15 @@ class ContactAvatar extends StatelessWidget {
                   width: size,
                   height: size,
                   fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) => const SizedBox.shrink(),
+                  errorBuilder: (context, error, stackTrace) =>
+                      const SizedBox.shrink(),
                 ),
             ],
           )
         : fallback;
 
     // 统一做形状裁剪，保证网络图/文字头像在任何情况下都不会溢出容器。
-    final clippedChild = _clipByShape(
-      child: content,
-    );
+    final clippedChild = _clipByShape(child: content);
 
     // 外层负责尺寸、背景与边框；内部 child 只负责内容。
     return SizedBox(
@@ -118,7 +133,9 @@ class ContactAvatar extends StatelessWidget {
       child: DecoratedBox(
         decoration: BoxDecoration(
           color: colorScheme.background,
-          shape: shape == ContactAvatarShape.circle ? BoxShape.circle : BoxShape.rectangle,
+          shape: shape == ContactAvatarShape.circle
+              ? BoxShape.circle
+              : BoxShape.rectangle,
           borderRadius: shape == ContactAvatarShape.roundedRect
               ? (borderRadius ?? BorderRadius.circular(size * 0.25))
               : null,
@@ -183,7 +200,10 @@ String contactAvatarTextFromName(String? rawName) {
   final normalized = name.replaceAll(RegExp(r'\s+'), ' ');
 
   // “最后一个字”规则：优先以最后一个非空片段为候选（如 "Tom Hanks" 优先取 "Hanks"）。
-  final parts = normalized.split(' ').where((s) => s.trim().isNotEmpty).toList();
+  final parts = normalized
+      .split(' ')
+      .where((s) => s.trim().isNotEmpty)
+      .toList();
   final lastSegment = parts.isNotEmpty ? parts.last : normalized;
 
   final fromSegment = _extractAvatarTextFromSegment(lastSegment);
@@ -235,13 +255,34 @@ ContactAvatarColorScheme contactAvatarColorScheme(String avatarText) {
 
   // 调色板：前景色选择更深色，保证在浅背景上可读。
   const palette = <ContactAvatarColorScheme>[
-    ContactAvatarColorScheme(background: AppColors.indigo100, foreground: AppColors.indigo700),
-    ContactAvatarColorScheme(background: AppColors.blue100, foreground: AppColors.blue600),
-    ContactAvatarColorScheme(background: AppColors.green100, foreground: AppColors.green600),
-    ContactAvatarColorScheme(background: AppColors.purple100, foreground: AppColors.purple600),
-    ContactAvatarColorScheme(background: AppColors.pink100, foreground: AppColors.pink600),
-    ContactAvatarColorScheme(background: AppColors.orange100, foreground: AppColors.orange600),
-    ContactAvatarColorScheme(background: AppColors.red100, foreground: AppColors.red600),
+    ContactAvatarColorScheme(
+      background: AppColors.indigo100,
+      foreground: AppColors.indigo700,
+    ),
+    ContactAvatarColorScheme(
+      background: AppColors.blue100,
+      foreground: AppColors.blue600,
+    ),
+    ContactAvatarColorScheme(
+      background: AppColors.green100,
+      foreground: AppColors.green600,
+    ),
+    ContactAvatarColorScheme(
+      background: AppColors.purple100,
+      foreground: AppColors.purple600,
+    ),
+    ContactAvatarColorScheme(
+      background: AppColors.pink100,
+      foreground: AppColors.pink600,
+    ),
+    ContactAvatarColorScheme(
+      background: AppColors.orange100,
+      foreground: AppColors.orange600,
+    ),
+    ContactAvatarColorScheme(
+      background: AppColors.red100,
+      foreground: AppColors.red600,
+    ),
   ];
 
   final index = rune % palette.length;

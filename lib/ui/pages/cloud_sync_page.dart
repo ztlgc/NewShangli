@@ -598,23 +598,24 @@ class _CloudSyncPageState extends State<CloudSyncPage> {
   }
 
   Widget _buildStatusCard(bool isLoggedIn) {
+    final colors = context.appColors;
     return PrototypeCard(
       padding: const EdgeInsets.all(16),
-      border: Border.all(color: AppColors.indigo100, width: 1),
+      border: Border.all(color: colors.borderFocus, width: 1),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
             width: 44,
             height: 44,
-            decoration: const BoxDecoration(
-              color: AppColors.indigo50,
+            decoration: BoxDecoration(
+              color: colors.brandSoft,
               borderRadius: AppRadii.brXl,
             ),
             alignment: Alignment.center,
             child: FaIcon(
               FontAwesomeIcons.cloud,
-              color: isLoggedIn ? AppColors.indigo700 : AppColors.gray400,
+              color: isLoggedIn ? colors.brandOnSoft : colors.textMuted,
               size: 20,
             ),
           ),
@@ -631,7 +632,7 @@ class _CloudSyncPageState extends State<CloudSyncPage> {
                         style: AppTypography.base(
                           fontSize: AppTypography.fs16,
                           fontWeight: AppTypography.bold,
-                          color: AppColors.textPrimary,
+                          color: colors.textPrimary,
                         ),
                       ),
                     ),
@@ -663,8 +664,8 @@ class _CloudSyncPageState extends State<CloudSyncPage> {
                     fontSize: AppTypography.fs14,
                     fontWeight: AppTypography.regular,
                     color: isLoggedIn
-                        ? AppColors.textSecondary
-                        : AppColors.textTertiary,
+                        ? colors.textSecondary
+                        : colors.textTertiary,
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -798,7 +799,7 @@ class _CloudSyncPageState extends State<CloudSyncPage> {
               ),
               PrototypeIconButton(
                 icon: const FaIcon(FontAwesomeIcons.rotate, size: 14),
-                backgroundColor: AppColors.gray50,
+                backgroundColor: context.appColors.surfaceSubtle,
                 foregroundColor: AppColors.textSecondary,
                 onPressed: _isWorking || _backupVersionLoading || !isLoggedIn
                     ? null
@@ -879,12 +880,13 @@ class _CloudSyncPageState extends State<CloudSyncPage> {
     required VoidCallback? onTap,
     required bool isPrimary,
   }) {
+    final colors = context.appColors;
     final enabled = onTap != null;
-    final background = isPrimary ? AppColors.brandPrimary : AppColors.white;
-    final foreground = isPrimary ? AppColors.white : AppColors.textPrimary;
+    final background = isPrimary ? colors.brandPrimary : colors.surfaceCard;
+    final foreground = isPrimary ? colors.textInverse : colors.textPrimary;
     final mutedForeground = isPrimary
         ? AppColors.indigo100
-        : AppColors.textSecondary;
+        : colors.textSecondary;
 
     return Opacity(
       opacity: enabled ? 1 : 0.48,
@@ -896,9 +898,7 @@ class _CloudSyncPageState extends State<CloudSyncPage> {
             color: background,
             borderRadius: AppRadii.br2xl,
             border: Border.all(
-              color: isPrimary
-                  ? AppColors.brandPrimary
-                  : AppColors.borderSubtle,
+              color: isPrimary ? colors.brandPrimary : colors.borderSubtle,
               width: 1,
             ),
             boxShadow: isPrimary ? AppShadows.brandFab : AppShadows.sm,
@@ -909,13 +909,13 @@ class _CloudSyncPageState extends State<CloudSyncPage> {
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  color: isPrimary ? AppColors.white20 : AppColors.indigo50,
+                  color: isPrimary ? AppColors.white20 : colors.brandSoft,
                   borderRadius: AppRadii.brXl,
                 ),
                 alignment: Alignment.center,
                 child: FaIcon(
                   icon,
-                  color: isPrimary ? AppColors.white : AppColors.indigo700,
+                  color: isPrimary ? colors.textInverse : colors.brandOnSoft,
                   size: 18,
                 ),
               ),
@@ -948,7 +948,7 @@ class _CloudSyncPageState extends State<CloudSyncPage> {
               ),
               FaIcon(
                 FontAwesomeIcons.chevronRight,
-                color: isPrimary ? AppColors.white20 : AppColors.textTertiary,
+                color: isPrimary ? AppColors.white20 : colors.textTertiary,
                 size: 12,
               ),
             ],
@@ -959,6 +959,7 @@ class _CloudSyncPageState extends State<CloudSyncPage> {
   }
 
   Widget _buildSyncScopeCard() {
+    final colors = context.appColors;
     return PrototypeCard(
       padding: const EdgeInsets.all(14),
       child: Row(
@@ -967,14 +968,14 @@ class _CloudSyncPageState extends State<CloudSyncPage> {
           Container(
             width: 36,
             height: 36,
-            decoration: const BoxDecoration(
-              color: AppColors.orange50,
+            decoration: BoxDecoration(
+              color: colors.orangeSoft,
               borderRadius: AppRadii.brLg,
             ),
             alignment: Alignment.center,
-            child: const FaIcon(
+            child: FaIcon(
               FontAwesomeIcons.circleInfo,
-              color: AppColors.orange600,
+              color: colors.orangeAccent,
               size: 16,
             ),
           ),
@@ -988,7 +989,7 @@ class _CloudSyncPageState extends State<CloudSyncPage> {
                   style: AppTypography.base(
                     fontSize: AppTypography.fs14,
                     fontWeight: AppTypography.semibold,
-                    color: AppColors.textPrimary,
+                    color: colors.textPrimary,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -997,7 +998,7 @@ class _CloudSyncPageState extends State<CloudSyncPage> {
                   style: AppTypography.base(
                     fontSize: AppTypography.fs12,
                     fontWeight: AppTypography.regular,
-                    color: AppColors.textSecondary,
+                    color: colors.textSecondary,
                     height: 1.45,
                   ),
                 ),
@@ -1012,7 +1013,7 @@ class _CloudSyncPageState extends State<CloudSyncPage> {
   Widget _buildLogPanel() {
     return Container(
       height: 240,
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: AppColors.gray900,
         borderRadius: AppRadii.brXl,
         boxShadow: AppShadows.sm,
@@ -1174,8 +1175,8 @@ class _MiniMetric extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: const BoxDecoration(
-        color: AppColors.gray50,
+      decoration: BoxDecoration(
+        color: context.appColors.surfaceSubtle,
         borderRadius: AppRadii.brLg,
       ),
       child: Column(
@@ -1225,22 +1226,26 @@ class _CountSummaryTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.appColors;
     return Container(
       padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(color: background, borderRadius: AppRadii.brXl),
+      decoration: BoxDecoration(
+        color: colors.softFor(background),
+        borderRadius: AppRadii.brXl,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              FaIcon(icon, size: 14, color: foreground),
+              FaIcon(icon, size: 14, color: colors.foregroundFor(foreground)),
               const Spacer(),
               Text(
                 title,
                 style: AppTypography.base(
                   fontSize: AppTypography.fs12,
                   fontWeight: AppTypography.medium,
-                  color: foreground,
+                  color: colors.foregroundFor(foreground),
                 ),
               ),
             ],
@@ -1253,7 +1258,7 @@ class _CountSummaryTile extends StatelessWidget {
             style: AppTypography.base(
               fontSize: AppTypography.fs24,
               fontWeight: AppTypography.bold,
-              color: AppColors.textPrimary,
+              color: colors.textPrimary,
             ),
           ),
           const SizedBox(height: 2),
@@ -1264,7 +1269,7 @@ class _CountSummaryTile extends StatelessWidget {
             style: AppTypography.base(
               fontSize: AppTypography.fs12,
               fontWeight: AppTypography.regular,
-              color: AppColors.textSecondary,
+              color: colors.textSecondary,
             ),
           ),
         ],
@@ -1410,9 +1415,9 @@ class _BackupVersionRow extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppColors.gray50,
+        color: context.appColors.surfaceSubtle,
         borderRadius: AppRadii.brLg,
-        border: Border.all(color: AppColors.gray100),
+        border: Border.all(color: context.appColors.borderSubtle),
       ),
       child: Row(
         children: [
@@ -1454,7 +1459,7 @@ class _BackupVersionRow extends StatelessWidget {
             label: '恢复',
             background: AppColors.white,
             foreground: AppColors.indigo700,
-            border: Border.all(color: AppColors.indigo200),
+            border: Border.all(color: context.appColors.borderFocus),
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             onPressed: onRestore,
           ),

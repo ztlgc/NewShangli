@@ -72,6 +72,7 @@ class _EditProtectionPasswordDialogState
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.appColors;
     return Dialog(
       backgroundColor: Colors.transparent,
       elevation: 0,
@@ -81,9 +82,9 @@ class _EditProtectionPasswordDialogState
         child: Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: AppColors.white,
+            color: colors.surfaceCard,
             borderRadius: AppRadii.br2xl,
-            border: Border.all(color: AppColors.gray100),
+            border: Border.all(color: colors.borderSubtle),
             boxShadow: AppShadows.lg,
           ),
           child: Column(
@@ -95,15 +96,15 @@ class _EditProtectionPasswordDialogState
                   Container(
                     width: 40,
                     height: 40,
-                    decoration: const BoxDecoration(
-                      color: AppColors.indigo50,
+                    decoration: BoxDecoration(
+                      color: colors.brandSoft,
                       borderRadius: AppRadii.brXl,
                     ),
                     alignment: Alignment.center,
-                    child: const FaIcon(
+                    child: FaIcon(
                       FontAwesomeIcons.lock,
                       size: 16,
-                      color: AppColors.indigo700,
+                      color: colors.brandOnSoft,
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -118,7 +119,7 @@ class _EditProtectionPasswordDialogState
                           style: AppTypography.base(
                             fontSize: AppTypography.fs18,
                             fontWeight: AppTypography.bold,
-                            color: AppColors.textPrimary,
+                            color: colors.textPrimary,
                           ),
                         ),
                         const SizedBox(height: 2),
@@ -127,7 +128,7 @@ class _EditProtectionPasswordDialogState
                           style: AppTypography.base(
                             fontSize: AppTypography.fs12,
                             fontWeight: AppTypography.regular,
-                            color: AppColors.textTertiary,
+                            color: colors.textTertiary,
                           ),
                         ),
                       ],
@@ -145,14 +146,14 @@ class _EditProtectionPasswordDialogState
                 style: AppTypography.base(
                   fontSize: AppTypography.fs16,
                   fontWeight: AppTypography.medium,
-                  color: AppColors.textPrimary,
+                  color: colors.textPrimary,
                 ),
                 decoration: InputDecoration(
                   hintText: '请输入编辑密码',
                   hintStyle: AppTypography.base(
                     fontSize: AppTypography.fs14,
                     fontWeight: AppTypography.regular,
-                    color: AppColors.textMuted,
+                    color: colors.textMuted,
                   ),
                   prefixIcon: const Padding(
                     padding: EdgeInsets.only(left: 14, right: 10),
@@ -172,21 +173,21 @@ class _EditProtectionPasswordDialogState
                       size: 15,
                     ),
                   ),
-                  suffixIconColor: AppColors.textTertiary,
+                  suffixIconColor: colors.textTertiary,
                   filled: true,
-                  fillColor: AppColors.gray50,
+                  fillColor: colors.surfaceSubtle,
                   contentPadding: const EdgeInsets.symmetric(
                     horizontal: 14,
                     vertical: 14,
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: AppRadii.brXl,
-                    borderSide: const BorderSide(color: AppColors.gray200),
+                    borderSide: BorderSide(color: colors.borderDefault),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: AppRadii.brXl,
-                    borderSide: const BorderSide(
-                      color: AppColors.indigo600,
+                    borderSide: BorderSide(
+                      color: colors.borderFocus,
                       width: 1.4,
                     ),
                   ),
@@ -237,12 +238,15 @@ class _DialogActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.appColors;
     return PressableScale(
       onTap: onTap,
       child: Container(
         height: 44,
         decoration: BoxDecoration(
-          color: background,
+          color: background == AppColors.brandPrimary
+              ? colors.brandPrimary
+              : colors.surfaceFor(background),
           borderRadius: AppRadii.brXl,
         ),
         alignment: Alignment.center,
@@ -251,7 +255,9 @@ class _DialogActionButton extends StatelessWidget {
           style: AppTypography.base(
             fontSize: AppTypography.fs14,
             fontWeight: AppTypography.semibold,
-            color: foreground,
+            color: foreground == AppColors.white
+                ? colors.textInverse
+                : colors.foregroundFor(foreground),
           ),
         ),
       ),

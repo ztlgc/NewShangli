@@ -271,6 +271,7 @@ class _CanvasBody extends StatelessWidget {
   Widget build(BuildContext context) {
     final trimmed = keyword.trim();
     final isSearching = trimmed.isNotEmpty;
+    final colors = context.appColors;
 
     // 构建 AzListView 所需的数据
     final contactItems = _buildContactItems(personDataList);
@@ -279,8 +280,8 @@ class _CanvasBody extends StatelessWidget {
     // 搜索过滤
     final filtered = isSearching
         ? personDataList
-            .where((p) => _matchesPersonKeyword(p, trimmed))
-            .toList()
+              .where((p) => _matchesPersonKeyword(p, trimmed))
+              .toList()
         : null;
 
     return Column(
@@ -288,15 +289,21 @@ class _CanvasBody extends StatelessWidget {
         // 顶部标题栏
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: const BoxDecoration(
-            color: AppColors.white,
+          decoration: BoxDecoration(
+            color: colors.surfaceCard,
             border: Border(
-              bottom: BorderSide(color: AppColors.gray100, width: 1),
+              bottom: BorderSide(color: colors.borderDivider, width: 1),
             ),
           ),
           child: Row(
             children: [
-              Text('关系人', style: AppTypography.h2().copyWith(fontSize: 20)),
+              Text(
+                '关系人',
+                style: AppTypography.h2().copyWith(
+                  fontSize: 20,
+                  color: colors.textPrimary,
+                ),
+              ),
               const Spacer(),
               if (multiSelectMode)
                 PressableScale(
@@ -306,14 +313,14 @@ class _CanvasBody extends StatelessWidget {
                     style: AppTypography.base(
                       fontSize: 14,
                       fontWeight: AppTypography.medium,
-                      color: AppColors.textSecondary,
+                      color: colors.textSecondary,
                     ),
                   ),
                 )
               else
                 PrototypeIconButton(
                   icon: const FaIcon(FontAwesomeIcons.userPlus, size: 16),
-                  backgroundColor: AppColors.gray100,
+                  backgroundColor: context.appColors.surfaceSubtle,
                   foregroundColor: AppColors.textSecondary,
                   onPressed: () => AppNav.push(
                     context,
@@ -435,14 +442,14 @@ class _AzContactList extends StatelessWidget {
         textStyle: AppTypography.base(
           fontSize: 10,
           fontWeight: AppTypography.medium,
-          color: AppColors.textMuted,
+          color: context.appColors.textMuted,
         ),
         downTextStyle: AppTypography.base(
           fontSize: 10,
           fontWeight: AppTypography.medium,
           color: AppColors.white,
         ),
-        downItemDecoration: const BoxDecoration(
+        downItemDecoration: BoxDecoration(
           shape: BoxShape.circle,
           color: AppColors.indigo600,
         ),
@@ -612,9 +619,10 @@ class _SusHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.appColors;
     return Container(
       height: _headerHeight,
-      color: AppColors.gray50,
+      color: colors.surfaceApp,
       padding: const EdgeInsets.symmetric(horizontal: 16),
       alignment: Alignment.centerLeft,
       child: Text(
@@ -622,7 +630,7 @@ class _SusHeader extends StatelessWidget {
         style: AppTypography.base(
           fontSize: 12,
           fontWeight: AppTypography.bold,
-          color: AppColors.textTertiary,
+          color: colors.textTertiary,
         ),
       ),
     );
@@ -701,6 +709,7 @@ class _PersonRowState extends State<_PersonRow> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.appColors;
     final avatarOverlay = IgnorePointer(
       ignoring: !widget.multiSelectMode,
       child: AnimatedOpacity(
@@ -724,16 +733,13 @@ class _PersonRowState extends State<_PersonRow> {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
         curve: Curves.easeInOut,
-        color: _pressed ? AppColors.gray50 : Colors.transparent,
+        color: _pressed ? colors.surfacePressed : Colors.transparent,
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
             border: widget.borderBottom
-                ? const Border(
-                    bottom: BorderSide(
-                      color: AppColors.borderDivider,
-                      width: 1,
-                    ),
+                ? Border(
+                    bottom: BorderSide(color: colors.borderDivider, width: 1),
                   )
                 : null,
           ),
@@ -768,9 +774,10 @@ class _AvatarSelectionCheckbox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.appColors;
     final backgroundColor = selected
-        ? AppColors.brandPrimary
-        : AppColors.gray500.withValues(alpha: 0.2);
+        ? colors.brandPrimary
+        : colors.textTertiary.withValues(alpha: 0.32);
     return Semantics(
       checked: selected,
       button: true,
@@ -784,7 +791,7 @@ class _AvatarSelectionCheckbox extends StatelessWidget {
           decoration: BoxDecoration(
             color: backgroundColor,
             shape: BoxShape.circle,
-            border: Border.all(color: AppColors.white, width: 2),
+            border: Border.all(color: colors.surfaceCard, width: 2),
             boxShadow: AppShadows.sm,
           ),
           alignment: Alignment.center,
@@ -820,15 +827,14 @@ class _MultiSelectActionBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.appColors;
     final bottomInset = MediaQuery.paddingOf(context).bottom;
     final canDelete = selectedCount > 0;
     return Container(
       height: _CanvasState._multiSelectBarHeight + bottomInset,
       decoration: BoxDecoration(
-        color: AppColors.white,
-        border: const Border(
-          top: BorderSide(color: AppColors.borderDefault, width: 1),
-        ),
+        color: colors.surfaceCard,
+        border: Border(top: BorderSide(color: colors.borderDefault, width: 1)),
         boxShadow: AppShadows.sm,
       ),
       child: Padding(
@@ -845,7 +851,7 @@ class _MultiSelectActionBar extends StatelessWidget {
                     vertical: 8,
                   ),
                   decoration: BoxDecoration(
-                    color: AppColors.gray100,
+                    color: colors.surfaceSubtle,
                     borderRadius: BorderRadius.circular(999),
                   ),
                   child: Text(
@@ -853,7 +859,7 @@ class _MultiSelectActionBar extends StatelessWidget {
                     style: AppTypography.base(
                       fontSize: 13,
                       fontWeight: AppTypography.medium,
-                      color: AppColors.textSecondary,
+                      color: colors.textSecondary,
                     ),
                   ),
                 ),
@@ -867,7 +873,7 @@ class _MultiSelectActionBar extends StatelessWidget {
                   style: AppTypography.base(
                     fontSize: 15,
                     fontWeight: AppTypography.medium,
-                    color: AppColors.textPrimary,
+                    color: colors.textPrimary,
                   ),
                 ),
               ),
@@ -880,8 +886,8 @@ class _MultiSelectActionBar extends StatelessWidget {
                   ),
                   decoration: BoxDecoration(
                     color: canDelete
-                        ? AppColors.stateDanger
-                        : AppColors.gray200,
+                        ? colors.stateDanger
+                        : colors.surfaceDisabled,
                     borderRadius: BorderRadius.circular(999),
                   ),
                   child: Text(

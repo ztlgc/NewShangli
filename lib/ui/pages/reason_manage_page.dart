@@ -64,26 +64,37 @@ class _CanvasState extends State<_Canvas> {
       children: [
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: const BoxDecoration(
-            color: AppColors.white,
-            border: Border(bottom: BorderSide(color: AppColors.gray100, width: 1)),
+          decoration: BoxDecoration(
+            color: context.appColors.surfaceCard,
+            border: Border(
+              bottom: BorderSide(
+                color: context.appColors.surfaceSubtle,
+                width: 1,
+              ),
+            ),
           ),
           child: Row(
             children: [
               PrototypeIconButton(
                 icon: const FaIcon(FontAwesomeIcons.chevronLeft, size: 14),
-                backgroundColor: AppColors.gray100,
+                backgroundColor: context.appColors.surfaceSubtle,
                 foregroundColor: AppColors.textSecondary,
                 onPressed: () => AppNav.pop(context),
                 radius: 12,
               ),
               const SizedBox(width: 12),
-              Expanded(child: Text('事由管理', style: AppTypography.h2().copyWith(fontSize: 20))),
+              Expanded(
+                child: Text(
+                  '事由管理',
+                  style: AppTypography.h2().copyWith(fontSize: 20),
+                ),
+              ),
               PrototypeIconButton(
                 icon: const FaIcon(FontAwesomeIcons.plus, size: 16),
-                backgroundColor: AppColors.gray100,
+                backgroundColor: context.appColors.surfaceSubtle,
                 foregroundColor: AppColors.textSecondary,
-                onPressed: () => AppNav.push(context, const ReasonDetailPage.create()),
+                onPressed: () =>
+                    AppNav.push(context, const ReasonDetailPage.create()),
                 radius: 12,
               ),
             ],
@@ -94,7 +105,9 @@ class _CanvasState extends State<_Canvas> {
             stream: db.reasonsDao.watchAll(),
             builder: (context, snapshot) {
               final reasons = snapshot.data ?? const <Reason>[];
-              final showCount = reasons.length < _visibleCount ? reasons.length : _visibleCount;
+              final showCount = reasons.length < _visibleCount
+                  ? reasons.length
+                  : _visibleCount;
               return ListView(
                 controller: _controller,
                 physics: const BouncingScrollPhysics(),
@@ -121,9 +134,16 @@ class _CanvasState extends State<_Canvas> {
                             _ReasonRow(
                               reason: reasons[i],
                               borderBottom: i != showCount - 1,
-                              onTap: () => AppNav.push(context, ReasonDetailPage(id: reasons[i].reasonId)),
-                              onToggleEnabled: (v) => db.reasonsDao.setEnabled(id: reasons[i].reasonId, enabled: v),
-                              onLongPress: () => _confirmDelete(context, db, reasons[i]),
+                              onTap: () => AppNav.push(
+                                context,
+                                ReasonDetailPage(id: reasons[i].reasonId),
+                              ),
+                              onToggleEnabled: (v) => db.reasonsDao.setEnabled(
+                                id: reasons[i].reasonId,
+                                enabled: v,
+                              ),
+                              onLongPress: () =>
+                                  _confirmDelete(context, db, reasons[i]),
                             ),
                         if (showCount < reasons.length)
                           Padding(
@@ -151,7 +171,11 @@ class _CanvasState extends State<_Canvas> {
     );
   }
 
-  Future<void> _confirmDelete(BuildContext context, AppDatabase db, Reason reason) async {
+  Future<void> _confirmDelete(
+    BuildContext context,
+    AppDatabase db,
+    Reason reason,
+  ) async {
     final ok = await showDialog<bool>(
       context: context,
       builder: (context) {
@@ -159,8 +183,14 @@ class _CanvasState extends State<_Canvas> {
           title: const Text('删除事由'),
           content: Text('确认删除「${reason.name}」？'),
           actions: [
-            TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('取消')),
-            TextButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('删除')),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('取消'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('删除'),
+            ),
           ],
         );
       },
@@ -169,10 +199,14 @@ class _CanvasState extends State<_Canvas> {
     try {
       await db.reasonsDao.deleteById(reason.reasonId);
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('已删除')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('已删除')));
     } catch (e) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('删除失败：$e')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('删除失败：$e')));
     }
   }
 }
@@ -194,6 +228,7 @@ class _ReasonRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.appColors;
     return PrototypePressableRow(
       onTap: onTap,
       onLongPress: onLongPress,
@@ -204,14 +239,14 @@ class _ReasonRow extends StatelessWidget {
             width: 32,
             height: 32,
             decoration: BoxDecoration(
-              color: reason.enabled ? AppColors.indigo50 : AppColors.gray100,
+              color: reason.enabled ? colors.brandSoft : colors.surfaceSubtle,
               borderRadius: BorderRadius.circular(8),
             ),
             alignment: Alignment.center,
             child: FaIcon(
               FontAwesomeIcons.tag,
               size: 14,
-              color: reason.enabled ? AppColors.indigo700 : AppColors.textMuted,
+              color: reason.enabled ? colors.brandOnSoft : colors.textMuted,
             ),
           ),
           const SizedBox(width: 12),
@@ -224,12 +259,17 @@ class _ReasonRow extends StatelessWidget {
                   style: AppTypography.base(
                     fontSize: 14,
                     fontWeight: AppTypography.medium,
-                    color: reason.enabled ? AppColors.textPrimary : AppColors.textMuted,
+                    color: reason.enabled
+                        ? AppColors.textPrimary
+                        : AppColors.textMuted,
                   ),
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  (reason.description == null || reason.description!.trim().isEmpty) ? '—' : reason.description!,
+                  (reason.description == null ||
+                          reason.description!.trim().isEmpty)
+                      ? '—'
+                      : reason.description!,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: AppTypography.base(
@@ -241,10 +281,7 @@ class _ReasonRow extends StatelessWidget {
               ],
             ),
           ),
-          Switch(
-            value: reason.enabled,
-            onChanged: onToggleEnabled,
-          ),
+          Switch(value: reason.enabled, onChanged: onToggleEnabled),
         ],
       ),
     );

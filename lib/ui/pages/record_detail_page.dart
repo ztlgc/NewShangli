@@ -123,10 +123,13 @@ class _CanvasState extends State<_Canvas> {
       children: [
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: const BoxDecoration(
-            color: AppColors.white,
+          decoration: BoxDecoration(
+            color: context.appColors.surfaceCard,
             border: Border(
-              bottom: BorderSide(color: AppColors.gray100, width: 1),
+              bottom: BorderSide(
+                color: context.appColors.surfaceSubtle,
+                width: 1,
+              ),
             ),
           ),
           child: Row(
@@ -206,10 +209,13 @@ class _CanvasState extends State<_Canvas> {
       children: [
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: const BoxDecoration(
-            color: AppColors.white,
+          decoration: BoxDecoration(
+            color: context.appColors.surfaceCard,
             border: Border(
-              bottom: BorderSide(color: AppColors.gray100, width: 1),
+              bottom: BorderSide(
+                color: context.appColors.surfaceSubtle,
+                width: 1,
+              ),
             ),
           ),
           child: Row(
@@ -235,9 +241,9 @@ class _CanvasState extends State<_Canvas> {
     final record = await db.giftRecordsDao.findById(widget.recordId);
     if (!mounted) return;
     if (record == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('记录不存在')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('记录不存在')));
       return;
     }
     final result = await FilePicker.platform.pickFiles(
@@ -261,14 +267,14 @@ class _CanvasState extends State<_Canvas> {
       );
       if (!mounted) return;
       _reloadRecord();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('已添加附件')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('已添加附件')));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('添加附件失败：$e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('添加附件失败：$e')));
     }
   }
 }
@@ -317,8 +323,8 @@ class _AmountSummaryCard extends StatelessWidget {
     final String pillLabel = isIncome ? '收入' : '支出';
 
     return Container(
-      decoration: const BoxDecoration(
-        color: AppColors.white,
+      decoration: BoxDecoration(
+        color: context.appColors.surfaceCard,
         borderRadius: AppRadii.br3xl,
         boxShadow: AppShadows.sm,
       ),
@@ -409,8 +415,8 @@ class _DetailInfoCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
-        color: AppColors.white,
+      decoration: BoxDecoration(
+        color: context.appColors.surfaceCard,
         borderRadius: AppRadii.br2xl,
         boxShadow: AppShadows.sm,
       ),
@@ -485,8 +491,8 @@ class _InfoRow extends StatelessWidget {
           Container(
             width: 40,
             height: 40,
-            decoration: const BoxDecoration(
-              color: AppColors.gray100,
+            decoration: BoxDecoration(
+              color: context.appColors.surfaceSubtle,
               shape: BoxShape.circle,
             ),
             alignment: Alignment.center,
@@ -572,10 +578,9 @@ class _EntityRemarksCardState extends State<_EntityRemarksCard> {
 
   Future<List<EntityRemark>> _load() async {
     final db = AppDatabaseScope.of(context);
-    return EntityRemarksStore(db).listByEntity(
-      entityType: widget.entityType,
-      entityId: widget.entityId,
-    );
+    return EntityRemarksStore(
+      db,
+    ).listByEntity(entityType: widget.entityType, entityId: widget.entityId);
   }
 
   void _reload() {
@@ -620,9 +625,9 @@ class _EntityRemarksCardState extends State<_EntityRemarksCard> {
     );
     if (!context.mounted) return;
     _reload();
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('备注已添加')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('备注已添加')));
   }
 
   @override
@@ -648,11 +653,16 @@ class _EntityRemarksCardState extends State<_EntityRemarksCard> {
               PressableScale(
                 onTap: () => _addRemark(context, db),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
-                    color: AppColors.gray50,
+                    color: context.appColors.surfaceSubtle,
                     borderRadius: BorderRadius.circular(999),
-                    border: Border.all(color: AppColors.gray200),
+                    border: Border.all(
+                      color: context.appColors.surfaceDisabled,
+                    ),
                   ),
                   child: Text(
                     '新增',
@@ -713,9 +723,9 @@ class _RemarkRow extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppColors.gray50,
+        color: context.appColors.surfaceSubtle,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.gray100),
+        border: Border.all(color: context.appColors.borderSubtle),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -784,9 +794,9 @@ class _AttachmentRow extends StatelessWidget {
             width: 96,
             height: 96,
             decoration: BoxDecoration(
-              color: AppColors.gray50,
+              color: context.appColors.surfaceSubtle,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.gray200),
+              border: Border.all(color: context.appColors.borderDefault),
             ),
             alignment: Alignment.center,
             child: const FaIcon(FontAwesomeIcons.plus, size: 18),
@@ -797,7 +807,7 @@ class _AttachmentRow extends StatelessWidget {
             width: 96,
             height: 96,
             decoration: BoxDecoration(
-              color: AppColors.gray200,
+              color: context.appColors.surfaceDisabled,
               borderRadius: BorderRadius.circular(16),
             ),
             clipBehavior: Clip.antiAlias,
@@ -806,7 +816,7 @@ class _AttachmentRow extends StatelessWidget {
               fit: BoxFit.cover,
               errorBuilder: (context, error, stackTrace) {
                 return Container(
-                  color: AppColors.gray100,
+                  color: context.appColors.surfaceSubtle,
                   alignment: Alignment.center,
                   child: const FaIcon(
                     FontAwesomeIcons.triangleExclamation,
@@ -878,9 +888,11 @@ class _BottomActions extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: const BoxDecoration(
-        color: AppColors.white,
-        border: Border(top: BorderSide(color: AppColors.gray100, width: 1)),
+      decoration: BoxDecoration(
+        color: context.appColors.surfaceCard,
+        border: Border(
+          top: BorderSide(color: context.appColors.borderDivider, width: 1),
+        ),
       ),
       child: Row(
         children: [
@@ -889,8 +901,8 @@ class _BottomActions extends StatelessWidget {
               onTap: () => _confirmDelete(context),
               child: Container(
                 height: 48,
-                decoration: const BoxDecoration(
-                  color: AppColors.gray50,
+                decoration: BoxDecoration(
+                  color: context.appColors.surfaceSubtle,
                   borderRadius: AppRadii.brXl,
                 ),
                 alignment: Alignment.center,
@@ -922,7 +934,7 @@ class _BottomActions extends StatelessWidget {
               onTap: () => _editRecord(context),
               child: Container(
                 height: 48,
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   color: AppColors.brandPrimary,
                   borderRadius: AppRadii.brXl,
                   boxShadow: AppShadows.brandSoft,

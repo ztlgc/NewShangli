@@ -1,9 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:dotted_border/dotted_border.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:file_picker/file_picker.dart';
@@ -14,6 +12,7 @@ import '../../import/data_import_service.dart';
 import '../../import/data_import_template_service.dart';
 import '../../import/default_book_service.dart';
 import '../../import/import_file_reader.dart';
+import '../app_database_scope.dart';
 import '../app_tokens.dart';
 import '../app_scaffold.dart';
 import '../components.dart';
@@ -44,16 +43,19 @@ class _Canvas extends StatefulWidget {
 }
 
 class _CanvasState extends State<_Canvas> {
-  late final AppDatabase _db;
-  late final DataImportService _importService;
-  final DataImportTemplateService _templateService = DataImportTemplateService();
+  late AppDatabase _db;
+  late DataImportService _importService;
+  final DataImportTemplateService _templateService =
+      DataImportTemplateService();
   final DefaultBookService _defaultBookService = DefaultBookService();
-  late final Future<String> _bookIdFuture;
+  late Future<String> _bookIdFuture;
+  bool _dbInitialized = false;
 
   PlatformFile? _picked;
   PlatformFile? _mediaZip;
   ImportPreview? _preview;
   bool _loadingPreview = false;
+  bool _startingImport = false;
 
   String? _jobId;
   DataImportRunHandle? _runHandle;
@@ -87,36 +89,42 @@ class _CanvasState extends State<_Canvas> {
   ];
 
   @override
-  void initState() {
-    super.initState();
-    _db = AppDatabase();
+  void dispose() {
+    _runHandle?.cancel();
+    _progressSub?.cancel();
+    super.dispose();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final scopedDb = AppDatabaseScope.of(context);
+    if (_dbInitialized && identical(_db, scopedDb)) return;
+    if (_dbInitialized) {
+      unawaited(_runHandle?.cancel());
+      unawaited(_progressSub?.cancel());
+    }
+    _db = scopedDb;
     _importService = DataImportService(db: _db);
     _bookIdFuture = widget.initialBookId == null
         ? _defaultBookService.ensureDefaultBookId(_db)
         : Future<String>.value(widget.initialBookId!);
-  }
-
-  @override
-  void dispose() {
-    _runHandle?.cancel();
-    _progressSub?.cancel();
-    _db.close();
-    super.dispose();
+    _dbInitialized = true;
   }
 
   Future<void> _pickFile() async {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
-      allowedExtensions: const <String>['xlsx'],
+      allowedExtensions: const <String>['xlsx', 'csv'],
       withData: false,
     );
     if (!mounted) return;
     if (result == null || result.files.isEmpty) return;
     final f = result.files.first;
     if (f.path == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('无法读取文件路径，请重试')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('无法读取文件路径，请重试')));
       return;
     }
 
@@ -177,6 +185,7 @@ class _CanvasState extends State<_Canvas> {
   Future<void> _downloadTemplate() async {
     final choice = await showModalBottomSheet<DataImportTemplateFormat>(
       context: context,
+      showDragHandle: true,
       builder: (context) {
         return SafeArea(
           child: Column(
@@ -185,7 +194,14 @@ class _CanvasState extends State<_Canvas> {
               ListTile(
                 leading: const FaIcon(FontAwesomeIcons.fileExcel, size: 18),
                 title: const Text('Excel 模板 (.xlsx)'),
-                onTap: () => Navigator.of(context).pop(DataImportTemplateFormat.xlsx),
+                onTap: () =>
+                    Navigator.of(context).pop(DataImportTemplateFormat.xlsx),
+              ),
+              ListTile(
+                leading: const FaIcon(FontAwesomeIcons.fileCsv, size: 18),
+                title: const Text('CSV 模板 (.csv)'),
+                onTap: () =>
+                    Navigator.of(context).pop(DataImportTemplateFormat.csv),
               ),
             ],
           ),
@@ -197,12 +213,14 @@ class _CanvasState extends State<_Canvas> {
     try {
       final file = await _templateService.generateTemplate(format: choice);
       if (!mounted) return;
-      await Share.shareXFiles([XFile(file.path)], text: '尚礼导入模板');
+      await SharePlus.instance.share(
+        ShareParams(files: [XFile(file.path)], text: '尚礼导入模板'),
+      );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('模板生成失败：$e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('模板生成失败：$e')));
     }
   }
 
@@ -217,7 +235,10 @@ class _CanvasState extends State<_Canvas> {
           child: SizedBox(
             height: MediaQuery.sizeOf(context).height * 0.7,
             child: StreamBuilder<List<DataImportJob>>(
-              stream: _db.dataImportJobsDao.watchRecentInBook(bookId, limit: 50),
+              stream: _db.dataImportJobsDao.watchRecentInBook(
+                bookId,
+                limit: 50,
+              ),
               builder: (context, snapshot) {
                 final list = snapshot.data ?? const <DataImportJob>[];
                 if (list.isEmpty) {
@@ -225,7 +246,8 @@ class _CanvasState extends State<_Canvas> {
                 }
                 return ListView.separated(
                   itemCount: list.length,
-                  separatorBuilder: (_, __) => const Divider(height: 1),
+                  separatorBuilder: (context, index) =>
+                      const Divider(height: 1),
                   itemBuilder: (context, i) {
                     final job = list[i];
                     return ListTile(
@@ -233,7 +255,9 @@ class _CanvasState extends State<_Canvas> {
                       subtitle: Text(
                         '状态：${job.status}  成功：${job.successRows}  跳过：${job.skippedRows}  失败：${job.failedRows}',
                       ),
-                      trailing: (job.status == DataImportStatus.paused.name || job.status == DataImportStatus.failed.name)
+                      trailing:
+                          (job.status == DataImportStatus.paused.name ||
+                              job.status == DataImportStatus.failed.name)
                           ? TextButton(
                               onPressed: () async {
                                 Navigator.of(context).pop();
@@ -254,9 +278,11 @@ class _CanvasState extends State<_Canvas> {
   }
 
   Future<void> _startNewJob() async {
+    if (_isImportBusy) return;
     if (_picked?.path == null) return;
     final bookId = await _bookIdFuture;
     if (!mounted) return;
+    setState(() => _startingImport = true);
     try {
       final jobId = await _importService.createJob(
         bookId: bookId,
@@ -269,6 +295,10 @@ class _CanvasState extends State<_Canvas> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _errors.add(e.toString()));
+    } finally {
+      if (mounted) {
+        setState(() => _startingImport = false);
+      }
     }
   }
 
@@ -283,22 +313,36 @@ class _CanvasState extends State<_Canvas> {
       _errors.clear();
     });
 
-    final handle = await _importService.start(jobId);
-    _runHandle = handle;
-    _progressSub = handle.progress.listen(
-      (p) async {
-        if (!mounted) return;
-        setState(() => _progress = p);
-        if (p.status == DataImportStatus.completed) {
-          await _bookIdFuture;
-        }
-        await _refreshLogTail();
-      },
-      onError: (e) {
-        if (!mounted) return;
-        setState(() => _errors.add(e.toString()));
-      },
-    );
+    try {
+      final handle = await _importService.start(jobId);
+      if (!mounted) return;
+      setState(() => _runHandle = handle);
+      _progressSub = handle.progress.listen(
+        (p) async {
+          if (!mounted) return;
+          setState(() {
+            _progress = p;
+            if (_isTerminalStatus(p.status)) {
+              _runHandle = null;
+            }
+          });
+          if (p.status == DataImportStatus.completed) {
+            await _bookIdFuture;
+          }
+          await _refreshLogTail();
+        },
+        onError: (e) {
+          if (!mounted) return;
+          setState(() {
+            _runHandle = null;
+            _errors.add(e.toString());
+          });
+        },
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _errors.add(e.toString()));
+    }
   }
 
   Future<void> _refreshLogTail() async {
@@ -311,10 +355,40 @@ class _CanvasState extends State<_Canvas> {
       final f = File(path);
       if (!await f.exists()) return;
       final lines = await f.readAsLines();
-      final tail = lines.length <= 60 ? lines : lines.sublist(lines.length - 60);
+      final tail = lines.length <= 60
+          ? lines
+          : lines.sublist(lines.length - 60);
       if (!mounted) return;
       setState(() => _logTail = tail.join('\n'));
     } catch (_) {}
+  }
+
+  bool get _isImportRunning => _progress?.status == DataImportStatus.running;
+
+  bool get _isImportBusy =>
+      _startingImport || _runHandle != null || _isImportRunning;
+
+  bool _isTerminalStatus(DataImportStatus status) {
+    return status == DataImportStatus.completed ||
+        status == DataImportStatus.failed ||
+        status == DataImportStatus.canceled;
+  }
+
+  String _statusLabel(DataImportStatus status) {
+    switch (status) {
+      case DataImportStatus.pending:
+        return '等待中';
+      case DataImportStatus.running:
+        return '导入中';
+      case DataImportStatus.paused:
+        return '已暂停';
+      case DataImportStatus.completed:
+        return '已完成';
+      case DataImportStatus.failed:
+        return '失败';
+      case DataImportStatus.canceled:
+        return '已取消';
+    }
   }
 
   @override
@@ -323,9 +397,14 @@ class _CanvasState extends State<_Canvas> {
       children: [
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: const BoxDecoration(
-            color: AppColors.white,
-            border: Border(bottom: BorderSide(color: AppColors.gray100, width: 1)),
+          decoration: BoxDecoration(
+            color: context.appColors.surfaceCard,
+            border: Border(
+              bottom: BorderSide(
+                color: context.appColors.surfaceSubtle,
+                width: 1,
+              ),
+            ),
           ),
           child: Row(
             children: [
@@ -364,6 +443,8 @@ class _CanvasState extends State<_Canvas> {
                     _UploadArea(
                       fileName: _picked?.name,
                       loading: _loadingPreview,
+                      emptyLabel: '点击选择 Excel 或 CSV 文件',
+                      helperText: '支持 Excel (.xlsx) 或 CSV (.csv) 格式。',
                       onTap: _loadingPreview ? null : _pickFile,
                     ),
                     const SizedBox(height: 12),
@@ -460,7 +541,7 @@ class _CanvasState extends State<_Canvas> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            '状态：${_progress!.status.name}',
+                            '状态：${_statusLabel(_progress!.status)}',
                             style: AppTypography.base(
                               fontSize: AppTypography.fs14,
                               fontWeight: AppTypography.medium,
@@ -471,7 +552,7 @@ class _CanvasState extends State<_Canvas> {
                           LinearProgressIndicator(
                             value: null,
                             minHeight: 6,
-                            backgroundColor: AppColors.gray100,
+                            backgroundColor: context.appColors.surfaceSubtle,
                             color: AppColors.indigo600,
                           ),
                           const SizedBox(height: 8),
@@ -490,19 +571,29 @@ class _CanvasState extends State<_Canvas> {
                       children: [
                         Expanded(
                           child: PrototypePrimaryButton(
-                            label: '开始导入',
+                            label: _progress?.status == DataImportStatus.paused
+                                ? '已暂停'
+                                : (_isImportBusy ? '导入中...' : '开始导入'),
                             icon: FontAwesomeIcons.play,
-                            onTap: (_preview == null || _picked?.path == null) ? null : _startNewJob,
+                            onTap:
+                                (_preview == null ||
+                                    _picked?.path == null ||
+                                    _isImportBusy)
+                                ? null
+                                : _startNewJob,
                           ),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
                           child: PrototypeSecondaryButton(
-                            label: _progress?.status == DataImportStatus.running ? '暂停' : '取消',
+                            label: _progress?.status == DataImportStatus.running
+                                ? '暂停'
+                                : '取消',
                             onTap: _runHandle == null
                                 ? null
                                 : () async {
-                                    if (_progress?.status == DataImportStatus.running) {
+                                    if (_progress?.status ==
+                                        DataImportStatus.running) {
                                       await _runHandle!.pause();
                                       return;
                                     }
@@ -516,6 +607,8 @@ class _CanvasState extends State<_Canvas> {
                     _UploadArea(
                       fileName: _mediaZip?.name,
                       loading: false,
+                      emptyLabel: '选择媒体 ZIP 文件（可选）',
+                      helperText: '用于恢复头像和附件，支持 ZIP (.zip) 格式。',
                       onTap: _pickMediaZip,
                     ),
                   ],
@@ -577,11 +670,15 @@ class _UploadArea extends StatelessWidget {
   const _UploadArea({
     required this.fileName,
     required this.loading,
+    required this.emptyLabel,
+    required this.helperText,
     required this.onTap,
   });
 
   final String? fileName;
   final bool loading;
+  final String emptyLabel;
+  final String helperText;
   final VoidCallback? onTap;
 
   @override
@@ -589,9 +686,9 @@ class _UploadArea extends StatelessWidget {
     return PressableScale(
       onTap: onTap,
       child: DottedBorder(
-        options: const RoundedRectDottedBorderOptions(
+        options: RoundedRectDottedBorderOptions(
           radius: Radius.circular(16),
-          color: AppColors.gray200,
+          color: context.appColors.borderDefault,
           strokeWidth: 1.5,
           dashPattern: <double>[6, 4],
           padding: EdgeInsets.zero,
@@ -600,7 +697,7 @@ class _UploadArea extends StatelessWidget {
           width: double.infinity,
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: AppColors.gray50,
+            color: context.appColors.surfaceSubtle,
             borderRadius: BorderRadius.circular(16),
           ),
           child: Row(
@@ -608,8 +705,8 @@ class _UploadArea extends StatelessWidget {
               Container(
                 width: 44,
                 height: 44,
-                decoration: const BoxDecoration(
-                  color: AppColors.indigo50,
+                decoration: BoxDecoration(
+                  color: context.appColors.brandSoft,
                   shape: BoxShape.circle,
                 ),
                 alignment: Alignment.center,
@@ -619,10 +716,10 @@ class _UploadArea extends StatelessWidget {
                         height: 18,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : const FaIcon(
+                    : FaIcon(
                         FontAwesomeIcons.fileArrowUp,
                         size: 18,
-                        color: AppColors.indigo700,
+                        color: context.appColors.brandOnSoft,
                       ),
               ),
               const SizedBox(width: 12),
@@ -631,7 +728,9 @@ class _UploadArea extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      fileName == null ? '点击选择 Excel 文件' : fileName!,
+                      fileName == null ? emptyLabel : fileName!,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: AppTypography.base(
                         fontSize: 14,
                         fontWeight: AppTypography.semibold,
@@ -640,7 +739,7 @@ class _UploadArea extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '支持 Excel (.xlsx) 格式。',
+                      helperText,
                       style: AppTypography.base(
                         fontSize: AppTypography.fs12,
                         fontWeight: AppTypography.regular,
@@ -651,7 +750,11 @@ class _UploadArea extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              const FaIcon(FontAwesomeIcons.chevronRight, size: 14, color: AppColors.textTertiary),
+              const FaIcon(
+                FontAwesomeIcons.chevronRight,
+                size: 14,
+                color: AppColors.textTertiary,
+              ),
             ],
           ),
         ),
@@ -717,12 +820,15 @@ class _MappingPanel extends StatelessWidget {
                   width: 180,
                   child: DropdownButtonFormField<String?>(
                     isExpanded: true,
-                    value: mapping[f],
+                    initialValue: mapping[f],
                     items: items,
                     onChanged: (v) => onChanged(f, v),
                     decoration: const InputDecoration(
                       isDense: true,
-                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
                       border: OutlineInputBorder(),
                     ),
                   ),
@@ -736,10 +842,7 @@ class _MappingPanel extends StatelessWidget {
 }
 
 class _PreviewTable extends StatelessWidget {
-  const _PreviewTable({
-    required this.headers,
-    required this.rows,
-  });
+  const _PreviewTable({required this.headers, required this.rows});
 
   final List<String> headers;
   final List<List<String>> rows;
@@ -762,9 +865,7 @@ class _PreviewTable extends StatelessWidget {
           fontWeight: AppTypography.regular,
           color: AppColors.textSecondary,
         ),
-        columns: [
-          for (final h in showHeaders) DataColumn(label: Text(h)),
-        ],
+        columns: [for (final h in showHeaders) DataColumn(label: Text(h))],
         rows: [
           for (final r in showRows)
             DataRow(

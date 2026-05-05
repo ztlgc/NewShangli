@@ -401,6 +401,7 @@ class _ImportRunner {
 
   Future<DataImportStatus> run() async {
     await _loadExistingPersons();
+    await _ensureMediaIndexLoaded();
     switch (_format) {
       case DataImportFormat.csv:
         return _runCsv();
@@ -923,8 +924,7 @@ class _ImportRunner {
     }
     final eventName = _read(row, _kEvent).trim();
     final book = await _db.accountBooksDao.findById(effectiveBookId);
-    final effectiveOccurredAt =
-        (book != null && book.isDefault != 1)
+    final effectiveOccurredAt = (book != null && book.isDefault != 1)
         ? book.bookTime
         : occurredAt.millisecondsSinceEpoch;
     final recordKey = recordId.isNotEmpty
@@ -967,7 +967,7 @@ class _ImportRunner {
   ) async {
     final out = <String>[];
     for (var i = 1; i <= 20; i++) {
-      final fileName = _read(row, '附件${i}名称').trim();
+      final fileName = _read(row, '附件$i名称').trim();
       if (fileName.isEmpty) continue;
       final path = _resolveMediaPathByName(fileName);
       if (path == null) continue;

@@ -122,6 +122,7 @@ class _CanvasState extends State<_Canvas> {
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.paddingOf(context).bottom;
     final db = AppDatabaseScope.of(context);
+    final colors = context.appColors;
 
     return Stack(
       children: [
@@ -129,16 +130,22 @@ class _CanvasState extends State<_Canvas> {
           children: [
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: const BoxDecoration(
-                color: AppColors.white,
+              decoration: BoxDecoration(
+                color: colors.surfaceCard,
                 border: Border(
-                  bottom: BorderSide(color: AppColors.gray100, width: 1),
+                  bottom: BorderSide(color: colors.borderDivider, width: 1),
                 ),
                 boxShadow: AppShadows.sm,
               ),
               child: Row(
                 children: [
-                  Text('尚礼', style: AppTypography.h2().copyWith(fontSize: 20)),
+                  Text(
+                    '尚礼',
+                    style: AppTypography.h2().copyWith(
+                      fontSize: 20,
+                      color: colors.textPrimary,
+                    ),
+                  ),
                   const Spacer(),
                   if (_selectionMode)
                     PressableScale(
@@ -148,7 +155,7 @@ class _CanvasState extends State<_Canvas> {
                         style: AppTypography.base(
                           fontSize: 14,
                           fontWeight: AppTypography.medium,
-                          color: AppColors.textSecondary,
+                          color: colors.textSecondary,
                         ),
                       ),
                     )
@@ -158,7 +165,7 @@ class _CanvasState extends State<_Canvas> {
               ),
             ),
             Container(
-              color: AppColors.white,
+              color: colors.surfaceCard,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: PrototypeSearchField(
                 controller: _searchController,
@@ -235,8 +242,8 @@ class _CanvasState extends State<_Canvas> {
               child: Container(
                 width: 56,
                 height: 56,
-                decoration: const BoxDecoration(
-                  color: AppColors.brandPrimary,
+                decoration: BoxDecoration(
+                  color: colors.brandPrimary,
                   shape: BoxShape.circle,
                   boxShadow: AppShadows.brandFab,
                 ),
@@ -282,6 +289,7 @@ class _CanvasState extends State<_Canvas> {
   }
 
   List<Widget> _buildRecordSlivers(List<RecordData> sourceRecords) {
+    final colors = context.appColors;
     final trimmed = _keyword.trim();
     final records = trimmed.isEmpty
         ? sourceRecords
@@ -326,7 +334,7 @@ class _CanvasState extends State<_Canvas> {
       slivers.add(
         SliverToBoxAdapter(
           child: Container(
-            color: AppColors.white,
+            color: colors.surfaceCard,
             child: Column(
               children: [
                 for (var j = 0; j < monthRecords.length; j++)
@@ -406,6 +414,7 @@ class _MonthHeaderSliver extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.appColors;
     const headerHeight = 32.0;
     return SliverPersistentHeader(
       pinned: true,
@@ -418,14 +427,14 @@ class _MonthHeaderSliver extends StatelessWidget {
             Container(
               height: headerHeight,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              color: AppColors.gray50,
+              color: colors.surfaceApp,
               alignment: Alignment.centerLeft,
               child: Text(
                 title,
                 style: AppTypography.base(
                   fontSize: 12,
                   fontWeight: AppTypography.medium,
-                  color: AppColors.textTertiary,
+                  color: colors.textTertiary,
                 ),
               ),
             ),
@@ -484,16 +493,15 @@ class _RecordMultiSelectBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.appColors;
     final bottomInset = MediaQuery.paddingOf(context).bottom;
     final canDelete = selectedCount > 0;
     final allSelected = allCount > 0 && selectedCount == allCount;
     return Container(
       height: _barHeight + bottomInset,
       decoration: BoxDecoration(
-        color: AppColors.white,
-        border: const Border(
-          top: BorderSide(color: AppColors.borderDefault, width: 1),
-        ),
+        color: colors.surfaceCard,
+        border: Border(top: BorderSide(color: colors.borderDefault, width: 1)),
         boxShadow: AppShadows.sm,
       ),
       child: Padding(
@@ -510,7 +518,7 @@ class _RecordMultiSelectBar extends StatelessWidget {
                     vertical: 8,
                   ),
                   decoration: BoxDecoration(
-                    color: AppColors.gray100,
+                    color: colors.surfaceSubtle,
                     borderRadius: BorderRadius.circular(999),
                   ),
                   child: Text(
@@ -518,7 +526,7 @@ class _RecordMultiSelectBar extends StatelessWidget {
                     style: AppTypography.base(
                       fontSize: 13,
                       fontWeight: AppTypography.medium,
-                      color: AppColors.textSecondary,
+                      color: colors.textSecondary,
                     ),
                   ),
                 ),
@@ -532,7 +540,7 @@ class _RecordMultiSelectBar extends StatelessWidget {
                   style: AppTypography.base(
                     fontSize: 15,
                     fontWeight: AppTypography.medium,
-                    color: AppColors.textPrimary,
+                    color: colors.textPrimary,
                   ),
                 ),
               ),
@@ -545,8 +553,8 @@ class _RecordMultiSelectBar extends StatelessWidget {
                   ),
                   decoration: BoxDecoration(
                     color: canDelete
-                        ? AppColors.stateDanger
-                        : AppColors.gray200,
+                        ? colors.stateDanger
+                        : colors.surfaceDisabled,
                     borderRadius: BorderRadius.circular(999),
                   ),
                   child: Text(

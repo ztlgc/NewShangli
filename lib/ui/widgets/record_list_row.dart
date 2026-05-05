@@ -39,8 +39,11 @@ class RecordListRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.appColors;
     final amountText = _formatSignedAmount(direction, amountCent);
-    final amountColor = direction == RecordDirection.income ? AppColors.green600 : AppColors.red500;
+    final amountColor = direction == RecordDirection.income
+        ? colors.stateSuccess
+        : colors.stateDanger;
     final dateText =
         '${occurredAt.month.toString().padLeft(2, '0')}-${occurredAt.day.toString().padLeft(2, '0')}';
 
@@ -61,7 +64,7 @@ class RecordListRow extends StatelessWidget {
                   avatarUrl: avatarUrl,
                   size: 40,
                   shape: ContactAvatarShape.circle,
-                  border: Border.all(color: AppColors.gray100, width: 1),
+                  border: Border.all(color: colors.borderSubtle, width: 1),
                 ),
                 Positioned.fill(
                   child: IgnorePointer(
@@ -94,7 +97,7 @@ class RecordListRow extends StatelessWidget {
                         style: AppTypography.base(
                           fontSize: 16,
                           fontWeight: AppTypography.medium,
-                          color: AppColors.textPrimary,
+                          color: colors.textPrimary,
                         ),
                       ),
                     ),
@@ -117,7 +120,7 @@ class RecordListRow extends StatelessWidget {
                         style: AppTypography.base(
                           fontSize: 12,
                           fontWeight: AppTypography.regular,
-                          color: AppColors.textTertiary,
+                          color: colors.textTertiary,
                         ),
                       ),
                     ),
@@ -126,7 +129,7 @@ class RecordListRow extends StatelessWidget {
                       style: AppTypography.base(
                         fontSize: 12,
                         fontWeight: AppTypography.regular,
-                        color: AppColors.textTertiary,
+                        color: colors.textTertiary,
                       ),
                     ),
                   ],
@@ -146,7 +149,10 @@ class RecordListRow extends StatelessWidget {
     final parts = yuan.split('.');
     final intPart = parts[0];
     final fracPart = parts[1];
-    final grouped = intPart.replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (m) => ',');
+    final grouped = intPart.replaceAllMapped(
+      RegExp(r'\B(?=(\d{3})+(?!\d))'),
+      (m) => ',',
+    );
     return '$sign$grouped.$fracPart';
   }
 }
@@ -164,7 +170,10 @@ class _AvatarSelectionCheckbox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final backgroundColor = selected ? AppColors.brandPrimary : AppColors.gray500.withValues(alpha: 0.2);
+    final colors = context.appColors;
+    final backgroundColor = selected
+        ? colors.brandPrimary
+        : colors.textTertiary.withValues(alpha: 0.32);
     return Semantics(
       checked: selected,
       button: true,
@@ -178,7 +187,7 @@ class _AvatarSelectionCheckbox extends StatelessWidget {
           decoration: BoxDecoration(
             color: backgroundColor,
             shape: BoxShape.circle,
-            border: Border.all(color: AppColors.white, width: 2),
+            border: Border.all(color: colors.surfaceCard, width: 2),
             boxShadow: AppShadows.sm,
           ),
           alignment: Alignment.center,

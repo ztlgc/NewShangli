@@ -145,7 +145,10 @@ class _CanvasState extends State<_Canvas> {
   Future<void> _save() async {
     if (_saving) return;
     if (_book != null) {
-      final okAuth = await requireEditProtectionPassword(context, title: '编辑账簿');
+      final okAuth = await requireEditProtectionPassword(
+        context,
+        title: '编辑账簿',
+      );
       if (!okAuth) return;
     }
     if (_book?.isDefault == 1) {
@@ -221,8 +224,8 @@ class _CanvasState extends State<_Canvas> {
         return Padding(
           padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
           child: Container(
-            decoration: const BoxDecoration(
-              color: AppColors.white,
+            decoration: BoxDecoration(
+              color: context.appColors.surfaceCard,
               borderRadius: AppRadii.br2xl,
               boxShadow: AppShadows.lg,
             ),
@@ -235,10 +238,13 @@ class _CanvasState extends State<_Canvas> {
                     horizontal: 16,
                     vertical: 12,
                   ),
-                  decoration: const BoxDecoration(
-                    color: AppColors.white,
+                  decoration: BoxDecoration(
+                    color: context.appColors.surfaceCard,
                     border: Border(
-                      bottom: BorderSide(color: AppColors.gray100, width: 1),
+                      bottom: BorderSide(
+                        color: context.appColors.surfaceSubtle,
+                        width: 1,
+                      ),
                     ),
                   ),
                   child: Row(
@@ -255,7 +261,7 @@ class _CanvasState extends State<_Canvas> {
                       ),
                       PrototypeIconButton(
                         icon: const FaIcon(FontAwesomeIcons.xmark, size: 14),
-                        backgroundColor: AppColors.gray100,
+                        backgroundColor: context.appColors.surfaceSubtle,
                         foregroundColor: AppColors.textSecondary,
                         onPressed: () => Navigator.of(context).pop(false),
                         radius: 12,
@@ -356,8 +362,8 @@ class _CanvasState extends State<_Canvas> {
         return Padding(
           padding: EdgeInsets.fromLTRB(12, 0, 12, 12 + bottomInset),
           child: Container(
-            decoration: const BoxDecoration(
-              color: AppColors.white,
+            decoration: BoxDecoration(
+              color: context.appColors.surfaceCard,
               borderRadius: AppRadii.br2xl,
               boxShadow: AppShadows.lg,
             ),
@@ -370,10 +376,13 @@ class _CanvasState extends State<_Canvas> {
                     horizontal: 16,
                     vertical: 12,
                   ),
-                  decoration: const BoxDecoration(
-                    color: AppColors.white,
+                  decoration: BoxDecoration(
+                    color: context.appColors.surfaceCard,
                     border: Border(
-                      bottom: BorderSide(color: AppColors.gray100, width: 1),
+                      bottom: BorderSide(
+                        color: context.appColors.surfaceSubtle,
+                        width: 1,
+                      ),
                     ),
                   ),
                   child: Row(
@@ -390,7 +399,7 @@ class _CanvasState extends State<_Canvas> {
                       ),
                       PrototypeIconButton(
                         icon: const FaIcon(FontAwesomeIcons.xmark, size: 14),
-                        backgroundColor: AppColors.gray100,
+                        backgroundColor: context.appColors.surfaceSubtle,
                         foregroundColor: AppColors.textSecondary,
                         onPressed: () => Navigator.of(context).pop(),
                         radius: 12,
@@ -413,9 +422,11 @@ class _CanvasState extends State<_Canvas> {
                           children: [
                             TextSpan(text: label),
                             if (requiredField)
-                              const TextSpan(
+                              TextSpan(
                                 text: ' *',
-                                style: TextStyle(color: AppColors.red500),
+                                style: TextStyle(
+                                  color: context.appColors.stateDanger,
+                                ),
                               ),
                           ],
                         ),
@@ -434,7 +445,7 @@ class _CanvasState extends State<_Canvas> {
                         decoration: InputDecoration(
                           isDense: true,
                           filled: true,
-                          fillColor: AppColors.gray50,
+                          fillColor: context.appColors.surfaceSubtle,
                           hintText: hintText,
                           hintStyle: AppTypography.base(
                             fontSize: 14,
@@ -515,10 +526,13 @@ class _CanvasState extends State<_Canvas> {
       children: [
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: const BoxDecoration(
-            color: AppColors.white,
+          decoration: BoxDecoration(
+            color: context.appColors.surfaceCard,
             border: Border(
-              bottom: BorderSide(color: AppColors.gray100, width: 1),
+              bottom: BorderSide(
+                color: context.appColors.surfaceSubtle,
+                width: 1,
+              ),
             ),
           ),
           child: Row(
@@ -681,8 +695,8 @@ class _BasicCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
-        color: AppColors.white,
+      decoration: BoxDecoration(
+        color: context.appColors.surfaceCard,
         borderRadius: AppRadii.br2xl,
         boxShadow: AppShadows.sm,
       ),
@@ -749,9 +763,9 @@ class _TextFieldRow extends StatelessWidget {
               children: [
                 TextSpan(text: label),
                 if (requiredMark)
-                  const TextSpan(
+                  TextSpan(
                     text: ' *',
-                    style: TextStyle(color: AppColors.red500),
+                    style: TextStyle(color: context.appColors.stateDanger),
                   ),
               ],
             ),
@@ -770,7 +784,7 @@ class _TextFieldRow extends StatelessWidget {
             decoration: InputDecoration(
               isDense: true,
               filled: true,
-              fillColor: AppColors.gray50,
+              fillColor: context.appColors.surfaceSubtle,
               hintText: hintText,
               hintStyle: AppTypography.base(
                 fontSize: 14,
@@ -934,8 +948,8 @@ class _ReasonTypePickerSheetState extends State<_ReasonTypePickerSheet> {
         top: false,
         child: Container(
           constraints: const BoxConstraints(maxHeight: 620),
-          decoration: const BoxDecoration(
-            color: AppColors.white,
+          decoration: BoxDecoration(
+            color: context.appColors.surfaceCard,
             borderRadius: AppRadii.br2xl,
             boxShadow: AppShadows.lg,
           ),
@@ -947,7 +961,7 @@ class _ReasonTypePickerSheetState extends State<_ReasonTypePickerSheet> {
                 height: 5,
                 margin: const EdgeInsets.only(top: 10, bottom: 6),
                 decoration: BoxDecoration(
-                  color: AppColors.gray200,
+                  color: context.appColors.surfaceDisabled,
                   borderRadius: BorderRadius.circular(999),
                 ),
               ),
@@ -967,7 +981,7 @@ class _ReasonTypePickerSheetState extends State<_ReasonTypePickerSheet> {
                     ),
                     PrototypeIconButton(
                       icon: const FaIcon(FontAwesomeIcons.xmark, size: 14),
-                      backgroundColor: AppColors.gray100,
+                      backgroundColor: context.appColors.surfaceSubtle,
                       foregroundColor: AppColors.textSecondary,
                       onPressed: () => Navigator.of(context).pop(),
                       radius: 12,
@@ -1136,7 +1150,7 @@ class _Dot extends StatelessWidget {
       height: 32,
       padding: const EdgeInsets.all(2),
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: context.appColors.surfaceCard,
         shape: BoxShape.circle,
         border: Border.all(color: AppColors.indigo500, width: 2),
       ),
@@ -1182,7 +1196,7 @@ class _NoteCard extends StatelessWidget {
             decoration: InputDecoration(
               isDense: true,
               filled: true,
-              fillColor: AppColors.gray50,
+              fillColor: context.appColors.surfaceSubtle,
               hintText: '补充说明（可选）',
               hintStyle: AppTypography.base(
                 fontSize: 14,
@@ -1284,9 +1298,9 @@ class _DeleteButton extends StatelessWidget {
       child: Container(
         height: 48,
         decoration: BoxDecoration(
-          color: AppColors.white,
+          color: context.appColors.surfaceCard,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.gray100, width: 1),
+          border: Border.all(color: context.appColors.borderSubtle, width: 1),
           boxShadow: AppShadows.sm,
         ),
         alignment: Alignment.center,

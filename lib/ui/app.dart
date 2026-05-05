@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../data/local/drift/app_database.dart';
 import 'app_data.dart';
@@ -26,9 +27,25 @@ class NewShangliApp extends StatelessWidget {
             debugShowCheckedModeBanner: false,
             title: '尚礼',
             theme: AppTheme.light(),
-            // 暂时取消深色模式显示，固定使用浅色模式
-            // darkTheme: AppTheme.dark(),
-            themeMode: ThemeMode.light,
+            darkTheme: AppTheme.dark(),
+            themeMode: ThemeMode.system,
+            builder: (context, child) {
+              final theme = Theme.of(context);
+              final overlayStyle = theme.brightness == Brightness.dark
+                  ? SystemUiOverlayStyle.light
+                  : SystemUiOverlayStyle.dark;
+              return AnnotatedRegion<SystemUiOverlayStyle>(
+                value: overlayStyle.copyWith(
+                  statusBarColor: Colors.transparent,
+                  systemNavigationBarColor: theme.scaffoldBackgroundColor,
+                  systemNavigationBarDividerColor: Colors.transparent,
+                ),
+                child: DefaultTextStyle.merge(
+                  style: const TextStyle(decoration: TextDecoration.none),
+                  child: child ?? const SizedBox.shrink(),
+                ),
+              );
+            },
             home: const RecordHomePage(),
           ),
         ),

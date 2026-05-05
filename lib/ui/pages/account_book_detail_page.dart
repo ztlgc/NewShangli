@@ -93,10 +93,13 @@ class _Canvas extends StatelessWidget {
           children: [
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: const BoxDecoration(
-                color: AppColors.white,
+              decoration: BoxDecoration(
+                color: context.appColors.surfaceCard,
                 border: Border(
-                  bottom: BorderSide(color: AppColors.gray100, width: 1),
+                  bottom: BorderSide(
+                    color: context.appColors.surfaceSubtle,
+                    width: 1,
+                  ),
                 ),
               ),
               child: Row(
@@ -216,10 +219,11 @@ class _OverviewCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.appColors;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: context.appColors.surfaceCard,
         borderRadius: AppRadii.br2xl,
         boxShadow: AppShadows.sm,
       ),
@@ -234,7 +238,7 @@ class _OverviewCard extends StatelessWidget {
                   color: AppColors.red600,
                 ),
               ),
-              Container(width: 1, height: 44, color: AppColors.gray100),
+              Container(width: 1, height: 44, color: colors.borderDivider),
               Expanded(
                 child: _MetricItem(
                   title: '记录数量',
@@ -245,7 +249,7 @@ class _OverviewCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          Container(height: 1, color: AppColors.gray100),
+          Container(height: 1, color: colors.borderDivider),
           const SizedBox(height: 12),
           Row(
             children: [
@@ -313,8 +317,8 @@ class _RecordsSection extends StatelessWidget {
     if (rows.isEmpty) {
       return Container(
         padding: const EdgeInsets.all(24),
-        decoration: const BoxDecoration(
-          color: AppColors.white,
+        decoration: BoxDecoration(
+          color: context.appColors.surfaceCard,
           borderRadius: AppRadii.br2xl,
           boxShadow: AppShadows.sm,
         ),
@@ -345,8 +349,8 @@ class _RecordsSection extends StatelessWidget {
           ),
         ),
         Container(
-          decoration: const BoxDecoration(
-            color: AppColors.white,
+          decoration: BoxDecoration(
+            color: context.appColors.surfaceCard,
             borderRadius: AppRadii.br2xl,
             boxShadow: AppShadows.sm,
           ),
@@ -485,9 +489,11 @@ class _EntityRemarksCardState extends State<_EntityRemarksCard> {
                     vertical: 6,
                   ),
                   decoration: BoxDecoration(
-                    color: AppColors.gray50,
+                    color: context.appColors.surfaceSubtle,
                     borderRadius: BorderRadius.circular(999),
-                    border: Border.all(color: AppColors.gray200),
+                    border: Border.all(
+                      color: context.appColors.surfaceDisabled,
+                    ),
                   ),
                   child: Text(
                     '新增',
@@ -550,9 +556,9 @@ class _AttachmentRow extends StatelessWidget {
             width: 96,
             height: 96,
             decoration: BoxDecoration(
-              color: AppColors.gray50,
+              color: context.appColors.surfaceSubtle,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.gray200),
+              border: Border.all(color: context.appColors.borderDefault),
             ),
             alignment: Alignment.center,
             child: const FaIcon(FontAwesomeIcons.plus, size: 18),
@@ -563,7 +569,7 @@ class _AttachmentRow extends StatelessWidget {
             width: 96,
             height: 96,
             decoration: BoxDecoration(
-              color: AppColors.gray200,
+              color: context.appColors.surfaceDisabled,
               borderRadius: BorderRadius.circular(16),
             ),
             clipBehavior: Clip.antiAlias,
@@ -572,7 +578,7 @@ class _AttachmentRow extends StatelessWidget {
               fit: BoxFit.cover,
               errorBuilder: (context, error, stackTrace) {
                 return Container(
-                  color: AppColors.gray100,
+                  color: context.appColors.surfaceSubtle,
                   alignment: Alignment.center,
                   child: const FaIcon(
                     FontAwesomeIcons.triangleExclamation,
@@ -603,9 +609,9 @@ class _RemarkRow extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppColors.gray50,
+        color: context.appColors.surfaceSubtle,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.gray100),
+        border: Border.all(color: context.appColors.borderSubtle),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

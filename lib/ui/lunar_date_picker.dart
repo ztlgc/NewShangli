@@ -40,10 +40,17 @@ Future<DateTime?> showLunarDatePicker({
       );
     },
     transitionBuilder: (context, anim, secondary, child) {
-      final curve = CurvedAnimation(parent: anim, curve: Curves.easeOutCubic, reverseCurve: Curves.easeInCubic);
+      final curve = CurvedAnimation(
+        parent: anim,
+        curve: Curves.easeOutCubic,
+        reverseCurve: Curves.easeInCubic,
+      );
       return FadeTransition(
         opacity: curve,
-        child: ScaleTransition(scale: Tween<double>(begin: 0.96, end: 1).animate(curve), child: child),
+        child: ScaleTransition(
+          scale: Tween<double>(begin: 0.96, end: 1).animate(curve),
+          child: child,
+        ),
       );
     },
   );
@@ -74,7 +81,8 @@ class _LunarDatePickerDialogState extends State<_LunarDatePickerDialog> {
   late int _pageCount;
   late final PageController _controller;
 
-  final Map<int, Map<int, _LunarCellInfo>> _monthCache = <int, Map<int, _LunarCellInfo>>{};
+  final Map<int, Map<int, _LunarCellInfo>> _monthCache =
+      <int, Map<int, _LunarCellInfo>>{};
 
   @override
   void initState() {
@@ -86,7 +94,10 @@ class _LunarDatePickerDialogState extends State<_LunarDatePickerDialog> {
     final lastMonth = DateTime(widget.lastDate.year, widget.lastDate.month, 1);
     _pageCount = _monthsBetween(_baseMonth, lastMonth) + 1;
 
-    final initialPage = _monthsBetween(_baseMonth, _visibleMonth).clamp(0, _pageCount - 1);
+    final initialPage = _monthsBetween(
+      _baseMonth,
+      _visibleMonth,
+    ).clamp(0, _pageCount - 1);
     _controller = PageController(initialPage: initialPage);
   }
 
@@ -100,13 +111,14 @@ class _LunarDatePickerDialogState extends State<_LunarDatePickerDialog> {
   Widget build(BuildContext context) {
     final screenW = MediaQuery.sizeOf(context).width;
     final dialogW = math.min(353.0, screenW - 40);
+    final colors = context.appColors;
 
     return Material(
       color: Colors.transparent,
       child: Container(
         width: dialogW,
-        decoration: const BoxDecoration(
-          color: AppColors.white,
+        decoration: BoxDecoration(
+          color: colors.surfaceCard,
           borderRadius: AppRadii.brXl,
           boxShadow: AppShadows.xl,
         ),
@@ -127,7 +139,9 @@ class _LunarDatePickerDialogState extends State<_LunarDatePickerDialog> {
               child: PageView.builder(
                 controller: _controller,
                 itemCount: _pageCount,
-                onPageChanged: (index) => setState(() => _visibleMonth = _addMonths(_baseMonth, index)),
+                onPageChanged: (index) => setState(
+                  () => _visibleMonth = _addMonths(_baseMonth, index),
+                ),
                 itemBuilder: (context, index) {
                   final month = _addMonths(_baseMonth, index);
                   return Padding(
@@ -150,7 +164,8 @@ class _LunarDatePickerDialogState extends State<_LunarDatePickerDialog> {
               padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
               child: _Actions(
                 onCancel: () => Navigator.of(context).pop<DateTime?>(null),
-                onConfirm: () => Navigator.of(context).pop<DateTime?>(_selectedDate),
+                onConfirm: () =>
+                    Navigator.of(context).pop<DateTime?>(_selectedDate),
               ),
             ),
           ],
@@ -162,7 +177,10 @@ class _LunarDatePickerDialogState extends State<_LunarDatePickerDialog> {
   _LunarCellInfo _cellInfoFor(DateTime day) {
     final monthKey = day.year * 100 + day.month;
     final dayKey = day.day;
-    final byMonth = _monthCache.putIfAbsent(monthKey, () => <int, _LunarCellInfo>{});
+    final byMonth = _monthCache.putIfAbsent(
+      monthKey,
+      () => <int, _LunarCellInfo>{},
+    );
     return byMonth.putIfAbsent(dayKey, () => _computeLunarCellInfo(day));
   }
 }
@@ -326,6 +344,7 @@ class _DayCell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.appColors;
     if (dayNumber < 1 || dayNumber > daysInMonth) {
       return SizedBox(width: width, height: height);
     }
@@ -337,16 +356,22 @@ class _DayCell extends StatelessWidget {
 
     final info = cellInfoFor(day);
 
-    final bg = selected ? AppColors.brandSoft : Colors.transparent;
+    final bg = selected ? colors.brandSoft : Colors.transparent;
     final border = selected
-        ? const Border.fromBorderSide(BorderSide(color: AppColors.borderFocus, width: 1))
-        : (today ? const Border.fromBorderSide(BorderSide(color: AppColors.gray200, width: 1)) : null);
+        ? Border.fromBorderSide(BorderSide(color: colors.borderFocus, width: 1))
+        : (today
+              ? Border.fromBorderSide(
+                  BorderSide(color: colors.borderDefault, width: 1),
+                )
+              : null);
 
     final dayColor = !enabled
-        ? AppColors.gray300
-        : (selected ? AppColors.textBrand : AppColors.textPrimary);
+        ? colors.textMuted
+        : (selected ? colors.textBrand : colors.textPrimary);
 
-    final lunarColor = !enabled ? AppColors.gray300 : info.color;
+    final lunarColor = !enabled
+        ? colors.textMuted
+        : colors.foregroundFor(info.color);
 
     return SizedBox(
       width: width,
@@ -371,7 +396,9 @@ class _DayCell extends StatelessWidget {
                   '$dayNumber',
                   style: AppTypography.base(
                     fontSize: AppTypography.fs16,
-                    fontWeight: selected ? AppTypography.bold : AppTypography.semibold,
+                    fontWeight: selected
+                        ? AppTypography.bold
+                        : AppTypography.semibold,
                     color: dayColor,
                     height: 1.0,
                   ),
@@ -479,12 +506,18 @@ _LunarCellInfo _computeLunarCellInfo(DateTime day) {
 
   final solarFestivals = solar.getFestivals();
   if (solarFestivals.isNotEmpty) {
-    return _LunarCellInfo(text: solarFestivals.first, color: AppColors.textSecondary);
+    return _LunarCellInfo(
+      text: solarFestivals.first,
+      color: AppColors.textSecondary,
+    );
   }
 
   final lunarFestivals = lunar.getFestivals();
   if (lunarFestivals.isNotEmpty) {
-    return _LunarCellInfo(text: lunarFestivals.first, color: AppColors.textSecondary);
+    return _LunarCellInfo(
+      text: lunarFestivals.first,
+      color: AppColors.textSecondary,
+    );
   }
 
   final dayText = lunar.getDayInChinese();
@@ -497,15 +530,21 @@ _LunarCellInfo _computeLunarCellInfo(DateTime day) {
 
 DateTime _dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);
 
-bool _isSameDay(DateTime a, DateTime b) => a.year == b.year && a.month == b.month && a.day == b.day;
+bool _isSameDay(DateTime a, DateTime b) =>
+    a.year == b.year && a.month == b.month && a.day == b.day;
 
-DateTime _clampDate(DateTime d, {required DateTime first, required DateTime last}) {
+DateTime _clampDate(
+  DateTime d, {
+  required DateTime first,
+  required DateTime last,
+}) {
   if (d.isBefore(first)) return first;
   if (d.isAfter(last)) return last;
   return d;
 }
 
-int _monthsBetween(DateTime a, DateTime b) => (b.year - a.year) * 12 + (b.month - a.month);
+int _monthsBetween(DateTime a, DateTime b) =>
+    (b.year - a.year) * 12 + (b.month - a.month);
 
 DateTime _addMonths(DateTime monthStart, int months) {
   final y = monthStart.year * 12 + (monthStart.month - 1) + months;

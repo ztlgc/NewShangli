@@ -70,15 +70,20 @@ class _ReasonDetailPageState extends State<ReasonDetailPage> {
         children: [
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: const BoxDecoration(
-              color: AppColors.white,
-              border: Border(bottom: BorderSide(color: AppColors.gray100, width: 1)),
+            decoration: BoxDecoration(
+              color: context.appColors.surfaceCard,
+              border: Border(
+                bottom: BorderSide(
+                  color: context.appColors.surfaceSubtle,
+                  width: 1,
+                ),
+              ),
             ),
             child: Row(
               children: [
                 PrototypeIconButton(
                   icon: const FaIcon(FontAwesomeIcons.chevronLeft, size: 14),
-                  backgroundColor: AppColors.gray100,
+                  backgroundColor: context.appColors.surfaceSubtle,
                   foregroundColor: AppColors.textSecondary,
                   onPressed: _saving ? null : () => AppNav.pop(context),
                   radius: 12,
@@ -93,7 +98,7 @@ class _ReasonDetailPageState extends State<ReasonDetailPage> {
                 if (!_editing)
                   PrototypeIconButton(
                     icon: const FaIcon(FontAwesomeIcons.pen, size: 14),
-                    backgroundColor: AppColors.gray100,
+                    backgroundColor: context.appColors.surfaceSubtle,
                     foregroundColor: AppColors.textSecondary,
                     onPressed: () => setState(() => _editing = true),
                     radius: 12,
@@ -102,9 +107,14 @@ class _ReasonDetailPageState extends State<ReasonDetailPage> {
                   PressableScale(
                     onTap: _saving ? null : _onSave,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 6,
+                      ),
                       decoration: BoxDecoration(
-                        color: _saving ? AppColors.gray300 : AppColors.brandPrimary,
+                        color: _saving
+                            ? AppColors.gray300
+                            : AppColors.brandPrimary,
                         borderRadius: BorderRadius.circular(9999),
                         boxShadow: AppShadows.sm,
                       ),
@@ -193,7 +203,10 @@ class _ReasonDetailPageState extends State<ReasonDetailPage> {
                           onChanged: _saving
                               ? null
                               : (v) async {
-                                  await db.reasonsDao.setEnabled(id: reason.reasonId, enabled: v);
+                                  await db.reasonsDao.setEnabled(
+                                    id: reason.reasonId,
+                                    enabled: v,
+                                  );
                                   await _loadReason();
                                 },
                         ),
@@ -217,7 +230,11 @@ class _ReasonDetailPageState extends State<ReasonDetailPage> {
                         ),
                         const SizedBox(height: 6),
                         Text(
-                          _formatTime(DateTime.fromMillisecondsSinceEpoch(reason.updatedAt)),
+                          _formatTime(
+                            DateTime.fromMillisecondsSinceEpoch(
+                              reason.updatedAt,
+                            ),
+                          ),
                           style: AppTypography.base(
                             fontSize: 14,
                             fontWeight: AppTypography.medium,
@@ -234,9 +251,12 @@ class _ReasonDetailPageState extends State<ReasonDetailPage> {
                     child: Container(
                       height: 48,
                       decoration: BoxDecoration(
-                        color: AppColors.white,
+                        color: context.appColors.surfaceCard,
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AppColors.gray100, width: 1),
+                        border: Border.all(
+                          color: context.appColors.surfaceSubtle,
+                          width: 1,
+                        ),
                         boxShadow: AppShadows.sm,
                       ),
                       alignment: Alignment.center,
@@ -283,7 +303,9 @@ class _ReasonDetailPageState extends State<ReasonDetailPage> {
       final description = _descCtrl.text.trim();
       final all = await db.reasonsDao.listAll();
       final duplicated = all.any(
-        (e) => e.reasonId != widget.id && e.name.trim().toLowerCase() == name.toLowerCase(),
+        (e) =>
+            e.reasonId != widget.id &&
+            e.name.trim().toLowerCase() == name.toLowerCase(),
       );
       if (duplicated) {
         throw ArgumentError.value(name, 'name', '已存在同名事由');
@@ -291,7 +313,9 @@ class _ReasonDetailPageState extends State<ReasonDetailPage> {
       if (widget.id == null) {
         await db.reasonsDao.create(name: name, description: description);
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('已创建')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('已创建')));
         AppNav.pop(context);
       } else {
         await db.reasonsDao.updateReason(
@@ -301,12 +325,16 @@ class _ReasonDetailPageState extends State<ReasonDetailPage> {
         );
         await _loadReason();
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('已保存')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('已保存')));
         setState(() => _editing = false);
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('保存失败：$e')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('保存失败：$e')));
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -320,8 +348,14 @@ class _ReasonDetailPageState extends State<ReasonDetailPage> {
           title: const Text('删除事由'),
           content: const Text('确认删除该事由？'),
           actions: [
-            TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('取消')),
-            TextButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('删除')),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('取消'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('删除'),
+            ),
           ],
         );
       },
@@ -330,11 +364,15 @@ class _ReasonDetailPageState extends State<ReasonDetailPage> {
     try {
       await db.reasonsDao.deleteById(widget.id!);
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('已删除')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('已删除')));
       AppNav.pop(context);
     } catch (e) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('删除失败：$e')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('删除失败：$e')));
     }
   }
 
@@ -374,6 +412,7 @@ class _Field extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.appColors;
     return TextFormField(
       controller: controller,
       enabled: enabled,
@@ -387,37 +426,40 @@ class _Field extends StatelessWidget {
       decoration: InputDecoration(
         isDense: true,
         filled: true,
-        fillColor: enabled ? AppColors.gray50 : AppColors.gray100,
+        fillColor: enabled ? colors.surfaceSubtle : colors.surfaceDisabled,
         hintText: hintText,
         hintStyle: AppTypography.base(
           fontSize: 14,
           fontWeight: AppTypography.regular,
           color: AppColors.textMuted,
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: 12,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.borderSubtle, width: 1),
+          borderSide: BorderSide(color: colors.borderSubtle, width: 1),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.borderSubtle, width: 1),
+          borderSide: BorderSide(color: colors.borderSubtle, width: 1),
         ),
         disabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.borderSubtle, width: 1),
+          borderSide: BorderSide(color: colors.borderSubtle, width: 1),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.borderFocus, width: 1),
+          borderSide: BorderSide(color: colors.borderFocus, width: 1),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.red500, width: 1),
+          borderSide: BorderSide(color: colors.stateDanger, width: 1),
         ),
         focusedErrorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.red500, width: 1),
+          borderSide: BorderSide(color: colors.stateDanger, width: 1),
         ),
       ),
     );

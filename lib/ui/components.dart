@@ -24,10 +24,11 @@ class PrototypeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.appColors;
     return Container(
       padding: padding,
       decoration: BoxDecoration(
-        color: color,
+        color: colors.surfaceFor(color),
         borderRadius: radius,
         boxShadow: shadow,
         border: border,
@@ -51,12 +52,13 @@ class PrototypePrimaryButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.appColors;
     return PressableScale(
       onTap: onTap,
       child: Container(
         height: 48,
         decoration: BoxDecoration(
-          color: AppColors.brandPrimary,
+          color: colors.brandPrimary,
           borderRadius: AppRadii.brXl,
           boxShadow: AppShadows.brandSoft,
         ),
@@ -65,7 +67,7 @@ class PrototypePrimaryButton extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             if (icon != null) ...[
-              Icon(icon, color: AppColors.white, size: 16),
+              Icon(icon, color: colors.textInverse, size: 16),
               const SizedBox(width: 8),
             ],
             Text(
@@ -73,7 +75,7 @@ class PrototypePrimaryButton extends StatelessWidget {
               style: AppTypography.base(
                 fontSize: 14,
                 fontWeight: AppTypography.medium,
-                color: AppColors.white,
+                color: colors.textInverse,
               ),
             ),
           ],
@@ -91,12 +93,13 @@ class PrototypeSecondaryButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.appColors;
     return PressableScale(
       onTap: onTap,
       child: Container(
         height: 48,
-        decoration: const BoxDecoration(
-          color: AppColors.indigo50,
+        decoration: BoxDecoration(
+          color: colors.brandSoft,
           borderRadius: AppRadii.brXl,
         ),
         alignment: Alignment.center,
@@ -105,7 +108,7 @@ class PrototypeSecondaryButton extends StatelessWidget {
           style: AppTypography.base(
             fontSize: 14,
             fontWeight: AppTypography.medium,
-            color: AppColors.indigo700,
+            color: colors.brandOnSoft,
           ),
         ),
       ),
@@ -133,7 +136,11 @@ class PrototypeButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.appColors;
     final enabled = onPressed != null;
+    final resolvedForeground = foreground == AppColors.white
+        ? colors.textInverse
+        : colors.foregroundFor(foreground);
     return Opacity(
       opacity: enabled ? 1 : 0.48,
       child: PressableScale(
@@ -142,7 +149,7 @@ class PrototypeButton extends StatelessWidget {
           constraints: const BoxConstraints(minHeight: 36),
           padding: padding,
           decoration: BoxDecoration(
-            color: background,
+            color: _buttonBackgroundFor(colors, background),
             borderRadius: AppRadii.brXl,
             border: border,
           ),
@@ -154,7 +161,7 @@ class PrototypeButton extends StatelessWidget {
             style: AppTypography.base(
               fontSize: AppTypography.fs12,
               fontWeight: AppTypography.semibold,
-              color: foreground,
+              color: resolvedForeground,
             ),
           ),
         ),
@@ -185,10 +192,11 @@ class PrototypePill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.appColors;
     return Container(
       padding: padding,
       decoration: BoxDecoration(
-        color: background,
+        color: colors.softFor(background),
         borderRadius: BorderRadius.circular(radius),
       ),
       child: Text(
@@ -196,7 +204,7 @@ class PrototypePill extends StatelessWidget {
         style: AppTypography.base(
           fontSize: fontSize,
           fontWeight: fontWeight,
-          color: foreground,
+          color: colors.foregroundFor(foreground),
         ),
       ),
     );
@@ -210,7 +218,7 @@ class PrototypeDivider extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(height: 1, color: color);
+    return Container(height: 1, color: context.appColors.borderFor(color));
   }
 }
 
@@ -230,19 +238,20 @@ class PrototypeSearchField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.appColors;
     final showClear = showClearButton && controller.text.trim().isNotEmpty;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
-        color: AppColors.gray100,
+        color: colors.surfaceSubtle,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
         children: [
-          const FaIcon(
+          FaIcon(
             FontAwesomeIcons.magnifyingGlass,
             size: 14,
-            color: AppColors.textTertiary,
+            color: colors.textTertiary,
           ),
           const SizedBox(width: 8),
           Expanded(
@@ -253,7 +262,7 @@ class PrototypeSearchField extends StatelessWidget {
               style: AppTypography.base(
                 fontSize: 14,
                 fontWeight: AppTypography.regular,
-                color: AppColors.textSecondary,
+                color: colors.textSecondary,
               ),
               decoration: InputDecoration(
                 isDense: true,
@@ -261,7 +270,7 @@ class PrototypeSearchField extends StatelessWidget {
                 hintStyle: AppTypography.base(
                   fontSize: 14,
                   fontWeight: AppTypography.regular,
-                  color: AppColors.textMuted,
+                  color: colors.textMuted,
                 ),
                 border: InputBorder.none,
                 contentPadding: EdgeInsets.zero,
@@ -275,10 +284,10 @@ class PrototypeSearchField extends StatelessWidget {
                 controller.clear();
                 onChanged?.call('');
               },
-              child: const FaIcon(
+              child: FaIcon(
                 FontAwesomeIcons.circleXmark,
                 size: 16,
-                color: AppColors.textTertiary,
+                color: colors.textTertiary,
               ),
             ),
           ],
@@ -306,17 +315,26 @@ class PrototypeNetworkImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.appColors;
     return Image.network(
       url,
       width: width,
       height: height,
       fit: fit,
       errorBuilder: (context, error, stackTrace) {
-        return Container(width: width, height: height, color: placeholderColor);
+        return Container(
+          width: width,
+          height: height,
+          color: colors.surfaceFor(placeholderColor),
+        );
       },
       loadingBuilder: (context, child, loadingProgress) {
         if (loadingProgress == null) return child;
-        return Container(width: width, height: height, color: placeholderColor);
+        return Container(
+          width: width,
+          height: height,
+          color: colors.surfaceFor(placeholderColor),
+        );
       },
     );
   }
@@ -344,17 +362,18 @@ class PrototypePressableRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.appColors;
     return _PressedBackground(
       onTap: onTap,
       onLongPress: onLongPress,
-      pressedColor: pressedColor,
+      pressedColor: colors.surfaceFor(pressedColor),
       enablePressedFeedback: enablePressedFeedback,
       child: Container(
         padding: padding,
         decoration: BoxDecoration(
           border: borderBottom
-              ? const Border(
-                  bottom: BorderSide(color: AppColors.borderDivider, width: 1),
+              ? Border(
+                  bottom: BorderSide(color: colors.borderDivider, width: 1),
                 )
               : null,
         ),
@@ -362,6 +381,31 @@ class PrototypePressableRow extends StatelessWidget {
       ),
     );
   }
+}
+
+Color _buttonBackgroundFor(AppThemeColors colors, Color color) {
+  if (color == AppColors.brandPrimary || color == AppColors.indigo900) {
+    return colors.brandPrimary;
+  }
+  if (color == AppColors.brandSecondary || color == AppColors.indigo600) {
+    return colors.brandSecondary;
+  }
+  if (color == AppColors.stateDanger ||
+      color == AppColors.red500 ||
+      color == AppColors.red600) {
+    return colors.stateDanger;
+  }
+  if (color == AppColors.stateSuccess ||
+      color == AppColors.green500 ||
+      color == AppColors.green600) {
+    return colors.stateSuccess;
+  }
+  if (color == AppColors.stateWarning ||
+      color == AppColors.orange500 ||
+      color == AppColors.orange600) {
+    return colors.stateWarning;
+  }
+  return colors.surfaceFor(color);
 }
 
 class _PressedBackground extends StatefulWidget {

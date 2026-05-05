@@ -72,7 +72,9 @@ class _CanvasState extends State<_Canvas> {
       final last = await BackupStateStore.getLastBackup();
       final history = await BackupStateStore.getHistory();
       final remoteDirRaw = c.webDavRemoteDir.trim();
-      final normalizedRemoteDir = remoteDirRaw.isNotEmpty && !BackupConfig.isValidWebDavRemoteDir(remoteDirRaw)
+      final normalizedRemoteDir =
+          remoteDirRaw.isNotEmpty &&
+              !BackupConfig.isValidWebDavRemoteDir(remoteDirRaw)
           ? ''
           : remoteDirRaw;
       if (!mounted) return;
@@ -92,9 +94,14 @@ class _CanvasState extends State<_Canvas> {
       children: [
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: const BoxDecoration(
-            color: AppColors.white,
-            border: Border(bottom: BorderSide(color: AppColors.gray100, width: 1)),
+          decoration: BoxDecoration(
+            color: context.appColors.surfaceCard,
+            border: Border(
+              bottom: BorderSide(
+                color: context.appColors.surfaceSubtle,
+                width: 1,
+              ),
+            ),
           ),
           child: Row(
             children: [
@@ -139,7 +146,8 @@ class _CanvasState extends State<_Canvas> {
                 config: _config,
                 history: _history,
                 saving: _busy,
-                onToggleAutoBackup: (v) => _setConfig(_config.copyWith(autoBackupEnabled: v)),
+                onToggleAutoBackup: (v) =>
+                    _setConfig(_config.copyWith(autoBackupEnabled: v)),
                 onPickFrequency: _busy ? null : _pickBackupFrequency,
                 webDavConfigured: _webDavReady,
                 onOpenWebDavConfig: _busy ? null : _openWebDavConfigDialog,
@@ -159,16 +167,19 @@ class _CanvasState extends State<_Canvas> {
   Future<bool> _persistConfig() async {
     setState(() => _saving = true);
     final remoteDirRaw = _config.webDavRemoteDir.trim();
-    if (remoteDirRaw.isNotEmpty && !BackupConfig.isValidWebDavRemoteDir(remoteDirRaw)) {
+    if (remoteDirRaw.isNotEmpty &&
+        !BackupConfig.isValidWebDavRemoteDir(remoteDirRaw)) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('远程目录格式不正确')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('远程目录格式不正确')));
         setState(() => _saving = false);
       }
       return false;
     }
-    final normalizedRemoteDir = BackupConfig.normalizeWebDavRemoteDir(remoteDirRaw);
+    final normalizedRemoteDir = BackupConfig.normalizeWebDavRemoteDir(
+      remoteDirRaw,
+    );
     final next = _config.copyWith(
       webDavEnabled: true,
       webDavRemoteDir: normalizedRemoteDir,
@@ -177,15 +188,15 @@ class _CanvasState extends State<_Canvas> {
     try {
       await BackupConfig.save(next);
       if (!mounted) return false;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('已保存')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('已保存')));
       return true;
     } catch (e) {
       if (!mounted) return false;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('保存失败：$e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('保存失败：$e')));
       return false;
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -195,26 +206,29 @@ class _CanvasState extends State<_Canvas> {
   Future<void> _runBackup() async {
     final session = AppSessionScope.of(context);
     if (!session.networkAvailable) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('网络异常，请稍后重试')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('网络异常，请稍后重试')));
       return;
     }
     if (!_webDavReady) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('请先完善 WebDAV 配置')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('请先完善 WebDAV 配置')));
       return;
     }
 
     final remoteDirRaw = _config.webDavRemoteDir.trim();
-    if (remoteDirRaw.isNotEmpty && !BackupConfig.isValidWebDavRemoteDir(remoteDirRaw)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('远程目录格式不正确')),
-      );
+    if (remoteDirRaw.isNotEmpty &&
+        !BackupConfig.isValidWebDavRemoteDir(remoteDirRaw)) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('远程目录格式不正确')));
       return;
     }
-    final nextConfig = _config.copyWith(webDavRemoteDir: BackupConfig.normalizeWebDavRemoteDir(remoteDirRaw));
+    final nextConfig = _config.copyWith(
+      webDavRemoteDir: BackupConfig.normalizeWebDavRemoteDir(remoteDirRaw),
+    );
     if (nextConfig.webDavRemoteDir != _config.webDavRemoteDir) {
       setState(() => _config = nextConfig);
     }
@@ -222,7 +236,10 @@ class _CanvasState extends State<_Canvas> {
 
     setState(() {
       _backingUp = true;
-      _progress = const BackupProgress(stage: BackupStage.packaging, message: '准备中…');
+      _progress = const BackupProgress(
+        stage: BackupStage.packaging,
+        message: '准备中…',
+      );
     });
     try {
       final service = DataBackupService();
@@ -241,9 +258,9 @@ class _CanvasState extends State<_Canvas> {
         _last = last;
         _history = history;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('备份完成')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('备份完成')));
     } on WebDavException catch (e) {
       if (!mounted) return;
       showDialog(
@@ -261,9 +278,9 @@ class _CanvasState extends State<_Canvas> {
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('备份失败：$e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('备份失败：$e')));
     } finally {
       if (mounted) {
         setState(() {
@@ -277,22 +294,23 @@ class _CanvasState extends State<_Canvas> {
   Future<void> _testWebDav() async {
     final baseUrlRaw = _config.webDavBaseUrl.trim();
     if (baseUrlRaw.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('请先填写服务器地址')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('请先填写服务器地址')));
       return;
     }
     final baseUrl = BackupConfig.parseAndNormalizeWebDavBaseUrl(baseUrlRaw);
     if (baseUrl == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('服务器地址格式不正确')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('服务器地址格式不正确')));
       return;
     }
-    if (_config.webDavUsername.trim().isEmpty || _config.webDavPassword.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('请先填写用户名与密码')),
-      );
+    if (_config.webDavUsername.trim().isEmpty ||
+        _config.webDavPassword.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('请先填写用户名与密码')));
       return;
     }
 
@@ -306,9 +324,9 @@ class _CanvasState extends State<_Canvas> {
       final r = await client.test();
       if (!mounted) return;
       if (r.ok) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(r.message)),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(r.message)));
       } else {
         showDialog(
           context: context,
@@ -345,8 +363,8 @@ class _CanvasState extends State<_Canvas> {
       backgroundColor: Colors.transparent,
       builder: (context) {
         return Container(
-          decoration: const BoxDecoration(
-            color: AppColors.white,
+          decoration: BoxDecoration(
+            color: context.appColors.surfaceCard,
             borderRadius: AppRadii.br2xl,
             boxShadow: AppShadows.lg,
           ),
@@ -383,9 +401,9 @@ class _CanvasState extends State<_Canvas> {
   Future<void> _restoreBackup(BackupHistoryEntry entry) async {
     if (_restoring) return;
     if (!_webDavReady) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('请先完善 WebDAV 配置')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('请先完善 WebDAV 配置')));
       return;
     }
     final confirmed = await showDialog<bool>(
@@ -411,7 +429,10 @@ class _CanvasState extends State<_Canvas> {
 
     setState(() {
       _restoring = true;
-      _progress = const BackupProgress(stage: BackupStage.packaging, message: '准备恢复…');
+      _progress = const BackupProgress(
+        stage: BackupStage.packaging,
+        message: '准备恢复…',
+      );
     });
     try {
       final controller = AppDatabaseControllerScope.of(context);
@@ -423,20 +444,23 @@ class _CanvasState extends State<_Canvas> {
           onProgress: (message) {
             if (!mounted) return;
             setState(() {
-              _progress = BackupProgress(stage: BackupStage.packaging, message: message);
+              _progress = BackupProgress(
+                stage: BackupStage.packaging,
+                message: message,
+              );
             });
           },
         );
       });
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('恢复成功')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('恢复成功')));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('恢复失败：$e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('恢复失败：$e')));
     } finally {
       if (mounted) {
         setState(() {
@@ -463,10 +487,14 @@ class _CanvasState extends State<_Canvas> {
                 child: _WebDavConfigDialog(
                   config: _config,
                   saving: _busy,
-                  onChangedBaseUrl: (v) => _setConfig(_config.copyWith(webDavBaseUrl: v)),
-                  onChangedUsername: (v) => _setConfig(_config.copyWith(webDavUsername: v)),
-                  onChangedPassword: (v) => _setConfig(_config.copyWith(webDavPassword: v)),
-                  onChangedRemoteDir: (v) => _setConfig(_config.copyWith(webDavRemoteDir: v)),
+                  onChangedBaseUrl: (v) =>
+                      _setConfig(_config.copyWith(webDavBaseUrl: v)),
+                  onChangedUsername: (v) =>
+                      _setConfig(_config.copyWith(webDavUsername: v)),
+                  onChangedPassword: (v) =>
+                      _setConfig(_config.copyWith(webDavPassword: v)),
+                  onChangedRemoteDir: (v) =>
+                      _setConfig(_config.copyWith(webDavRemoteDir: v)),
                   onTest: _busy ? null : _testWebDav,
                   onSave: _busy
                       ? null
@@ -522,10 +550,10 @@ class _BackupMainCard extends StatelessWidget {
     final subtitle = running
         ? (runningText ?? '备份中…')
         : (loading
-            ? '读取配置中…'
-            : (last == null
-                ? '暂无备份记录'
-                : '上次备份：${_formatBackupTime(last!.at)} • ${_formatBackupSize(last!.sizeBytes)}'));
+              ? '读取配置中…'
+              : (last == null
+                    ? '暂无备份记录'
+                    : '上次备份：${_formatBackupTime(last!.at)} • ${_formatBackupSize(last!.sizeBytes)}'));
     final title = enabled ? '云端备份已开启' : '云端备份未开启';
     return PrototypeCard(
       padding: const EdgeInsets.all(24),
@@ -534,12 +562,19 @@ class _BackupMainCard extends StatelessWidget {
           Container(
             width: 80,
             height: 80,
-            decoration: BoxDecoration(color: enabled ? AppColors.green50 : AppColors.gray100, shape: BoxShape.circle),
+            decoration: BoxDecoration(
+              color: enabled
+                  ? context.appColors.stateSuccessSoft
+                  : context.appColors.surfaceSubtle,
+              shape: BoxShape.circle,
+            ),
             alignment: Alignment.center,
             child: FaIcon(
               FontAwesomeIcons.cloudArrowUp,
               size: 30,
-              color: enabled ? AppColors.green500 : AppColors.textTertiary,
+              color: enabled
+                  ? context.appColors.stateSuccess
+                  : context.appColors.textTertiary,
             ),
           ),
           const SizedBox(height: 16),
@@ -561,7 +596,10 @@ class _BackupMainCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 24),
-          PrototypePrimaryButton(label: running ? '备份中' : '立即备份', onTap: onBackup),
+          PrototypePrimaryButton(
+            label: running ? '备份中' : '立即备份',
+            onTap: onBackup,
+          ),
         ],
       ),
     );
@@ -592,8 +630,8 @@ class _DriveExtraConfigCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
-        color: AppColors.white,
+      decoration: BoxDecoration(
+        color: context.appColors.surfaceCard,
         borderRadius: AppRadii.br2xl,
         boxShadow: AppShadows.sm,
       ),
@@ -611,14 +649,22 @@ class _DriveExtraConfigCard extends StatelessWidget {
           _OptionRow(
             title: '备份频率',
             subtitle: backupFrequencyLabel(config.backupFrequency),
-            trailing: const FaIcon(FontAwesomeIcons.chevronRight, size: 10, color: AppColors.gray300),
+            trailing: const FaIcon(
+              FontAwesomeIcons.chevronRight,
+              size: 10,
+              color: AppColors.gray300,
+            ),
             onTap: saving ? null : onPickFrequency,
           ),
           const PrototypeDivider(color: AppColors.borderDivider),
           _OptionRow(
             title: '网盘配置（WebDAV）',
             subtitle: webDavConfigured ? '已配置' : '未设置',
-            trailing: const FaIcon(FontAwesomeIcons.chevronRight, size: 10, color: AppColors.gray300),
+            trailing: const FaIcon(
+              FontAwesomeIcons.chevronRight,
+              size: 10,
+              color: AppColors.gray300,
+            ),
             onTap: saving ? null : onOpenWebDavConfig,
           ),
           const PrototypeDivider(color: AppColors.borderDivider),
@@ -642,7 +688,9 @@ class _DriveExtraConfigCard extends StatelessWidget {
                       for (int i = 0; i < history.length; i++) ...[
                         _BackupHistoryItem(
                           entry: history[i],
-                          onRestore: onRestore == null ? null : () => onRestore!(history[i]),
+                          onRestore: onRestore == null
+                              ? null
+                              : () => onRestore!(history[i]),
                         ),
                         if (i != history.length - 1) const SizedBox(height: 8),
                       ],
@@ -713,8 +761,8 @@ class _WebDavConfigDialogState extends State<_WebDavConfigDialog> {
     return Material(
       color: Colors.transparent,
       child: Container(
-        decoration: const BoxDecoration(
-          color: AppColors.white,
+        decoration: BoxDecoration(
+          color: context.appColors.surfaceCard,
           borderRadius: AppRadii.br3xl,
           boxShadow: AppShadows.lg,
         ),
@@ -822,6 +870,7 @@ class _InputRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.appColors;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Column(
@@ -854,19 +903,22 @@ class _InputRow extends StatelessWidget {
               ),
               isDense: true,
               filled: true,
-              fillColor: AppColors.gray50,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              fillColor: context.appColors.surfaceSubtle,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 10,
+              ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: AppColors.gray100),
+                borderSide: BorderSide(color: colors.borderSubtle),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: AppColors.gray100),
+                borderSide: BorderSide(color: colors.borderSubtle),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: AppColors.borderFocus),
+                borderSide: BorderSide(color: colors.borderFocus),
               ),
               suffixIcon: onToggleObscure == null
                   ? null
@@ -875,7 +927,7 @@ class _InputRow extends StatelessWidget {
                       icon: Icon(
                         obscureText ? Icons.visibility_off : Icons.visibility,
                         size: 18,
-                        color: AppColors.textSecondary,
+                        color: colors.textSecondary,
                       ),
                     ),
             ),
@@ -888,10 +940,7 @@ class _InputRow extends StatelessWidget {
 }
 
 class _BackupHistoryItem extends StatelessWidget {
-  const _BackupHistoryItem({
-    required this.entry,
-    required this.onRestore,
-  });
+  const _BackupHistoryItem({required this.entry, required this.onRestore});
 
   final BackupHistoryEntry entry;
   final VoidCallback? onRestore;
@@ -901,7 +950,7 @@ class _BackupHistoryItem extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppColors.gray50,
+        color: context.appColors.surfaceSubtle,
         borderRadius: AppRadii.brXl,
       ),
       child: Row(
@@ -910,11 +959,15 @@ class _BackupHistoryItem extends StatelessWidget {
             width: 36,
             height: 36,
             decoration: BoxDecoration(
-              color: AppColors.gray100,
+              color: context.appColors.surfaceSubtle,
               borderRadius: BorderRadius.circular(10),
             ),
             alignment: Alignment.center,
-            child: const FaIcon(FontAwesomeIcons.fileLines, size: 16, color: AppColors.gray500),
+            child: FaIcon(
+              FontAwesomeIcons.fileLines,
+              size: 16,
+              color: context.appColors.textTertiary,
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -946,9 +999,9 @@ class _BackupHistoryItem extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
               decoration: BoxDecoration(
-                color: AppColors.white,
+                color: context.appColors.surfaceCard,
                 borderRadius: BorderRadius.circular(9999),
-                border: Border.all(color: AppColors.gray200),
+                border: Border.all(color: context.appColors.borderDefault),
               ),
               child: Text(
                 '恢复',
@@ -994,7 +1047,12 @@ class _FrequencyOption extends StatelessWidget {
               ),
             ),
           ),
-          if (selected) const FaIcon(FontAwesomeIcons.check, size: 14, color: AppColors.green500),
+          if (selected)
+            const FaIcon(
+              FontAwesomeIcons.check,
+              size: 14,
+              color: AppColors.green500,
+            ),
         ],
       ),
     );
@@ -1065,9 +1123,10 @@ class _Toggle extends StatelessWidget {
   Widget build(BuildContext context) {
     final enabled = onChanged != null;
     final on = value;
+    final colors = context.appColors;
     final bg = !enabled
-        ? AppColors.gray200
-        : (on ? AppColors.green500 : AppColors.gray200);
+        ? colors.surfaceDisabled
+        : (on ? colors.stateSuccess : colors.surfaceDisabled);
     final alignment = on ? Alignment.centerRight : Alignment.centerLeft;
     return GestureDetector(
       onTap: enabled ? () => onChanged!(!value) : null,
@@ -1085,7 +1144,11 @@ class _Toggle extends StatelessWidget {
             width: 20,
             height: 20,
             margin: const EdgeInsets.symmetric(horizontal: 2),
-            decoration: const BoxDecoration(color: AppColors.white, shape: BoxShape.circle, boxShadow: AppShadows.sm),
+            decoration: BoxDecoration(
+              color: context.appColors.surfaceCard,
+              shape: BoxShape.circle,
+              boxShadow: AppShadows.sm,
+            ),
           ),
         ),
       ),

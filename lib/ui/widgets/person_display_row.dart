@@ -21,6 +21,7 @@ class PersonDisplayRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.appColors;
     return Row(
       children: [
         SizedBox(
@@ -34,7 +35,7 @@ class PersonDisplayRow extends StatelessWidget {
                 avatarUrl: avatarUrl,
                 size: 40,
                 shape: ContactAvatarShape.circle,
-                border: Border.all(color: AppColors.gray100, width: 1),
+                border: Border.all(color: colors.borderSubtle, width: 1),
               ),
               if (avatarOverlay != null) Positioned.fill(child: avatarOverlay!),
             ],
@@ -50,7 +51,7 @@ class PersonDisplayRow extends StatelessWidget {
                 style: AppTypography.base(
                   fontSize: 16,
                   fontWeight: AppTypography.medium,
-                  color: AppColors.textPrimary,
+                  color: colors.textPrimary,
                 ),
               ),
               const SizedBox(height: 2),
@@ -59,7 +60,7 @@ class PersonDisplayRow extends StatelessWidget {
                 style: AppTypography.base(
                   fontSize: 12,
                   fontWeight: AppTypography.regular,
-                  color: AppColors.textMuted,
+                  color: colors.textMuted,
                 ),
               ),
             ],

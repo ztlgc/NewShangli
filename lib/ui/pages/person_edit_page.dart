@@ -126,9 +126,14 @@ class _PersonEditPageState extends State<PersonEditPage> {
         children: [
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: const BoxDecoration(
-              color: AppColors.white,
-              border: Border(bottom: BorderSide(color: AppColors.gray100, width: 1)),
+            decoration: BoxDecoration(
+              color: context.appColors.surfaceCard,
+              border: Border(
+                bottom: BorderSide(
+                  color: context.appColors.surfaceSubtle,
+                  width: 1,
+                ),
+              ),
             ),
             child: Row(
               children: [
@@ -142,7 +147,9 @@ class _PersonEditPageState extends State<PersonEditPage> {
                       style: AppTypography.base(
                         fontSize: 14,
                         fontWeight: AppTypography.medium,
-                        color: _saving ? AppColors.textMuted : AppColors.textTertiary,
+                        color: _saving
+                            ? AppColors.textMuted
+                            : AppColors.textTertiary,
                       ),
                     ),
                   ),
@@ -162,7 +169,10 @@ class _PersonEditPageState extends State<PersonEditPage> {
                 PressableScale(
                   onTap: _saving ? null : _onSave,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 6,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.brandPrimary,
                       borderRadius: BorderRadius.circular(9999),
@@ -187,7 +197,9 @@ class _PersonEditPageState extends State<PersonEditPage> {
               children: [
                 _AvatarEditor(
                   avatarUrl: _avatarUrl,
-                  nameForFallback: _nameCtrl.text.trim().isEmpty ? '—' : _nameCtrl.text.trim(),
+                  nameForFallback: _nameCtrl.text.trim().isEmpty
+                      ? '—'
+                      : _nameCtrl.text.trim(),
                   onTap: () {
                     if (_saving || !_authorized) return;
                     _pickAvatar();
@@ -199,7 +211,9 @@ class _PersonEditPageState extends State<PersonEditPage> {
                   nameFocus: _nameFocus,
                   nameEditing: _nameEditing,
                   nameErrorText: _nameError,
-                  onTapName: _saving ? null : () => _startEditing(_InlineEditField.name),
+                  onTapName: _saving
+                      ? null
+                      : () => _startEditing(_InlineEditField.name),
                   onNameChanged: _saving ? null : _onNameChanged,
                   onNameSubmitted: _saving ? null : _commitName,
                   onNameFocusChange: _saving ? null : _onNameFocusChange,
@@ -210,14 +224,18 @@ class _PersonEditPageState extends State<PersonEditPage> {
                   phoneFocus: _phoneFocus,
                   phoneEditing: _phoneEditing,
                   phoneErrorText: _phoneError,
-                  onTapPhone: _saving ? null : () => _startEditing(_InlineEditField.phone),
+                  onTapPhone: _saving
+                      ? null
+                      : () => _startEditing(_InlineEditField.phone),
                   onPhoneChanged: _saving ? null : _onPhoneChanged,
                   onPhoneSubmitted: _saving ? null : _commitPhone,
                   onPhoneFocusChange: _saving ? null : _onPhoneFocusChange,
                   birthday: _birthday,
                   isLunarBirthday: _isLunarBirthday,
                   onPickBirthday: _saving ? null : _pickBirthday,
-                  onLunarBirthdayChanged: _saving ? null : (v) => setState(() => _isLunarBirthday = v),
+                  onLunarBirthdayChanged: _saving
+                      ? null
+                      : (v) => setState(() => _isLunarBirthday = v),
                 ),
                 const SizedBox(height: 24),
                 const _SectionOverline(title: '其他信息'),
@@ -227,16 +245,16 @@ class _PersonEditPageState extends State<PersonEditPage> {
                   noteFocus: _noteFocus,
                   noteEditing: _noteEditing,
                   noteErrorText: _noteError,
-                  onTap: _saving ? null : () => _startEditing(_InlineEditField.note),
+                  onTap: _saving
+                      ? null
+                      : () => _startEditing(_InlineEditField.note),
                   onNoteChanged: _saving ? null : _onNoteChanged,
                   onNoteSubmitted: _saving ? null : _commitNote,
                   onNoteFocusChange: _saving ? null : _onNoteFocusChange,
                 ),
                 const SizedBox(height: 24),
                 if (widget.personId != null)
-                  _DeleteButton(
-                    onTap: _saving ? null : _confirmDelete,
-                  ),
+                  _DeleteButton(onTap: _saving ? null : _confirmDelete),
               ],
             ),
           ),
@@ -268,7 +286,8 @@ class _PersonEditPageState extends State<PersonEditPage> {
     final note = _noteCtrl.text.trim();
     setState(() => _saving = true);
     try {
-      if (phone.isNotEmpty && await _isPhoneExistsInDrift(db, phone, excludeId: widget.personId)) {
+      if (phone.isNotEmpty &&
+          await _isPhoneExistsInDrift(db, phone, excludeId: widget.personId)) {
         if (!mounted) return;
         setState(() {
           _phoneError = '该手机号已存在';
@@ -284,10 +303,14 @@ class _PersonEditPageState extends State<PersonEditPage> {
           PersonsCompanion.insert(
             bookId: dbBookId,
             name: name,
-            relationshipType: Value(_relationship.trim().isEmpty ? '朋友' : _relationship.trim()),
+            relationshipType: Value(
+              _relationship.trim().isEmpty ? '朋友' : _relationship.trim(),
+            ),
             phone: Value(phone.isEmpty ? null : phone),
             birthday: Value(_birthday?.toIso8601String()),
-            avatarUri: Value(_avatarUrl?.trim().isEmpty == true ? null : _avatarUrl?.trim()),
+            avatarUri: Value(
+              _avatarUrl?.trim().isEmpty == true ? null : _avatarUrl?.trim(),
+            ),
             note: Value(note.isEmpty ? null : note),
             createdAt: now,
             updatedAt: now,
@@ -301,10 +324,14 @@ class _PersonEditPageState extends State<PersonEditPage> {
         }
         final updated = existing.copyWith(
           name: name,
-          relationshipType: _relationship.trim().isEmpty ? existing.relationshipType : _relationship.trim(),
+          relationshipType: _relationship.trim().isEmpty
+              ? existing.relationshipType
+              : _relationship.trim(),
           phone: Value(phone.isEmpty ? null : phone),
           birthday: Value(_birthday?.toIso8601String()),
-          avatarUri: Value(_avatarUrl?.trim().isEmpty == true ? null : _avatarUrl?.trim()),
+          avatarUri: Value(
+            _avatarUrl?.trim().isEmpty == true ? null : _avatarUrl?.trim(),
+          ),
           note: Value(note.isEmpty ? null : note),
         );
         await db.personsDao.updateOne(updated);
@@ -383,7 +410,7 @@ class _PersonEditPageState extends State<PersonEditPage> {
     if (!RegExp(r'^1[3-9]\d{9}$').hasMatch(digits)) {
       return '手机号格式不正确';
     }
-    
+
     return null;
   }
 
@@ -497,12 +524,18 @@ class _PersonEditPageState extends State<PersonEditPage> {
     if (widget.personId == null) return;
     final db = AppDatabaseScope.of(context);
 
-    final name = (field == _InlineEditField.name ? _nameCtrl.text : _savedName).trim();
-    final phone = (field == _InlineEditField.phone ? _phoneCtrl.text : _savedPhone).trim();
-    final note = (field == _InlineEditField.note ? _noteCtrl.text : _savedNote).trim();
+    final name = (field == _InlineEditField.name ? _nameCtrl.text : _savedName)
+        .trim();
+    final phone =
+        (field == _InlineEditField.phone ? _phoneCtrl.text : _savedPhone)
+            .trim();
+    final note = (field == _InlineEditField.note ? _noteCtrl.text : _savedNote)
+        .trim();
 
     final nameErr = _validateName(name);
-    final phoneErr = field == _InlineEditField.phone ? _validatePhone(phone) : null;
+    final phoneErr = field == _InlineEditField.phone
+        ? _validatePhone(phone)
+        : null;
     final noteErr = field == _InlineEditField.note ? _validateNote(note) : null;
 
     if (nameErr != null || phoneErr != null || noteErr != null) {
@@ -533,10 +566,14 @@ class _PersonEditPageState extends State<PersonEditPage> {
       if (existing == null) return;
       final updated = existing.copyWith(
         name: name,
-        relationshipType: _relationship.trim().isEmpty ? existing.relationshipType : _relationship.trim(),
+        relationshipType: _relationship.trim().isEmpty
+            ? existing.relationshipType
+            : _relationship.trim(),
         phone: Value(phone.isEmpty ? null : phone),
         birthday: Value(_birthday?.toIso8601String()),
-        avatarUri: Value(_avatarUrl?.trim().isEmpty == true ? null : _avatarUrl?.trim()),
+        avatarUri: Value(
+          _avatarUrl?.trim().isEmpty == true ? null : _avatarUrl?.trim(),
+        ),
         note: Value(note.isEmpty ? null : note),
       );
       await db.personsDao.updateOne(updated);
@@ -566,8 +603,14 @@ class _PersonEditPageState extends State<PersonEditPage> {
             title: const Text('删除联系人'),
             content: Text('确认删除「$name」？删除后将进入回收站。'),
             actions: [
-              TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('取消')),
-              TextButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('删除')),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('取消'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                child: const Text('删除'),
+              ),
             ],
           ),
         );
@@ -643,8 +686,8 @@ class _PersonEditPageState extends State<PersonEditPage> {
         return Padding(
           padding: EdgeInsets.fromLTRB(12, 0, 12, 12 + bottomInset),
           child: Container(
-            decoration: const BoxDecoration(
-              color: AppColors.white,
+            decoration: BoxDecoration(
+              color: context.appColors.surfaceCard,
               borderRadius: AppRadii.br2xl,
               boxShadow: AppShadows.lg,
             ),
@@ -653,10 +696,18 @@ class _PersonEditPageState extends State<PersonEditPage> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  decoration: const BoxDecoration(
-                    color: AppColors.white,
-                    border: Border(bottom: BorderSide(color: AppColors.gray100, width: 1)),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                  decoration: BoxDecoration(
+                    color: context.appColors.surfaceCard,
+                    border: Border(
+                      bottom: BorderSide(
+                        color: context.appColors.surfaceSubtle,
+                        width: 1,
+                      ),
+                    ),
                   ),
                   child: Row(
                     children: [
@@ -672,7 +723,7 @@ class _PersonEditPageState extends State<PersonEditPage> {
                       ),
                       PrototypeIconButton(
                         icon: const FaIcon(FontAwesomeIcons.xmark, size: 14),
-                        backgroundColor: AppColors.gray100,
+                        backgroundColor: context.appColors.surfaceSubtle,
                         foregroundColor: AppColors.textSecondary,
                         onPressed: () => Navigator.of(context).pop(),
                         radius: 12,
@@ -701,7 +752,11 @@ class _PersonEditPageState extends State<PersonEditPage> {
                                 ),
                               ),
                               if (t.name == _relationship)
-                                const FaIcon(FontAwesomeIcons.check, size: 14, color: AppColors.indigo600),
+                                const FaIcon(
+                                  FontAwesomeIcons.check,
+                                  size: 14,
+                                  color: AppColors.indigo600,
+                                ),
                             ],
                           ),
                         ),
@@ -709,7 +764,11 @@ class _PersonEditPageState extends State<PersonEditPage> {
                         onTap: () => Navigator.of(context).pop('__custom__'),
                         child: Row(
                           children: [
-                            const FaIcon(FontAwesomeIcons.plus, size: 14, color: AppColors.blue600),
+                            const FaIcon(
+                              FontAwesomeIcons.plus,
+                              size: 14,
+                              color: AppColors.blue600,
+                            ),
                             const SizedBox(width: 8),
                             Text(
                               '自定义...',
@@ -752,7 +811,10 @@ class _PersonEditPageState extends State<PersonEditPage> {
             decoration: const InputDecoration(hintText: '请输入关系名称'),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('取消')),
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('取消'),
+            ),
             TextButton(
               onPressed: () {
                 final text = ctrl.text.trim();
@@ -823,9 +885,12 @@ class _AvatarEditor extends StatelessWidget {
             width: 96,
             height: 96,
             decoration: BoxDecoration(
-              color: AppColors.gray200,
+              color: context.appColors.surfaceDisabled,
               shape: BoxShape.circle,
-              border: Border.all(color: AppColors.white, width: 4),
+              border: Border.all(
+                color: context.appColors.surfaceCard,
+                width: 4,
+              ),
               boxShadow: AppShadows.sm,
             ),
             clipBehavior: Clip.antiAlias,
@@ -905,8 +970,8 @@ class _BasicInfoCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
-        color: AppColors.white,
+      decoration: BoxDecoration(
+        color: context.appColors.surfaceCard,
         borderRadius: AppRadii.br2xl,
         boxShadow: AppShadows.sm,
       ),
@@ -915,7 +980,9 @@ class _BasicInfoCard extends StatelessWidget {
           _InlineEditableRow(
             label: '姓名',
             requiredMark: true,
-            displayValue: nameCtrl.text.trim().isEmpty ? '未设置' : nameCtrl.text.trim(),
+            displayValue: nameCtrl.text.trim().isEmpty
+                ? '未设置'
+                : nameCtrl.text.trim(),
             controller: nameCtrl,
             focusNode: nameFocus,
             editing: nameEditing,
@@ -1019,7 +1086,9 @@ class _NoteCard extends StatelessWidget {
         onTap: noteEditing ? null : onTap,
         borderBottom: false,
         child: Container(
-          color: noteErrorText == null ? Colors.transparent : AppColors.stateDangerSoft,
+          color: noteErrorText == null
+              ? Colors.transparent
+              : AppColors.stateDangerSoft,
           child: Row(
             children: [
               Expanded(
@@ -1037,11 +1106,15 @@ class _NoteCard extends StatelessWidget {
                     const SizedBox(height: 6),
                     if (!noteEditing)
                       Text(
-                        noteCtrl.text.trim().isEmpty ? '未设置' : noteCtrl.text.trim(),
+                        noteCtrl.text.trim().isEmpty
+                            ? '未设置'
+                            : noteCtrl.text.trim(),
                         style: AppTypography.base(
                           fontSize: 14,
                           fontWeight: AppTypography.regular,
-                          color: noteCtrl.text.trim().isEmpty ? AppColors.textMuted : AppColors.textPrimary,
+                          color: noteCtrl.text.trim().isEmpty
+                              ? AppColors.textMuted
+                              : AppColors.textPrimary,
                         ),
                       )
                     else
@@ -1107,7 +1180,11 @@ class _NoteCard extends StatelessWidget {
                   ],
                 ),
               ),
-              const FaIcon(FontAwesomeIcons.chevronRight, size: 10, color: AppColors.gray300),
+              const FaIcon(
+                FontAwesomeIcons.chevronRight,
+                size: 10,
+                color: AppColors.gray300,
+              ),
             ],
           ),
         ),
@@ -1128,9 +1205,9 @@ class _DeleteButton extends StatelessWidget {
       child: Container(
         height: 48,
         decoration: BoxDecoration(
-          color: AppColors.white,
+          color: context.appColors.surfaceCard,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.gray100, width: 1),
+          border: Border.all(color: context.appColors.borderSubtle, width: 1),
           boxShadow: AppShadows.sm,
         ),
         alignment: Alignment.center,
@@ -1183,9 +1260,11 @@ class _EditableRow extends StatelessWidget {
                     children: [
                       TextSpan(text: label),
                       if (requiredMark)
-                        const TextSpan(
+                        TextSpan(
                           text: ' *',
-                          style: TextStyle(color: AppColors.red500),
+                          style: TextStyle(
+                            color: context.appColors.stateDanger,
+                          ),
                         ),
                     ],
                   ),
@@ -1195,14 +1274,22 @@ class _EditableRow extends StatelessWidget {
                   value,
                   style: AppTypography.base(
                     fontSize: 16,
-                    fontWeight: requiredMark ? AppTypography.medium : AppTypography.regular,
-                    color: value == '未设置' ? AppColors.textMuted : AppColors.textPrimary,
+                    fontWeight: requiredMark
+                        ? AppTypography.medium
+                        : AppTypography.regular,
+                    color: value == '未设置'
+                        ? AppColors.textMuted
+                        : AppColors.textPrimary,
                   ),
                 ),
               ],
             ),
           ),
-          const FaIcon(FontAwesomeIcons.chevronRight, size: 10, color: AppColors.gray300),
+          const FaIcon(
+            FontAwesomeIcons.chevronRight,
+            size: 10,
+            color: AppColors.gray300,
+          ),
         ],
       ),
     );
@@ -1251,7 +1338,9 @@ class _InlineEditableRow extends StatelessWidget {
       onTap: editing ? null : onTap,
       borderBottom: borderBottom,
       child: Container(
-        color: errorText == null ? Colors.transparent : AppColors.stateDangerSoft,
+        color: errorText == null
+            ? Colors.transparent
+            : AppColors.stateDangerSoft,
         child: Row(
           children: [
             Expanded(
@@ -1268,9 +1357,11 @@ class _InlineEditableRow extends StatelessWidget {
                       children: [
                         TextSpan(text: label),
                         if (requiredMark)
-                          const TextSpan(
+                          TextSpan(
                             text: ' *',
-                            style: TextStyle(color: AppColors.red500),
+                            style: TextStyle(
+                              color: context.appColors.stateDanger,
+                            ),
                           ),
                       ],
                     ),
@@ -1281,8 +1372,12 @@ class _InlineEditableRow extends StatelessWidget {
                       displayValue,
                       style: AppTypography.base(
                         fontSize: 16,
-                        fontWeight: requiredMark ? AppTypography.medium : AppTypography.regular,
-                        color: isUnset ? AppColors.textMuted : AppColors.textPrimary,
+                        fontWeight: requiredMark
+                            ? AppTypography.medium
+                            : AppTypography.regular,
+                        color: isUnset
+                            ? AppColors.textMuted
+                            : AppColors.textPrimary,
                       ),
                     )
                   else
@@ -1298,7 +1393,9 @@ class _InlineEditableRow extends StatelessWidget {
                         onSubmitted: (_) => onSubmitted?.call(),
                         style: AppTypography.base(
                           fontSize: 16,
-                          fontWeight: requiredMark ? AppTypography.medium : AppTypography.regular,
+                          fontWeight: requiredMark
+                              ? AppTypography.medium
+                              : AppTypography.regular,
                           color: AppColors.textPrimary,
                         ),
                         decoration: InputDecoration(
@@ -1330,7 +1427,11 @@ class _InlineEditableRow extends StatelessWidget {
                 ],
               ),
             ),
-            const FaIcon(FontAwesomeIcons.chevronRight, size: 10, color: AppColors.gray300),
+            const FaIcon(
+              FontAwesomeIcons.chevronRight,
+              size: 10,
+              color: AppColors.gray300,
+            ),
           ],
         ),
       ),
@@ -1338,7 +1439,7 @@ class _InlineEditableRow extends StatelessWidget {
   }
 }
 
-  String _formatPhone(String raw) {
+String _formatPhone(String raw) {
   final digits = raw.replaceAll(RegExp(r'\s+'), '');
   if (digits.isEmpty) return '未设置';
   if (digits.length == 11) {
@@ -1370,13 +1471,15 @@ class _BirthdayRow extends StatelessWidget {
         final lunar = Lunar.fromDate(birthday!);
         display = '农历 ${lunar.getMonthInChinese()}月${lunar.getDayInChinese()}';
       } else {
-        display = '${birthday!.year}-${birthday!.month.toString().padLeft(2, '0')}-${birthday!.day.toString().padLeft(2, '0')}';
+        display =
+            '${birthday!.year}-${birthday!.month.toString().padLeft(2, '0')}-${birthday!.day.toString().padLeft(2, '0')}';
       }
 
       // Calculate age
       final now = DateTime.now();
       var age = now.year - birthday!.year;
-      if (now.month < birthday!.month || (now.month == birthday!.month && now.day < birthday!.day)) {
+      if (now.month < birthday!.month ||
+          (now.month == birthday!.month && now.day < birthday!.day)) {
         age--;
       }
       if (age >= 0) {
@@ -1411,13 +1514,18 @@ class _BirthdayRow extends StatelessWidget {
                           style: AppTypography.base(
                             fontSize: 16,
                             fontWeight: AppTypography.regular,
-                            color: birthday == null ? AppColors.textMuted : AppColors.textPrimary,
+                            color: birthday == null
+                                ? AppColors.textMuted
+                                : AppColors.textPrimary,
                           ),
                         ),
                         if (ageInfo != null) ...[
                           const SizedBox(width: 8),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 1,
+                            ),
                             decoration: BoxDecoration(
                               color: AppColors.indigo50,
                               borderRadius: BorderRadius.circular(4),
@@ -1437,14 +1545,22 @@ class _BirthdayRow extends StatelessWidget {
                   ],
                 ),
               ),
-              const FaIcon(FontAwesomeIcons.chevronRight, size: 10, color: AppColors.gray300),
+              const FaIcon(
+                FontAwesomeIcons.chevronRight,
+                size: 10,
+                color: AppColors.gray300,
+              ),
             ],
           ),
           if (birthday != null) ...[
             const SizedBox(height: 12),
             Row(
               children: [
-                _SwitchItem(label: '农历', value: isLunar, onChanged: onLunarChanged),
+                _SwitchItem(
+                  label: '农历',
+                  value: isLunar,
+                  onChanged: onLunarChanged,
+                ),
               ],
             ),
           ],
@@ -1455,7 +1571,11 @@ class _BirthdayRow extends StatelessWidget {
 }
 
 class _SwitchItem extends StatelessWidget {
-  const _SwitchItem({required this.label, required this.value, required this.onChanged});
+  const _SwitchItem({
+    required this.label,
+    required this.value,
+    required this.onChanged,
+  });
 
   final String label;
   final bool value;
@@ -1463,6 +1583,7 @@ class _SwitchItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.appColors;
     return GestureDetector(
       onTap: onChanged == null ? null : () => onChanged!(!value),
       behavior: HitTestBehavior.opaque,
@@ -1476,20 +1597,22 @@ class _SwitchItem extends StatelessWidget {
               children: [
                 Container(
                   decoration: BoxDecoration(
-                    color: value ? AppColors.brandPrimary : AppColors.gray200,
+                    color: value ? colors.brandPrimary : colors.surfaceDisabled,
                     borderRadius: BorderRadius.circular(999),
                   ),
                 ),
                 AnimatedAlign(
                   duration: const Duration(milliseconds: 200),
                   curve: Curves.easeInOut,
-                  alignment: value ? Alignment.centerRight : Alignment.centerLeft,
+                  alignment: value
+                      ? Alignment.centerRight
+                      : Alignment.centerLeft,
                   child: Container(
                     width: 16,
                     height: 16,
                     margin: const EdgeInsets.all(2),
-                    decoration: const BoxDecoration(
-                      color: AppColors.white,
+                    decoration: BoxDecoration(
+                      color: context.appColors.surfaceCard,
                       shape: BoxShape.circle,
                       boxShadow: AppShadows.sm,
                     ),

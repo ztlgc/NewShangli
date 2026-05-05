@@ -56,14 +56,15 @@ class _CanvasState extends State<_Canvas> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.appColors;
     return Column(
       children: [
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: const BoxDecoration(
-            color: AppColors.white,
+          decoration: BoxDecoration(
+            color: context.appColors.surfaceCard,
             border: Border(
-              bottom: BorderSide(color: AppColors.gray100, width: 1),
+              bottom: BorderSide(color: colors.borderDivider, width: 1),
             ),
           ),
           child: Row(
@@ -81,7 +82,7 @@ class _CanvasState extends State<_Canvas> {
                     style: AppTypography.base(
                       fontSize: 18,
                       fontWeight: AppTypography.bold,
-                      color: AppColors.textPrimary,
+                      color: colors.textPrimary,
                     ),
                   ),
                 ),
@@ -120,7 +121,7 @@ class _CanvasState extends State<_Canvas> {
                         style: AppTypography.base(
                           fontSize: AppTypography.fs14,
                           fontWeight: AppTypography.regular,
-                          color: AppColors.textSecondary,
+                          color: colors.textSecondary,
                         ),
                       ),
                     );
@@ -179,12 +180,15 @@ class _BookCardDb extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.appColors;
     final isDefault = book.isDefault == 1;
 
     final theme = _parseHexColorOrNull(book.themeColor) ?? AppColors.indigo900;
+    final themeForeground = colors.foregroundFor(theme);
+    final themeSoft = theme.withValues(
+      alpha: Theme.of(context).brightness == Brightness.dark ? 0.28 : 0.14,
+    );
     final icon = _iconByReasonType(book.reasonType);
-    final iconBg = theme.withValues(alpha: 0.14);
-    final iconFg = theme;
 
     final subtitle = (book.description ?? '').trim().isEmpty
         ? '点击查看该账簿记录'
@@ -196,11 +200,11 @@ class _BookCardDb extends StatelessWidget {
         key: ValueKey<String>('book_card_${book.bookId}'),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: AppColors.white,
+          color: context.appColors.surfaceCard,
           borderRadius: BorderRadius.circular(16),
           boxShadow: AppShadows.sm,
           border: Border.all(
-            color: isDefault ? theme : AppColors.gray100,
+            color: isDefault ? themeForeground : colors.borderSubtle,
             width: isDefault ? 2 : 1,
           ),
         ),
@@ -215,8 +219,8 @@ class _BookCardDb extends StatelessWidget {
                     horizontal: 8,
                     vertical: 2,
                   ),
-                  decoration: const BoxDecoration(
-                    color: AppColors.indigo600,
+                  decoration: BoxDecoration(
+                    color: colors.brandPrimary,
                     borderRadius: BorderRadius.only(
                       bottomLeft: Radius.circular(8),
                     ),
@@ -226,7 +230,7 @@ class _BookCardDb extends StatelessWidget {
                     style: AppTypography.base(
                       fontSize: 10,
                       fontWeight: AppTypography.regular,
-                      color: AppColors.white,
+                      color: colors.textInverse,
                     ),
                   ),
                 ),
@@ -240,11 +244,11 @@ class _BookCardDb extends StatelessWidget {
                       width: 48,
                       height: 48,
                       decoration: BoxDecoration(
-                        color: iconBg,
+                        color: themeSoft,
                         borderRadius: BorderRadius.circular(12),
                       ),
                       alignment: Alignment.center,
-                      child: FaIcon(icon, size: 20, color: iconFg),
+                      child: FaIcon(icon, size: 20, color: themeForeground),
                     ),
                     const SizedBox(width: 16),
                     Expanded(
@@ -256,7 +260,7 @@ class _BookCardDb extends StatelessWidget {
                             style: AppTypography.base(
                               fontSize: 16,
                               fontWeight: AppTypography.bold,
-                              color: AppColors.textPrimary,
+                              color: colors.textPrimary,
                             ),
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -266,7 +270,7 @@ class _BookCardDb extends StatelessWidget {
                             style: AppTypography.base(
                               fontSize: 12,
                               fontWeight: AppTypography.regular,
-                              color: AppColors.textMuted,
+                              color: colors.textMuted,
                             ),
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -276,7 +280,7 @@ class _BookCardDb extends StatelessWidget {
                             style: AppTypography.base(
                               fontSize: 11,
                               fontWeight: AppTypography.regular,
-                              color: AppColors.textTertiary,
+                              color: colors.textTertiary,
                             ),
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -287,7 +291,7 @@ class _BookCardDb extends StatelessWidget {
                               vertical: 3,
                             ),
                             decoration: BoxDecoration(
-                              color: AppColors.indigo50,
+                              color: colors.brandSoft,
                               borderRadius: BorderRadius.circular(999),
                             ),
                             child: Text(
@@ -295,7 +299,7 @@ class _BookCardDb extends StatelessWidget {
                               style: AppTypography.base(
                                 fontSize: 11,
                                 fontWeight: AppTypography.medium,
-                                color: AppColors.indigo700,
+                                color: colors.brandOnSoft,
                               ),
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -306,7 +310,7 @@ class _BookCardDb extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 12),
-                Container(height: 1, color: AppColors.borderDivider),
+                Container(height: 1, color: colors.borderDivider),
                 const SizedBox(height: 12),
                 Row(
                   children: [
@@ -323,7 +327,7 @@ class _BookCardDb extends StatelessWidget {
                           style: AppTypography.base(
                             fontSize: 12,
                             fontWeight: AppTypography.regular,
-                            color: AppColors.textTertiary,
+                            color: colors.textTertiary,
                           ),
                         );
                       },
@@ -383,12 +387,13 @@ class _MiniTextButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.appColors;
     return PressableScale(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
-          color: bg,
+          color: colors.softFor(bg),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Text(
@@ -396,7 +401,7 @@ class _MiniTextButton extends StatelessWidget {
           style: AppTypography.base(
             fontSize: 12,
             fontWeight: AppTypography.medium,
-            color: fg,
+            color: colors.foregroundFor(fg),
           ),
         ),
       ),

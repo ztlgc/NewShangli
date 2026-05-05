@@ -11,6 +11,7 @@ import 'package:drift/native.dart';
 
 import 'package:newshangli/data/local/drift/app_database.dart';
 import 'package:newshangli/ui/app.dart';
+import 'package:newshangli/ui/app_tokens.dart';
 
 void main() {
   testWidgets('App opens record home page', (WidgetTester tester) async {
@@ -32,18 +33,19 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('尚礼'), findsOneWidget);
-    
+
     await tester.pumpWidget(const SizedBox());
     await tester.pump(const Duration(seconds: 1));
   });
 
-  testWidgets('Empty record list shows placeholder', (WidgetTester tester) async {
+  testWidgets('Empty record list shows placeholder', (
+    WidgetTester tester,
+  ) async {
     await tester.pumpWidget(
       NewShangliApp(
         databaseFactory: () => AppDatabase.forTesting(NativeDatabase.memory()),
       ),
     );
-
 
     expect(find.text('暂无记录'), findsOneWidget);
 
@@ -52,8 +54,12 @@ void main() {
   });
 
   testWidgets('Dark mode still renders', (WidgetTester tester) async {
-    tester.binding.platformDispatcher.platformBrightnessTestValue = Brightness.dark;
-    addTearDown(() => tester.binding.platformDispatcher.clearPlatformBrightnessTestValue());
+    tester.binding.platformDispatcher.platformBrightnessTestValue =
+        Brightness.dark;
+    addTearDown(
+      () =>
+          tester.binding.platformDispatcher.clearPlatformBrightnessTestValue(),
+    );
 
     await tester.pumpWidget(
       NewShangliApp(
@@ -62,7 +68,17 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.text('尚礼'), findsOneWidget);
-    
+
+    final context = tester.element(find.text('尚礼'));
+    expect(Theme.of(context).brightness, Brightness.dark);
+    expect(
+      AppThemeColors.of(context).surfaceApp,
+      AppThemeColors.dark.surfaceApp,
+    );
+
+    final scaffold = tester.widget<Scaffold>(find.byType(Scaffold).first);
+    expect(scaffold.backgroundColor, AppThemeColors.dark.surfaceApp);
+
     await tester.pumpWidget(const SizedBox());
     await tester.pump(const Duration(seconds: 1));
   });

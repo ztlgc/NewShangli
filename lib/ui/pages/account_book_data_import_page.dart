@@ -44,10 +44,13 @@ class _AccountBookDataImportPageState extends State<AccountBookDataImportPage> {
         children: [
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: const BoxDecoration(
-              color: AppColors.white,
+            decoration: BoxDecoration(
+              color: context.appColors.surfaceCard,
               border: Border(
-                bottom: BorderSide(color: AppColors.gray100, width: 1),
+                bottom: BorderSide(
+                  color: context.appColors.surfaceSubtle,
+                  width: 1,
+                ),
               ),
             ),
             child: Row(
@@ -78,8 +81,8 @@ class _AccountBookDataImportPageState extends State<AccountBookDataImportPage> {
               children: [
                 Container(
                   padding: const EdgeInsets.all(16),
-                  decoration: const BoxDecoration(
-                    color: AppColors.white,
+                  decoration: BoxDecoration(
+                    color: context.appColors.surfaceCard,
                     borderRadius: AppRadii.br2xl,
                     boxShadow: AppShadows.sm,
                   ),
@@ -91,7 +94,7 @@ class _AccountBookDataImportPageState extends State<AccountBookDataImportPage> {
                           Container(
                             width: 44,
                             height: 44,
-                            decoration: const BoxDecoration(
+                            decoration: BoxDecoration(
                               color: AppColors.orange100,
                               borderRadius: BorderRadius.all(
                                 Radius.circular(12),
@@ -148,7 +151,7 @@ class _AccountBookDataImportPageState extends State<AccountBookDataImportPage> {
                             color: AppColors.textMuted,
                           ),
                           filled: true,
-                          fillColor: AppColors.white,
+                          fillColor: context.appColors.surfaceCard,
                           contentPadding: const EdgeInsets.all(14),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(14),

@@ -158,7 +158,7 @@ class _RecycleSummaryCard extends StatelessWidget {
           Container(
             width: 44,
             height: 44,
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               color: AppColors.red100,
               borderRadius: AppRadii.brXl,
             ),
@@ -247,15 +247,15 @@ class _RecycleTabBar extends StatelessWidget {
     return Container(
       height: 48,
       padding: const EdgeInsets.all(4),
-      decoration: const BoxDecoration(
-        color: AppColors.gray100,
+      decoration: BoxDecoration(
+        color: context.appColors.surfaceSubtle,
         borderRadius: AppRadii.brXl,
       ),
       child: TabBar(
         dividerColor: Colors.transparent,
         indicatorSize: TabBarIndicatorSize.tab,
-        indicator: const BoxDecoration(
-          color: AppColors.white,
+        indicator: BoxDecoration(
+          color: context.appColors.surfaceCard,
           borderRadius: AppRadii.brLg,
           boxShadow: AppShadows.sm,
         ),
@@ -296,7 +296,7 @@ class _RecycleTab extends StatelessWidget {
           Container(
             width: 22,
             height: 22,
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               color: AppColors.indigo50,
               shape: BoxShape.circle,
             ),
@@ -465,7 +465,7 @@ class _ListCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: context.appColors.surfaceCard,
         borderRadius: AppRadii.br2xl,
         boxShadow: AppShadows.sm,
         border: Border.all(color: AppColors.borderSubtle),
@@ -867,8 +867,8 @@ class _StateMessage extends StatelessWidget {
             Container(
               width: 48,
               height: 48,
-              decoration: const BoxDecoration(
-                color: AppColors.gray100,
+              decoration: BoxDecoration(
+                color: context.appColors.surfaceSubtle,
                 shape: BoxShape.circle,
               ),
               alignment: Alignment.center,

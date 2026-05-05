@@ -25,6 +25,7 @@ class DataExportRequest {
   final DataExportFormat format;
   final DateTime start;
   final DateTime end;
+
   /// 需要导出的礼簿（账簿）ID：
   /// - 为 null 表示导出所有礼簿
   /// - 非 null 时，只导出该礼簿下的记录（记录未指定 bookId 时会被视为默认礼簿）
@@ -53,11 +54,22 @@ class DataExportService {
       throw const DataExportException('时间范围不合法');
     }
 
-    final allPersons = await (db.select(db.persons)..where((t) => t.deletedAt.isNull())).get();
-    final personById = <String, Person>{for (final p in allPersons) p.personId: p};
+    final allPersons = await (db.select(
+      db.persons,
+    )..where((t) => t.deletedAt.isNull())).get();
+    final scopedPersons = request.bookId == null
+        ? allPersons
+        : allPersons.where((p) => p.bookId == request.bookId).toList();
+    final personById = <String, Person>{
+      for (final p in scopedPersons) p.personId: p,
+    };
 
-    final allBooks = await (db.select(db.accountBooks)..where((t) => t.deletedAt.isNull())).get();
-    final bookById = <String, AccountBook>{for (final b in allBooks) b.bookId: b};
+    final allBooks = await (db.select(
+      db.accountBooks,
+    )..where((t) => t.deletedAt.isNull())).get();
+    final bookById = <String, AccountBook>{
+      for (final b in allBooks) b.bookId: b,
+    };
 
     final recordQuery = db.select(db.giftRecords)
       ..where((t) => t.deletedAt.isNull());
@@ -80,7 +92,10 @@ class DataExportService {
       final len = (r.attachments ?? const <String>[]).length;
       return len > prev ? len : prev;
     });
-    final mediaBundle = await _prepareDriftMediaBundle(records: records, persons: allPersons);
+    final mediaBundle = await _prepareDriftMediaBundle(
+      records: records,
+      persons: scopedPersons,
+    );
 
     var recordCount = 0;
     if (request.includeRecords) {
@@ -99,18 +114,10 @@ class DataExportService {
       for (var i = 1; i <= maxAttachmentCount; i++) {
         recordHeaders.add('附件$i名称');
       }
-      recordRows.add(
-        recordHeaders,
-      );
+      recordRows.add(recordHeaders);
       for (final r in records) {
         recordCount++;
         final person = personById[r.personId];
-        final avatarRef = mediaBundle.personAvatarRefs[person?.personId];
-        final avatarText = _displayCellText(
-          fileName: avatarRef?.displayName ?? _extractFileName(person?.avatarUri),
-          archivePath: request.format == DataExportFormat.zip ? avatarRef?.archivePath : null,
-          links: links,
-        );
         final row = <String>[
           r.recordId,
           r.direction == '支出' ? '支出' : '收入',
@@ -123,14 +130,17 @@ class DataExportService {
           _formatDateTime(DateTime.fromMillisecondsSinceEpoch(r.occurredAt)),
           r.note ?? '',
         ];
-        final refs = mediaBundle.recordAttachmentRefs[r.recordId] ?? const <_MediaRef>[];
+        final refs =
+            mediaBundle.recordAttachmentRefs[r.recordId] ?? const <_MediaRef>[];
         for (var i = 0; i < maxAttachmentCount; i++) {
           if (i < refs.length) {
             final ref = refs[i];
             row.add(
               _displayCellText(
                 fileName: ref.displayName,
-                archivePath: request.format == DataExportFormat.zip ? ref.archivePath : null,
+                archivePath: request.format == DataExportFormat.zip
+                    ? ref.archivePath
+                    : null,
                 links: links,
               ),
             );
@@ -138,43 +148,42 @@ class DataExportService {
             row.add('');
           }
         }
-        recordRows.add(
-          row,
-        );
+        recordRows.add(row);
       }
     }
 
     var personCount = 0;
     if (request.includePersons) {
-      personRows.add(
-        <String>[
-          '关系人ID',
-          '姓名',
-          '关系',
-          '手机号',
-          '创建时间',
-          '备注',
-          '头像文件名',
-        ],
-      );
-      for (final person in allPersons) {
+      personRows.add(<String>[
+        '关系人ID',
+        '姓名',
+        '关系',
+        '手机号',
+        '创建时间',
+        '备注',
+        '头像文件名',
+      ]);
+      for (final person in scopedPersons) {
         personCount++;
         final avatarRef = mediaBundle.personAvatarRefs[person.personId];
-        personRows.add(
-          <String>[
-            person.personId,
-            person.name,
-            person.relationshipType,
-            person.phone ?? '',
-            _formatDateTime(DateTime.fromMillisecondsSinceEpoch(person.createdAt)),
-            person.note ?? '',
-            _displayCellText(
-              fileName: avatarRef?.displayName ?? _extractFileName(person.avatarUri),
-              archivePath: request.format == DataExportFormat.zip ? avatarRef?.archivePath : null,
-              links: links,
-            ),
-          ],
-        );
+        personRows.add(<String>[
+          person.personId,
+          person.name,
+          person.relationshipType,
+          person.phone ?? '',
+          _formatDateTime(
+            DateTime.fromMillisecondsSinceEpoch(person.createdAt),
+          ),
+          person.note ?? '',
+          _displayCellText(
+            fileName:
+                avatarRef?.displayName ?? _extractFileName(person.avatarUri),
+            archivePath: request.format == DataExportFormat.zip
+                ? avatarRef?.archivePath
+                : null,
+            links: links,
+          ),
+        ]);
       }
     }
 
@@ -185,7 +194,8 @@ class DataExportService {
       throw const DataExportException('当前没有可导出的关系人');
     }
 
-    final dir = outputDir ?? Directory((await getApplicationDocumentsDirectory()).path);
+    final dir =
+        outputDir ?? Directory((await getApplicationDocumentsDirectory()).path);
     final exportDir = Directory(p.join(dir.path, 'exports'));
     await exportDir.create(recursive: true);
 
@@ -210,7 +220,8 @@ class DataExportService {
           includePersons: request.includePersons,
           links: links,
         );
-        final archive = Archive()..addFile(ArchiveFile('$baseName.xlsx', xlsxBytes.length, xlsxBytes));
+        final archive = Archive()
+          ..addFile(ArchiveFile('$baseName.xlsx', xlsxBytes.length, xlsxBytes));
         await _addMediaBundleToArchive(archive: archive, bundle: mediaBundle);
         final zipped = ZipEncoder().encode(archive);
         if (zipped == null) {
@@ -245,22 +256,23 @@ class DataExportService {
 
     var recordCount = 0;
     if (request.includeRecords) {
-      recordRows.add(
-        <String>[
-          '记录ID',
-          '收支方向',
-          '金额(元)',
-          '事由',
-          '所属账簿名称',
-          '关系人ID',
-          '关系人姓名',
-          '支付方式',
-          '发生时间',
-          '备注',
-        ],
-      );
+      recordRows.add(<String>[
+        '记录ID',
+        '收支方向',
+        '金额(元)',
+        '事由',
+        '所属账簿名称',
+        '关系人ID',
+        '关系人姓名',
+        '支付方式',
+        '发生时间',
+        '备注',
+      ]);
       for (final r in data.records) {
-        if (r.occurredAt.isBefore(start) || !r.occurredAt.isBefore(endExclusive)) continue;
+        if (r.occurredAt.isBefore(start) ||
+            !r.occurredAt.isBefore(endExclusive)) {
+          continue;
+        }
         if (request.bookId != null) {
           final effectiveBookId = data.resolveBookId(r.bookId);
           final targetBookId = data.resolveBookId(request.bookId);
@@ -268,49 +280,43 @@ class DataExportService {
         }
         recordCount++;
         final bookName = data.resolveBookName(r.bookId);
-        recordRows.add(
-          <String>[
-            r.id,
-            r.direction == RecordDirection.income ? '收入' : '支出',
-            (r.amountCent / 100.0).toStringAsFixed(2),
-            r.eventName,
-            bookName,
-            r.personId,
-            r.personName,
-            r.paymentMethod,
-            _formatDateTime(r.occurredAt),
-            r.note ?? '',
-          ],
-        );
+        recordRows.add(<String>[
+          r.id,
+          r.direction == RecordDirection.income ? '收入' : '支出',
+          (r.amountCent / 100.0).toStringAsFixed(2),
+          r.eventName,
+          bookName,
+          r.personId,
+          r.personName,
+          r.paymentMethod,
+          _formatDateTime(r.occurredAt),
+          r.note ?? '',
+        ]);
       }
     }
 
     var personCount = 0;
     if (request.includePersons) {
-      personRows.add(
-        <String>[
-          '关系人ID',
-          '姓名',
-          '关系',
-          '手机号',
-          '创建时间',
-          '备注',
-          if (request.includeImages) '图片/头像',
-        ],
-      );
+      personRows.add(<String>[
+        '关系人ID',
+        '姓名',
+        '关系',
+        '手机号',
+        '创建时间',
+        '备注',
+        if (request.includeImages) '图片/头像',
+      ]);
       for (final person in data.persons) {
         personCount++;
-        personRows.add(
-          <String>[
-            person.id,
-            person.name,
-            person.relationship,
-            person.phone ?? '',
-            _formatDateTime(person.createdAt),
-            person.note ?? '',
-            if (request.includeImages) person.avatarUrl ?? '',
-          ],
-        );
+        personRows.add(<String>[
+          person.id,
+          person.name,
+          person.relationship,
+          person.phone ?? '',
+          _formatDateTime(person.createdAt),
+          person.note ?? '',
+          if (request.includeImages) person.avatarUrl ?? '',
+        ]);
       }
     }
 
@@ -321,7 +327,8 @@ class DataExportService {
       throw const DataExportException('当前没有可导出的关系人');
     }
 
-    final dir = outputDir ?? Directory((await getApplicationDocumentsDirectory()).path);
+    final dir =
+        outputDir ?? Directory((await getApplicationDocumentsDirectory()).path);
     final exportDir = Directory(p.join(dir.path, 'exports'));
     await exportDir.create(recursive: true);
 
@@ -346,7 +353,8 @@ class DataExportService {
           includePersons: request.includePersons,
           links: const <String, String>{},
         );
-        final archive = Archive()..addFile(ArchiveFile('$baseName.xlsx', xlsxBytes.length, xlsxBytes));
+        final archive = Archive()
+          ..addFile(ArchiveFile('$baseName.xlsx', xlsxBytes.length, xlsxBytes));
         if (request.includeImages) {
           await _addLocalImagesToArchive(
             archive: archive,
@@ -376,7 +384,8 @@ class DataExportService {
   String _buildFileNameBase() {
     String two(int n) => n.toString().padLeft(2, '0');
     final ts = DateTime.now();
-    final t = '${ts.year}${two(ts.month)}${two(ts.day)}_${two(ts.hour)}${two(ts.minute)}${two(ts.second)}';
+    final t =
+        '${ts.year}${two(ts.month)}${two(ts.day)}_${two(ts.hour)}${two(ts.minute)}${two(ts.second)}';
     return '尚礼_导出_$t';
   }
 
@@ -409,7 +418,9 @@ class DataExportService {
       for (var r = 0; r < rows.length; r++) {
         final row = rows[r];
         for (var c = 0; c < row.length; c++) {
-          final cell = sheet.cell(CellIndex.indexByColumnRow(columnIndex: c, rowIndex: r));
+          final cell = sheet.cell(
+            CellIndex.indexByColumnRow(columnIndex: c, rowIndex: r),
+          );
           final text = row[c];
           final parsed = _parseLinkToken(text);
           final link = parsed?.$2;
@@ -417,7 +428,9 @@ class DataExportService {
           if (link != null && text.trim().isNotEmpty) {
             final escapedLink = link.replaceAll('"', '""');
             final escapedText = display.replaceAll('"', '""');
-            cell.value = FormulaCellValue('HYPERLINK("$escapedLink","$escapedText")');
+            cell.value = FormulaCellValue(
+              'HYPERLINK("$escapedLink","$escapedText")',
+            );
           } else {
             cell.value = TextCellValue(display);
           }
@@ -427,12 +440,37 @@ class DataExportService {
     }
 
     excel.rename('Sheet1', '礼金记录');
-    writeSheet(excel['礼金记录'], includeRecords ? recordRows : const <List<String>>[
-      <String>['记录ID', '收支方向', '金额(元)', '金额(分)', '事由', '关系人ID', '关系人姓名', '关系人关系', '手机号', '支付方式', '发生时间', '备注', '联系人头像', '附件1名称'],
-    ]);
-    writeSheet(excel['关系人'], includePersons ? personRows : const <List<String>>[
-      <String>['关系人ID', '姓名', '关系', '手机号', '创建时间', '备注', '头像文件名'],
-    ]);
+    writeSheet(
+      excel['礼金记录'],
+      includeRecords
+          ? recordRows
+          : const <List<String>>[
+              <String>[
+                '记录ID',
+                '收支方向',
+                '金额(元)',
+                '金额(分)',
+                '事由',
+                '关系人ID',
+                '关系人姓名',
+                '关系人关系',
+                '手机号',
+                '支付方式',
+                '发生时间',
+                '备注',
+                '联系人头像',
+                '附件1名称',
+              ],
+            ],
+    );
+    writeSheet(
+      excel['关系人'],
+      includePersons
+          ? personRows
+          : const <List<String>>[
+              <String>['关系人ID', '姓名', '关系', '手机号', '创建时间', '备注', '头像文件名'],
+            ],
+    );
 
     final bytes = excel.encode();
     if (bytes == null) {
@@ -484,9 +522,13 @@ class DataExportService {
       required String preferredName,
       required String uniquePrefix,
     }) {
-      final safeBase = preferredName.trim().isEmpty ? 'file.bin' : preferredName.trim();
+      final safeBase = preferredName.trim().isEmpty
+          ? 'file.bin'
+          : preferredName.trim();
       final ext = p.extension(safeBase);
-      final stem = p.basenameWithoutExtension(safeBase).replaceAll(RegExp(r'\s+'), '_');
+      final stem = p
+          .basenameWithoutExtension(safeBase)
+          .replaceAll(RegExp(r'\s+'), '_');
       var candidate = '${uniquePrefix}_$stem$ext';
       var index = 1;
       var path = p.posix.join(folder, candidate);
@@ -516,7 +558,9 @@ class DataExportService {
         displayName: p.basename(archivePath),
         archivePath: archivePath,
       );
-      filesForArchive.add(_MediaFileForArchive(sourcePath: path, archivePath: archivePath));
+      filesForArchive.add(
+        _MediaFileForArchive(sourcePath: path, archivePath: archivePath),
+      );
     }
 
     for (final record in records) {
@@ -542,7 +586,9 @@ class DataExportService {
             archivePath: archivePath,
           ),
         );
-        filesForArchive.add(_MediaFileForArchive(sourcePath: path, archivePath: archivePath));
+        filesForArchive.add(
+          _MediaFileForArchive(sourcePath: path, archivePath: archivePath),
+        );
       }
       if (refs.isNotEmpty) {
         recordAttachmentRefs[record.recordId] = refs;
@@ -601,15 +647,22 @@ class DataExportService {
       final safe = base.trim().isEmpty ? 'image' : base;
       final count = usedNames[safe] ?? 0;
       usedNames[safe] = count + 1;
-      final finalName = count == 0 ? safe : '${p.basenameWithoutExtension(safe)}_${count + 1}${p.extension(safe)}';
+      final finalName = count == 0
+          ? safe
+          : '${p.basenameWithoutExtension(safe)}_${count + 1}${p.extension(safe)}';
 
-      archive.addFile(ArchiveFile(p.posix.join('images', finalName), bytes.length, bytes));
+      archive.addFile(
+        ArchiveFile(p.posix.join('images', finalName), bytes.length, bytes),
+      );
       included.add(raw);
     }
 
     if (request.includeRecords) {
       for (final r in data.records) {
-        if (r.occurredAt.isBefore(start) || !r.occurredAt.isBefore(endExclusive)) continue;
+        if (r.occurredAt.isBefore(start) ||
+            !r.occurredAt.isBefore(endExclusive)) {
+          continue;
+        }
         if (request.bookId != null) {
           final effectiveBookId = data.resolveBookId(r.bookId);
           final targetBookId = data.resolveBookId(request.bookId);
@@ -630,68 +683,10 @@ class DataExportService {
       }
     }
 
-    final manifest = _buildImageLocalManifest(included: included, skipped: skipped);
-    final b = utf8.encode(manifest);
-    archive.addFile(ArchiveFile('图片清单.txt', b.length, b));
-  }
-
-  Future<void> _addLocalImagesToArchiveFromDrift({
-    required Archive archive,
-    required List<GiftRecord> records,
-    required List<Person> persons,
-  }) async {
-    final seen = <String>{};
-    final usedNames = <String, int>{};
-    final included = <String>[];
-    final skipped = <String>[];
-
-    Future<void> addPath(String source) async {
-      final raw = source.trim();
-      if (raw.isEmpty) return;
-      if (!seen.add(raw)) return;
-
-      final path = _tryParseFilePath(raw);
-      if (path == null) {
-        skipped.add(raw);
-        return;
-      }
-      final f = File(path);
-      if (!await f.exists()) {
-        skipped.add(raw);
-        return;
-      }
-
-      final bytes = await f.readAsBytes();
-      final base = p.basename(path);
-      final safe = base.trim().isEmpty ? 'image' : base;
-      final count = usedNames[safe] ?? 0;
-      usedNames[safe] = count + 1;
-      final finalName = count == 0 ? safe : '${p.basenameWithoutExtension(safe)}_${count + 1}${p.extension(safe)}';
-
-      archive.addFile(ArchiveFile(p.posix.join('images', finalName), bytes.length, bytes));
-      included.add(raw);
-    }
-
-    for (final r in records) {
-      String? url;
-      for (final p in persons) {
-        if (p.personId == r.personId) {
-          url = p.avatarUri;
-          break;
-        }
-      }
-      if (url != null) {
-        await addPath(url);
-      }
-    }
-    for (final person in persons) {
-      final url = person.avatarUri;
-      if (url != null) {
-        await addPath(url);
-      }
-    }
-
-    final manifest = _buildImageLocalManifest(included: included, skipped: skipped);
+    final manifest = _buildImageLocalManifest(
+      included: included,
+      skipped: skipped,
+    );
     final b = utf8.encode(manifest);
     archive.addFile(ArchiveFile('图片清单.txt', b.length, b));
   }
@@ -710,7 +705,10 @@ class DataExportService {
     return raw;
   }
 
-  String _buildImageLocalManifest({required List<String> included, required List<String> skipped}) {
+  String _buildImageLocalManifest({
+    required List<String> included,
+    required List<String> skipped,
+  }) {
     final b = StringBuffer();
     b.writeln('图片打包结果：');
     b.writeln();
@@ -736,10 +734,7 @@ class DataExportException implements Exception {
 }
 
 class _MediaRef {
-  const _MediaRef({
-    required this.displayName,
-    required this.archivePath,
-  });
+  const _MediaRef({required this.displayName, required this.archivePath});
 
   final String displayName;
   final String archivePath;

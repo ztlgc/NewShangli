@@ -24,11 +24,11 @@ import 'record_home_page.dart';
 import 'settings_home_page.dart';
 
 // ── 统计页专用配色 ──
-const Color _statsPrimary = Color(0xFF0F766E);    // teal700
+const Color _statsPrimary = Color(0xFF0F766E); // teal700
 const Color _statsExpenseColor = Color(0xFFF97316); // orange500
-const Color _statsIncomeColor = Color(0xFF14B8A6);  // teal500
-const Color _statsExpenseArea = Color(0xFFFFEDD5);  // orange100
-const Color _statsIncomeArea = Color(0xFFCCFBF1);   // teal100
+const Color _statsIncomeColor = Color(0xFF14B8A6); // teal500
+const Color _statsExpenseArea = Color(0xFFFFEDD5); // orange100
+const Color _statsIncomeArea = Color(0xFFCCFBF1); // teal100
 
 final StatsRepository _statsRepository = StatsRepository(db: StatsDb());
 
@@ -50,7 +50,11 @@ class _StatsPageState extends State<StatsPage> {
     super.didChangeDependencies();
     if (_vm != null) return;
     final db = AppDatabaseScope.of(context);
-    final vm = StatsViewModel(repository: widget.repository ?? _statsRepository, db: db, now: widget.now);
+    final vm = StatsViewModel(
+      repository: widget.repository ?? _statsRepository,
+      db: db,
+      now: widget.now,
+    );
     _vm = vm;
     unawaited(vm.init());
   }
@@ -184,7 +188,10 @@ class _StatsPageBodyState extends State<_StatsPageBody> {
                   return const Center(child: CircularProgressIndicator());
                 }
                 if (!hasData && vm.error != null) {
-                  return _ErrorPane(message: vm.error!, onRetry: () => unawaited(vm.refresh()));
+                  return _ErrorPane(
+                    message: vm.error!,
+                    onRetry: () => unawaited(vm.refresh()),
+                  );
                 }
                 if (!hasData) return const SizedBox.shrink();
 
@@ -201,20 +208,27 @@ class _StatsPageBodyState extends State<_StatsPageBody> {
                           compare: compare,
                           compareLabel: _compareLabelForTab(),
                           expanded: _kpiExpanded,
-                          onToggleExpanded: () => setState(() => _kpiExpanded = !_kpiExpanded),
+                          onToggleExpanded: () =>
+                              setState(() => _kpiExpanded = !_kpiExpanded),
                         ),
                         const SizedBox(height: 16),
                         if (wide)
                           Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Expanded(child: _TrendLineCard(buckets: data.buckets, range: range)),
+                              Expanded(
+                                child: _TrendLineCard(
+                                  buckets: data.buckets,
+                                  range: range,
+                                ),
+                              ),
                               const SizedBox(width: 12),
                               Expanded(
                                 child: _HistogramCard(
                                   buckets: data.buckets,
                                   metric: _metric,
-                                  onChangeMetric: (m) => setState(() => _metric = m),
+                                  onChangeMetric: (m) =>
+                                      setState(() => _metric = m),
                                 ),
                               ),
                             ],
@@ -286,8 +300,15 @@ class _StatsPageBodyState extends State<_StatsPageBody> {
     final now = DateTime.now();
     switch (_tab) {
       case _StatsUiTab.month:
-        final s = DateTime(_selectedMonthStart.year, _selectedMonthStart.month, 1);
-        return StatsDateRange(start: s, endExclusive: DateTime(s.year, s.month + 1, 1));
+        final s = DateTime(
+          _selectedMonthStart.year,
+          _selectedMonthStart.month,
+          1,
+        );
+        return StatsDateRange(
+          start: s,
+          endExclusive: DateTime(s.year, s.month + 1, 1),
+        );
       case _StatsUiTab.year:
         final y = _selectedYear;
         if (y == null) {
@@ -297,7 +318,10 @@ class _StatsPageBodyState extends State<_StatsPageBody> {
             endExclusive: DateTime(now.year, now.month, now.day + 1),
           );
         }
-        return StatsDateRange(start: DateTime(y, 1, 1), endExclusive: DateTime(y + 1, 1, 1));
+        return StatsDateRange(
+          start: DateTime(y, 1, 1),
+          endExclusive: DateTime(y + 1, 1, 1),
+        );
       case _StatsUiTab.custom:
         return vm.customRange ??
             _customRange ??
@@ -326,10 +350,14 @@ class _StatsPageBodyState extends State<_StatsPageBody> {
     switch (tab) {
       case _StatsUiTab.month:
         _selectedMonthStart = DateTime(now.year, now.month, 1);
-        await _scheduleRangeCommit(() => vm.setPreset(StatsTimePreset.thisMonth));
+        await _scheduleRangeCommit(
+          () => vm.setPreset(StatsTimePreset.thisMonth),
+        );
       case _StatsUiTab.year:
         _selectedYear = now.year;
-        await _scheduleRangeCommit(() => vm.setPreset(StatsTimePreset.thisYear));
+        await _scheduleRangeCommit(
+          () => vm.setPreset(StatsTimePreset.thisYear),
+        );
       case _StatsUiTab.custom:
         final range = _customRange ?? _defaultCustomRange();
         setState(() => _customRange = range);
@@ -348,18 +376,27 @@ class _StatsPageBodyState extends State<_StatsPageBody> {
 
   Future<void> _selectMonth(StatsViewModel vm, DateTime monthStart) async {
     final normalized = DateTime(monthStart.year, monthStart.month, 1);
-    if (normalized.year == _selectedMonthStart.year && normalized.month == _selectedMonthStart.month) {
+    if (normalized.year == _selectedMonthStart.year &&
+        normalized.month == _selectedMonthStart.month) {
       return;
     }
     setState(() => _selectedMonthStart = normalized);
     final now = DateTime.now();
-    final isThisMonth = monthStart.year == now.year && monthStart.month == now.month;
+    final isThisMonth =
+        monthStart.year == now.year && monthStart.month == now.month;
     if (isThisMonth) {
       await _scheduleRangeCommit(() => vm.setPreset(StatsTimePreset.thisMonth));
       return;
     }
     final s = DateTime(monthStart.year, monthStart.month, 1);
-    await _scheduleRangeCommit(() => vm.setCustomRange(StatsDateRange(start: s, endExclusive: DateTime(s.year, s.month + 1, 1))));
+    await _scheduleRangeCommit(
+      () => vm.setCustomRange(
+        StatsDateRange(
+          start: s,
+          endExclusive: DateTime(s.year, s.month + 1, 1),
+        ),
+      ),
+    );
   }
 
   Future<void> _selectYear(StatsViewModel vm, int? year) async {
@@ -383,7 +420,12 @@ class _StatsPageBodyState extends State<_StatsPageBody> {
       return;
     }
     await _scheduleRangeCommit(
-      () => vm.setCustomRange(StatsDateRange(start: DateTime(year, 1, 1), endExclusive: DateTime(year + 1, 1, 1))),
+      () => vm.setCustomRange(
+        StatsDateRange(
+          start: DateTime(year, 1, 1),
+          endExclusive: DateTime(year + 1, 1, 1),
+        ),
+      ),
     );
   }
 
@@ -424,20 +466,30 @@ class _StatsPageBodyState extends State<_StatsPageBody> {
     final existing = _customRange ?? vm.customRange ?? _defaultCustomRange();
 
     // 起始时间的上限不应超过当前的截止时间（含）。
-    final currentEndInclusive = existing.endExclusive.subtract(const Duration(days: 1));
+    final currentEndInclusive = existing.endExclusive.subtract(
+      const Duration(days: 1),
+    );
     final picked = await showLunarDatePicker(
       context: context,
       initialDate: existing.start,
       firstDate: DateTime(now.year - 10, 1, 1),
-      lastDate: currentEndInclusive.isBefore(today) ? currentEndInclusive : today,
+      lastDate: currentEndInclusive.isBefore(today)
+          ? currentEndInclusive
+          : today,
     );
     if (picked == null) return;
 
     final start = DateTime(picked.year, picked.month, picked.day);
-    final endInclusive = currentEndInclusive.isBefore(start) ? start : currentEndInclusive;
+    final endInclusive = currentEndInclusive.isBefore(start)
+        ? start
+        : currentEndInclusive;
     final range = StatsDateRange(
       start: start,
-      endExclusive: DateTime(endInclusive.year, endInclusive.month, endInclusive.day + 1),
+      endExclusive: DateTime(
+        endInclusive.year,
+        endInclusive.month,
+        endInclusive.day + 1,
+      ),
     );
     setState(() => _customRange = range);
     await vm.setCustomRange(range);
@@ -447,7 +499,9 @@ class _StatsPageBodyState extends State<_StatsPageBody> {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final existing = _customRange ?? vm.customRange ?? _defaultCustomRange();
-    final currentEndInclusive = existing.endExclusive.subtract(const Duration(days: 1));
+    final currentEndInclusive = existing.endExclusive.subtract(
+      const Duration(days: 1),
+    );
 
     // 截止时间的下限不应早于起始时间。
     final picked = await showLunarDatePicker(
@@ -459,54 +513,54 @@ class _StatsPageBodyState extends State<_StatsPageBody> {
     if (picked == null) return;
 
     final endInclusive = DateTime(picked.year, picked.month, picked.day);
-    final start = existing.start.isAfter(endInclusive) ? endInclusive : existing.start;
+    final start = existing.start.isAfter(endInclusive)
+        ? endInclusive
+        : existing.start;
     final range = StatsDateRange(
       start: start,
-      endExclusive: DateTime(endInclusive.year, endInclusive.month, endInclusive.day + 1),
+      endExclusive: DateTime(
+        endInclusive.year,
+        endInclusive.month,
+        endInclusive.day + 1,
+      ),
     );
     setState(() => _customRange = range);
     await vm.setCustomRange(range);
   }
-
 }
 
 class _TopBar extends StatelessWidget {
-  const _TopBar({
-    required this.tab,
-    required this.onSelectTab,
-  });
+  const _TopBar({required this.tab, required this.onSelectTab});
 
   final _StatsUiTab tab;
   final ValueChanged<_StatsUiTab> onSelectTab;
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.appColors;
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
       alignment: Alignment.centerLeft,
-      decoration: const BoxDecoration(
-        color: AppColors.white,
-        border: Border(bottom: BorderSide(color: AppColors.gray100, width: 1)),
+      decoration: BoxDecoration(
+        color: colors.surfaceCard,
+        border: Border(
+          bottom: BorderSide(color: colors.borderDivider, width: 1),
+        ),
       ),
-      child: _TopTabs(
-        active: tab,
-        onSelect: onSelectTab,
-      ),
+      child: _TopTabs(active: tab, onSelect: onSelectTab),
     );
   }
 }
 
 class _TopTabs extends StatelessWidget {
-  const _TopTabs({
-    required this.active,
-    required this.onSelect,
-  });
+  const _TopTabs({required this.active, required this.onSelect});
 
   final _StatsUiTab active;
   final ValueChanged<_StatsUiTab> onSelect;
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.appColors;
     Widget tabItem(_StatsUiTab t, String label) {
       final selected = active == t;
       return PressableScale(
@@ -524,7 +578,7 @@ class _TopTabs extends StatelessWidget {
             style: AppTypography.base(
               fontSize: 16,
               fontWeight: AppTypography.medium,
-              color: selected ? AppColors.white : AppColors.textSecondary,
+              color: selected ? colors.textInverse : colors.textSecondary,
             ),
           ),
         ),
@@ -602,15 +656,19 @@ class _MonthSelector extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final now = DateTime.now();
+    final colors = context.appColors;
     final options = <DateTime>[];
     for (var i = 0; i < 18; i++) {
       options.add(DateTime(now.year, now.month - i, 1));
     }
 
     Widget chip(DateTime m) {
-      final selected = m.year == selectedMonthStart.year && m.month == selectedMonthStart.month;
+      final selected =
+          m.year == selectedMonthStart.year &&
+          m.month == selectedMonthStart.month;
       final isThisMonth = m.year == now.year && m.month == now.month;
-      final isPrevMonth = DateTime(now.year, now.month - 1, 1).year == m.year &&
+      final isPrevMonth =
+          DateTime(now.year, now.month - 1, 1).year == m.year &&
           DateTime(now.year, now.month - 1, 1).month == m.month;
       final label = isThisMonth ? '本月' : (isPrevMonth ? '上月' : '${m.month}月');
       return PressableScale(
@@ -631,7 +689,7 @@ class _MonthSelector extends StatelessWidget {
     }
 
     return Container(
-      color: AppColors.white,
+      color: colors.surfaceCard,
       padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
       child: Row(
         children: [
@@ -640,7 +698,7 @@ class _MonthSelector extends StatelessWidget {
             style: AppTypography.base(
               fontSize: 18,
               fontWeight: AppTypography.bold,
-              color: AppColors.textPrimary,
+              color: colors.textPrimary,
             ),
           ),
           const SizedBox(width: 10),
@@ -657,10 +715,7 @@ class _MonthSelector extends StatelessWidget {
 }
 
 class _YearSelector extends StatelessWidget {
-  const _YearSelector({
-    required this.selectedYear,
-    required this.onSelectYear,
-  });
+  const _YearSelector({required this.selectedYear, required this.onSelectYear});
 
   final int? selectedYear;
   final ValueChanged<int?> onSelectYear;
@@ -668,9 +723,14 @@ class _YearSelector extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final now = DateTime.now();
+    final colors = context.appColors;
     final years = <int>[for (var i = 0; i < 8; i++) now.year - i];
 
-    Widget chip({required String label, required bool selected, required VoidCallback onTap}) {
+    Widget chip({
+      required String label,
+      required bool selected,
+      required VoidCallback onTap,
+    }) {
       return PressableScale(
         onTap: onTap,
         child: Padding(
@@ -689,7 +749,7 @@ class _YearSelector extends StatelessWidget {
     }
 
     return Container(
-      color: AppColors.white,
+      color: colors.surfaceCard,
       padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
@@ -737,10 +797,13 @@ class _CustomRangeSelector extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final r = range;
+    final colors = context.appColors;
     final startText = r == null ? '--' : _fmtCnDate(r.start);
-    final endText = r == null ? '--' : _fmtCnDate(r.endExclusive.subtract(const Duration(days: 1)));
+    final endText = r == null
+        ? '--'
+        : _fmtCnDate(r.endExclusive.subtract(const Duration(days: 1)));
     return Container(
-      color: AppColors.white,
+      color: colors.surfaceCard,
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
       child: Column(
         children: [
@@ -782,12 +845,13 @@ class _DateCell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.appColors;
     return PressableScale(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         decoration: BoxDecoration(
-          color: AppColors.gray100,
+          color: colors.surfaceSubtle,
           borderRadius: BorderRadius.circular(12),
         ),
         child: Column(
@@ -798,7 +862,7 @@ class _DateCell extends StatelessWidget {
               style: AppTypography.base(
                 fontSize: 12,
                 fontWeight: AppTypography.regular,
-                color: AppColors.textMuted,
+                color: colors.textMuted,
               ),
             ),
             const SizedBox(height: 6),
@@ -809,7 +873,7 @@ class _DateCell extends StatelessWidget {
               style: AppTypography.base(
                 fontSize: 14,
                 fontWeight: AppTypography.bold,
-                color: AppColors.textPrimary,
+                color: colors.textPrimary,
               ),
             ),
           ],
@@ -887,21 +951,17 @@ class _KpiSummaryCard extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             FaIcon(
-              expanded ? FontAwesomeIcons.chevronUp : FontAwesomeIcons.chevronDown,
+              expanded
+                  ? FontAwesomeIcons.chevronUp
+                  : FontAwesomeIcons.chevronDown,
               size: 14,
               color: AppColors.white20,
             ),
             if (expanded) ...[
               const SizedBox(height: 12),
-              _KpiSubRow(
-                label: '日均支出',
-                value: formatCentToYuan(avgExpense),
-              ),
+              _KpiSubRow(label: '日均支出', value: formatCentToYuan(avgExpense)),
               const SizedBox(height: 6),
-              _KpiSubRow(
-                label: '日均收入',
-                value: formatCentToYuan(avgIncome),
-              ),
+              _KpiSubRow(label: '日均收入', value: formatCentToYuan(avgIncome)),
               const SizedBox(height: 12),
               Container(height: 1, color: AppColors.white20),
               const SizedBox(height: 12),
@@ -911,7 +971,10 @@ class _KpiSummaryCard extends StatelessWidget {
                     child: _ComparePill(
                       label: '$compareLabel 支出',
                       value: formatDelta(compareExpense, data.expenseTotalCent),
-                      background: deltaColor(compareExpense, data.expenseTotalCent),
+                      background: deltaColor(
+                        compareExpense,
+                        data.expenseTotalCent,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -919,7 +982,10 @@ class _KpiSummaryCard extends StatelessWidget {
                     child: _ComparePill(
                       label: '$compareLabel 收入',
                       value: formatDelta(compareIncome, data.incomeTotalCent),
-                      background: deltaColor(compareIncome, data.incomeTotalCent),
+                      background: deltaColor(
+                        compareIncome,
+                        data.incomeTotalCent,
+                      ),
                     ),
                   ),
                 ],
@@ -933,10 +999,7 @@ class _KpiSummaryCard extends StatelessWidget {
 }
 
 class _KpiItem extends StatelessWidget {
-  const _KpiItem({
-    required this.title,
-    required this.value,
-  });
+  const _KpiItem({required this.title, required this.value});
 
   final String title;
   final String value;
@@ -982,10 +1045,7 @@ class _KpiItem extends StatelessWidget {
 }
 
 class _KpiSubRow extends StatelessWidget {
-  const _KpiSubRow({
-    required this.label,
-    required this.value,
-  });
+  const _KpiSubRow({required this.label, required this.value});
 
   final String label;
   final String value;
@@ -1064,10 +1124,7 @@ class _ComparePill extends StatelessWidget {
 }
 
 class _TrendLineCard extends StatelessWidget {
-  const _TrendLineCard({
-    required this.buckets,
-    required this.range,
-  });
+  const _TrendLineCard({required this.buckets, required this.range});
 
   final List<StatsBarBucket> buckets;
   final StatsDateRange range;
@@ -1129,8 +1186,12 @@ class _TrendLineCard extends StatelessWidget {
                 borderData: FlBorderData(show: false),
                 lineTouchData: LineTouchData(enabled: true),
                 titlesData: FlTitlesData(
-                  topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  topTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+                  rightTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
                   leftTitles: AxisTitles(
                     sideTitles: SideTitles(
                       showTitles: true,
@@ -1152,8 +1213,14 @@ class _TrendLineCard extends StatelessWidget {
                       showTitles: true,
                       getTitlesWidget: (value, meta) {
                         final idx = value.toInt();
-                        if (idx != 0 && idx != buckets.length - 1) return const SizedBox.shrink();
-                        final dt = idx == 0 ? range.start : range.endExclusive.subtract(const Duration(days: 1));
+                        if (idx != 0 && idx != buckets.length - 1) {
+                          return const SizedBox.shrink();
+                        }
+                        final dt = idx == 0
+                            ? range.start
+                            : range.endExclusive.subtract(
+                                const Duration(days: 1),
+                              );
                         return Padding(
                           padding: const EdgeInsets.only(top: 8),
                           child: Text(
@@ -1176,7 +1243,10 @@ class _TrendLineCard extends StatelessWidget {
                     color: _statsExpenseColor,
                     barWidth: 3,
                     dotData: const FlDotData(show: false),
-                    belowBarData: BarAreaData(show: true, color: _statsExpenseArea.withValues(alpha: 0.5)),
+                    belowBarData: BarAreaData(
+                      show: true,
+                      color: _statsExpenseArea.withValues(alpha: 0.5),
+                    ),
                   ),
                   LineChartBarData(
                     spots: incomeSpots,
@@ -1184,7 +1254,10 @@ class _TrendLineCard extends StatelessWidget {
                     color: _statsIncomeColor,
                     barWidth: 3,
                     dotData: const FlDotData(show: false),
-                    belowBarData: BarAreaData(show: true, color: _statsIncomeArea.withValues(alpha: 0.3)),
+                    belowBarData: BarAreaData(
+                      show: true,
+                      color: _statsIncomeArea.withValues(alpha: 0.3),
+                    ),
                   ),
                 ],
               ),
@@ -1206,7 +1279,11 @@ class _LegendDot extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Container(width: 8, height: 8, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+        Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
         const SizedBox(width: 6),
         Text(
           label,
@@ -1264,10 +1341,7 @@ class _HistogramCard extends StatelessWidget {
                 ),
               ),
               const Spacer(),
-              _MetricSegment(
-                value: metric,
-                onChange: onChangeMetric,
-              ),
+              _MetricSegment(value: metric, onChange: onChangeMetric),
             ],
           ),
           const SizedBox(height: 14),
@@ -1282,8 +1356,12 @@ class _HistogramCard extends StatelessWidget {
                 borderData: FlBorderData(show: false),
                 barTouchData: BarTouchData(enabled: true),
                 titlesData: FlTitlesData(
-                  topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  topTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+                  rightTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
                   leftTitles: AxisTitles(
                     sideTitles: SideTitles(
                       showTitles: true,
@@ -1305,8 +1383,12 @@ class _HistogramCard extends StatelessWidget {
                       showTitles: true,
                       getTitlesWidget: (value, meta) {
                         final idx = value.toInt();
-                        if (idx < 0 || idx >= buckets.length) return const SizedBox.shrink();
-                        if (idx % showEvery != 0 && idx != buckets.length - 1) return const SizedBox.shrink();
+                        if (idx < 0 || idx >= buckets.length) {
+                          return const SizedBox.shrink();
+                        }
+                        if (idx % showEvery != 0 && idx != buckets.length - 1) {
+                          return const SizedBox.shrink();
+                        }
                         return Padding(
                           padding: const EdgeInsets.only(top: 8),
                           child: Text(
@@ -1364,10 +1446,7 @@ class _HistogramCard extends StatelessWidget {
 }
 
 class _MetricSegment extends StatelessWidget {
-  const _MetricSegment({
-    required this.value,
-    required this.onChange,
-  });
+  const _MetricSegment({required this.value, required this.onChange});
 
   final _StatsMetric value;
   final ValueChanged<_StatsMetric> onChange;
@@ -1405,14 +1484,11 @@ class _MetricSegment extends StatelessWidget {
       width: 150,
       padding: const EdgeInsets.all(3),
       decoration: BoxDecoration(
-        color: AppColors.gray100,
+        color: context.appColors.surfaceSubtle,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
-        children: [
-          item(_StatsMetric.expense),
-          item(_StatsMetric.income),
-        ],
+        children: [item(_StatsMetric.expense), item(_StatsMetric.income)],
       ),
     );
   }
@@ -1498,7 +1574,7 @@ class _CategoryCard extends StatelessWidget {
                               ? [
                                   PieChartSectionData(
                                     value: 1,
-                                    color: AppColors.gray200,
+                                    color: context.appColors.surfaceDisabled,
                                     radius: pieRadius,
                                     title: '',
                                   ),
@@ -1542,13 +1618,16 @@ class _CategoryCard extends StatelessWidget {
                   children: [
                     for (var i = 0; i < categories.length; i++) ...[
                       _LegendRow(
-                        color: categories[i].category == '其他' ? AppColors.gray400 : colors[i % colors.length],
+                        color: categories[i].category == '其他'
+                            ? AppColors.gray400
+                            : colors[i % colors.length],
                         label: categories[i].category,
                         value: totalExpenseCent <= 0
                             ? '0%'
                             : '${((categories[i].amountCent * 100) / totalExpenseCent).toStringAsFixed(0)}%',
                       ),
-                      if (i != categories.length - 1) const SizedBox(height: 12),
+                      if (i != categories.length - 1)
+                        const SizedBox(height: 12),
                     ],
                   ],
                 ),
@@ -1562,7 +1641,11 @@ class _CategoryCard extends StatelessWidget {
 }
 
 class _LegendRow extends StatelessWidget {
-  const _LegendRow({required this.color, required this.label, required this.value});
+  const _LegendRow({
+    required this.color,
+    required this.label,
+    required this.value,
+  });
 
   final Color color;
   final String label;
@@ -1572,7 +1655,11 @@ class _LegendRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Container(width: 8, height: 8, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+        Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
         const SizedBox(width: 8),
         Expanded(
           child: Text(
@@ -1743,10 +1830,7 @@ class _ErrorPane extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 12),
-            PrototypePrimaryButton(
-              label: '重试',
-              onTap: onRetry,
-            ),
+            PrototypePrimaryButton(label: '重试', onTap: onRetry),
           ],
         ),
       ),

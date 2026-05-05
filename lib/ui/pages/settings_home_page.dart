@@ -71,6 +71,7 @@ class _CanvasState extends State<_Canvas> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.appColors;
     final syncRows = <_SettingRow>[
       if (_user != null)
         _SettingRow(
@@ -100,7 +101,7 @@ class _CanvasState extends State<_Canvas> {
         iconBg: AppColors.purple50,
         iconFg: AppColors.purple500,
         icon: FontAwesomeIcons.fileExport,
-        title: '导出数据 (Excel)',
+        title: '导出数据',
         onTap: () =>
             AppNav.push(context, const DataExportPage(), requiresLogin: true),
       ),
@@ -108,7 +109,7 @@ class _CanvasState extends State<_Canvas> {
         iconBg: AppColors.indigo50,
         iconFg: AppColors.indigo700,
         icon: FontAwesomeIcons.fileImport,
-        title: '导入数据 (Excel)',
+        title: '导入数据',
         onTap: () =>
             AppNav.push(context, const DataImportPage(), requiresLogin: true),
       ),
@@ -127,15 +128,21 @@ class _CanvasState extends State<_Canvas> {
       children: [
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: const BoxDecoration(
-            color: AppColors.white,
+          decoration: BoxDecoration(
+            color: colors.surfaceCard,
             border: Border(
-              bottom: BorderSide(color: AppColors.gray100, width: 1),
+              bottom: BorderSide(color: colors.borderDivider, width: 1),
             ),
           ),
           child: Row(
             children: [
-              Text('设置', style: AppTypography.h2().copyWith(fontSize: 20)),
+              Text(
+                '设置',
+                style: AppTypography.h2().copyWith(
+                  fontSize: 20,
+                  color: colors.textPrimary,
+                ),
+              ),
             ],
           ),
         ),
@@ -265,9 +272,10 @@ class _UserCardState extends State<_UserCard> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.appColors;
     return Container(
-      decoration: const BoxDecoration(
-        color: AppColors.white,
+      decoration: BoxDecoration(
+        color: colors.surfaceCard,
         borderRadius: AppRadii.br2xl,
         boxShadow: AppShadows.sm,
       ),
@@ -289,13 +297,13 @@ class _UserCardState extends State<_UserCard> {
               width: 56,
               height: 56,
               decoration: BoxDecoration(
-                color: _user == null ? AppColors.gray100 : AppColors.blue50,
+                color: _user == null ? colors.surfaceSubtle : colors.blueSoft,
                 shape: BoxShape.circle,
               ),
               child: Icon(
                 Icons.person,
                 size: 32,
-                color: _user == null ? AppColors.gray400 : AppColors.blue500,
+                color: _user == null ? colors.textMuted : colors.blueAccent,
               ),
             ),
             const SizedBox(width: 16),
@@ -308,7 +316,7 @@ class _UserCardState extends State<_UserCard> {
                     style: AppTypography.base(
                       fontSize: 18,
                       fontWeight: AppTypography.bold,
-                      color: AppColors.textPrimary,
+                      color: colors.textPrimary,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -320,17 +328,17 @@ class _UserCardState extends State<_UserCard> {
                       fontSize: 12,
                       fontWeight: AppTypography.regular,
                       color: _user == null
-                          ? AppColors.textTertiary
-                          : AppColors.green600,
+                          ? colors.textTertiary
+                          : colors.stateSuccess,
                     ),
                   ),
                 ],
               ),
             ),
-            const FaIcon(
+            FaIcon(
               FontAwesomeIcons.chevronRight,
               size: 10,
-              color: AppColors.gray300,
+              color: colors.textMuted,
             ),
           ],
         ),
@@ -358,9 +366,10 @@ class _SingleRowCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.appColors;
     return Container(
-      decoration: const BoxDecoration(
-        color: AppColors.white,
+      decoration: BoxDecoration(
+        color: colors.surfaceCard,
         borderRadius: AppRadii.br2xl,
         boxShadow: AppShadows.sm,
       ),
@@ -386,9 +395,10 @@ class _GroupCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.appColors;
     return Container(
-      decoration: const BoxDecoration(
-        color: AppColors.white,
+      decoration: BoxDecoration(
+        color: colors.surfaceCard,
         borderRadius: AppRadii.br2xl,
         boxShadow: AppShadows.sm,
       ),
@@ -446,17 +456,18 @@ class _RowContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.appColors;
     return Row(
       children: [
         Container(
           width: 32,
           height: 32,
           decoration: BoxDecoration(
-            color: iconBg,
+            color: colors.softFor(iconBg),
             borderRadius: BorderRadius.circular(8),
           ),
           alignment: Alignment.center,
-          child: FaIcon(icon, size: 14, color: iconFg),
+          child: FaIcon(icon, size: 14, color: colors.foregroundFor(iconFg)),
         ),
         const SizedBox(width: 12),
         Expanded(
@@ -465,7 +476,7 @@ class _RowContent extends StatelessWidget {
             style: AppTypography.base(
               fontSize: 14,
               fontWeight: AppTypography.medium,
-              color: AppColors.gray800,
+              color: colors.textPrimary,
             ),
           ),
         ),
@@ -477,14 +488,14 @@ class _RowContent extends StatelessWidget {
               style: AppTypography.base(
                 fontSize: 12,
                 fontWeight: AppTypography.regular,
-                color: AppColors.textMuted,
+                color: colors.textMuted,
               ),
             ),
           ),
-        const FaIcon(
+        FaIcon(
           FontAwesomeIcons.chevronRight,
           size: 10,
-          color: AppColors.gray300,
+          color: colors.textMuted,
         ),
       ],
     );
@@ -536,13 +547,14 @@ class _LogoutButtonState extends State<_LogoutButton> {
   @override
   Widget build(BuildContext context) {
     if (!_isLoggedIn) return const SizedBox.shrink();
+    final colors = context.appColors;
 
     return PressableScale(
       onTap: _signOut,
       child: Container(
         height: 52,
-        decoration: const BoxDecoration(
-          color: AppColors.white,
+        decoration: BoxDecoration(
+          color: colors.surfaceCard,
           borderRadius: AppRadii.br2xl,
           boxShadow: AppShadows.sm,
         ),

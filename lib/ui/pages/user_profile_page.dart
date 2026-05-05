@@ -288,7 +288,7 @@ class _LogoutButton extends StatelessWidget {
           child: Container(
             height: 48,
             decoration: BoxDecoration(
-              color: AppColors.white,
+              color: context.appColors.surfaceCard,
               borderRadius: AppRadii.brXl,
               border: Border.all(color: AppColors.red100, width: 1),
               boxShadow: AppShadows.sm,

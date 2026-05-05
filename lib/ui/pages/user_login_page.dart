@@ -60,12 +60,9 @@ class _UserLoginPageState extends State<UserLoginPage> {
     try {
       // 调用 Supabase 的密码登录接口
       await Supabase.instance.client.auth
-          .signInWithPassword(
-            email: email,
-            password: password,
-          )
+          .signInWithPassword(email: email, password: password)
           .timeout(const Duration(seconds: 15));
-      
+
       if (!mounted) return;
       AppToast.show(context, '登录成功');
       Navigator.of(context).pop(true); // 登录成功返回 true
@@ -93,7 +90,7 @@ class _UserLoginPageState extends State<UserLoginPage> {
       backgroundColor: AppColors.surfaceApp,
       appBar: AppBar(
         title: const Text('用户登录'),
-        backgroundColor: AppColors.white,
+        backgroundColor: context.appColors.surfaceCard,
         elevation: 0,
         foregroundColor: AppColors.textPrimary,
       ),
@@ -107,7 +104,7 @@ class _UserLoginPageState extends State<UserLoginPage> {
               // 提示信息
               Container(
                 padding: const EdgeInsets.all(16),
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   color: AppColors.blue50,
                   borderRadius: AppRadii.brLg,
                 ),
@@ -168,10 +165,7 @@ class _UserLoginPageState extends State<UserLoginPage> {
                             strokeWidth: 2,
                           ),
                         )
-                      : const Text(
-                          '登录',
-                          style: TextStyle(fontSize: 16),
-                        ),
+                      : const Text('登录', style: TextStyle(fontSize: 16)),
                 ),
               ),
               const SizedBox(height: 16),

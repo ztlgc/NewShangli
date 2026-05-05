@@ -113,6 +113,439 @@ class AppColors {
   static const stateWarningSoft = orange100;
 }
 
+@immutable
+class AppThemeColors extends ThemeExtension<AppThemeColors> {
+  const AppThemeColors({
+    required this.surfaceApp,
+    required this.surfaceCard,
+    required this.surfaceSubtle,
+    required this.surfacePressed,
+    required this.surfaceDisabled,
+    required this.textPrimary,
+    required this.textSecondary,
+    required this.textTertiary,
+    required this.textMuted,
+    required this.textInverse,
+    required this.textBrand,
+    required this.brandPrimary,
+    required this.brandSecondary,
+    required this.brandSoft,
+    required this.brandOnSoft,
+    required this.borderDefault,
+    required this.borderSubtle,
+    required this.borderDivider,
+    required this.borderFocus,
+    required this.stateSuccess,
+    required this.stateSuccessSoft,
+    required this.stateDanger,
+    required this.stateDangerStrong,
+    required this.stateDangerSoft,
+    required this.stateWarning,
+    required this.stateWarningSoft,
+    required this.blueAccent,
+    required this.blueSoft,
+    required this.purpleAccent,
+    required this.purpleSoft,
+    required this.pinkAccent,
+    required this.pinkSoft,
+    required this.orangeAccent,
+    required this.orangeSoft,
+    required this.neutralAccent,
+  });
+
+  final Color surfaceApp;
+  final Color surfaceCard;
+  final Color surfaceSubtle;
+  final Color surfacePressed;
+  final Color surfaceDisabled;
+  final Color textPrimary;
+  final Color textSecondary;
+  final Color textTertiary;
+  final Color textMuted;
+  final Color textInverse;
+  final Color textBrand;
+  final Color brandPrimary;
+  final Color brandSecondary;
+  final Color brandSoft;
+  final Color brandOnSoft;
+  final Color borderDefault;
+  final Color borderSubtle;
+  final Color borderDivider;
+  final Color borderFocus;
+  final Color stateSuccess;
+  final Color stateSuccessSoft;
+  final Color stateDanger;
+  final Color stateDangerStrong;
+  final Color stateDangerSoft;
+  final Color stateWarning;
+  final Color stateWarningSoft;
+  final Color blueAccent;
+  final Color blueSoft;
+  final Color purpleAccent;
+  final Color purpleSoft;
+  final Color pinkAccent;
+  final Color pinkSoft;
+  final Color orangeAccent;
+  final Color orangeSoft;
+  final Color neutralAccent;
+
+  static const light = AppThemeColors(
+    surfaceApp: AppColors.surfaceApp,
+    surfaceCard: AppColors.surfaceCard,
+    surfaceSubtle: AppColors.surfaceSubtle,
+    surfacePressed: AppColors.gray50,
+    surfaceDisabled: AppColors.gray200,
+    textPrimary: AppColors.textPrimary,
+    textSecondary: AppColors.textSecondary,
+    textTertiary: AppColors.textTertiary,
+    textMuted: AppColors.textMuted,
+    textInverse: AppColors.textInverse,
+    textBrand: AppColors.textBrand,
+    brandPrimary: AppColors.brandPrimary,
+    brandSecondary: AppColors.brandSecondary,
+    brandSoft: AppColors.brandSoft,
+    brandOnSoft: AppColors.indigo700,
+    borderDefault: AppColors.borderDefault,
+    borderSubtle: AppColors.borderSubtle,
+    borderDivider: AppColors.borderDivider,
+    borderFocus: AppColors.borderFocus,
+    stateSuccess: AppColors.stateSuccess,
+    stateSuccessSoft: AppColors.stateSuccessSoft,
+    stateDanger: AppColors.stateDanger,
+    stateDangerStrong: AppColors.stateDangerStrong,
+    stateDangerSoft: AppColors.stateDangerSoft,
+    stateWarning: AppColors.stateWarning,
+    stateWarningSoft: AppColors.stateWarningSoft,
+    blueAccent: AppColors.blue600,
+    blueSoft: AppColors.blue50,
+    purpleAccent: AppColors.purple600,
+    purpleSoft: AppColors.purple50,
+    pinkAccent: AppColors.pink600,
+    pinkSoft: AppColors.pink50,
+    orangeAccent: AppColors.orange600,
+    orangeSoft: AppColors.orange50,
+    neutralAccent: AppColors.gray500,
+  );
+
+  static const dark = AppThemeColors(
+    surfaceApp: Color(0xFF0E1116),
+    surfaceCard: Color(0xFF171B22),
+    surfaceSubtle: Color(0xFF222832),
+    surfacePressed: Color(0xFF2A3140),
+    surfaceDisabled: Color(0xFF3C4658),
+    textPrimary: Color(0xFFF9FAFB),
+    textSecondary: Color(0xFFD1D5DB),
+    textTertiary: Color(0xFF9CA3AF),
+    textMuted: Color(0xFF6B7280),
+    textInverse: AppColors.white,
+    textBrand: Color(0xFFC7D2FE),
+    brandPrimary: AppColors.indigo500,
+    brandSecondary: Color(0xFF818CF8),
+    brandSoft: Color(0xFF252146),
+    brandOnSoft: Color(0xFFC7D2FE),
+    borderDefault: Color(0xFF3B4358),
+    borderSubtle: Color(0xFF2A3140),
+    borderDivider: Color(0xFF222832),
+    borderFocus: Color(0xFF818CF8),
+    stateSuccess: Color(0xFF4ADE80),
+    stateSuccessSoft: Color(0xFF052E16),
+    stateDanger: Color(0xFFF87171),
+    stateDangerStrong: Color(0xFFFCA5A5),
+    stateDangerSoft: Color(0xFF450A0A),
+    stateWarning: Color(0xFFFDBA74),
+    stateWarningSoft: Color(0xFF431407),
+    blueAccent: Color(0xFF93C5FD),
+    blueSoft: Color(0xFF172554),
+    purpleAccent: Color(0xFFD8B4FE),
+    purpleSoft: Color(0xFF3B0764),
+    pinkAccent: Color(0xFFF9A8D4),
+    pinkSoft: Color(0xFF500724),
+    orangeAccent: Color(0xFFFDBA74),
+    orangeSoft: Color(0xFF431407),
+    neutralAccent: Color(0xFF9CA3AF),
+  );
+
+  static AppThemeColors of(BuildContext context) {
+    return Theme.of(context).extension<AppThemeColors>() ??
+        (Theme.of(context).brightness == Brightness.dark ? dark : light);
+  }
+
+  Color pageBackgroundFor(Color color) {
+    if (color == AppColors.white ||
+        color == AppColors.surfaceCard ||
+        color == AppColors.surfaceApp ||
+        color == AppColors.gray50 ||
+        color == AppColors.gray100) {
+      return surfaceApp;
+    }
+    return surfaceFor(color);
+  }
+
+  Color surfaceFor(Color color) {
+    if (color == AppColors.white || color == AppColors.surfaceCard) {
+      return surfaceCard;
+    }
+    if (color == AppColors.surfaceApp || color == AppColors.gray50) {
+      return surfaceApp;
+    }
+    if (color == AppColors.surfaceSubtle ||
+        color == AppColors.gray100 ||
+        color == AppColors.gray200) {
+      return surfaceSubtle;
+    }
+    return softFor(color);
+  }
+
+  Color softFor(Color color) {
+    if (color == AppColors.indigo50 ||
+        color == AppColors.indigo100 ||
+        color == AppColors.indigo200 ||
+        color == AppColors.brandSoft) {
+      return brandSoft;
+    }
+    if (color == AppColors.blue50 || color == AppColors.blue100) {
+      return blueSoft;
+    }
+    if (color == AppColors.green50 ||
+        color == AppColors.green100 ||
+        color == AppColors.stateSuccessSoft) {
+      return stateSuccessSoft;
+    }
+    if (color == AppColors.red100 || color == AppColors.stateDangerSoft) {
+      return stateDangerSoft;
+    }
+    if (color == AppColors.orange50 ||
+        color == AppColors.orange100 ||
+        color == AppColors.stateWarningSoft) {
+      return stateWarningSoft;
+    }
+    if (color == AppColors.purple50 || color == AppColors.purple100) {
+      return purpleSoft;
+    }
+    if (color == AppColors.pink50 || color == AppColors.pink100) {
+      return pinkSoft;
+    }
+    if (color == AppColors.gray50 ||
+        color == AppColors.gray100 ||
+        color == AppColors.gray200 ||
+        color == AppColors.surfaceSubtle) {
+      return surfaceSubtle;
+    }
+    return color;
+  }
+
+  Color foregroundFor(Color color) {
+    if (color == AppColors.textPrimary ||
+        color == AppColors.gray900 ||
+        color == AppColors.gray800) {
+      return textPrimary;
+    }
+    if (color == AppColors.textSecondary ||
+        color == AppColors.gray700 ||
+        color == AppColors.gray600) {
+      return textSecondary;
+    }
+    if (color == AppColors.textTertiary || color == AppColors.gray500) {
+      return textTertiary;
+    }
+    if (color == AppColors.textMuted ||
+        color == AppColors.gray400 ||
+        color == AppColors.gray300) {
+      return textMuted;
+    }
+    if (color == AppColors.textBrand ||
+        color == AppColors.brandPrimary ||
+        color == AppColors.brandSecondary ||
+        color == AppColors.indigo900 ||
+        color == AppColors.indigo800 ||
+        color == AppColors.indigo700 ||
+        color == AppColors.indigo600 ||
+        color == AppColors.indigo500) {
+      return brandOnSoft;
+    }
+    if (color == AppColors.green600 || color == AppColors.green500) {
+      return stateSuccess;
+    }
+    if (color == AppColors.red600 ||
+        color == AppColors.red500 ||
+        color == AppColors.stateDanger ||
+        color == AppColors.stateDangerStrong) {
+      return color == AppColors.red600 || color == AppColors.stateDangerStrong
+          ? stateDangerStrong
+          : stateDanger;
+    }
+    if (color == AppColors.orange600 ||
+        color == AppColors.orange500 ||
+        color == AppColors.orange400 ||
+        color == AppColors.stateWarning) {
+      return stateWarning;
+    }
+    if (color == AppColors.blue600 || color == AppColors.blue500) {
+      return blueAccent;
+    }
+    if (color == AppColors.purple600 || color == AppColors.purple500) {
+      return purpleAccent;
+    }
+    if (color == AppColors.pink600 || color == AppColors.pink500) {
+      return pinkAccent;
+    }
+    return color;
+  }
+
+  Color borderFor(Color color) {
+    if (color == AppColors.borderDefault ||
+        color == AppColors.gray200 ||
+        color == AppColors.gray300) {
+      return borderDefault;
+    }
+    if (color == AppColors.borderSubtle || color == AppColors.gray100) {
+      return borderSubtle;
+    }
+    if (color == AppColors.borderDivider ||
+        color == AppColors.gray50 ||
+        color == AppColors.white) {
+      return borderDivider;
+    }
+    if (color == AppColors.borderFocus) return borderFocus;
+    return color;
+  }
+
+  @override
+  AppThemeColors copyWith({
+    Color? surfaceApp,
+    Color? surfaceCard,
+    Color? surfaceSubtle,
+    Color? surfacePressed,
+    Color? surfaceDisabled,
+    Color? textPrimary,
+    Color? textSecondary,
+    Color? textTertiary,
+    Color? textMuted,
+    Color? textInverse,
+    Color? textBrand,
+    Color? brandPrimary,
+    Color? brandSecondary,
+    Color? brandSoft,
+    Color? brandOnSoft,
+    Color? borderDefault,
+    Color? borderSubtle,
+    Color? borderDivider,
+    Color? borderFocus,
+    Color? stateSuccess,
+    Color? stateSuccessSoft,
+    Color? stateDanger,
+    Color? stateDangerStrong,
+    Color? stateDangerSoft,
+    Color? stateWarning,
+    Color? stateWarningSoft,
+    Color? blueAccent,
+    Color? blueSoft,
+    Color? purpleAccent,
+    Color? purpleSoft,
+    Color? pinkAccent,
+    Color? pinkSoft,
+    Color? orangeAccent,
+    Color? orangeSoft,
+    Color? neutralAccent,
+  }) {
+    return AppThemeColors(
+      surfaceApp: surfaceApp ?? this.surfaceApp,
+      surfaceCard: surfaceCard ?? this.surfaceCard,
+      surfaceSubtle: surfaceSubtle ?? this.surfaceSubtle,
+      surfacePressed: surfacePressed ?? this.surfacePressed,
+      surfaceDisabled: surfaceDisabled ?? this.surfaceDisabled,
+      textPrimary: textPrimary ?? this.textPrimary,
+      textSecondary: textSecondary ?? this.textSecondary,
+      textTertiary: textTertiary ?? this.textTertiary,
+      textMuted: textMuted ?? this.textMuted,
+      textInverse: textInverse ?? this.textInverse,
+      textBrand: textBrand ?? this.textBrand,
+      brandPrimary: brandPrimary ?? this.brandPrimary,
+      brandSecondary: brandSecondary ?? this.brandSecondary,
+      brandSoft: brandSoft ?? this.brandSoft,
+      brandOnSoft: brandOnSoft ?? this.brandOnSoft,
+      borderDefault: borderDefault ?? this.borderDefault,
+      borderSubtle: borderSubtle ?? this.borderSubtle,
+      borderDivider: borderDivider ?? this.borderDivider,
+      borderFocus: borderFocus ?? this.borderFocus,
+      stateSuccess: stateSuccess ?? this.stateSuccess,
+      stateSuccessSoft: stateSuccessSoft ?? this.stateSuccessSoft,
+      stateDanger: stateDanger ?? this.stateDanger,
+      stateDangerStrong: stateDangerStrong ?? this.stateDangerStrong,
+      stateDangerSoft: stateDangerSoft ?? this.stateDangerSoft,
+      stateWarning: stateWarning ?? this.stateWarning,
+      stateWarningSoft: stateWarningSoft ?? this.stateWarningSoft,
+      blueAccent: blueAccent ?? this.blueAccent,
+      blueSoft: blueSoft ?? this.blueSoft,
+      purpleAccent: purpleAccent ?? this.purpleAccent,
+      purpleSoft: purpleSoft ?? this.purpleSoft,
+      pinkAccent: pinkAccent ?? this.pinkAccent,
+      pinkSoft: pinkSoft ?? this.pinkSoft,
+      orangeAccent: orangeAccent ?? this.orangeAccent,
+      orangeSoft: orangeSoft ?? this.orangeSoft,
+      neutralAccent: neutralAccent ?? this.neutralAccent,
+    );
+  }
+
+  @override
+  AppThemeColors lerp(ThemeExtension<AppThemeColors>? other, double t) {
+    if (other is! AppThemeColors) return this;
+    return AppThemeColors(
+      surfaceApp: Color.lerp(surfaceApp, other.surfaceApp, t)!,
+      surfaceCard: Color.lerp(surfaceCard, other.surfaceCard, t)!,
+      surfaceSubtle: Color.lerp(surfaceSubtle, other.surfaceSubtle, t)!,
+      surfacePressed: Color.lerp(surfacePressed, other.surfacePressed, t)!,
+      surfaceDisabled: Color.lerp(surfaceDisabled, other.surfaceDisabled, t)!,
+      textPrimary: Color.lerp(textPrimary, other.textPrimary, t)!,
+      textSecondary: Color.lerp(textSecondary, other.textSecondary, t)!,
+      textTertiary: Color.lerp(textTertiary, other.textTertiary, t)!,
+      textMuted: Color.lerp(textMuted, other.textMuted, t)!,
+      textInverse: Color.lerp(textInverse, other.textInverse, t)!,
+      textBrand: Color.lerp(textBrand, other.textBrand, t)!,
+      brandPrimary: Color.lerp(brandPrimary, other.brandPrimary, t)!,
+      brandSecondary: Color.lerp(brandSecondary, other.brandSecondary, t)!,
+      brandSoft: Color.lerp(brandSoft, other.brandSoft, t)!,
+      brandOnSoft: Color.lerp(brandOnSoft, other.brandOnSoft, t)!,
+      borderDefault: Color.lerp(borderDefault, other.borderDefault, t)!,
+      borderSubtle: Color.lerp(borderSubtle, other.borderSubtle, t)!,
+      borderDivider: Color.lerp(borderDivider, other.borderDivider, t)!,
+      borderFocus: Color.lerp(borderFocus, other.borderFocus, t)!,
+      stateSuccess: Color.lerp(stateSuccess, other.stateSuccess, t)!,
+      stateSuccessSoft: Color.lerp(
+        stateSuccessSoft,
+        other.stateSuccessSoft,
+        t,
+      )!,
+      stateDanger: Color.lerp(stateDanger, other.stateDanger, t)!,
+      stateDangerStrong: Color.lerp(
+        stateDangerStrong,
+        other.stateDangerStrong,
+        t,
+      )!,
+      stateDangerSoft: Color.lerp(stateDangerSoft, other.stateDangerSoft, t)!,
+      stateWarning: Color.lerp(stateWarning, other.stateWarning, t)!,
+      stateWarningSoft: Color.lerp(
+        stateWarningSoft,
+        other.stateWarningSoft,
+        t,
+      )!,
+      blueAccent: Color.lerp(blueAccent, other.blueAccent, t)!,
+      blueSoft: Color.lerp(blueSoft, other.blueSoft, t)!,
+      purpleAccent: Color.lerp(purpleAccent, other.purpleAccent, t)!,
+      purpleSoft: Color.lerp(purpleSoft, other.purpleSoft, t)!,
+      pinkAccent: Color.lerp(pinkAccent, other.pinkAccent, t)!,
+      pinkSoft: Color.lerp(pinkSoft, other.pinkSoft, t)!,
+      orangeAccent: Color.lerp(orangeAccent, other.orangeAccent, t)!,
+      orangeSoft: Color.lerp(orangeSoft, other.orangeSoft, t)!,
+      neutralAccent: Color.lerp(neutralAccent, other.neutralAccent, t)!,
+    );
+  }
+}
+
+extension AppThemeColorsContext on BuildContext {
+  AppThemeColors get appColors => AppThemeColors.of(this);
+}
+
 class AppRadii {
   static const none = Radius.circular(0);
   static const sm = Radius.circular(2);
@@ -233,10 +666,18 @@ class AppTypography {
       fontFamilyFallback: fontFamilyFallback,
       fontSize: fontSize,
       fontWeight: fontWeight,
-      color: color,
+      color: _resolveTypographyColor(color),
       height: height,
       letterSpacing: letterSpacing,
+      decoration: TextDecoration.none,
     );
+  }
+
+  static Color _resolveTypographyColor(Color color) {
+    final brightness =
+        WidgetsBinding.instance.platformDispatcher.platformBrightness;
+    if (brightness != Brightness.dark) return color;
+    return AppThemeColors.dark.foregroundFor(color);
   }
 
   static TextStyle h1() =>

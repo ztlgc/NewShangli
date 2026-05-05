@@ -11,20 +11,19 @@ import '../navigation.dart';
 import '../prototype_kit.dart';
 
 class ContactRelationEditPage extends StatefulWidget {
-  const ContactRelationEditPage({
-    super.key,
-    required this.id,
-  }) : createMode = false;
+  const ContactRelationEditPage({super.key, required this.id})
+    : createMode = false;
 
   const ContactRelationEditPage.create({super.key})
-      : id = null,
-        createMode = true;
+    : id = null,
+      createMode = true;
 
   final String? id;
   final bool createMode;
 
   @override
-  State<ContactRelationEditPage> createState() => _ContactRelationEditPageState();
+  State<ContactRelationEditPage> createState() =>
+      _ContactRelationEditPageState();
 }
 
 class _ContactRelationEditPageState extends State<ContactRelationEditPage> {
@@ -75,196 +74,239 @@ class _ContactRelationEditPageState extends State<ContactRelationEditPage> {
               final bName = _resolvePersonName(persons, _personBId);
               final tName = _resolveTypeName(types, _typeId);
               return Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: const BoxDecoration(
-              color: AppColors.white,
-              border: Border(bottom: BorderSide(color: AppColors.gray100, width: 1)),
-            ),
-            child: Row(
-              children: [
-                GestureDetector(
-                  onTap: _saving ? null : () => AppNav.pop(context),
-                  behavior: HitTestBehavior.opaque,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    child: Text(
-                      '取消',
-                      style: AppTypography.base(
-                        fontSize: 14,
-                        fontWeight: AppTypography.medium,
-                        color: AppColors.textTertiary,
-                      ),
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
                     ),
-                  ),
-                ),
-                Expanded(
-                  child: Center(
-                    child: Text(
-                      widget.createMode ? '新增关系' : '编辑关系',
-                      style: AppTypography.base(
-                        fontSize: 18,
-                        fontWeight: AppTypography.bold,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                  ),
-                ),
-                PressableScale(
-                  onTap: _saving ? null : _onSave,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                     decoration: BoxDecoration(
-                      color: _saving ? AppColors.gray300 : AppColors.brandPrimary,
-                      borderRadius: BorderRadius.circular(9999),
-                      boxShadow: AppShadows.sm,
-                    ),
-                    child: Text(
-                      _saving ? '保存中' : '保存',
-                      style: AppTypography.base(
-                        fontSize: 14,
-                        fontWeight: AppTypography.medium,
-                        color: AppColors.white,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
-              children: [
-                PrototypeCard(
-                  padding: EdgeInsets.zero,
-                  child: Column(
-                    children: [
-                      _SelectRow(
-                        label: '联系人 A',
-                        value: aName,
-                        onTap: () async {
-                          final picked = await _pickPerson(context, persons);
-                          if (picked == null) return;
-                          setState(() => _personAId = picked.personId);
-                        },
-                      ),
-                      const PrototypeDivider(color: AppColors.borderDivider),
-                      _SelectRow(
-                        label: '联系人 B',
-                        value: bName,
-                        onTap: () async {
-                          final picked = await _pickPerson(context, persons);
-                          if (picked == null) return;
-                          setState(() => _personBId = picked.personId);
-                        },
-                      ),
-                      const PrototypeDivider(color: AppColors.borderDivider),
-                      _SelectRow(
-                        label: '关系类型',
-                        value: tName,
-                        onTap: () async {
-                          final picked = await _pickType(context, types);
-                          if (picked == null) return;
-                          setState(() => _typeId = picked.typeId);
-                        },
-                        borderBottom: false,
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-                PrototypeCard(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '备注（可选）',
-                        style: AppTypography.base(
-                          fontSize: 12,
-                          fontWeight: AppTypography.regular,
-                          color: AppColors.textTertiary,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      TextField(
-                        controller: _noteCtrl,
-                        maxLines: 4,
-                        style: AppTypography.base(
-                          fontSize: 14,
-                          fontWeight: AppTypography.medium,
-                          color: AppColors.textPrimary,
-                        ),
-                        decoration: InputDecoration(
-                          isDense: true,
-                          filled: true,
-                          fillColor: AppColors.gray50,
-                          hintText: '可填写补充说明',
-                          hintStyle: AppTypography.base(
-                            fontSize: 14,
-                            fontWeight: AppTypography.regular,
-                            color: AppColors.textMuted,
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: AppColors.borderSubtle, width: 1),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: AppColors.borderSubtle, width: 1),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: AppColors.borderFocus, width: 1),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-                if (!widget.createMode)
-                  PressableScale(
-                    onTap: _saving ? null : () => _confirmDelete(context, db),
-                    child: Container(
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color: AppColors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AppColors.gray100, width: 1),
-                        boxShadow: AppShadows.sm,
-                      ),
-                      alignment: Alignment.center,
-                      child: Text(
-                        '删除关系',
-                        style: AppTypography.base(
-                          fontSize: 14,
-                          fontWeight: AppTypography.medium,
-                          color: AppColors.red500,
+                      color: context.appColors.surfaceCard,
+                      border: Border(
+                        bottom: BorderSide(
+                          color: context.appColors.surfaceSubtle,
+                          width: 1,
                         ),
                       ),
                     ),
-                  ),
-                if (!widget.createMode && _relation == null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 24),
-                    child: Center(
-                      child: Text(
-                        '该关系已不存在（可能已被删除）',
-                        style: AppTypography.base(
-                          fontSize: 12,
-                          fontWeight: AppTypography.medium,
-                          color: AppColors.textMuted,
+                    child: Row(
+                      children: [
+                        GestureDetector(
+                          onTap: _saving ? null : () => AppNav.pop(context),
+                          behavior: HitTestBehavior.opaque,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            child: Text(
+                              '取消',
+                              style: AppTypography.base(
+                                fontSize: 14,
+                                fontWeight: AppTypography.medium,
+                                color: AppColors.textTertiary,
+                              ),
+                            ),
+                          ),
                         ),
-                      ),
+                        Expanded(
+                          child: Center(
+                            child: Text(
+                              widget.createMode ? '新增关系' : '编辑关系',
+                              style: AppTypography.base(
+                                fontSize: 18,
+                                fontWeight: AppTypography.bold,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                          ),
+                        ),
+                        PressableScale(
+                          onTap: _saving ? null : _onSave,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: _saving
+                                  ? AppColors.gray300
+                                  : AppColors.brandPrimary,
+                              borderRadius: BorderRadius.circular(9999),
+                              boxShadow: AppShadows.sm,
+                            ),
+                            child: Text(
+                              _saving ? '保存中' : '保存',
+                              style: AppTypography.base(
+                                fontSize: 14,
+                                fontWeight: AppTypography.medium,
+                                color: AppColors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-              ],
-            ),
-          ),
-        ],
+                  Expanded(
+                    child: ListView(
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
+                      children: [
+                        PrototypeCard(
+                          padding: EdgeInsets.zero,
+                          child: Column(
+                            children: [
+                              _SelectRow(
+                                label: '联系人 A',
+                                value: aName,
+                                onTap: () async {
+                                  final picked = await _pickPerson(
+                                    context,
+                                    persons,
+                                  );
+                                  if (picked == null) return;
+                                  setState(() => _personAId = picked.personId);
+                                },
+                              ),
+                              const PrototypeDivider(
+                                color: AppColors.borderDivider,
+                              ),
+                              _SelectRow(
+                                label: '联系人 B',
+                                value: bName,
+                                onTap: () async {
+                                  final picked = await _pickPerson(
+                                    context,
+                                    persons,
+                                  );
+                                  if (picked == null) return;
+                                  setState(() => _personBId = picked.personId);
+                                },
+                              ),
+                              const PrototypeDivider(
+                                color: AppColors.borderDivider,
+                              ),
+                              _SelectRow(
+                                label: '关系类型',
+                                value: tName,
+                                onTap: () async {
+                                  final picked = await _pickType(
+                                    context,
+                                    types,
+                                  );
+                                  if (picked == null) return;
+                                  setState(() => _typeId = picked.typeId);
+                                },
+                                borderBottom: false,
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        PrototypeCard(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '备注（可选）',
+                                style: AppTypography.base(
+                                  fontSize: 12,
+                                  fontWeight: AppTypography.regular,
+                                  color: AppColors.textTertiary,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              TextField(
+                                controller: _noteCtrl,
+                                maxLines: 4,
+                                style: AppTypography.base(
+                                  fontSize: 14,
+                                  fontWeight: AppTypography.medium,
+                                  color: AppColors.textPrimary,
+                                ),
+                                decoration: InputDecoration(
+                                  isDense: true,
+                                  filled: true,
+                                  fillColor: context.appColors.surfaceSubtle,
+                                  hintText: '可填写补充说明',
+                                  hintStyle: AppTypography.base(
+                                    fontSize: 14,
+                                    fontWeight: AppTypography.regular,
+                                    color: AppColors.textMuted,
+                                  ),
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 12,
+                                  ),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: const BorderSide(
+                                      color: AppColors.borderSubtle,
+                                      width: 1,
+                                    ),
+                                  ),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: const BorderSide(
+                                      color: AppColors.borderSubtle,
+                                      width: 1,
+                                    ),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: const BorderSide(
+                                      color: AppColors.borderFocus,
+                                      width: 1,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        if (!widget.createMode)
+                          PressableScale(
+                            onTap: _saving
+                                ? null
+                                : () => _confirmDelete(context, db),
+                            child: Container(
+                              height: 48,
+                              decoration: BoxDecoration(
+                                color: context.appColors.surfaceCard,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: context.appColors.surfaceSubtle,
+                                  width: 1,
+                                ),
+                                boxShadow: AppShadows.sm,
+                              ),
+                              alignment: Alignment.center,
+                              child: Text(
+                                '删除关系',
+                                style: AppTypography.base(
+                                  fontSize: 14,
+                                  fontWeight: AppTypography.medium,
+                                  color: AppColors.red500,
+                                ),
+                              ),
+                            ),
+                          ),
+                        if (!widget.createMode && _relation == null)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 24),
+                            child: Center(
+                              child: Text(
+                                '该关系已不存在（可能已被删除）',
+                                style: AppTypography.base(
+                                  fontSize: 12,
+                                  fontWeight: AppTypography.medium,
+                                  color: AppColors.textMuted,
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
               );
             },
           );
@@ -279,7 +321,9 @@ class _ContactRelationEditPageState extends State<ContactRelationEditPage> {
     final b = _personBId;
     final t = _typeId;
     if (a == null || b == null || t == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('请先选择联系人与关系类型')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('请先选择联系人与关系类型')));
       return;
     }
     setState(() => _saving = true);
@@ -302,7 +346,9 @@ class _ContactRelationEditPageState extends State<ContactRelationEditPage> {
           note: _noteCtrl.text,
         );
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('已创建')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('已创建')));
         AppNav.pop(context);
       } else {
         await db.contactRelationsDao.updateOne(
@@ -313,12 +359,16 @@ class _ContactRelationEditPageState extends State<ContactRelationEditPage> {
           note: _noteCtrl.text,
         );
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('已保存')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('已保存')));
         AppNav.pop(context);
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('保存失败：$e')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('保存失败：$e')));
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -332,8 +382,14 @@ class _ContactRelationEditPageState extends State<ContactRelationEditPage> {
           title: const Text('删除关系'),
           content: const Text('确认删除该联系人关系？'),
           actions: [
-            TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('取消')),
-            TextButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('删除')),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('取消'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('删除'),
+            ),
           ],
         );
       },
@@ -342,11 +398,15 @@ class _ContactRelationEditPageState extends State<ContactRelationEditPage> {
     try {
       await db.contactRelationsDao.deleteById(widget.id!);
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('已删除')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('已删除')));
       AppNav.pop(context);
     } catch (e) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('删除失败：$e')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('删除失败：$e')));
     }
   }
 
@@ -437,7 +497,10 @@ class _ContactRelationEditPageState extends State<ContactRelationEditPage> {
     );
   }
 
-  Future<RelationType?> _pickType(BuildContext context, List<RelationType> types) {
+  Future<RelationType?> _pickType(
+    BuildContext context,
+    List<RelationType> types,
+  ) {
     return showModalBottomSheet<RelationType>(
       context: context,
       isScrollControlled: true,
@@ -454,7 +517,11 @@ class _ContactRelationEditPageState extends State<ContactRelationEditPage> {
                   onTap: () => Navigator.of(context).pop(t),
                   child: Row(
                     children: [
-                      const FaIcon(FontAwesomeIcons.tag, size: 14, color: AppColors.textTertiary),
+                      const FaIcon(
+                        FontAwesomeIcons.tag,
+                        size: 14,
+                        color: AppColors.textTertiary,
+                      ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
@@ -521,7 +588,11 @@ class _SelectRow extends StatelessWidget {
               ],
             ),
           ),
-          const FaIcon(FontAwesomeIcons.chevronRight, size: 10, color: AppColors.gray300),
+          const FaIcon(
+            FontAwesomeIcons.chevronRight,
+            size: 10,
+            color: AppColors.gray300,
+          ),
         ],
       ),
     );
@@ -540,8 +611,8 @@ class _Sheet extends StatelessWidget {
     return Padding(
       padding: EdgeInsets.fromLTRB(12, 0, 12, 12 + bottomInset),
       child: Container(
-        decoration: const BoxDecoration(
-          color: AppColors.white,
+        decoration: BoxDecoration(
+          color: context.appColors.surfaceCard,
           borderRadius: AppRadii.br2xl,
           boxShadow: AppShadows.lg,
         ),
@@ -551,9 +622,14 @@ class _Sheet extends StatelessWidget {
           children: [
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: const BoxDecoration(
-                color: AppColors.white,
-                border: Border(bottom: BorderSide(color: AppColors.gray100, width: 1)),
+              decoration: BoxDecoration(
+                color: context.appColors.surfaceCard,
+                border: Border(
+                  bottom: BorderSide(
+                    color: context.appColors.surfaceSubtle,
+                    width: 1,
+                  ),
+                ),
               ),
               child: Row(
                 children: [
@@ -569,7 +645,7 @@ class _Sheet extends StatelessWidget {
                   ),
                   PrototypeIconButton(
                     icon: const FaIcon(FontAwesomeIcons.xmark, size: 14),
-                    backgroundColor: AppColors.gray100,
+                    backgroundColor: context.appColors.surfaceSubtle,
                     foregroundColor: AppColors.textSecondary,
                     onPressed: () => Navigator.of(context).pop(),
                     radius: 12,

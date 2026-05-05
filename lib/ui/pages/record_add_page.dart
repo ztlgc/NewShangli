@@ -185,8 +185,7 @@ class _RecordAddPageState extends State<RecordAddPage> {
     try {
       final dbBookId = await _resolveDbBookId(db, _bookId);
       final book = await db.accountBooksDao.findById(dbBookId);
-      final occurredAtMs =
-          (book != null && book.isDefault != 1)
+      final occurredAtMs = (book != null && book.isDefault != 1)
           ? book.bookTime
           : _occurredAt.millisecondsSinceEpoch;
       final now = DateTime.now().millisecondsSinceEpoch;
@@ -307,97 +306,110 @@ class _RecordAddPageState extends State<RecordAddPage> {
     final picked = await showDialog<String>(
       context: context,
       builder: (context) {
+        final colors = context.appColors;
         return Center(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Container(
-              constraints: const BoxConstraints(maxWidth: 340, maxHeight: 500),
-              decoration: const BoxDecoration(
-                color: AppColors.white,
-                borderRadius: AppRadii.br2xl,
-                boxShadow: AppShadows.xl,
-              ),
-              clipBehavior: Clip.antiAlias,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                    decoration: const BoxDecoration(
-                      color: AppColors.white,
-                      border: Border(
-                        bottom: BorderSide(color: AppColors.gray100, width: 1),
+            child: Material(
+              color: Colors.transparent,
+              child: Container(
+                constraints: const BoxConstraints(
+                  maxWidth: 340,
+                  maxHeight: 500,
+                ),
+                decoration: BoxDecoration(
+                  color: colors.surfaceCard,
+                  borderRadius: AppRadii.br2xl,
+                  boxShadow: AppShadows.xl,
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
                       ),
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            '选择所属账簿',
-                            style: AppTypography.base(
-                              fontSize: 16,
-                              fontWeight: AppTypography.bold,
-                              color: AppColors.textPrimary,
-                            ),
+                      decoration: BoxDecoration(
+                        color: colors.surfaceCard,
+                        border: Border(
+                          bottom: BorderSide(
+                            color: colors.borderDivider,
+                            width: 1,
                           ),
                         ),
-                        PrototypeIconButton(
-                          icon: const FaIcon(FontAwesomeIcons.xmark, size: 14),
-                          backgroundColor: AppColors.gray100,
-                          foregroundColor: AppColors.textSecondary,
-                          onPressed: () => Navigator.of(context).pop(),
-                          radius: 12,
-                        ),
-                      ],
-                    ),
-                  ),
-                  Flexible(
-                    child: Material(
-                      color: AppColors.white,
-                      child: ListView(
-                        shrinkWrap: true,
-                        padding: const EdgeInsets.only(bottom: 12),
+                      ),
+                      child: Row(
                         children: [
-                          for (final b in books)
-                            PrototypePressableRow(
-                              onTap: () {
-                                final id = (b.isDefault == 1)
-                                    ? _defaultBookSelectionId
-                                    : b.bookId;
-                                Navigator.of(context).pop(id);
-                              },
-                              child: Row(
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      b.name,
-                                      style: AppTypography.base(
-                                        fontSize: 14,
-                                        fontWeight: AppTypography.medium,
-                                        color: AppColors.textPrimary,
-                                      ),
-                                    ),
-                                  ),
-                                  if (((b.isDefault == 1)
-                                          ? _defaultBookSelectionId
-                                          : b.bookId) ==
-                                      _bookId)
-                                    const FaIcon(
-                                      FontAwesomeIcons.check,
-                                      size: 14,
-                                      color: AppColors.indigo600,
-                                    ),
-                                ],
+                          Expanded(
+                            child: Text(
+                              '选择所属账簿',
+                              style: AppTypography.base(
+                                fontSize: 16,
+                                fontWeight: AppTypography.bold,
+                                color: colors.textPrimary,
                               ),
                             ),
+                          ),
+                          PrototypeIconButton(
+                            icon: const FaIcon(
+                              FontAwesomeIcons.xmark,
+                              size: 14,
+                            ),
+                            backgroundColor: context.appColors.surfaceSubtle,
+                            foregroundColor: AppColors.textSecondary,
+                            onPressed: () => Navigator.of(context).pop(),
+                            radius: 12,
+                          ),
                         ],
                       ),
                     ),
-                  ),
-                ],
+                    Flexible(
+                      child: Material(
+                        color: colors.surfaceCard,
+                        child: ListView(
+                          shrinkWrap: true,
+                          padding: const EdgeInsets.only(bottom: 12),
+                          children: [
+                            for (final b in books)
+                              PrototypePressableRow(
+                                onTap: () {
+                                  final id = (b.isDefault == 1)
+                                      ? _defaultBookSelectionId
+                                      : b.bookId;
+                                  Navigator.of(context).pop(id);
+                                },
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        b.name,
+                                        style: AppTypography.base(
+                                          fontSize: 14,
+                                          fontWeight: AppTypography.medium,
+                                          color: colors.textPrimary,
+                                        ),
+                                      ),
+                                    ),
+                                    if (((b.isDefault == 1)
+                                            ? _defaultBookSelectionId
+                                            : b.bookId) ==
+                                        _bookId)
+                                      FaIcon(
+                                        FontAwesomeIcons.check,
+                                        size: 14,
+                                        color: colors.brandSecondary,
+                                      ),
+                                  ],
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -670,16 +682,21 @@ class _RecordAddPageState extends State<RecordAddPage> {
                   ),
                   const SizedBox(height: 24),
                   StreamBuilder<List<AccountBook>>(
-                    stream: AppDatabaseScope.of(context).accountBooksDao.watchAll(),
+                    stream: AppDatabaseScope.of(
+                      context,
+                    ).accountBooksDao.watchAll(),
                     builder: (context, snapshot) {
                       final books = snapshot.data ?? const <AccountBook>[];
                       return _FormCard(
                         bookName: _resolveBookName(books),
                         personName: displayPersonName,
-                        eventName: _eventName.trim().isEmpty ? '请选择' : _eventName,
+                        eventName: _eventName.trim().isEmpty
+                            ? '请选择'
+                            : _eventName,
                         dateLabel: _formatDate(_occurredAt),
-                        paymentMethod:
-                            _paymentMethod.trim().isEmpty ? '请选择' : _paymentMethod,
+                        paymentMethod: _paymentMethod.trim().isEmpty
+                            ? '请选择'
+                            : _paymentMethod,
                         onTapBook: _pickBook,
                         onTapPerson: _pickPerson,
                         onTapReason: _pickReason,
@@ -728,8 +745,8 @@ class _RecordAddPageState extends State<RecordAddPage> {
             : record.paymentMethod!.trim();
         _occurredAt = DateTime.fromMillisecondsSinceEpoch(
           (book != null && book.isDefault != 1)
-          ? book.bookTime
-          : record.occurredAt,
+              ? book.bookTime
+              : record.occurredAt,
         );
         _occurredAtLockedByBookTime = book != null && book.isDefault != 1;
         _amountController.text = _formatAmountInput(record.amountCent);
@@ -793,10 +810,11 @@ class _RecordAddPageState extends State<RecordAddPage> {
   Future<void> _initDefaultsFromDrift() async {
     final db = AppDatabaseScope.of(context);
     // 仅从未删除联系人中选择默认值，避免软删除联系人被再次默认选中。
-    final persons = await (db.select(db.persons)
-          ..where((t) => t.deletedAt.isNull())
-          ..limit(1))
-        .get();
+    final persons =
+        await (db.select(db.persons)
+              ..where((t) => t.deletedAt.isNull())
+              ..limit(1))
+            .get();
     if (!mounted) return;
     if (_personId == null && persons.isNotEmpty) {
       _personId = persons.first.personId;
@@ -855,18 +873,21 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.appColors;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: const BoxDecoration(
-        color: AppColors.white,
-        border: Border(bottom: BorderSide(color: AppColors.gray100, width: 1)),
+      decoration: BoxDecoration(
+        color: colors.surfaceCard,
+        border: Border(
+          bottom: BorderSide(color: colors.borderDivider, width: 1),
+        ),
       ),
       child: Row(
         children: [
           PrototypeIconButton(
             icon: const FaIcon(FontAwesomeIcons.xmark, size: 18),
             backgroundColor: Colors.transparent,
-            foregroundColor: AppColors.textPrimary,
+            foregroundColor: colors.textPrimary,
             onPressed: onClose,
             radius: 9999,
           ),
@@ -877,7 +898,7 @@ class _Header extends StatelessWidget {
                 style: AppTypography.base(
                   fontSize: 18,
                   fontWeight: AppTypography.bold,
-                  color: AppColors.textPrimary,
+                  color: colors.textPrimary,
                 ),
               ),
             ),
@@ -887,7 +908,7 @@ class _Header extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
               decoration: BoxDecoration(
-                color: saving ? AppColors.gray300 : AppColors.brandPrimary,
+                color: saving ? colors.surfaceDisabled : colors.brandPrimary,
                 borderRadius: BorderRadius.circular(9999),
                 boxShadow: saving ? null : AppShadows.sm,
               ),
@@ -915,10 +936,11 @@ class _Segmented extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.appColors;
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: AppColors.gray200,
+        color: colors.surfaceSubtle,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -929,7 +951,7 @@ class _Segmented extends StatelessWidget {
               child: Container(
                 height: 40,
                 decoration: BoxDecoration(
-                  color: isIncome ? AppColors.white : Colors.transparent,
+                  color: isIncome ? colors.surfaceCard : Colors.transparent,
                   borderRadius: BorderRadius.circular(10),
                   boxShadow: isIncome ? AppShadows.sm : null,
                 ),
@@ -939,9 +961,7 @@ class _Segmented extends StatelessWidget {
                   style: AppTypography.base(
                     fontSize: 14,
                     fontWeight: AppTypography.medium,
-                    color: isIncome
-                        ? AppColors.brandPrimary
-                        : AppColors.textTertiary,
+                    color: isIncome ? colors.brandPrimary : colors.textTertiary,
                   ),
                 ),
               ),
@@ -953,7 +973,7 @@ class _Segmented extends StatelessWidget {
               child: Container(
                 height: 40,
                 decoration: BoxDecoration(
-                  color: !isIncome ? AppColors.white : Colors.transparent,
+                  color: !isIncome ? colors.surfaceCard : Colors.transparent,
                   borderRadius: BorderRadius.circular(10),
                   boxShadow: !isIncome ? AppShadows.sm : null,
                 ),
@@ -964,8 +984,8 @@ class _Segmented extends StatelessWidget {
                     fontSize: 14,
                     fontWeight: AppTypography.medium,
                     color: !isIncome
-                        ? AppColors.brandPrimary
-                        : AppColors.textTertiary,
+                        ? colors.brandPrimary
+                        : colors.textTertiary,
                   ),
                 ),
               ),
@@ -985,6 +1005,7 @@ class _AmountCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.appColors;
     return PrototypeCard(
       padding: const EdgeInsets.all(16),
       radius: AppRadii.br2xl,
@@ -996,15 +1017,15 @@ class _AmountCard extends StatelessWidget {
             style: AppTypography.base(
               fontSize: 12,
               fontWeight: AppTypography.regular,
-              color: AppColors.textTertiary,
+              color: colors.textTertiary,
             ),
           ),
           const SizedBox(height: 8),
           Container(
             padding: const EdgeInsets.only(bottom: 8),
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               border: Border(
-                bottom: BorderSide(color: AppColors.gray100, width: 1),
+                bottom: BorderSide(color: colors.borderDivider, width: 1),
               ),
             ),
             child: Row(
@@ -1017,7 +1038,7 @@ class _AmountCard extends StatelessWidget {
                     style: AppTypography.base(
                       fontSize: 30,
                       fontWeight: AppTypography.bold,
-                      color: AppColors.textPrimary,
+                      color: colors.textPrimary,
                       height: 1,
                     ),
                   ),
@@ -1038,7 +1059,7 @@ class _AmountCard extends StatelessWidget {
                     style: AppTypography.base(
                       fontSize: 36,
                       fontWeight: AppTypography.bold,
-                      color: AppColors.textPrimary,
+                      color: colors.textPrimary,
                       height: 1,
                     ),
                   ),
@@ -1103,15 +1124,16 @@ class _PresetChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.appColors;
     return PressableScale(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: selected ? AppColors.indigo50 : AppColors.gray50,
+          color: selected ? colors.brandSoft : colors.surfaceSubtle,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: selected ? AppColors.indigo100 : AppColors.gray100,
+            color: selected ? colors.borderFocus : colors.borderSubtle,
             width: 1,
           ),
         ),
@@ -1121,7 +1143,7 @@ class _PresetChip extends StatelessWidget {
             style: AppTypography.base(
               fontSize: 12,
               fontWeight: AppTypography.medium,
-              color: selected ? AppColors.indigo700 : AppColors.textSecondary,
+              color: selected ? colors.brandOnSoft : colors.textSecondary,
             ),
           ),
         ),
@@ -1157,9 +1179,10 @@ class _FormCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.appColors;
     return Container(
-      decoration: const BoxDecoration(
-        color: AppColors.white,
+      decoration: BoxDecoration(
+        color: colors.surfaceCard,
         borderRadius: AppRadii.br2xl,
         boxShadow: AppShadows.sm,
       ),
@@ -1244,6 +1267,7 @@ class _FormRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.appColors;
     return PrototypePressableRow(
       onTap: onTap,
       borderBottom: borderBottom,
@@ -1252,9 +1276,16 @@ class _FormRow extends StatelessWidget {
           Container(
             width: 32,
             height: 32,
-            decoration: BoxDecoration(color: iconBg, shape: BoxShape.circle),
+            decoration: BoxDecoration(
+              color: colors.softFor(iconBg),
+              shape: BoxShape.circle,
+            ),
             alignment: Alignment.center,
-            child: FaIcon(icon, size: 12, color: iconColor),
+            child: FaIcon(
+              icon,
+              size: 12,
+              color: colors.foregroundFor(iconColor),
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -1266,7 +1297,7 @@ class _FormRow extends StatelessWidget {
                   style: AppTypography.base(
                     fontSize: 12,
                     fontWeight: AppTypography.regular,
-                    color: AppColors.textTertiary,
+                    color: colors.textTertiary,
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -1275,17 +1306,17 @@ class _FormRow extends StatelessWidget {
                   style: AppTypography.base(
                     fontSize: 14,
                     fontWeight: AppTypography.medium,
-                    color: AppColors.textPrimary,
+                    color: colors.textPrimary,
                   ),
                 ),
               ],
             ),
           ),
           if (chevron)
-            const FaIcon(
+            FaIcon(
               FontAwesomeIcons.chevronRight,
               size: 10,
-              color: AppColors.gray300,
+              color: colors.textMuted,
             ),
         ],
       ),
@@ -1308,6 +1339,7 @@ class _NoteCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.appColors;
     return PrototypeCard(
       padding: const EdgeInsets.all(16),
       radius: AppRadii.br2xl,
@@ -1327,7 +1359,7 @@ class _NoteCard extends StatelessWidget {
             style: AppTypography.base(
               fontSize: 14,
               fontWeight: AppTypography.regular,
-              color: AppColors.textPrimary,
+              color: colors.textPrimary,
             ),
           ),
           const SizedBox(height: 16),
@@ -1342,7 +1374,7 @@ class _NoteCard extends StatelessWidget {
                       width: 80,
                       height: 80,
                       decoration: BoxDecoration(
-                        color: AppColors.gray100,
+                        color: colors.surfaceSubtle,
                         borderRadius: BorderRadius.circular(12),
                       ),
                       clipBehavior: Clip.antiAlias,
@@ -1359,7 +1391,7 @@ class _NoteCard extends StatelessWidget {
                         child: Container(
                           width: 20,
                           height: 20,
-                          decoration: const BoxDecoration(
+                          decoration: BoxDecoration(
                             color: AppColors.scrimBlack30,
                             shape: BoxShape.circle,
                           ),
@@ -1381,7 +1413,7 @@ class _NoteCard extends StatelessWidget {
                   options: RoundedRectDottedBorderOptions(
                     dashPattern: const [6, 4],
                     strokeWidth: 1,
-                    color: AppColors.gray300,
+                    color: colors.borderDefault,
                     radius: const Radius.circular(12),
                     padding: EdgeInsets.zero,
                   ),
@@ -1389,15 +1421,15 @@ class _NoteCard extends StatelessWidget {
                     width: 80,
                     height: 80,
                     decoration: BoxDecoration(
-                      color: AppColors.gray50,
+                      color: colors.surfaceSubtle,
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const FaIcon(
+                        FaIcon(
                           FontAwesomeIcons.camera,
-                          color: AppColors.textMuted,
+                          color: colors.textMuted,
                           size: 16,
                         ),
                         const SizedBox(height: 4),
@@ -1406,7 +1438,7 @@ class _NoteCard extends StatelessWidget {
                           style: AppTypography.base(
                             fontSize: 10,
                             fontWeight: AppTypography.regular,
-                            color: AppColors.textMuted,
+                            color: colors.textMuted,
                           ),
                         ),
                       ],
@@ -1479,6 +1511,7 @@ class _ReasonPickerSheetState extends State<_ReasonPickerSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.appColors;
     final filtered = widget.reasons.where((reason) {
       final key = _keyword.trim().toLowerCase();
       if (key.isEmpty) return true;
@@ -1495,8 +1528,8 @@ class _ReasonPickerSheetState extends State<_ReasonPickerSheet> {
         top: false,
         child: Container(
           constraints: const BoxConstraints(maxHeight: 620),
-          decoration: const BoxDecoration(
-            color: AppColors.white,
+          decoration: BoxDecoration(
+            color: colors.surfaceCard,
             borderRadius: AppRadii.br2xl,
             boxShadow: AppShadows.lg,
           ),
@@ -1508,7 +1541,7 @@ class _ReasonPickerSheetState extends State<_ReasonPickerSheet> {
                 height: 5,
                 margin: const EdgeInsets.only(top: 10, bottom: 6),
                 decoration: BoxDecoration(
-                  color: AppColors.gray200,
+                  color: colors.borderDefault,
                   borderRadius: BorderRadius.circular(999),
                 ),
               ),
@@ -1522,13 +1555,13 @@ class _ReasonPickerSheetState extends State<_ReasonPickerSheet> {
                         style: AppTypography.base(
                           fontSize: 18,
                           fontWeight: AppTypography.bold,
-                          color: AppColors.textPrimary,
+                          color: colors.textPrimary,
                         ),
                       ),
                     ),
                     PrototypeIconButton(
                       icon: const FaIcon(FontAwesomeIcons.xmark, size: 14),
-                      backgroundColor: AppColors.gray100,
+                      backgroundColor: context.appColors.surfaceSubtle,
                       foregroundColor: AppColors.textSecondary,
                       onPressed: () => Navigator.of(context).pop(),
                       radius: 12,
@@ -1552,7 +1585,7 @@ class _ReasonPickerSheetState extends State<_ReasonPickerSheet> {
                           style: AppTypography.base(
                             fontSize: 13,
                             fontWeight: AppTypography.regular,
-                            color: AppColors.textMuted,
+                            color: colors.textMuted,
                           ),
                         ),
                       )
@@ -1570,7 +1603,7 @@ class _ReasonPickerSheetState extends State<_ReasonPickerSheet> {
                           final r = filtered[index];
                           final selected = widget.selectedReasonName == r.name;
                           return Material(
-                            color: AppColors.gray50,
+                            color: colors.surfaceSubtle,
                             borderRadius: BorderRadius.circular(16),
                             child: InkWell(
                               borderRadius: BorderRadius.circular(16),
@@ -1583,8 +1616,8 @@ class _ReasonPickerSheetState extends State<_ReasonPickerSheet> {
                                   borderRadius: BorderRadius.circular(16),
                                   border: Border.all(
                                     color: selected
-                                        ? AppColors.indigo600
-                                        : AppColors.gray100,
+                                        ? colors.borderFocus
+                                        : colors.borderSubtle,
                                     width: selected ? 1.4 : 1,
                                   ),
                                 ),
@@ -1594,13 +1627,17 @@ class _ReasonPickerSheetState extends State<_ReasonPickerSheet> {
                                       width: 34,
                                       height: 34,
                                       decoration: BoxDecoration(
-                                        color: widget.reasonIconBgColor(r.name),
+                                        color: colors.softFor(
+                                          widget.reasonIconBgColor(r.name),
+                                        ),
                                         borderRadius: BorderRadius.circular(17),
                                       ),
                                       child: Icon(
                                         widget.reasonIcon(r.name),
                                         size: 20,
-                                        color: widget.reasonIconColor(r.name),
+                                        color: colors.foregroundFor(
+                                          widget.reasonIconColor(r.name),
+                                        ),
                                       ),
                                     ),
                                     const SizedBox(width: 10),
@@ -1611,7 +1648,7 @@ class _ReasonPickerSheetState extends State<_ReasonPickerSheet> {
                                         overflow: TextOverflow.ellipsis,
                                         style: AppTypography.body().copyWith(
                                           fontWeight: FontWeight.w600,
-                                          color: AppColors.gray800,
+                                          color: colors.textPrimary,
                                         ),
                                       ),
                                     ),
@@ -1665,6 +1702,7 @@ class _PersonPickerSheetState extends State<_PersonPickerSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.appColors;
     final filtered = widget.persons.where((person) {
       final key = _keyword.trim().toLowerCase();
       if (key.isEmpty) return true;
@@ -1682,8 +1720,8 @@ class _PersonPickerSheetState extends State<_PersonPickerSheet> {
         top: false,
         child: Container(
           constraints: const BoxConstraints(maxHeight: 620),
-          decoration: const BoxDecoration(
-            color: AppColors.white,
+          decoration: BoxDecoration(
+            color: colors.surfaceCard,
             borderRadius: AppRadii.br2xl,
             boxShadow: AppShadows.lg,
           ),
@@ -1695,7 +1733,7 @@ class _PersonPickerSheetState extends State<_PersonPickerSheet> {
                 height: 5,
                 margin: const EdgeInsets.only(top: 10, bottom: 6),
                 decoration: BoxDecoration(
-                  color: AppColors.gray200,
+                  color: colors.borderDefault,
                   borderRadius: BorderRadius.circular(999),
                 ),
               ),
@@ -1709,13 +1747,13 @@ class _PersonPickerSheetState extends State<_PersonPickerSheet> {
                         style: AppTypography.base(
                           fontSize: 18,
                           fontWeight: AppTypography.bold,
-                          color: AppColors.textPrimary,
+                          color: colors.textPrimary,
                         ),
                       ),
                     ),
                     PrototypeIconButton(
                       icon: const FaIcon(FontAwesomeIcons.xmark, size: 14),
-                      backgroundColor: AppColors.gray100,
+                      backgroundColor: context.appColors.surfaceSubtle,
                       foregroundColor: AppColors.textSecondary,
                       onPressed: () => Navigator.of(context).pop(),
                       radius: 12,
@@ -1739,7 +1777,7 @@ class _PersonPickerSheetState extends State<_PersonPickerSheet> {
                           style: AppTypography.base(
                             fontSize: 13,
                             fontWeight: AppTypography.regular,
-                            color: AppColors.textMuted,
+                            color: colors.textMuted,
                           ),
                         ),
                       )
@@ -1759,10 +1797,10 @@ class _PersonPickerSheetState extends State<_PersonPickerSheet> {
                               avatarUrl: person.avatarUri,
                               trailing:
                                   widget.selectedPersonId == person.personId
-                                  ? const FaIcon(
+                                  ? FaIcon(
                                       FontAwesomeIcons.check,
                                       size: 14,
-                                      color: AppColors.indigo600,
+                                      color: colors.brandSecondary,
                                     )
                                   : null,
                             ),

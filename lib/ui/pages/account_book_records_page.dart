@@ -33,7 +33,11 @@ class AccountBookRecordsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return AppScaffold(
       backgroundColor: AppColors.surfaceApp,
-      body: _Canvas(bookId: bookId, bookName: bookName, isDefaultBook: isDefaultBook),
+      body: _Canvas(
+        bookId: bookId,
+        bookName: bookName,
+        isDefaultBook: isDefaultBook,
+      ),
     );
   }
 }
@@ -68,10 +72,7 @@ class _CanvasState extends State<_Canvas> {
 
     return Column(
       children: [
-        _TopBar(
-          title: widget.bookName,
-          onBack: () => AppNav.pop(context),
-        ),
+        _TopBar(title: widget.bookName, onBack: () => AppNav.pop(context)),
         Expanded(
           child: StreamBuilder<List<GiftRecordWithPerson>>(
             stream: stream,
@@ -92,7 +93,8 @@ class _CanvasState extends State<_Canvas> {
               return ListView.separated(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
                 itemCount: list.length,
-                separatorBuilder: (context, index) => const SizedBox(height: 12),
+                separatorBuilder: (context, index) =>
+                    const SizedBox(height: 12),
                 itemBuilder: (context, i) {
                   final item = list[i];
                   return _RecordCard(record: item.record, person: item.person);
@@ -107,10 +109,7 @@ class _CanvasState extends State<_Canvas> {
 }
 
 class _TopBar extends StatelessWidget {
-  const _TopBar({
-    required this.title,
-    required this.onBack,
-  });
+  const _TopBar({required this.title, required this.onBack});
 
   final String title;
   final VoidCallback onBack;
@@ -119,9 +118,11 @@ class _TopBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: const BoxDecoration(
-        color: AppColors.white,
-        border: Border(bottom: BorderSide(color: AppColors.gray100, width: 1)),
+      decoration: BoxDecoration(
+        color: context.appColors.surfaceCard,
+        border: Border(
+          bottom: BorderSide(color: context.appColors.borderDivider, width: 1),
+        ),
       ),
       child: Row(
         children: [
@@ -152,10 +153,7 @@ class _TopBar extends StatelessWidget {
 }
 
 class _RecordCard extends StatelessWidget {
-  const _RecordCard({
-    required this.record,
-    required this.person,
-  });
+  const _RecordCard({required this.record, required this.person});
 
   final GiftRecord record;
   final Person person;
@@ -164,17 +162,23 @@ class _RecordCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final isIncome = record.direction != '支出';
     final amountText = _formatAmountCent(record.amountCent);
-    final timeText = _formatDateTime(DateTime.fromMillisecondsSinceEpoch(record.occurredAt));
-    final title = (record.eventName ?? '').trim().isEmpty ? '礼金往来' : record.eventName!.trim();
-    final relationText = person.relationshipType.trim().isEmpty ? '其他' : person.relationshipType.trim();
+    final timeText = _formatDateTime(
+      DateTime.fromMillisecondsSinceEpoch(record.occurredAt),
+    );
+    final title = (record.eventName ?? '').trim().isEmpty
+        ? '礼金往来'
+        : record.eventName!.trim();
+    final relationText = person.relationshipType.trim().isEmpty
+        ? '其他'
+        : person.relationshipType.trim();
 
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: context.appColors.surfaceCard,
         borderRadius: BorderRadius.circular(16),
         boxShadow: AppShadows.sm,
-        border: Border.all(color: AppColors.gray100, width: 1),
+        border: Border.all(color: context.appColors.borderSubtle, width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -190,7 +194,9 @@ class _RecordCard extends StatelessWidget {
                 ),
                 alignment: Alignment.center,
                 child: FaIcon(
-                  isIncome ? FontAwesomeIcons.arrowDown : FontAwesomeIcons.arrowUp,
+                  isIncome
+                      ? FontAwesomeIcons.arrowDown
+                      : FontAwesomeIcons.arrowUp,
                   size: 16,
                   color: isIncome ? AppColors.indigo700 : AppColors.orange600,
                 ),
@@ -231,7 +237,9 @@ class _RecordCard extends StatelessWidget {
                     style: AppTypography.base(
                       fontSize: 16,
                       fontWeight: AppTypography.bold,
-                      color: isIncome ? AppColors.indigo700 : AppColors.orange600,
+                      color: isIncome
+                          ? AppColors.indigo700
+                          : AppColors.orange600,
                     ),
                   ),
                   const SizedBox(height: 4),

@@ -18,8 +18,9 @@ class PrototypeFrame extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.appColors;
     return ColoredBox(
-      color: backgroundColor,
+      color: colors.pageBackgroundFor(backgroundColor),
       child: LayoutBuilder(
         builder: (context, constraints) {
           final scale = _scaleFor(constraints.biggest);
@@ -84,13 +85,15 @@ class PrototypeTopBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.appColors;
+    final border = bottomBorder
+        ? Border(bottom: BorderSide(color: colors.borderDivider, width: 1))
+        : null;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: backgroundColor,
-        border: bottomBorder
-            ? const Border(bottom: BorderSide(color: AppColors.gray100, width: 1))
-            : null,
+        color: colors.surfaceFor(backgroundColor),
+        border: border,
         boxShadow: shadow ? AppShadows.sm : null,
       ),
       child: Row(
@@ -103,7 +106,7 @@ class PrototypeTopBar extends StatelessWidget {
                 style: AppTypography.base(
                   fontSize: AppTypography.fs20,
                   fontWeight: AppTypography.bold,
-                  color: foregroundColor,
+                  color: colors.foregroundFor(foregroundColor),
                 ),
               ),
             ),
@@ -135,18 +138,22 @@ class PrototypeIconButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.appColors;
     return PressableScale(
       onTap: onPressed,
       child: Container(
         width: size,
         height: size,
         decoration: BoxDecoration(
-          color: backgroundColor,
+          color: colors.surfaceFor(backgroundColor),
           borderRadius: BorderRadius.circular(radius),
         ),
         alignment: Alignment.center,
         child: IconTheme(
-          data: IconThemeData(color: foregroundColor, size: 18),
+          data: IconThemeData(
+            color: colors.foregroundFor(foregroundColor),
+            size: 18,
+          ),
           child: icon,
         ),
       ),
@@ -194,25 +201,22 @@ class _PressableScaleState extends State<PressableScale> {
 }
 
 class PrototypeBottomNav extends StatelessWidget {
-  const PrototypeBottomNav({
-    super.key,
-    required this.activeIndex,
-    this.onTap,
-  });
+  const PrototypeBottomNav({super.key, required this.activeIndex, this.onTap});
 
   final int activeIndex;
   final ValueChanged<int>? onTap;
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.appColors;
     final bottomInset = (MediaQuery.paddingOf(context).bottom - 12)
         .clamp(0.0, double.infinity)
         .toDouble();
     return Container(
       height: AppTokens.tabBarHeight + bottomInset,
-      decoration: const BoxDecoration(
-        color: AppColors.white,
-        border: Border(top: BorderSide(color: AppColors.borderDefault, width: 1)),
+      decoration: BoxDecoration(
+        color: colors.surfaceCard,
+        border: Border(top: BorderSide(color: colors.borderDefault, width: 1)),
       ),
       child: Padding(
         padding: EdgeInsets.only(bottom: bottomInset),
@@ -274,8 +278,9 @@ class _NavItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.appColors;
     final active = activeIndex == index;
-    final color = active ? AppColors.brandPrimary : AppColors.textMuted;
+    final color = active ? colors.brandPrimary : colors.textMuted;
     return SizedBox(
       width: 64,
       child: PressableScale(
@@ -304,4 +309,3 @@ class _NavItem extends StatelessWidget {
     );
   }
 }
-

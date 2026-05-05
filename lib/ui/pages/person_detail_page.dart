@@ -121,10 +121,11 @@ class _CanvasState extends State<_Canvas> {
       final db = AppDatabaseScope.of(context);
       final Person? person = await db.personsDao.findById(id);
       if (person == null) return null;
-      final records = await (db.select(db.giftRecords)
-            ..where((t) => t.personId.equals(id))
-            ..orderBy([(t) => OrderingTerm.desc(t.occurredAt)]))
-          .get();
+      final records =
+          await (db.select(db.giftRecords)
+                ..where((t) => t.personId.equals(id))
+                ..orderBy([(t) => OrderingTerm.desc(t.occurredAt)]))
+              .get();
       var incomeCent = 0;
       var expenseCent = 0;
       final recordItems = <_PersonRecordView>[];
@@ -218,14 +219,14 @@ class _CanvasState extends State<_Canvas> {
       );
       if (!mounted) return;
       _reload();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('头像已更新')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('头像已更新')));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('头像更新失败：$e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('头像更新失败：$e')));
     }
   }
 
@@ -368,15 +369,19 @@ class _Hero extends StatelessWidget {
   Widget build(BuildContext context) {
     final person = view.person;
     final name = person.name.trim().isEmpty ? '未知' : person.name.trim();
-    final relationship = person.relationship.trim().isEmpty ? '未设置' : person.relationship.trim();
-    final phone = person.phone?.trim().isNotEmpty == true ? person.phone!.trim() : '未设置';
+    final relationship = person.relationship.trim().isEmpty
+        ? '未设置'
+        : person.relationship.trim();
+    final phone = person.phone?.trim().isNotEmpty == true
+        ? person.phone!.trim()
+        : '未设置';
     final avatarUrl = person.avatarUrl?.trim();
     return Stack(
       clipBehavior: Clip.none,
       children: [
         Container(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             color: AppColors.brandPrimary,
             borderRadius: BorderRadius.only(
               bottomLeft: AppRadii.heroBottom,
@@ -393,7 +398,10 @@ class _Hero extends StatelessWidget {
                   height: 96,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    border: Border.all(color: AppColors.white, width: 4),
+                    border: Border.all(
+                      color: context.appColors.surfaceCard,
+                      width: 4,
+                    ),
                     boxShadow: AppShadows.lg,
                   ),
                   clipBehavior: Clip.antiAlias,
@@ -419,7 +427,10 @@ class _Hero extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 2,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.white20,
                       borderRadius: BorderRadius.circular(4),
@@ -463,8 +474,8 @@ class _Hero extends StatelessWidget {
           bottom: -32,
           child: Container(
             padding: const EdgeInsets.symmetric(vertical: 16),
-            decoration: const BoxDecoration(
-              color: AppColors.white,
+            decoration: BoxDecoration(
+              color: context.appColors.surfaceCard,
               borderRadius: AppRadii.br2xl,
               boxShadow: AppShadows.lg,
             ),
@@ -517,10 +528,9 @@ class _EntityRemarksCardState extends State<_EntityRemarksCard> {
 
   Future<List<EntityRemark>> _load() async {
     final db = AppDatabaseScope.of(context);
-    return EntityRemarksStore(db).listByEntity(
-      entityType: widget.entityType,
-      entityId: widget.entityId,
-    );
+    return EntityRemarksStore(
+      db,
+    ).listByEntity(entityType: widget.entityType, entityId: widget.entityId);
   }
 
   void _reload() {
@@ -565,9 +575,9 @@ class _EntityRemarksCardState extends State<_EntityRemarksCard> {
     );
     if (!context.mounted) return;
     _reload();
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('备注已添加')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('备注已添加')));
   }
 
   @override
@@ -593,11 +603,16 @@ class _EntityRemarksCardState extends State<_EntityRemarksCard> {
               PressableScale(
                 onTap: () => _addRemark(context, db),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
-                    color: AppColors.gray50,
+                    color: context.appColors.surfaceSubtle,
                     borderRadius: BorderRadius.circular(999),
-                    border: Border.all(color: AppColors.gray200),
+                    border: Border.all(
+                      color: context.appColors.surfaceDisabled,
+                    ),
                   ),
                   child: Text(
                     '新增',
@@ -658,9 +673,9 @@ class _RemarkRow extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppColors.gray50,
+        color: context.appColors.surfaceSubtle,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.gray100),
+        border: Border.all(color: context.appColors.borderSubtle),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -694,7 +709,11 @@ class _VerticalDivider extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(width: 1, height: 40, color: AppColors.gray100);
+    return Container(
+      width: 1,
+      height: 40,
+      color: context.appColors.borderDivider,
+    );
   }
 }
 
@@ -744,8 +763,10 @@ class _InfoCards extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final note = person?.note?.trim().isNotEmpty == true ? person!.note!.trim() : '未设置';
-    
+    final note = person?.note?.trim().isNotEmpty == true
+        ? person!.note!.trim()
+        : '未设置';
+
     String birthdayValue = '未设置';
     Widget? birthdayTrailing;
 
@@ -759,10 +780,14 @@ class _InfoCards extends StatelessWidget {
       if (nextBirthday.isBefore(today)) {
         nextBirthday = DateTime(now.year + 1, b.month, b.day);
       }
-      
+
       final diffDays = nextBirthday.difference(today).inDays;
       String badgeText = diffDays == 0 ? '今天' : '$diffDays天后';
-      birthdayTrailing = _Badge(text: badgeText, bg: AppColors.pink100, fg: AppColors.pink600);
+      birthdayTrailing = _Badge(
+        text: badgeText,
+        bg: AppColors.pink100,
+        fg: AppColors.pink600,
+      );
     }
 
     return Padding(
@@ -813,14 +838,18 @@ class _InfoRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.appColors;
     return Row(
       children: [
         Container(
           width: 32,
           height: 32,
-          decoration: BoxDecoration(color: iconBg, shape: BoxShape.circle),
+          decoration: BoxDecoration(
+            color: colors.softFor(iconBg),
+            shape: BoxShape.circle,
+          ),
           alignment: Alignment.center,
-          child: FaIcon(icon, size: 14, color: iconFg),
+          child: FaIcon(icon, size: 14, color: colors.foregroundFor(iconFg)),
         ),
         const SizedBox(width: 12),
         Expanded(
@@ -864,7 +893,10 @@ class _Badge extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(9999)),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(9999),
+      ),
       child: Text(
         text,
         style: AppTypography.base(
@@ -919,8 +951,8 @@ class _RecordsCard extends StatelessWidget {
     if (records.isEmpty) {
       return Container(
         margin: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-        decoration: const BoxDecoration(
-          color: AppColors.white,
+        decoration: BoxDecoration(
+          color: context.appColors.surfaceCard,
           borderRadius: AppRadii.br2xl,
           boxShadow: AppShadows.sm,
         ),
@@ -939,8 +971,8 @@ class _RecordsCard extends StatelessWidget {
     }
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-      decoration: const BoxDecoration(
-        color: AppColors.white,
+      decoration: BoxDecoration(
+        color: context.appColors.surfaceCard,
         borderRadius: AppRadii.br2xl,
         boxShadow: AppShadows.sm,
       ),
@@ -965,27 +997,38 @@ class _RecordRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.appColors;
     final isIncome = record.isIncome;
     final iconBg = isIncome ? AppColors.green100 : AppColors.red100;
     final iconFg = isIncome ? AppColors.green600 : AppColors.red600;
-    final icon = isIncome ? FontAwesomeIcons.gift : FontAwesomeIcons.handHoldingHeart;
+    final icon = isIncome
+        ? FontAwesomeIcons.gift
+        : FontAwesomeIcons.handHoldingHeart;
     final amountColor = isIncome ? AppColors.green600 : AppColors.red500;
     final amount = _formatSignedAmount(record.amountCent, isIncome: isIncome);
-    final subtitleLeft = (record.paymentMethod == '未设置' || record.paymentMethod.isEmpty) 
-        ? '${isIncome ? '收礼' : '送礼'}' 
+    final subtitleLeft =
+        (record.paymentMethod == '未设置' || record.paymentMethod.isEmpty)
+        ? '${isIncome ? '收礼' : '送礼'}'
         : '${isIncome ? '收礼' : '送礼'} - ${record.paymentMethod}';
     final subtitleRight = DateUtil.format(record.occurredAt);
     return PrototypePressableRow(
-      onTap: () => AppNav.push(context, RecordDetailPage(recordId: record.recordId), requiresLogin: true),
+      onTap: () => AppNav.push(
+        context,
+        RecordDetailPage(recordId: record.recordId),
+        requiresLogin: true,
+      ),
       borderBottom: borderBottom,
       child: Row(
         children: [
           Container(
             width: 40,
             height: 40,
-            decoration: BoxDecoration(color: iconBg, shape: BoxShape.circle),
+            decoration: BoxDecoration(
+              color: colors.softFor(iconBg),
+              shape: BoxShape.circle,
+            ),
             alignment: Alignment.center,
-            child: FaIcon(icon, size: 16, color: iconFg),
+            child: FaIcon(icon, size: 16, color: colors.foregroundFor(iconFg)),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -1053,9 +1096,11 @@ class _BottomActions extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: const BoxDecoration(
-        color: AppColors.white,
-        border: Border(top: BorderSide(color: AppColors.gray100, width: 1)),
+      decoration: BoxDecoration(
+        color: context.appColors.surfaceCard,
+        border: Border(
+          top: BorderSide(color: context.appColors.borderDivider, width: 1),
+        ),
       ),
       child: Row(
         children: [
@@ -1066,7 +1111,11 @@ class _BottomActions extends StatelessWidget {
               icon: FontAwesomeIcons.plus,
               label: '记一笔',
               shadow: true,
-              onTap: () => AppNav.push(context, const RecordAddPage(), requiresLogin: true),
+              onTap: () => AppNav.push(
+                context,
+                const RecordAddPage(),
+                requiresLogin: true,
+              ),
             ),
           ),
         ],
@@ -1081,7 +1130,10 @@ String _formatCurrency(int cent) {
   final parts = yuan.split('.');
   final intPart = parts[0];
   final fracPart = parts[1];
-  final grouped = intPart.replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (m) => ',');
+  final grouped = intPart.replaceAllMapped(
+    RegExp(r'\B(?=(\d{3})+(?!\d))'),
+    (m) => ',',
+  );
   return '¥$grouped.$fracPart';
 }
 
@@ -1094,7 +1146,10 @@ String _formatSignedAmount(int cent, {required bool isIncome}) {
   final symbol = isIncome ? '+' : '-';
   final value = (cent.abs() / 100).toStringAsFixed(2);
   final parts = value.split('.');
-  final grouped = parts[0].replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (m) => ',');
+  final grouped = parts[0].replaceAllMapped(
+    RegExp(r'\B(?=(\d{3})+(?!\d))'),
+    (m) => ',',
+  );
   return '$symbol$grouped.${parts[1]}';
 }
 
