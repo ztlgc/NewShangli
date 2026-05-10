@@ -374,6 +374,25 @@ class _CanvasState extends State<_Canvas> {
         status == DataImportStatus.canceled;
   }
 
+  double? _progressIndicatorValue(DataImportStatus status) {
+    return status == DataImportStatus.running ||
+            status == DataImportStatus.pending
+        ? null
+        : 1;
+  }
+
+  Color _progressIndicatorColor(BuildContext context, DataImportStatus status) {
+    final colors = context.appColors;
+    return switch (status) {
+      DataImportStatus.completed => colors.stateSuccess,
+      DataImportStatus.failed ||
+      DataImportStatus.canceled => colors.stateDanger,
+      DataImportStatus.paused => colors.stateWarning,
+      DataImportStatus.pending ||
+      DataImportStatus.running => colors.brandSecondary,
+    };
+  }
+
   String _statusLabel(DataImportStatus status) {
     switch (status) {
       case DataImportStatus.pending:
@@ -550,10 +569,13 @@ class _CanvasState extends State<_Canvas> {
                           ),
                           const SizedBox(height: 8),
                           LinearProgressIndicator(
-                            value: null,
+                            value: _progressIndicatorValue(_progress!.status),
                             minHeight: 6,
                             backgroundColor: context.appColors.surfaceSubtle,
-                            color: AppColors.indigo600,
+                            color: _progressIndicatorColor(
+                              context,
+                              _progress!.status,
+                            ),
                           ),
                           const SizedBox(height: 8),
                           Text(

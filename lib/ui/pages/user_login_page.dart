@@ -1,10 +1,13 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../app_scaffold.dart';
 import '../app_tokens.dart';
 import '../app_toast.dart';
+import '../prototype_kit.dart';
 
 /// 页面：用户登录页面
 class UserLoginPage extends StatefulWidget {
@@ -86,101 +89,163 @@ class _UserLoginPageState extends State<UserLoginPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    final colors = context.appColors;
+    return AppScaffold(
       backgroundColor: AppColors.surfaceApp,
-      appBar: AppBar(
-        title: const Text('用户登录'),
-        backgroundColor: context.appColors.surfaceCard,
-        elevation: 0,
-        foregroundColor: AppColors.textPrimary,
-      ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const SizedBox(height: 32),
-              // 提示信息
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: AppColors.blue50,
-                  borderRadius: AppRadii.brLg,
-                ),
-                child: Text(
-                  '未登录用户可正常使用所有功能，登陆后可使用云端数据库进行同步备份。',
-                  style: AppTypography.base(
-                    color: AppColors.blue600,
-                    fontSize: 14,
-                    fontWeight: AppTypography.regular,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-              const SizedBox(height: 48),
-              // 邮箱输入框
-              TextField(
-                controller: _emailController,
-                decoration: const InputDecoration(
-                  labelText: '登录邮箱',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.email_outlined),
-                ),
-                keyboardType: TextInputType.emailAddress,
-                textInputAction: TextInputAction.next,
-              ),
-              const SizedBox(height: 20),
-              // 密码输入框
-              TextField(
-                controller: _passwordController,
-                decoration: const InputDecoration(
-                  labelText: '密码',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.lock_outline),
-                ),
-                obscureText: true,
-                textInputAction: TextInputAction.done,
-                onSubmitted: (_) => _login(),
-              ),
-              const SizedBox(height: 40),
-              // 登录按钮
-              SizedBox(
-                height: 48,
-                child: ElevatedButton(
-                  onPressed: _isLoading ? null : _login,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.brandPrimary,
-                    foregroundColor: AppColors.white,
-                    shape: const RoundedRectangleBorder(
+      body: Column(
+        children: [
+          PrototypeTopBar(
+            title: '用户登录',
+            left: PrototypeIconButton(
+              icon: const FaIcon(FontAwesomeIcons.arrowLeft, size: 18),
+              backgroundColor: Colors.transparent,
+              foregroundColor: AppColors.textPrimary,
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+          ),
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const SizedBox(height: 32),
+                  // 提示信息
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: colors.blueSoft,
                       borderRadius: AppRadii.brLg,
+                      border: Border.all(color: colors.borderSubtle, width: 1),
+                    ),
+                    child: Text(
+                      '未登录用户可正常使用所有功能，登陆后可使用云端数据库进行同步备份。',
+                      style: AppTypography.base(
+                        color: colors.blueAccent,
+                        fontSize: 14,
+                        fontWeight: AppTypography.regular,
+                      ),
+                      textAlign: TextAlign.center,
                     ),
                   ),
-                  child: _isLoading
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            color: AppColors.white,
-                            strokeWidth: 2,
-                          ),
-                        )
-                      : const Text('登录', style: TextStyle(fontSize: 16)),
-                ),
+                  const SizedBox(height: 48),
+                  // 邮箱输入框
+                  TextField(
+                    controller: _emailController,
+                    style: AppTypography.base(
+                      color: colors.textPrimary,
+                      fontSize: 14,
+                      fontWeight: AppTypography.regular,
+                    ),
+                    decoration: _inputDecoration(
+                      context: context,
+                      labelText: '登录邮箱',
+                      prefixIcon: Icons.email_outlined,
+                    ),
+                    keyboardType: TextInputType.emailAddress,
+                    textInputAction: TextInputAction.next,
+                  ),
+                  const SizedBox(height: 20),
+                  // 密码输入框
+                  TextField(
+                    controller: _passwordController,
+                    style: AppTypography.base(
+                      color: colors.textPrimary,
+                      fontSize: 14,
+                      fontWeight: AppTypography.regular,
+                    ),
+                    decoration: _inputDecoration(
+                      context: context,
+                      labelText: '密码',
+                      prefixIcon: Icons.lock_outline,
+                    ),
+                    obscureText: true,
+                    textInputAction: TextInputAction.done,
+                    onSubmitted: (_) => _login(),
+                  ),
+                  const SizedBox(height: 40),
+                  // 登录按钮
+                  SizedBox(
+                    height: 48,
+                    child: ElevatedButton(
+                      onPressed: _isLoading ? null : _login,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: colors.brandPrimary,
+                        foregroundColor: colors.textInverse,
+                        disabledBackgroundColor: colors.surfaceDisabled,
+                        disabledForegroundColor: colors.textMuted,
+                        shape: const RoundedRectangleBorder(
+                          borderRadius: AppRadii.brLg,
+                        ),
+                      ),
+                      child: _isLoading
+                          ? SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                color: colors.textInverse,
+                                strokeWidth: 2,
+                              ),
+                            )
+                          : Text(
+                              '登录',
+                              style: AppTypography.base(
+                                fontSize: 16,
+                                fontWeight: AppTypography.medium,
+                                color: colors.textInverse,
+                              ),
+                            ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    '如需开通账号，请联系管理员。',
+                    textAlign: TextAlign.center,
+                    style: AppTypography.base(
+                      color: colors.textSecondary,
+                      fontSize: 14,
+                      fontWeight: AppTypography.regular,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 16),
-              Text(
-                '如需开通账号，请联系管理员。',
-                textAlign: TextAlign.center,
-                style: AppTypography.base(
-                  color: AppColors.textSecondary,
-                  fontSize: 14,
-                  fontWeight: AppTypography.regular,
-                ),
-              ),
-            ],
+            ),
           ),
-        ),
+        ],
+      ),
+    );
+  }
+
+  InputDecoration _inputDecoration({
+    required BuildContext context,
+    required String labelText,
+    required IconData prefixIcon,
+  }) {
+    final colors = context.appColors;
+    final enabledBorder = OutlineInputBorder(
+      borderRadius: AppRadii.brLg,
+      borderSide: BorderSide(color: colors.borderDefault, width: 1),
+    );
+    return InputDecoration(
+      labelText: labelText,
+      labelStyle: AppTypography.base(
+        fontSize: 14,
+        fontWeight: AppTypography.regular,
+        color: colors.textTertiary,
+      ),
+      floatingLabelStyle: AppTypography.base(
+        fontSize: 14,
+        fontWeight: AppTypography.medium,
+        color: colors.brandSecondary,
+      ),
+      prefixIcon: Icon(prefixIcon, color: colors.textTertiary),
+      filled: true,
+      fillColor: colors.surfaceCard,
+      border: enabledBorder,
+      enabledBorder: enabledBorder,
+      focusedBorder: OutlineInputBorder(
+        borderRadius: AppRadii.brLg,
+        borderSide: BorderSide(color: colors.borderFocus, width: 1),
       ),
     );
   }

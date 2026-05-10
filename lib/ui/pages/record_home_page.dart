@@ -417,7 +417,6 @@ class _MonthHeaderSliver extends StatelessWidget {
     final colors = context.appColors;
     const headerHeight = 32.0;
     return SliverPersistentHeader(
-      pinned: true,
       delegate: _SimpleHeaderDelegate(
         minHeight: headerHeight + topMargin,
         maxHeight: headerHeight + topMargin,

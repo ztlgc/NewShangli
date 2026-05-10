@@ -8,6 +8,7 @@ import '../app_tokens.dart';
 import '../components.dart';
 import '../navigation.dart';
 import '../prototype_kit.dart';
+import 'relation_type_detail_page.dart';
 
 class RelationTypeManagePage extends StatelessWidget {
   const RelationTypeManagePage({super.key});
@@ -260,7 +261,12 @@ class _CanvasState extends State<_Canvas> {
                                     relationCountByTypeId[visibleTypes[i]
                                         .typeId] ??
                                     0,
-                                onTap: () =>
+                                onTap: () => AppNav.push(
+                                  context,
+                                  RelationTypeDetailPage(type: visibleTypes[i]),
+                                  requiresLogin: true,
+                                ),
+                                onEdit: () =>
                                     _openEditor(context, db, visibleTypes[i]),
                                 onLongPress: () => _confirmDelete(
                                   context,
@@ -573,6 +579,7 @@ class _TypeRow extends StatelessWidget {
   const _TypeRow({
     required this.type,
     required this.onTap,
+    required this.onEdit,
     required this.onLongPress,
     required this.contactCount,
     required this.relationCount,
@@ -580,6 +587,7 @@ class _TypeRow extends StatelessWidget {
 
   final RelationType type;
   final VoidCallback onTap;
+  final VoidCallback onEdit;
   final VoidCallback onLongPress;
   final int contactCount;
   final int relationCount;
@@ -648,7 +656,7 @@ class _TypeRow extends StatelessWidget {
                 ),
                 InkResponse(
                   radius: 18,
-                  onTap: onTap,
+                  onTap: onEdit,
                   child: const Padding(
                     padding: EdgeInsets.all(6),
                     child: FaIcon(

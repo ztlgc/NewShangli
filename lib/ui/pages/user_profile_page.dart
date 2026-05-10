@@ -145,6 +145,7 @@ class _ProfileHeaderCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.appColors;
     return PrototypeCard(
       padding: const EdgeInsets.all(20),
       child: Column(
@@ -153,15 +154,18 @@ class _ProfileHeaderCard extends StatelessWidget {
             width: 72,
             height: 72,
             decoration: BoxDecoration(
-              color: AppColors.indigo50,
+              color: colors.softFor(AppColors.indigo50),
               shape: BoxShape.circle,
-              border: Border.all(color: AppColors.indigo100, width: 1),
+              border: Border.all(
+                color: colors.borderFor(AppColors.indigo100),
+                width: 1,
+              ),
             ),
             alignment: Alignment.center,
-            child: const FaIcon(
+            child: FaIcon(
               FontAwesomeIcons.user,
               size: 30,
-              color: AppColors.indigo700,
+              color: colors.foregroundFor(AppColors.indigo700),
             ),
           ),
           const SizedBox(height: 16),
@@ -224,6 +228,7 @@ class _InfoRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.appColors;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       child: Row(
@@ -232,11 +237,15 @@ class _InfoRow extends StatelessWidget {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: iconBackground,
+              color: colors.softFor(iconBackground),
               borderRadius: AppRadii.brXl,
             ),
             alignment: Alignment.center,
-            child: FaIcon(icon, size: 16, color: iconForeground),
+            child: FaIcon(
+              icon,
+              size: 16,
+              color: colors.foregroundFor(iconForeground),
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -279,6 +288,7 @@ class _LogoutButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.appColors;
     return Opacity(
       opacity: loggingOut ? 0.72 : 1,
       child: IgnorePointer(
@@ -288,9 +298,12 @@ class _LogoutButton extends StatelessWidget {
           child: Container(
             height: 48,
             decoration: BoxDecoration(
-              color: context.appColors.surfaceCard,
+              color: colors.surfaceCard,
               borderRadius: AppRadii.brXl,
-              border: Border.all(color: AppColors.red100, width: 1),
+              border: Border.all(
+                color: colors.stateDanger.withValues(alpha: 0.36),
+                width: 1,
+              ),
               boxShadow: AppShadows.sm,
             ),
             alignment: Alignment.center,
@@ -301,12 +314,12 @@ class _LogoutButton extends StatelessWidget {
                       key: const ValueKey('logging-out'),
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const SizedBox(
+                        SizedBox(
                           width: 16,
                           height: 16,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            color: AppColors.red500,
+                            color: colors.stateDanger,
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -315,7 +328,7 @@ class _LogoutButton extends StatelessWidget {
                           style: AppTypography.base(
                             fontSize: AppTypography.fs14,
                             fontWeight: AppTypography.medium,
-                            color: AppColors.red500,
+                            color: colors.stateDanger,
                           ),
                         ),
                       ],
@@ -324,10 +337,10 @@ class _LogoutButton extends StatelessWidget {
                       key: const ValueKey('logout'),
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const FaIcon(
+                        FaIcon(
                           FontAwesomeIcons.arrowRightFromBracket,
                           size: 15,
-                          color: AppColors.red500,
+                          color: colors.stateDanger,
                         ),
                         const SizedBox(width: 8),
                         Text(
@@ -335,7 +348,7 @@ class _LogoutButton extends StatelessWidget {
                           style: AppTypography.base(
                             fontSize: AppTypography.fs14,
                             fontWeight: AppTypography.medium,
-                            color: AppColors.red500,
+                            color: colors.stateDanger,
                           ),
                         ),
                       ],
