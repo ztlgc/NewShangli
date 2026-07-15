@@ -74,7 +74,7 @@ class _CanvasState extends State<_Canvas> {
     return Column(
       children: [
         PrototypeTopBar(
-          title: '账单导出',
+          title: '数据导出',
           left: PrototypeIconButton(
             icon: const FaIcon(FontAwesomeIcons.arrowLeft, size: 18),
             backgroundColor: Colors.transparent,
@@ -111,7 +111,7 @@ class _CanvasState extends State<_Canvas> {
                                     : () => _pickDateRange(db),
                               ),
                               _SettingRow(
-                                label: '账本',
+                                label: '账簿',
                                 value: bookLabel,
                                 onTap: _exporting
                                     ? null
@@ -147,7 +147,7 @@ class _CanvasState extends State<_Canvas> {
                             builder: (context, countSnapshot) {
                               final billCount = countSnapshot.data ?? 0;
                               return Text(
-                                '共$billCount条账单数据',
+                                '共$billCount条记录',
                                 style: AppTypography.base(
                                   fontSize: 14,
                                   fontWeight: AppTypography.regular,
@@ -228,11 +228,11 @@ class _CanvasState extends State<_Canvas> {
   }
 
   String _resolveBookLabel(List<AccountBook> books) {
-    if (_selectedBookId == null) return '所有账本';
+    if (_selectedBookId == null) return '所有账簿';
     for (final b in books) {
       if (b.bookId == _selectedBookId) return b.name;
     }
-    return '所有账本';
+    return '所有账簿';
   }
 
   String _formatDate(DateTime d) {
@@ -262,12 +262,12 @@ class _CanvasState extends State<_Canvas> {
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
                 child: Text(
-                  '选择账本',
+                  '选择账簿',
                   style: AppTypography.h2().copyWith(fontSize: 16),
                 ),
               ),
               ListTile(
-                title: const Text('所有账本'),
+                title: const Text('所有账簿'),
                 trailing: _selectedBookId == null
                     ? const Icon(Icons.check)
                     : null,
@@ -495,7 +495,7 @@ class _CanvasState extends State<_Canvas> {
       }
       try {
         await SharePlus.instance.share(
-          ShareParams(files: <XFile>[XFile(file.path)], text: '尚礼账单导出'),
+          ShareParams(files: <XFile>[XFile(file.path)], text: '尚礼数据导出'),
         );
       } catch (_) {
         if (!mounted) return;
@@ -539,7 +539,7 @@ class _CanvasState extends State<_Canvas> {
     }
     try {
       await SharePlus.instance.share(
-        ShareParams(files: <XFile>[XFile(file.path)], text: '尚礼账单导出'),
+        ShareParams(files: <XFile>[XFile(file.path)], text: '尚礼数据导出'),
       );
     } catch (_) {
       if (!mounted) return;
@@ -715,7 +715,7 @@ class _HintArea extends StatelessWidget {
         ),
         const SizedBox(height: 4),
         Text(
-          '如果要备份或转移数据，请使用云同步或数据备份功能，请勿通过账单导出备份数据',
+          '如果要备份或转移数据，请使用云同步或数据备份功能，请勿通过数据导出备份数据',
           style: AppTypography.base(
             fontSize: 14,
             fontWeight: AppTypography.regular,
@@ -737,7 +737,7 @@ class _HintArea extends StatelessWidget {
         ],
         const SizedBox(height: 12),
         Text(
-          'Excel 文件导出账单明细；图片字段仅输出本地路径',
+          'Excel 文件导出记录明细；图片字段仅输出本地路径',
           style: AppTypography.base(
             fontSize: 14,
             fontWeight: AppTypography.regular,
@@ -747,7 +747,7 @@ class _HintArea extends StatelessWidget {
         ),
         const SizedBox(height: 6),
         Text(
-          'ZIP 文件导出账单并打包本地图片文件',
+          'ZIP 文件导出记录并打包本地图片文件',
           style: AppTypography.base(
             fontSize: 14,
             fontWeight: AppTypography.regular,

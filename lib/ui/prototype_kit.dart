@@ -127,6 +127,8 @@ class PrototypeIconButton extends StatelessWidget {
     this.foregroundColor = AppColors.textSecondary,
     this.onPressed,
     this.radius = 9999,
+    this.semanticLabel,
+    this.semanticHint,
   });
 
   final Widget icon;
@@ -135,26 +137,37 @@ class PrototypeIconButton extends StatelessWidget {
   final Color foregroundColor;
   final VoidCallback? onPressed;
   final double radius;
+  final String? semanticLabel;
+  final String? semanticHint;
 
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
-    return PressableScale(
-      onTap: onPressed,
-      child: Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          color: colors.surfaceFor(backgroundColor),
-          borderRadius: BorderRadius.circular(radius),
-        ),
-        alignment: Alignment.center,
-        child: IconTheme(
-          data: IconThemeData(
-            color: colors.foregroundFor(foregroundColor),
-            size: 18,
+    return Semantics(
+      button: true,
+      enabled: onPressed != null,
+      label: semanticLabel,
+      hint: semanticHint,
+      // 图标按钮通常没有可读文本，这里显式透出语义标签，避免读屏只读出图标类型。
+      child: ExcludeSemantics(
+        child: PressableScale(
+          onTap: onPressed,
+          child: Container(
+            width: size,
+            height: size,
+            decoration: BoxDecoration(
+              color: colors.surfaceFor(backgroundColor),
+              borderRadius: BorderRadius.circular(radius),
+            ),
+            alignment: Alignment.center,
+            child: IconTheme(
+              data: IconThemeData(
+                color: colors.foregroundFor(foregroundColor),
+                size: 18,
+              ),
+              child: icon,
+            ),
           ),
-          child: icon,
         ),
       ),
     );
@@ -283,26 +296,34 @@ class _NavItem extends StatelessWidget {
     final color = active ? colors.brandPrimary : colors.textMuted;
     return SizedBox(
       width: 64,
-      child: PressableScale(
-        onTap: () => onTap?.call(index),
-        child: SizedBox.expand(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              IconTheme(
-                data: IconThemeData(color: color, size: 20),
-                child: icon,
+      child: Semantics(
+        button: true,
+        enabled: onTap != null,
+        selected: active,
+        label: label,
+        child: ExcludeSemantics(
+          child: PressableScale(
+            onTap: () => onTap?.call(index),
+            child: SizedBox.expand(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  IconTheme(
+                    data: IconThemeData(color: color, size: 20),
+                    child: icon,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    label,
+                    style: AppTypography.base(
+                      fontSize: 10,
+                      fontWeight: AppTypography.medium,
+                      color: color,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 4),
-              Text(
-                label,
-                style: AppTypography.base(
-                  fontSize: 10,
-                  fontWeight: AppTypography.medium,
-                  color: color,
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       ),

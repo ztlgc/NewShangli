@@ -110,6 +110,7 @@ class _CanvasState extends State<_Canvas> {
                 backgroundColor: Colors.transparent,
                 foregroundColor: AppColors.textPrimary,
                 onPressed: _busy ? null : () => AppNav.pop(context),
+                semanticLabel: '返回上一页',
               ),
               Expanded(
                 child: Center(
@@ -643,6 +644,7 @@ class _DriveExtraConfigCard extends StatelessWidget {
             trailing: _Toggle(
               value: config.autoBackupEnabled,
               onChanged: saving ? null : onToggleAutoBackup,
+              semanticLabel: '自动备份',
             ),
           ),
           const PrototypeDivider(color: AppColors.borderDivider),
@@ -655,6 +657,9 @@ class _DriveExtraConfigCard extends StatelessWidget {
               color: AppColors.gray300,
             ),
             onTap: saving ? null : onPickFrequency,
+            semanticLabel: '备份频率',
+            semanticValue: backupFrequencyLabel(config.backupFrequency),
+            semanticHint: '打开备份频率选择',
           ),
           const PrototypeDivider(color: AppColors.borderDivider),
           _OptionRow(
@@ -666,6 +671,9 @@ class _DriveExtraConfigCard extends StatelessWidget {
               color: AppColors.gray300,
             ),
             onTap: saving ? null : onOpenWebDavConfig,
+            semanticLabel: '网盘配置',
+            semanticValue: webDavConfigured ? '已配置' : '未设置',
+            semanticHint: '打开 WebDAV 配置',
           ),
           const PrototypeDivider(color: AppColors.borderDivider),
           Padding(
@@ -828,6 +836,7 @@ class _WebDavConfigDialogState extends State<_WebDavConfigDialog> {
                         child: PrototypeSecondaryButton(
                           label: saving ? '测试中' : '测试连接',
                           onTap: widget.onTest,
+                          semanticLabel: '测试 WebDAV 连接',
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -835,6 +844,7 @@ class _WebDavConfigDialogState extends State<_WebDavConfigDialog> {
                         child: PrototypePrimaryButton(
                           label: saving ? '保存中' : '保存配置',
                           onTap: widget.onSave,
+                          semanticLabel: '保存 WebDAV 配置',
                         ),
                       ),
                     ],
@@ -924,6 +934,7 @@ class _InputRow extends StatelessWidget {
                   ? null
                   : IconButton(
                       onPressed: enabled ? onToggleObscure : null,
+                      tooltip: obscureText ? '显示密码' : '隐藏密码',
                       icon: Icon(
                         obscureText ? Icons.visibility_off : Icons.visibility,
                         size: 18,
@@ -994,21 +1005,32 @@ class _BackupHistoryItem extends StatelessWidget {
               ],
             ),
           ),
-          GestureDetector(
-            onTap: onRestore,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-              decoration: BoxDecoration(
-                color: context.appColors.surfaceCard,
-                borderRadius: BorderRadius.circular(9999),
-                border: Border.all(color: context.appColors.borderDefault),
-              ),
-              child: Text(
-                '恢复',
-                style: AppTypography.base(
-                  fontSize: 12,
-                  fontWeight: AppTypography.medium,
-                  color: AppColors.textSecondary,
+          Semantics(
+            button: true,
+            enabled: onRestore != null,
+            label: '恢复备份 ${entry.fileName}',
+            hint: '恢复该备份到当前本地数据',
+            child: ExcludeSemantics(
+              child: GestureDetector(
+                onTap: onRestore,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: context.appColors.surfaceCard,
+                    borderRadius: BorderRadius.circular(9999),
+                    border: Border.all(color: context.appColors.borderDefault),
+                  ),
+                  child: Text(
+                    '恢复',
+                    style: AppTypography.base(
+                      fontSize: 12,
+                      fontWeight: AppTypography.medium,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -1032,28 +1054,35 @@ class _FrequencyOption extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return PrototypePressableRow(
-      onTap: onTap,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              label,
-              style: AppTypography.base(
-                fontSize: 14,
-                fontWeight: AppTypography.medium,
-                color: AppColors.textPrimary,
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: label,
+      child: ExcludeSemantics(
+        child: PrototypePressableRow(
+          onTap: onTap,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  label,
+                  style: AppTypography.base(
+                    fontSize: 14,
+                    fontWeight: AppTypography.medium,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
               ),
-            ),
+              if (selected)
+                const FaIcon(
+                  FontAwesomeIcons.check,
+                  size: 14,
+                  color: AppColors.green500,
+                ),
+            ],
           ),
-          if (selected)
-            const FaIcon(
-              FontAwesomeIcons.check,
-              size: 14,
-              color: AppColors.green500,
-            ),
-        ],
+        ),
       ),
     );
   }
@@ -1065,16 +1094,22 @@ class _OptionRow extends StatelessWidget {
     this.subtitle,
     required this.trailing,
     this.onTap,
+    this.semanticLabel,
+    this.semanticValue,
+    this.semanticHint,
   });
 
   final String title;
   final String? subtitle;
   final Widget trailing;
   final VoidCallback? onTap;
+  final String? semanticLabel;
+  final String? semanticValue;
+  final String? semanticHint;
 
   @override
   Widget build(BuildContext context) {
-    return PrototypePressableRow(
+    final row = PrototypePressableRow(
       onTap: onTap,
       borderBottom: true,
       padding: const EdgeInsets.all(16),
@@ -1110,14 +1145,29 @@ class _OptionRow extends StatelessWidget {
         ],
       ),
     );
+    if (onTap == null) return row;
+    return Semantics(
+      button: true,
+      enabled: true,
+      label: semanticLabel ?? title,
+      value: semanticValue ?? subtitle,
+      hint: semanticHint,
+      // 行级语义用于把“标题 + 当前值 + 打开动作”合并成一条稳定朗读信息。
+      child: ExcludeSemantics(child: row),
+    );
   }
 }
 
 class _Toggle extends StatelessWidget {
-  const _Toggle({required this.value, required this.onChanged});
+  const _Toggle({
+    required this.value,
+    required this.onChanged,
+    this.semanticLabel,
+  });
 
   final bool value;
   final ValueChanged<bool>? onChanged;
+  final String? semanticLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -1128,26 +1178,33 @@ class _Toggle extends StatelessWidget {
         ? colors.surfaceDisabled
         : (on ? colors.stateSuccess : colors.surfaceDisabled);
     final alignment = on ? Alignment.centerRight : Alignment.centerLeft;
-    return GestureDetector(
-      onTap: enabled ? () => onChanged!(!value) : null,
-      behavior: HitTestBehavior.opaque,
-      child: Container(
-        width: 44,
-        height: 24,
-        decoration: BoxDecoration(
-          color: bg,
-          borderRadius: BorderRadius.circular(9999),
-        ),
-        child: Align(
-          alignment: alignment,
+    return Semantics(
+      enabled: enabled,
+      checked: value,
+      label: semanticLabel,
+      child: ExcludeSemantics(
+        child: GestureDetector(
+          onTap: enabled ? () => onChanged!(!value) : null,
+          behavior: HitTestBehavior.opaque,
           child: Container(
-            width: 20,
-            height: 20,
-            margin: const EdgeInsets.symmetric(horizontal: 2),
+            width: 44,
+            height: 24,
             decoration: BoxDecoration(
-              color: context.appColors.surfaceCard,
-              shape: BoxShape.circle,
-              boxShadow: AppShadows.sm,
+              color: bg,
+              borderRadius: BorderRadius.circular(9999),
+            ),
+            child: Align(
+              alignment: alignment,
+              child: Container(
+                width: 20,
+                height: 20,
+                margin: const EdgeInsets.symmetric(horizontal: 2),
+                decoration: BoxDecoration(
+                  color: context.appColors.surfaceCard,
+                  shape: BoxShape.circle,
+                  boxShadow: AppShadows.sm,
+                ),
+              ),
             ),
           ),
         ),

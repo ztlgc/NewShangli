@@ -155,6 +155,7 @@ class _Canvas extends StatelessWidget {
                     backgroundColor: Colors.transparent,
                     foregroundColor: AppColors.textPrimary,
                     onPressed: () => AppNav.pop(context),
+                    semanticLabel: '返回上一页',
                   ),
                   Expanded(
                     child: Center(
@@ -180,6 +181,7 @@ class _Canvas extends StatelessWidget {
                       ),
                       requiresLogin: true,
                     ),
+                    semanticLabel: '导入账簿数据',
                   ),
                 ],
               ),
@@ -437,18 +439,25 @@ class _AttachmentRow extends StatelessWidget {
       spacing: 10,
       runSpacing: 10,
       children: [
-        PressableScale(
-          onTap: onAdd,
-          child: Container(
-            width: 96,
-            height: 96,
-            decoration: BoxDecoration(
-              color: context.appColors.surfaceSubtle,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: context.appColors.borderDefault),
+        Semantics(
+          button: true,
+          label: '添加附件',
+          // 这里是纯图标入口，显式语义标签可以让读屏明确这是附件主入口。
+          child: ExcludeSemantics(
+            child: PressableScale(
+              onTap: onAdd,
+              child: Container(
+                width: 96,
+                height: 96,
+                decoration: BoxDecoration(
+                  color: context.appColors.surfaceSubtle,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: context.appColors.borderDefault),
+                ),
+                alignment: Alignment.center,
+                child: const FaIcon(FontAwesomeIcons.plus, size: 18),
+              ),
             ),
-            alignment: Alignment.center,
-            child: const FaIcon(FontAwesomeIcons.plus, size: 18),
           ),
         ),
         for (final path in attachments)
@@ -484,20 +493,27 @@ class _AttachmentRow extends StatelessWidget {
                 Positioned(
                   top: 6,
                   right: 6,
-                  child: PressableScale(
-                    onTap: () => onDelete(path),
-                    child: Container(
-                      width: 28,
-                      height: 28,
-                      decoration: BoxDecoration(
-                        color: AppColors.scrimBlack30,
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      alignment: Alignment.center,
-                      child: const FaIcon(
-                        FontAwesomeIcons.xmark,
-                        size: 13,
-                        color: AppColors.white,
+                  child: Semantics(
+                    button: true,
+                    label: '删除附件',
+                    hint: path,
+                    child: ExcludeSemantics(
+                      child: PressableScale(
+                        onTap: () => onDelete(path),
+                        child: Container(
+                          width: 28,
+                          height: 28,
+                          decoration: BoxDecoration(
+                            color: AppColors.scrimBlack30,
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          alignment: Alignment.center,
+                          child: const FaIcon(
+                            FontAwesomeIcons.xmark,
+                            size: 13,
+                            color: AppColors.white,
+                          ),
+                        ),
                       ),
                     ),
                   ),

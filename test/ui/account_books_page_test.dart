@@ -35,6 +35,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 800));
 
     expect(find.text('测试账簿'), findsOneWidget);
+    expect(find.text('点击查看账簿详情'), findsOneWidget);
     expect(find.text(expectedBookTimeLabel), findsOneWidget);
 
     await tester.pumpWidget(const SizedBox.shrink());

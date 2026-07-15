@@ -44,41 +44,51 @@ class PrototypePrimaryButton extends StatelessWidget {
     required this.label,
     this.icon,
     this.onTap,
+    this.semanticLabel,
   });
 
   final String label;
   final IconData? icon;
   final VoidCallback? onTap;
+  final String? semanticLabel;
 
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
-    return PressableScale(
-      onTap: onTap,
-      child: Container(
-        height: 48,
-        decoration: BoxDecoration(
-          color: colors.brandPrimary,
-          borderRadius: AppRadii.brXl,
-          boxShadow: AppShadows.brandSoft,
-        ),
-        alignment: Alignment.center,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            if (icon != null) ...[
-              Icon(icon, color: colors.textInverse, size: 16),
-              const SizedBox(width: 8),
-            ],
-            Text(
-              label,
-              style: AppTypography.base(
-                fontSize: 14,
-                fontWeight: AppTypography.medium,
-                color: colors.textInverse,
-              ),
+    return Semantics(
+      button: true,
+      enabled: onTap != null,
+      label: semanticLabel ?? label,
+      // 按钮本身已经通过语义标签完整表达，排除内部文本可避免读屏重复播报。
+      child: ExcludeSemantics(
+        child: PressableScale(
+          onTap: onTap,
+          child: Container(
+            height: 48,
+            decoration: BoxDecoration(
+              color: colors.brandPrimary,
+              borderRadius: AppRadii.brXl,
+              boxShadow: AppShadows.brandSoft,
             ),
-          ],
+            alignment: Alignment.center,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (icon != null) ...[
+                  Icon(icon, color: colors.textInverse, size: 16),
+                  const SizedBox(width: 8),
+                ],
+                Text(
+                  label,
+                  style: AppTypography.base(
+                    fontSize: 14,
+                    fontWeight: AppTypography.medium,
+                    color: colors.textInverse,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -86,29 +96,42 @@ class PrototypePrimaryButton extends StatelessWidget {
 }
 
 class PrototypeSecondaryButton extends StatelessWidget {
-  const PrototypeSecondaryButton({super.key, required this.label, this.onTap});
+  const PrototypeSecondaryButton({
+    super.key,
+    required this.label,
+    this.onTap,
+    this.semanticLabel,
+  });
 
   final String label;
   final VoidCallback? onTap;
+  final String? semanticLabel;
 
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
-    return PressableScale(
-      onTap: onTap,
-      child: Container(
-        height: 48,
-        decoration: BoxDecoration(
-          color: colors.brandSoft,
-          borderRadius: AppRadii.brXl,
-        ),
-        alignment: Alignment.center,
-        child: Text(
-          label,
-          style: AppTypography.base(
-            fontSize: 14,
-            fontWeight: AppTypography.medium,
-            color: colors.brandOnSoft,
+    return Semantics(
+      button: true,
+      enabled: onTap != null,
+      label: semanticLabel ?? label,
+      child: ExcludeSemantics(
+        child: PressableScale(
+          onTap: onTap,
+          child: Container(
+            height: 48,
+            decoration: BoxDecoration(
+              color: colors.brandSoft,
+              borderRadius: AppRadii.brXl,
+            ),
+            alignment: Alignment.center,
+            child: Text(
+              label,
+              style: AppTypography.base(
+                fontSize: 14,
+                fontWeight: AppTypography.medium,
+                color: colors.brandOnSoft,
+              ),
+            ),
           ),
         ),
       ),
@@ -125,6 +148,7 @@ class PrototypeButton extends StatelessWidget {
     this.border,
     this.padding = const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
     this.onPressed,
+    this.semanticLabel,
   });
 
   final String label;
@@ -133,6 +157,7 @@ class PrototypeButton extends StatelessWidget {
   final BoxBorder? border;
   final EdgeInsets padding;
   final VoidCallback? onPressed;
+  final String? semanticLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -141,27 +166,34 @@ class PrototypeButton extends StatelessWidget {
     final resolvedForeground = foreground == AppColors.white
         ? colors.textInverse
         : colors.foregroundFor(foreground);
-    return Opacity(
-      opacity: enabled ? 1 : 0.48,
-      child: PressableScale(
-        onTap: onPressed,
-        child: Container(
-          constraints: const BoxConstraints(minHeight: 36),
-          padding: padding,
-          decoration: BoxDecoration(
-            color: _buttonBackgroundFor(colors, background),
-            borderRadius: AppRadii.brXl,
-            border: border,
-          ),
-          alignment: Alignment.center,
-          child: Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: AppTypography.base(
-              fontSize: AppTypography.fs12,
-              fontWeight: AppTypography.semibold,
-              color: resolvedForeground,
+    return Semantics(
+      button: true,
+      enabled: enabled,
+      label: semanticLabel ?? label,
+      child: ExcludeSemantics(
+        child: Opacity(
+          opacity: enabled ? 1 : 0.48,
+          child: PressableScale(
+            onTap: onPressed,
+            child: Container(
+              constraints: const BoxConstraints(minHeight: 36),
+              padding: padding,
+              decoration: BoxDecoration(
+                color: _buttonBackgroundFor(colors, background),
+                borderRadius: AppRadii.brXl,
+                border: border,
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTypography.base(
+                  fontSize: AppTypography.fs12,
+                  fontWeight: AppTypography.semibold,
+                  color: resolvedForeground,
+                ),
+              ),
             ),
           ),
         ),

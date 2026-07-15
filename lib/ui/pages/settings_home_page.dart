@@ -169,7 +169,7 @@ class _CanvasState extends State<_Canvas> {
                     iconBg: AppColors.blue50,
                     iconFg: AppColors.blue600,
                     icon: FontAwesomeIcons.diagramProject,
-                    title: '联系人关系管理',
+                    title: '关系类型管理',
                     borderBottom: false,
                     onTap: () => AppNav.push(
                       context,

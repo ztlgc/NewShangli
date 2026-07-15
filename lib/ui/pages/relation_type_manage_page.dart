@@ -82,7 +82,7 @@ class _CanvasState extends State<_Canvas> {
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  '联系人关系管理',
+                  '关系类型管理',
                   style: AppTypography.h2().copyWith(fontSize: 20),
                 ),
               ),
@@ -497,8 +497,8 @@ class _CanvasState extends State<_Canvas> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('删除类型'),
-          content: Text('确认删除「${type.name}」？'),
+          title: const Text('删除关系类型'),
+          content: Text('确认删除关系类型「${type.name}」？'),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
