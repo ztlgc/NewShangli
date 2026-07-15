@@ -20,10 +20,6 @@ class SupabaseSyncService {
     return '$y-$m-$day';
   }
 
-  int _parseBookTimeMillis(dynamic value) {
-    return _parseBookTimeMillisValue(value);
-  }
-
   static int _parseBookTimeMillisValue(dynamic value) {
     if (value == null) {
       return DateTime.now().millisecondsSinceEpoch;
@@ -105,8 +101,9 @@ class SupabaseSyncService {
   static Future<void> _restoreAccountBooks(
     AppDatabase db,
     List<Map<String, dynamic>> rows,
-    Map<String, String> bookIdMap,
-  ) async {
+    Map<String, String> bookIdMap, {
+    required AccountBook? localDefaultBeforeRestore,
+  }) async {
     if (rows.isEmpty) return;
 
     final defaultRows =
@@ -115,7 +112,7 @@ class SupabaseSyncService {
               _intValue(b['updated_at']).compareTo(_intValue(a['updated_at'])),
         );
     final cloudDefault = defaultRows.isEmpty ? null : defaultRows.first;
-    final localDefault = await db.accountBooksDao.findDefault();
+    final localDefault = localDefaultBeforeRestore;
     if (cloudDefault != null && localDefault != null) {
       final cloudDefaultId = _stringValue(cloudDefault['book_id']);
       if (cloudDefaultId != localDefault.bookId) {
@@ -287,23 +284,19 @@ class SupabaseSyncService {
   static Future<void> _restoreRelationTypes(
     AppDatabase db,
     List<Map<String, dynamic>> rows,
-    Map<String, String> typeIdMap,
   ) async {
     if (rows.isEmpty) return;
     await db.transaction(() async {
       for (final row in rows) {
         final cloudTypeId = _stringValue(row['type_id']);
         final name = _stringValue(row['name']);
-        final existing = await db.relationTypesDao.findByName(name);
-        final typeId = existing?.typeId ?? cloudTypeId;
-        if (typeId != cloudTypeId) typeIdMap[cloudTypeId] = typeId;
-        final current = await db.relationTypesDao.findById(typeId);
+        final current = await db.relationTypesDao.findById(cloudTypeId);
         if (current == null) {
           await db
               .into(db.relationTypes)
               .insert(
                 RelationType(
-                  typeId: typeId,
+                  typeId: cloudTypeId,
                   name: name,
                   createdAt: _intValue(row['created_at']),
                   updatedAt: _intValue(row['updated_at']),
@@ -312,13 +305,34 @@ class SupabaseSyncService {
         } else {
           await (db.update(
             db.relationTypes,
-          )..where((t) => t.typeId.equals(typeId))).write(
+          )..where((t) => t.typeId.equals(cloudTypeId))).write(
             RelationTypesCompanion(
               name: Value(name),
               createdAt: Value(_intValue(row['created_at'])),
               updatedAt: Value(_intValue(row['updated_at'])),
             ),
           );
+        }
+        final duplicates = await db
+            .customSelect(
+              'SELECT type_id FROM relation_type '
+              'WHERE name = ? COLLATE NOCASE AND type_id <> ?;',
+              variables: [
+                Variable<String>(name),
+                Variable<String>(cloudTypeId),
+              ],
+              readsFrom: {db.relationTypes},
+            )
+            .get();
+        for (final duplicate in duplicates) {
+          final duplicateTypeId = duplicate.data['type_id'] as String;
+          await db.customStatement(
+            'UPDATE contact_relation SET type_id = ? WHERE type_id = ?;',
+            [cloudTypeId, duplicateTypeId],
+          );
+          await (db.delete(
+            db.relationTypes,
+          )..where((t) => t.typeId.equals(duplicateTypeId))).go();
         }
       }
     });
@@ -327,15 +341,12 @@ class SupabaseSyncService {
   static Future<void> _restoreContactRelations(
     AppDatabase db,
     List<Map<String, dynamic>> rows,
-    Map<String, String> typeIdMap,
   ) async {
     if (rows.isEmpty) return;
     await db.transaction(() async {
       for (final row in rows) {
         final relationId = _stringValue(row['relation_id']);
-        final typeId =
-            typeIdMap[_stringValue(row['type_id'])] ??
-            _stringValue(row['type_id']);
+        final typeId = _stringValue(row['type_id']);
         final pair = _normalizePair(
           _stringValue(row['person_a_id']),
           _stringValue(row['person_b_id']),
@@ -365,23 +376,25 @@ class SupabaseSyncService {
     });
   }
 
-  static Future<void> _restoreTablesFromCloudData({
+  static Future<void> _restoreTablesFromCloudPayload({
     required AppDatabase db,
-    required List<dynamic> booksData,
-    required List<dynamic> personsData,
-    required List<dynamic> recordsData,
-    required List<dynamic> reasonsData,
-    required List<dynamic> relationTypesData,
-    required List<dynamic> contactRelationsData,
+    required _CloudRestorePayload payload,
+    AccountBook? localDefaultBeforeRestore,
   }) async {
     final bookIdMap = <String, String>{};
-    final typeIdMap = <String, String>{};
-    await _restoreAccountBooks(db, _rows(booksData), bookIdMap);
-    await _restorePersons(db, _rows(personsData), bookIdMap);
-    await _restoreGiftRecords(db, _rows(recordsData), bookIdMap);
-    await _restoreReasons(db, _rows(reasonsData));
-    await _restoreRelationTypes(db, _rows(relationTypesData), typeIdMap);
-    await _restoreContactRelations(db, _rows(contactRelationsData), typeIdMap);
+    final effectiveLocalDefault =
+        localDefaultBeforeRestore ?? await db.accountBooksDao.findDefault();
+    await _restoreAccountBooks(
+      db,
+      payload.books,
+      bookIdMap,
+      localDefaultBeforeRestore: effectiveLocalDefault,
+    );
+    await _restorePersons(db, payload.persons, bookIdMap);
+    await _restoreGiftRecords(db, payload.records, bookIdMap);
+    await _restoreReasons(db, payload.reasons);
+    await _restoreRelationTypes(db, payload.relationTypes);
+    await _restoreContactRelations(db, payload.contactRelations);
   }
 
   @visibleForTesting
@@ -393,162 +406,18 @@ class SupabaseSyncService {
     List<dynamic> reasonsData = const [],
     List<dynamic> relationTypesData = const [],
     List<dynamic> contactRelationsData = const [],
-  }) {
-    return _restoreTablesFromCloudData(
-      db: db,
-      booksData: booksData,
-      personsData: personsData,
-      recordsData: recordsData,
-      reasonsData: reasonsData,
-      relationTypesData: relationTypesData,
-      contactRelationsData: contactRelationsData,
-    );
-  }
-
-  /// 同步本地数据到云端 (Push)
-  static Future<void> _resolveBusinessKeyConflictsAfterRestore({
-    required AppDatabase db,
-    required AccountBook? localDefaultBeforeRestore,
-    required List<dynamic> booksData,
-    required List<dynamic> reasonsData,
-    required List<dynamic> relationTypesData,
-    required List<dynamic> contactRelationsData,
   }) async {
-    await _mergeDefaultBookNameAfterRestore(
+    return _restoreTablesFromCloudPayload(
       db: db,
-      localDefaultBeforeRestore: localDefaultBeforeRestore,
-      books: _rows(booksData),
+      payload: _CloudRestorePayload(
+        books: _rows(booksData),
+        persons: _rows(personsData),
+        records: _rows(recordsData),
+        reasons: _rows(reasonsData),
+        relationTypes: _rows(relationTypesData),
+        contactRelations: _rows(contactRelationsData),
+      ),
     );
-    await _restoreReasons(db, _rows(reasonsData));
-    await _mergeRelationTypesToCloudIds(db, _rows(relationTypesData));
-    await _restoreContactRelations(
-      db,
-      _rows(contactRelationsData),
-      const <String, String>{},
-    );
-  }
-
-  static Future<void> _mergeDefaultBookNameAfterRestore({
-    required AppDatabase db,
-    required AccountBook? localDefaultBeforeRestore,
-    required List<Map<String, dynamic>> books,
-  }) async {
-    if (localDefaultBeforeRestore == null || books.isEmpty) return;
-    final defaultRows =
-        books.where((row) => _intValue(row['is_default']) == 1).toList()..sort(
-          (a, b) =>
-              _intValue(b['updated_at']).compareTo(_intValue(a['updated_at'])),
-        );
-    if (defaultRows.isEmpty) return;
-
-    final cloudDefault = defaultRows.first;
-    final cloudDefaultId = _stringValue(cloudDefault['book_id']);
-    final localDefaultId = localDefaultBeforeRestore.bookId;
-    if (cloudDefaultId == localDefaultId) {
-      await db.customStatement(
-        'UPDATE account_book SET is_default = CASE WHEN book_id = ? THEN 1 ELSE 0 END;',
-        [localDefaultId],
-      );
-      return;
-    }
-
-    await db.transaction(() async {
-      await (db.update(
-        db.accountBooks,
-      )..where((t) => t.bookId.equals(localDefaultId))).write(
-        AccountBooksCompanion(
-          name: Value(_stringValue(cloudDefault['name'])),
-          reasonType: Value(_stringValue(cloudDefault['reason_type'] ?? '')),
-          themeColor: Value(
-            _stringValue(cloudDefault['theme_color'] ?? '#312E81'),
-          ),
-          icon: Value(_nullableStringValue(cloudDefault['icon'])),
-          description: Value(_nullableStringValue(cloudDefault['description'])),
-          attachments: Value(
-            cloudDefault['attachments'] != null
-                ? List<String>.from(cloudDefault['attachments'] as Iterable)
-                : null,
-          ),
-          bookTime: Value(_parseBookTimeMillisValue(cloudDefault['book_time'])),
-          isDefault: const Value(1),
-          createdAt: Value(_intValue(cloudDefault['created_at'])),
-          updatedAt: Value(_intValue(cloudDefault['updated_at'])),
-          deletedAt: Value(_nullableIntValue(cloudDefault['deleted_at'])),
-        ),
-      );
-      await db.customStatement(
-        'UPDATE person SET book_id = ? WHERE book_id = ?;',
-        [localDefaultId, cloudDefaultId],
-      );
-      await db.customStatement(
-        'UPDATE gift_record SET book_id = ? WHERE book_id = ?;',
-        [localDefaultId, cloudDefaultId],
-      );
-      await (db.delete(
-        db.accountBooks,
-      )..where((t) => t.bookId.equals(cloudDefaultId))).go();
-      await db.customStatement(
-        'UPDATE account_book SET is_default = CASE WHEN book_id = ? THEN 1 ELSE 0 END;',
-        [localDefaultId],
-      );
-    });
-  }
-
-  static Future<void> _mergeRelationTypesToCloudIds(
-    AppDatabase db,
-    List<Map<String, dynamic>> rows,
-  ) async {
-    if (rows.isEmpty) return;
-    await db.transaction(() async {
-      for (final row in rows) {
-        final cloudTypeId = _stringValue(row['type_id']);
-        final name = _stringValue(row['name']);
-        final duplicates = await db
-            .customSelect(
-              'SELECT type_id FROM relation_type '
-              'WHERE name = ? COLLATE NOCASE AND type_id <> ?;',
-              variables: [
-                Variable<String>(name),
-                Variable<String>(cloudTypeId),
-              ],
-              readsFrom: {db.relationTypes},
-            )
-            .get();
-        for (final duplicate in duplicates) {
-          final duplicateTypeId = duplicate.data['type_id'] as String;
-          await db.customStatement(
-            'UPDATE contact_relation SET type_id = ? WHERE type_id = ?;',
-            [cloudTypeId, duplicateTypeId],
-          );
-          await (db.delete(
-            db.relationTypes,
-          )..where((t) => t.typeId.equals(duplicateTypeId))).go();
-        }
-        final current = await db.relationTypesDao.findById(cloudTypeId);
-        if (current == null) {
-          await db
-              .into(db.relationTypes)
-              .insert(
-                RelationType(
-                  typeId: cloudTypeId,
-                  name: name,
-                  createdAt: _intValue(row['created_at']),
-                  updatedAt: _intValue(row['updated_at']),
-                ),
-              );
-        } else {
-          await (db.update(
-            db.relationTypes,
-          )..where((t) => t.typeId.equals(cloudTypeId))).write(
-            RelationTypesCompanion(
-              name: Value(name),
-              createdAt: Value(_intValue(row['created_at'])),
-              updatedAt: Value(_intValue(row['updated_at'])),
-            ),
-          );
-        }
-      }
-    });
   }
 
   Future<void> syncToCloud({required void Function(String) onProgress}) async {
@@ -719,32 +588,6 @@ class SupabaseSyncService {
         .from('account_book')
         .select()
         .eq('user_id', user.id);
-    if (booksData.isNotEmpty) {
-      await _db.batch((batch) {
-        batch.insertAll(
-          _db.accountBooks,
-          booksData.map(
-            (b) => AccountBook(
-              bookId: b['book_id'] as String,
-              name: b['name'] as String,
-              reasonType: b['reason_type'] as String,
-              themeColor: b['theme_color'] as String,
-              icon: b['icon'] as String?,
-              description: b['description'] as String?,
-              attachments: b['attachments'] != null
-                  ? List<String>.from(b['attachments'] as Iterable)
-                  : null,
-              bookTime: _parseBookTimeMillis(b['book_time']),
-              isDefault: b['is_default'] as int,
-              createdAt: b['created_at'] as int,
-              updatedAt: b['updated_at'] as int,
-              deletedAt: b['deleted_at'] as int?,
-            ),
-          ),
-          mode: InsertMode.insertOrReplace,
-        );
-      });
-    }
 
     // 2. 恢复关系人
     onProgress('正在拉取关系人...');
@@ -752,30 +595,6 @@ class SupabaseSyncService {
         .from('person')
         .select()
         .eq('user_id', user.id);
-    if (personsData.isNotEmpty) {
-      await _db.batch((batch) {
-        batch.insertAll(
-          _db.persons,
-          personsData.map(
-            (p) => Person(
-              personId: p['person_id'] as String,
-              bookId: p['book_id'] as String,
-              name: p['name'] as String,
-              relationshipType: p['relationship_type'] as String,
-              phone: p['phone'] as String?,
-              birthday: p['birthday'] as String?,
-              anniversary: p['anniversary'] as String?,
-              avatarUri: p['avatar_uri'] as String?,
-              note: p['note'] as String?,
-              createdAt: p['created_at'] as int,
-              updatedAt: p['updated_at'] as int,
-              deletedAt: p['deleted_at'] as int?,
-            ),
-          ),
-          mode: InsertMode.insertOrReplace,
-        );
-      });
-    }
 
     // 3. 恢复礼金记录
     onProgress('正在拉取礼金记录...');
@@ -783,34 +602,6 @@ class SupabaseSyncService {
         .from('gift_record')
         .select()
         .eq('user_id', user.id);
-    if (recordsData.isNotEmpty) {
-      await _db.batch((batch) {
-        batch.insertAll(
-          _db.giftRecords,
-          recordsData.map(
-            (r) => GiftRecord(
-              recordId: r['record_id'] as String,
-              bookId: r['book_id'] as String,
-              personId: r['person_id'] as String,
-              direction: r['direction'] as String,
-              amountCent: r['amount_cent'] as int,
-              currency: r['currency'] as String,
-              eventName: r['event_name'] as String?,
-              occurredAt: r['occurred_at'] as int,
-              paymentMethod: r['payment_method'] as String?,
-              note: r['note'] as String?,
-              attachments: r['attachments'] != null
-                  ? List<String>.from(r['attachments'])
-                  : null,
-              createdAt: r['created_at'] as int,
-              updatedAt: r['updated_at'] as int,
-              deletedAt: r['deleted_at'] as int?,
-            ),
-          ),
-          mode: InsertMode.insertOrReplace,
-        );
-      });
-    }
 
     // 4. 恢复事由
     onProgress('正在拉取事由...');
@@ -818,24 +609,6 @@ class SupabaseSyncService {
         .from('reason')
         .select()
         .eq('user_id', user.id);
-    if (reasonsData.isNotEmpty) {
-      await _db.batch((batch) {
-        batch.insertAll(
-          _db.reasons,
-          reasonsData.map(
-            (r) => Reason(
-              reasonId: r['reason_id'] as String,
-              name: r['name'] as String,
-              description: r['description'] as String?,
-              enabled: r['enabled'] as bool,
-              createdAt: r['created_at'] as int,
-              updatedAt: r['updated_at'] as int,
-            ),
-          ),
-          mode: InsertMode.insertOrReplace,
-        );
-      });
-    }
 
     // 5. 恢复关系类型
     onProgress('正在拉取关系类型...');
@@ -843,22 +616,6 @@ class SupabaseSyncService {
         .from('relation_type')
         .select()
         .eq('user_id', user.id);
-    if (relationTypesData.isNotEmpty) {
-      await _db.batch((batch) {
-        batch.insertAll(
-          _db.relationTypes,
-          relationTypesData.map(
-            (rt) => RelationType(
-              typeId: rt['type_id'] as String,
-              name: rt['name'] as String,
-              createdAt: rt['created_at'] as int,
-              updatedAt: rt['updated_at'] as int,
-            ),
-          ),
-          mode: InsertMode.insertOrReplace,
-        );
-      });
-    }
 
     // 6. 恢复联系人关系
     onProgress('正在拉取联系人关系...');
@@ -866,36 +623,22 @@ class SupabaseSyncService {
         .from('contact_relation')
         .select()
         .eq('user_id', user.id);
-    if (contactRelationsData.isNotEmpty) {
-      await _db.batch((batch) {
-        batch.insertAll(
-          _db.contactRelations,
-          contactRelationsData.map(
-            (cr) => ContactRelation(
-              relationId: cr['relation_id'] as String,
-              personAId: cr['person_a_id'] as String,
-              personBId: cr['person_b_id'] as String,
-              typeId: cr['type_id'] as String,
-              note: cr['note'] as String?,
-              createdAt: cr['created_at'] as int,
-              updatedAt: cr['updated_at'] as int,
-            ),
-          ),
-          mode: InsertMode.insertOrReplace,
-        );
-      });
-    }
 
     // 7. 恢复附件媒体
-    onProgress('正在拉取附件媒体...');
-    await _resolveBusinessKeyConflictsAfterRestore(
+    onProgress('正在写入恢复数据...');
+    await _restoreTablesFromCloudPayload(
       db: _db,
+      payload: _CloudRestorePayload(
+        books: _rows(booksData),
+        persons: _rows(personsData),
+        records: _rows(recordsData),
+        reasons: _rows(reasonsData),
+        relationTypes: _rows(relationTypesData),
+        contactRelations: _rows(contactRelationsData),
+      ),
       localDefaultBeforeRestore: localDefaultBeforeRestore,
-      booksData: booksData,
-      reasonsData: reasonsData,
-      relationTypesData: relationTypesData,
-      contactRelationsData: contactRelationsData,
     );
+    onProgress('正在拉取附件媒体...');
     await _syncMediaFromCloud(user.id, onProgress);
 
     onProgress('本地数据恢复完成！');
@@ -995,4 +738,22 @@ class SupabaseSyncService {
       onProgress('获取云端附件列表失败 ($e)');
     }
   }
+}
+
+class _CloudRestorePayload {
+  const _CloudRestorePayload({
+    required this.books,
+    required this.persons,
+    required this.records,
+    required this.reasons,
+    required this.relationTypes,
+    required this.contactRelations,
+  });
+
+  final List<Map<String, dynamic>> books;
+  final List<Map<String, dynamic>> persons;
+  final List<Map<String, dynamic>> records;
+  final List<Map<String, dynamic>> reasons;
+  final List<Map<String, dynamic>> relationTypes;
+  final List<Map<String, dynamic>> contactRelations;
 }

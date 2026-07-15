@@ -216,6 +216,7 @@ class _CanvasState extends State<_Canvas> {
     if (_deleting || _book == null) return;
     final okAuth = await requireEditProtectionPassword(context, title: '删除账簿');
     if (!okAuth) return;
+    if (!mounted) return;
     final ok = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
@@ -309,7 +310,7 @@ class _CanvasState extends State<_Canvas> {
         );
       },
     );
-    if (ok != true) return;
+    if (!mounted || ok != true) return;
     setState(() => _deleting = true);
     try {
       await _db.accountBooksDao.deleteById(_book!.bookId);
@@ -325,6 +326,7 @@ class _CanvasState extends State<_Canvas> {
 
   Future<void> _pickReasonType() async {
     final reasons = await _db.reasonsDao.listAll();
+    if (!mounted) return;
     final enabled = reasons.where((e) => e.enabled).toList()
       ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
     final picked = await showModalBottomSheet<String>(
@@ -336,7 +338,7 @@ class _CanvasState extends State<_Canvas> {
         selectedReasonType: _reasonType,
       ),
     );
-    if (picked == null) return;
+    if (!mounted || picked == null) return;
     if (picked == _ReasonTypePickerSheet.manageAction) {
       AppNav.push(context, const ReasonManagePage());
       return;
@@ -344,168 +346,6 @@ class _CanvasState extends State<_Canvas> {
     setState(() => _reasonType = picked);
   }
 
-  Future<String?> _editText({
-    required String title,
-    required String label,
-    required String initial,
-    required String hintText,
-    required bool multiline,
-    required bool requiredField,
-  }) async {
-    final ctrl = TextEditingController(text: initial);
-    final ok = await showModalBottomSheet<String>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
-        return Padding(
-          padding: EdgeInsets.fromLTRB(12, 0, 12, 12 + bottomInset),
-          child: Container(
-            decoration: BoxDecoration(
-              color: context.appColors.surfaceCard,
-              borderRadius: AppRadii.br2xl,
-              boxShadow: AppShadows.lg,
-            ),
-            clipBehavior: Clip.antiAlias,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
-                  decoration: BoxDecoration(
-                    color: context.appColors.surfaceCard,
-                    border: Border(
-                      bottom: BorderSide(
-                        color: context.appColors.surfaceSubtle,
-                        width: 1,
-                      ),
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          title,
-                          style: AppTypography.base(
-                            fontSize: 14,
-                            fontWeight: AppTypography.bold,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                      ),
-                      PrototypeIconButton(
-                        icon: const FaIcon(FontAwesomeIcons.xmark, size: 14),
-                        backgroundColor: context.appColors.surfaceSubtle,
-                        foregroundColor: AppColors.textSecondary,
-                        onPressed: () => Navigator.of(context).pop(),
-                        radius: 12,
-                      ),
-                    ],
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      RichText(
-                        text: TextSpan(
-                          style: AppTypography.base(
-                            fontSize: 12,
-                            fontWeight: AppTypography.regular,
-                            color: AppColors.textTertiary,
-                          ),
-                          children: [
-                            TextSpan(text: label),
-                            if (requiredField)
-                              TextSpan(
-                                text: ' *',
-                                style: TextStyle(
-                                  color: context.appColors.stateDanger,
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      TextField(
-                        controller: ctrl,
-                        autofocus: true,
-                        maxLines: multiline ? 6 : 1,
-                        minLines: multiline ? 3 : 1,
-                        style: AppTypography.base(
-                          fontSize: 14,
-                          fontWeight: AppTypography.medium,
-                          color: AppColors.textPrimary,
-                        ),
-                        decoration: InputDecoration(
-                          isDense: true,
-                          filled: true,
-                          fillColor: context.appColors.surfaceSubtle,
-                          hintText: hintText,
-                          hintStyle: AppTypography.base(
-                            fontSize: 14,
-                            fontWeight: AppTypography.regular,
-                            color: AppColors.textMuted,
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 12,
-                          ),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(
-                              color: AppColors.borderSubtle,
-                              width: 1,
-                            ),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(
-                              color: AppColors.borderSubtle,
-                              width: 1,
-                            ),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(
-                              color: AppColors.borderFocus,
-                              width: 1,
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      PrototypePrimaryButton(
-                        label: '保存',
-                        onTap: () {
-                          final text = ctrl.text.trim();
-                          if (requiredField && text.isEmpty) {
-                            AppToast.show(context, '$label不能为空');
-                            return;
-                          }
-                          Navigator.of(context).pop(text);
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-    // 说明：
-    // - bottom sheet pop 后会有退出动画，立即 dispose controller 在某些版本 Flutter 上可能触发断言；
-    // - 这里延后到下一帧再释放，避免 “_dependents.isEmpty” 等框架级断言。
-    WidgetsBinding.instance.addPostFrameCallback((_) => ctrl.dispose());
-    return ok;
-  }
 
   void _toast(String message) {
     AppToast.show(context, message);
@@ -1236,55 +1076,6 @@ class _NoteCard extends StatelessWidget {
   }
 }
 
-class _DefaultToggleCard extends StatelessWidget {
-  const _DefaultToggleCard({required this.value, required this.onChanged});
-
-  final bool value;
-  final ValueChanged<bool> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return PrototypeCard(
-      padding: const EdgeInsets.all(16),
-      shadow: AppShadows.sm,
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '设为默认账簿',
-                  style: AppTypography.base(
-                    fontSize: 14,
-                    fontWeight: AppTypography.medium,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  '打开应用时自动显示此账簿',
-                  style: AppTypography.base(
-                    fontSize: 12,
-                    fontWeight: AppTypography.regular,
-                    color: AppColors.textMuted,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Switch.adaptive(
-            value: value,
-            activeThumbColor: AppColors.indigo600,
-            activeTrackColor: AppColors.indigo200,
-            onChanged: onChanged,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _DeleteButton extends StatelessWidget {
   const _DeleteButton({required this.disabled, required this.onTap});
 
@@ -1349,10 +1140,12 @@ String _labelByReasonType(String reasonType) {
 
 IconData _iconByReasonType(String reasonType) {
   final v = reasonType.trim();
-  if (v.contains('婚') || v.contains('宴') || v.contains('喜'))
+  if (v.contains('婚') || v.contains('宴') || v.contains('喜')) {
     return FontAwesomeIcons.heart;
-  if (v.contains('商务') || v.contains('公司') || v.contains('企业'))
+  }
+  if (v.contains('商务') || v.contains('公司') || v.contains('企业')) {
     return FontAwesomeIcons.briefcase;
+  }
   return FontAwesomeIcons.book;
 }
 

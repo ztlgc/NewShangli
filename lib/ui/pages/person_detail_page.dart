@@ -175,6 +175,7 @@ class _CanvasState extends State<_Canvas> {
   Future<void> _editPerson(String personId) async {
     final ok = await requireEditProtectionPassword(context, title: '编辑联系人');
     if (!ok) return;
+    if (!mounted) return;
     await AppNav.push(
       context,
       PersonEditPage(personId: personId),
@@ -196,6 +197,7 @@ class _CanvasState extends State<_Canvas> {
     if (config.enabled && hasAvatar) {
       final ok = await requireEditProtectionPassword(context, title: '更换头像');
       if (!ok) return;
+      if (!mounted) return;
     }
 
     final result = await FilePicker.platform.pickFiles(
@@ -1008,7 +1010,7 @@ class _RecordRow extends StatelessWidget {
     final amount = _formatSignedAmount(record.amountCent, isIncome: isIncome);
     final subtitleLeft =
         (record.paymentMethod == '未设置' || record.paymentMethod.isEmpty)
-        ? '${isIncome ? '收礼' : '送礼'}'
+        ? (isIncome ? '收礼' : '送礼')
         : '${isIncome ? '收礼' : '送礼'} - ${record.paymentMethod}';
     final subtitleRight = DateUtil.format(record.occurredAt);
     return PrototypePressableRow(

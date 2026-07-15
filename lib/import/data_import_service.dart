@@ -375,7 +375,9 @@ class _ImportRunner {
   int _lastRowIndex;
   final Map<String, String> _fieldMapping;
   late final MediaStorageService _mediaStorageService;
-  Map<String, String>? _mediaNamePathIndex;
+  Map<String, List<_IndexedMediaEntry>>? _mediaEntriesByBaseName;
+  Map<String, _IndexedMediaEntry>? _mediaEntriesByArchivePath;
+  final Map<String, String> _materializedMediaPathCache = <String, String>{};
 
   final Map<String, String> _personIdByKey = <String, String>{};
   final Set<String> _existingPersonIds = <String>{};
@@ -805,7 +807,10 @@ class _ImportRunner {
     if (avatarName.isEmpty) {
       return base;
     }
-    final mediaPath = _resolveMediaPathByName(avatarName);
+    final mediaPath = await _resolveMediaPathByName(
+      avatarName,
+      preferredFolders: const <String>['media/avatars', 'avatars'],
+    );
     if (mediaPath == null) {
       _skippedRows += 1;
       await _onLog('第$rowIndex行：头像文件未在ZIP中找到（$avatarName）');
@@ -969,7 +974,10 @@ class _ImportRunner {
     for (var i = 1; i <= 20; i++) {
       final fileName = _read(row, '附件$i名称').trim();
       if (fileName.isEmpty) continue;
-      final path = _resolveMediaPathByName(fileName);
+      final path = await _resolveMediaPathByName(
+        fileName,
+        preferredFolders: const <String>['media/attachments', 'attachments'],
+      );
       if (path == null) continue;
       try {
         final stored = await _mediaStorageService.saveAttachmentFromPath(path);
@@ -1108,42 +1116,123 @@ class _ImportRunner {
   }
 
   Future<void> _ensureMediaIndexLoaded() async {
-    if (_mediaNamePathIndex != null) return;
+    if (_mediaEntriesByBaseName != null && _mediaEntriesByArchivePath != null) {
+      return;
+    }
     final zipPath = _fieldMapping[_kMediaZipPathField];
     if (zipPath == null || zipPath.trim().isEmpty) {
-      _mediaNamePathIndex = <String, String>{};
+      _mediaEntriesByBaseName = <String, List<_IndexedMediaEntry>>{};
+      _mediaEntriesByArchivePath = <String, _IndexedMediaEntry>{};
       return;
     }
     final file = File(zipPath);
     if (!await file.exists()) {
-      _mediaNamePathIndex = <String, String>{};
+      _mediaEntriesByBaseName = <String, List<_IndexedMediaEntry>>{};
+      _mediaEntriesByArchivePath = <String, _IndexedMediaEntry>{};
       return;
     }
-    final base = Directory(
-      p.join(File(_job.filePath).parent.path, 'unzipped', _job.jobId),
-    );
-    final temp = base;
-    await temp.create(recursive: true);
     final bytes = await file.readAsBytes();
     final archive = ZipDecoder().decodeBytes(bytes);
-    final map = <String, String>{};
+    final byBaseName = <String, List<_IndexedMediaEntry>>{};
+    final byArchivePath = <String, _IndexedMediaEntry>{};
     for (final entry in archive.files) {
       if (!entry.isFile) continue;
-      final outFile = File(
-        p.join(temp.path, entry.name.replaceAll('/', p.separator)),
-      );
-      await outFile.parent.create(recursive: true);
-      await outFile.writeAsBytes(entry.content as List<int>, flush: true);
-      final baseName = p.basename(outFile.path);
-      map[baseName] = outFile.path;
+      final archivePath = _normalizeZipEntryName(entry.name);
+      if (archivePath == null) {
+        await _onLog('媒体ZIP包含非法路径，已跳过：${entry.name}');
+        continue;
+      }
+      if (byArchivePath.containsKey(archivePath)) {
+        await _onLog('媒体ZIP包含重复路径，已忽略后续条目：$archivePath');
+        continue;
+      }
+      final indexed = _IndexedMediaEntry(archivePath: archivePath, file: entry);
+      byArchivePath[archivePath] = indexed;
+      final baseName = p.posix.basename(archivePath);
+      byBaseName
+          .putIfAbsent(baseName, () => <_IndexedMediaEntry>[])
+          .add(indexed);
     }
-    _mediaNamePathIndex = map;
+    _mediaEntriesByBaseName = byBaseName;
+    _mediaEntriesByArchivePath = byArchivePath;
   }
 
-  String? _resolveMediaPathByName(String fileName) {
+  Future<String?> _resolveMediaPathByName(
+    String fileName, {
+    List<String> preferredFolders = const <String>[],
+  }) async {
     final name = fileName.trim();
     if (name.isEmpty) return null;
-    return _mediaNamePathIndex?[name];
+
+    final exactArchivePath = _normalizeZipEntryName(name);
+    if (exactArchivePath != null) {
+      final exact = _mediaEntriesByArchivePath?[exactArchivePath];
+      if (exact != null) {
+        return _materializeMediaEntry(exact);
+      }
+    }
+
+    final baseName = p.posix.basename(name.replaceAll(r'\', '/'));
+    final candidates = _mediaEntriesByBaseName?[baseName];
+    if (candidates == null || candidates.isEmpty) return null;
+
+    for (final folder in preferredFolders) {
+      final normalizedFolder = _normalizeZipEntryName(folder);
+      if (normalizedFolder == null) continue;
+      for (final entry in candidates) {
+        if (_isArchivePathInsideFolder(entry.archivePath, normalizedFolder)) {
+          return _materializeMediaEntry(entry);
+        }
+      }
+    }
+
+    return _materializeMediaEntry(candidates.first);
+  }
+
+  String? _normalizeZipEntryName(String rawName) {
+    final trimmed = rawName.trim().replaceAll(r'\', '/');
+    if (trimmed.isEmpty) return null;
+    if (trimmed.startsWith('/') || RegExp(r'^[A-Za-z]:').hasMatch(trimmed)) {
+      return null;
+    }
+
+    final normalizedParts = <String>[];
+    for (final part in trimmed.split('/')) {
+      if (part.isEmpty || part == '.') continue;
+      if (part == '..') return null;
+      normalizedParts.add(part);
+    }
+    if (normalizedParts.isEmpty) return null;
+    return normalizedParts.join('/');
+  }
+
+  bool _isArchivePathInsideFolder(String archivePath, String folderPath) {
+    final normalizedArchivePath = p.posix.normalize(archivePath);
+    final normalizedFolderPath = p.posix.normalize(folderPath);
+    return normalizedArchivePath == normalizedFolderPath ||
+        normalizedArchivePath.startsWith('$normalizedFolderPath/');
+  }
+
+  Future<String> _materializeMediaEntry(_IndexedMediaEntry entry) async {
+    final cached = _materializedMediaPathCache[entry.archivePath];
+    if (cached != null && await File(cached).exists()) {
+      return cached;
+    }
+
+    // 使用 ZIP 内的安全相对路径回放到任务隔离目录，避免条目名越界写入。
+    final materializeRoot = Directory(
+      p.join(File(_job.filePath).parent.path, 'unzipped', _job.jobId, 'media'),
+    );
+    await materializeRoot.create(recursive: true);
+    final outputSegments = <String>[
+      materializeRoot.path,
+      ...entry.archivePath.split('/'),
+    ];
+    final outFile = File(p.joinAll(outputSegments));
+    await outFile.parent.create(recursive: true);
+    await outFile.writeAsBytes(entry.file.content as List<int>, flush: true);
+    _materializedMediaPathCache[entry.archivePath] = outFile.path;
+    return outFile.path;
   }
 
   static Map<String, String> _parseMapping(String? raw) {
@@ -1206,4 +1295,11 @@ class _ImportRunner {
     out.add(b.toString());
     return out;
   }
+}
+
+class _IndexedMediaEntry {
+  const _IndexedMediaEntry({required this.archivePath, required this.file});
+
+  final String archivePath;
+  final ArchiveFile file;
 }

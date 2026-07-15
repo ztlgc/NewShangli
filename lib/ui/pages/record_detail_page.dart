@@ -635,6 +635,7 @@ class _BottomActions extends StatelessWidget {
   Future<void> _editRecord(BuildContext context) async {
     final ok = await requireEditProtectionPassword(context, title: '编辑记录');
     if (!ok) return;
+    if (!context.mounted) return;
     await AppNav.push(
       context,
       RecordAddPage(recordId: recordId),
@@ -647,6 +648,7 @@ class _BottomActions extends StatelessWidget {
   Future<void> _confirmDelete(BuildContext context) async {
     final okAuth = await requireEditProtectionPassword(context, title: '删除记录');
     if (!okAuth) return;
+    if (!context.mounted) return;
     final db = AppDatabaseScope.of(context);
     final ok = await showDialog<bool>(
       context: context,

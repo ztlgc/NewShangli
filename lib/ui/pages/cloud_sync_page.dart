@@ -15,104 +15,373 @@ import '../app_toast.dart';
 import '../components.dart';
 import '../prototype_kit.dart';
 
-class CloudSyncPage extends StatefulWidget {
-  const CloudSyncPage({super.key});
+const Object _cloudSyncUnset = Object();
 
-  @override
-  State<CloudSyncPage> createState() => _CloudSyncPageState();
+class _CloudSyncViewState {
+  const _CloudSyncViewState({
+    required this.user,
+    required this.isWorking,
+    required this.cloudCountLoading,
+    required this.logs,
+    required this.lastSyncAt,
+    required this.lastSyncItemCount,
+    required this.lastSyncAction,
+    required this.localCounts,
+    required this.cloudCounts,
+    required this.cloudCountError,
+    required this.backupVersionLoading,
+    required this.backupVersionError,
+    required this.backupVersions,
+  });
+
+  factory _CloudSyncViewState.initial({required User? user}) {
+    return _CloudSyncViewState(
+      user: user,
+      isWorking: false,
+      cloudCountLoading: false,
+      logs: const <String>[],
+      lastSyncAt: null,
+      lastSyncItemCount: 0,
+      lastSyncAction: null,
+      localCounts: _SyncDataCounts.zero,
+      cloudCounts: null,
+      cloudCountError: null,
+      backupVersionLoading: false,
+      backupVersionError: null,
+      backupVersions: const <CloudBackupVersion>[],
+    );
+  }
+
+  final User? user;
+  final bool isWorking;
+  final bool cloudCountLoading;
+  final List<String> logs;
+  final DateTime? lastSyncAt;
+  final int lastSyncItemCount;
+  final String? lastSyncAction;
+  final _SyncDataCounts localCounts;
+  final _SyncDataCounts? cloudCounts;
+  final String? cloudCountError;
+  final bool backupVersionLoading;
+  final String? backupVersionError;
+  final List<CloudBackupVersion> backupVersions;
+
+  bool get isLoggedIn => user != null;
+
+  _CloudSyncViewState copyWith({
+    Object? user = _cloudSyncUnset,
+    bool? isWorking,
+    bool? cloudCountLoading,
+    List<String>? logs,
+    Object? lastSyncAt = _cloudSyncUnset,
+    int? lastSyncItemCount,
+    Object? lastSyncAction = _cloudSyncUnset,
+    _SyncDataCounts? localCounts,
+    Object? cloudCounts = _cloudSyncUnset,
+    Object? cloudCountError = _cloudSyncUnset,
+    bool? backupVersionLoading,
+    Object? backupVersionError = _cloudSyncUnset,
+    List<CloudBackupVersion>? backupVersions,
+  }) {
+    return _CloudSyncViewState(
+      user: identical(user, _cloudSyncUnset) ? this.user : user as User?,
+      isWorking: isWorking ?? this.isWorking,
+      cloudCountLoading: cloudCountLoading ?? this.cloudCountLoading,
+      logs: logs ?? this.logs,
+      lastSyncAt: identical(lastSyncAt, _cloudSyncUnset)
+          ? this.lastSyncAt
+          : lastSyncAt as DateTime?,
+      lastSyncItemCount: lastSyncItemCount ?? this.lastSyncItemCount,
+      lastSyncAction: identical(lastSyncAction, _cloudSyncUnset)
+          ? this.lastSyncAction
+          : lastSyncAction as String?,
+      localCounts: localCounts ?? this.localCounts,
+      cloudCounts: identical(cloudCounts, _cloudSyncUnset)
+          ? this.cloudCounts
+          : cloudCounts as _SyncDataCounts?,
+      cloudCountError: identical(cloudCountError, _cloudSyncUnset)
+          ? this.cloudCountError
+          : cloudCountError as String?,
+      backupVersionLoading: backupVersionLoading ?? this.backupVersionLoading,
+      backupVersionError: identical(backupVersionError, _cloudSyncUnset)
+          ? this.backupVersionError
+          : backupVersionError as String?,
+      backupVersions: backupVersions ?? this.backupVersions,
+    );
+  }
 }
 
-class _CloudSyncPageState extends State<CloudSyncPage> {
+class _CloudSyncActionResult {
+  const _CloudSyncActionResult.none()
+    : toastMessage = null,
+      dialogTitle = null,
+      dialogMessage = null;
+
+  const _CloudSyncActionResult.toast(String message)
+    : toastMessage = message,
+      dialogTitle = null,
+      dialogMessage = null;
+
+  const _CloudSyncActionResult.dialog({
+    required String title,
+    required String message,
+  }) : toastMessage = null,
+       dialogTitle = title,
+       dialogMessage = message;
+
+  final String? toastMessage;
+  final String? dialogTitle;
+  final String? dialogMessage;
+
+  bool get hasToast => toastMessage != null;
+  bool get hasDialog => dialogTitle != null && dialogMessage != null;
+}
+
+class _CloudSyncController extends ChangeNotifier {
+  _CloudSyncController({CloudBackupService? cloudBackupService})
+    : _cloudBackupService = cloudBackupService ?? CloudBackupService(),
+      _state = _CloudSyncViewState.initial(
+        user: Supabase.instance.client.auth.currentUser,
+      );
+
   static const String _kLastSyncAtKey = 'cloud_sync_last_at_ms_v1';
   static const String _kLastSyncCountKey = 'cloud_sync_last_item_count_v1';
   static const String _kLastSyncActionKey = 'cloud_sync_last_action_v1';
 
-  User? _user;
-  bool _isWorking = false;
-  bool _cloudCountLoading = false;
+  final CloudBackupService _cloudBackupService;
+
+  _CloudSyncViewState _state;
+  AppDatabase? _db;
   StreamSubscription<AuthState>? _authStateSubscription;
   StreamSubscription<_SyncDataCounts>? _localCountsSubscription;
-  final List<String> _logs = [];
-  final ScrollController _logScrollController = ScrollController();
-  DateTime? _lastSyncAt;
-  int _lastSyncItemCount = 0;
-  String? _lastSyncAction;
-  _SyncDataCounts _localCounts = _SyncDataCounts.zero;
-  _SyncDataCounts? _cloudCounts;
-  String? _cloudCountError;
-  AppDatabase? _db;
-  final CloudBackupService _cloudBackupService = CloudBackupService();
-  bool _backupVersionLoading = false;
-  String? _backupVersionError;
-  List<CloudBackupVersion> _backupVersions = const <CloudBackupVersion>[];
+  bool _disposed = false;
 
-  @override
-  void initState() {
-    super.initState();
-    _user = Supabase.instance.client.auth.currentUser;
-    _authStateSubscription = Supabase.instance.client.auth.onAuthStateChange
-        .listen((data) {
-          if (!mounted) return;
-          setState(() {
-            _user = data.session?.user;
-            if (_user == null) {
-              _cloudCounts = null;
-              _cloudCountError = null;
-              _cloudCountLoading = false;
-            }
-          });
-          unawaited(_refreshCloudCounts(silent: true));
-          unawaited(_refreshBackupVersions(silent: true));
-          unawaited(_maybeRunAutoBackup(silent: true));
-        });
-    _addLog('云同步模块初始化成功。');
-    unawaited(_refreshCloudCounts(silent: true));
-    unawaited(_refreshBackupVersions(silent: true));
-    unawaited(_maybeRunAutoBackup(silent: true));
+  _CloudSyncViewState get state => _state;
+
+  Future<void> initialize() async {
+    _authStateSubscription ??= Supabase.instance.client.auth.onAuthStateChange
+        .listen(_handleAuthStateChanged);
+    _appendLog('云同步模块初始化成功。');
+    await refreshCloudCounts(silent: true);
+    await refreshBackupVersions(silent: true);
+    await maybeRunAutoBackup(silent: true);
   }
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final db = AppDatabaseScope.of(context);
+  void attachDatabase(AppDatabase db) {
     if (identical(_db, db)) return;
     _db = db;
     _localCountsSubscription?.cancel();
     _localCountsSubscription = _watchLocalDataCounts(db).listen((counts) {
-      if (!mounted) return;
-      setState(() => _localCounts = counts);
+      _updateState(_state.copyWith(localCounts: counts));
     });
     unawaited(_loadSyncOverview(db));
   }
 
   @override
   void dispose() {
+    _disposed = true;
     _authStateSubscription?.cancel();
     _localCountsSubscription?.cancel();
-    _logScrollController.dispose();
     super.dispose();
   }
 
-  void _addLog(String message) {
-    if (!mounted) return;
-    final time = DateTime.now().toIso8601String().substring(11, 19);
-    setState(() {
-      _logs.add('[$time] $message');
-    });
-    Future<void>.delayed(const Duration(milliseconds: 100), () {
-      if (_logScrollController.hasClients) {
-        _logScrollController.animateTo(
-          _logScrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOut,
-        );
-      }
-    });
+  Future<void> refreshCloudCounts({bool silent = false}) async {
+    final user = _state.user;
+    if (user == null) {
+      _updateState(
+        _state.copyWith(
+          cloudCounts: null,
+          cloudCountError: null,
+          cloudCountLoading: false,
+        ),
+      );
+      return;
+    }
+
+    _updateState(
+      _state.copyWith(cloudCountLoading: true, cloudCountError: null),
+    );
+
+    try {
+      final counts = await _queryCloudDataCounts(user);
+      _updateState(
+        _state.copyWith(cloudCounts: counts, cloudCountLoading: false),
+      );
+      if (!silent) _appendLog('云端数据统计已刷新：${counts.total} 条。');
+    } catch (e) {
+      _updateState(
+        _state.copyWith(cloudCountError: '云端统计获取失败', cloudCountLoading: false),
+      );
+      if (!silent) _appendLog('云端统计获取失败: $e');
+    }
   }
 
-  void _setWorking(bool working) {
-    if (!mounted) return;
-    setState(() => _isWorking = working);
+  Future<void> refreshBackupVersions({bool silent = false}) async {
+    if (_state.user == null) {
+      _updateState(
+        _state.copyWith(
+          backupVersions: const <CloudBackupVersion>[],
+          backupVersionError: null,
+          backupVersionLoading: false,
+        ),
+      );
+      return;
+    }
+
+    _updateState(
+      _state.copyWith(backupVersionLoading: true, backupVersionError: null),
+    );
+    try {
+      final rows = await _cloudBackupService.listVersions();
+      _updateState(
+        _state.copyWith(backupVersions: rows, backupVersionLoading: false),
+      );
+      if (!silent) _appendLog('备份版本列表已刷新：${rows.length} 条。');
+    } catch (e) {
+      _updateState(
+        _state.copyWith(
+          backupVersionError: '备份版本读取失败',
+          backupVersionLoading: false,
+        ),
+      );
+      if (!silent) _appendLog('备份版本读取失败: $e');
+    }
+  }
+
+  Future<void> maybeRunAutoBackup({bool silent = false}) async {
+    if (_state.user == null || _state.isWorking) return;
+    try {
+      final version = await _cloudBackupService.runAutoBackupIfNeeded(
+        onProgress: silent ? (_) {} : _appendLog,
+      );
+      if (version != null) {
+        if (!silent) _appendLog('自动备份已更新。');
+        await refreshBackupVersions(silent: true);
+      }
+    } catch (e) {
+      if (!silent) _appendLog('自动备份失败: $e');
+    }
+  }
+
+  Future<_CloudSyncActionResult> syncToCloud() async {
+    if (_state.user == null) return const _CloudSyncActionResult.toast('请先登录');
+    return _runAction(
+      startLog: '开始上传本地数据...',
+      failureLogPrefix: '上传失败',
+      failureFeedback: (_) => '同步失败',
+      task: () async {
+        final db = _requireDb();
+        final syncService = SupabaseSyncService(db);
+        await syncService.syncToCloud(onProgress: _appendLog);
+
+        final localCounts = await _queryLocalDataCounts(db);
+        _appendLog('上传完成：本地 ${localCounts.total} 条已写入云端。');
+        await _saveSyncSnapshot('上传', localCounts: localCounts);
+        await refreshCloudCounts(silent: true);
+        return const _CloudSyncActionResult.toast('同步至云端成功');
+      },
+    );
+  }
+
+  Future<_CloudSyncActionResult> restoreFromCloud() async {
+    if (_state.user == null) return const _CloudSyncActionResult.toast('请先登录');
+    return _runAction(
+      startLog: '开始从云端拉取数据...',
+      failureLogPrefix: '恢复失败',
+      failureFeedback: (error) => '恢复失败: $error',
+      task: () async {
+        final db = _requireDb();
+        final syncService = SupabaseSyncService(db);
+        await syncService.syncFromCloud(onProgress: _appendLog);
+
+        final localCounts = await _queryLocalDataCounts(db);
+        _appendLog('恢复完成：本地当前共有 ${localCounts.total} 条同步数据。');
+        await _saveSyncSnapshot('恢复', localCounts: localCounts);
+        await refreshCloudCounts(silent: true);
+        return const _CloudSyncActionResult.dialog(
+          title: '恢复成功',
+          message: '数据已恢复。若其它页面仍显示旧数据，请返回后重新进入页面。',
+        );
+      },
+    );
+  }
+
+  Future<_CloudSyncActionResult> createManualBackup() async {
+    if (_state.user == null) return const _CloudSyncActionResult.toast('请先登录');
+    return _runAction(
+      startLog: '开始手动云端备份…',
+      failureLogPrefix: '手动备份失败',
+      failureFeedback: (_) => '手动备份失败',
+      task: () async {
+        await _cloudBackupService.createManualBackup(onProgress: _appendLog);
+        _appendLog('手动备份完成。');
+        await refreshBackupVersions(silent: true);
+        return const _CloudSyncActionResult.toast('手动备份成功');
+      },
+    );
+  }
+
+  Future<_CloudSyncActionResult> restoreFromBackupVersion(
+    CloudBackupVersion version,
+  ) async {
+    if (_state.user == null) return const _CloudSyncActionResult.toast('请先登录');
+    return _runAction(
+      startLog: '开始按版本恢复…',
+      failureLogPrefix: '版本恢复失败',
+      failureFeedback: (_) => '版本恢复失败',
+      task: () async {
+        await _cloudBackupService.restoreVersion(
+          version: version,
+          onProgress: _appendLog,
+        );
+        final db = _db;
+        if (db != null) {
+          final localCounts = await _queryLocalDataCounts(db);
+          await _saveSyncSnapshot('版本恢复', localCounts: localCounts);
+        }
+        return const _CloudSyncActionResult.dialog(
+          title: '恢复成功',
+          message: '数据已恢复。若其它页面仍显示旧数据，请返回后重新进入页面。',
+        );
+      },
+    );
+  }
+
+  Future<_CloudSyncActionResult> _runAction({
+    required String startLog,
+    required String failureLogPrefix,
+    required String Function(Object error) failureFeedback,
+    required Future<_CloudSyncActionResult> Function() task,
+  }) async {
+    if (_state.isWorking) return const _CloudSyncActionResult.none();
+    _updateState(_state.copyWith(isWorking: true));
+    _appendLog(startLog);
+    try {
+      return await task();
+    } catch (e) {
+      _appendLog('$failureLogPrefix: $e');
+      return _CloudSyncActionResult.toast(failureFeedback(e));
+    } finally {
+      _updateState(_state.copyWith(isWorking: false));
+    }
+  }
+
+  void _handleAuthStateChanged(AuthState data) {
+    final user = data.session?.user;
+    _updateState(
+      _state.copyWith(
+        user: user,
+        cloudCounts: null,
+        cloudCountError: null,
+        cloudCountLoading: false,
+        backupVersions: const <CloudBackupVersion>[],
+        backupVersionError: null,
+        backupVersionLoading: false,
+      ),
+    );
+    unawaited(refreshCloudCounts(silent: true));
+    unawaited(refreshBackupVersions(silent: true));
+    unawaited(maybeRunAutoBackup(silent: true));
   }
 
   Future<void> _loadSyncOverview(AppDatabase db) async {
@@ -121,15 +390,37 @@ class _CloudSyncPageState extends State<CloudSyncPage> {
     final persistedAction = prefs.getString(_kLastSyncActionKey);
     final persistedCount = prefs.getInt(_kLastSyncCountKey) ?? 0;
     final localCounts = await _queryLocalDataCounts(db);
-    if (!mounted) return;
-    setState(() {
-      _lastSyncAt = lastSyncAtMs == null
-          ? null
-          : DateTime.fromMillisecondsSinceEpoch(lastSyncAtMs);
-      _lastSyncItemCount = persistedCount;
-      _lastSyncAction = persistedAction;
-      _localCounts = localCounts;
-    });
+    _updateState(
+      _state.copyWith(
+        lastSyncAt: lastSyncAtMs == null
+            ? null
+            : DateTime.fromMillisecondsSinceEpoch(lastSyncAtMs),
+        lastSyncItemCount: persistedCount,
+        lastSyncAction: persistedAction,
+        localCounts: localCounts,
+      ),
+    );
+  }
+
+  Future<void> _saveSyncSnapshot(
+    String action, {
+    _SyncDataCounts? localCounts,
+  }) async {
+    final db = _requireDb();
+    final counts = localCounts ?? await _queryLocalDataCounts(db);
+    final now = DateTime.now();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_kLastSyncAtKey, now.millisecondsSinceEpoch);
+    await prefs.setInt(_kLastSyncCountKey, counts.total);
+    await prefs.setString(_kLastSyncActionKey, action);
+    _updateState(
+      _state.copyWith(
+        lastSyncAt: now,
+        lastSyncItemCount: counts.total,
+        lastSyncAction: action,
+        localCounts: counts,
+      ),
+    );
   }
 
   Future<_SyncDataCounts> _queryLocalDataCounts(AppDatabase db) async {
@@ -200,106 +491,105 @@ class _CloudSyncPageState extends State<CloudSyncPage> {
     );
   }
 
-  Future<void> _refreshCloudCounts({bool silent = false}) async {
-    final user = _user;
-    if (user == null) {
-      if (!mounted) return;
-      setState(() {
-        _cloudCounts = null;
-        _cloudCountError = null;
-        _cloudCountLoading = false;
-      });
-      return;
-    }
-
-    if (!mounted) return;
-    setState(() {
-      _cloudCountLoading = true;
-      _cloudCountError = null;
-    });
-
-    try {
-      final counts = await _queryCloudDataCounts(user);
-      if (!mounted) return;
-      setState(() {
-        _cloudCounts = counts;
-        _cloudCountLoading = false;
-      });
-      if (!silent) _addLog('云端数据统计已刷新：${counts.total} 条。');
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _cloudCountError = '云端统计获取失败';
-        _cloudCountLoading = false;
-      });
-      if (!silent) _addLog('云端统计获取失败: $e');
-    }
-  }
-
-  Future<void> _saveSyncSnapshot(
-    String action, {
-    _SyncDataCounts? localCounts,
-  }) async {
+  AppDatabase _requireDb() {
     final db = _db;
-    if (db == null) return;
-    final counts = localCounts ?? await _queryLocalDataCounts(db);
-    final now = DateTime.now();
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt(_kLastSyncAtKey, now.millisecondsSinceEpoch);
-    await prefs.setInt(_kLastSyncCountKey, counts.total);
-    await prefs.setString(_kLastSyncActionKey, action);
-    if (!mounted) return;
-    setState(() {
-      _lastSyncAt = now;
-      _lastSyncItemCount = counts.total;
-      _lastSyncAction = action;
-      _localCounts = counts;
-    });
+    if (db == null) {
+      throw StateError('数据库未初始化');
+    }
+    return db;
   }
 
-  String _formatDateTime(DateTime? time) {
-    if (time == null) return '暂无记录';
-    final now = DateTime.now();
-    final sameDay =
-        now.year == time.year && now.month == time.month && now.day == time.day;
-    final hh = time.hour.toString().padLeft(2, '0');
-    final mm = time.minute.toString().padLeft(2, '0');
-    if (sameDay) return '今天 $hh:$mm';
-    final y = time.year.toString().padLeft(4, '0');
-    final m = time.month.toString().padLeft(2, '0');
-    final d = time.day.toString().padLeft(2, '0');
-    return '$y-$m-$d $hh:$mm';
+  void _appendLog(String message) {
+    final time = DateTime.now().toIso8601String().substring(11, 19);
+    final logs = List<String>.of(_state.logs)..add('[$time] $message');
+    _updateState(_state.copyWith(logs: logs));
   }
 
-  Future<void> _backupToCloud() async {
-    if (_user == null) {
-      AppToast.show(context, '请先登录');
+  void _updateState(_CloudSyncViewState nextState) {
+    if (_disposed) return;
+    _state = nextState;
+    notifyListeners();
+  }
+}
+
+class CloudSyncPage extends StatefulWidget {
+  const CloudSyncPage({super.key});
+
+  @override
+  State<CloudSyncPage> createState() => _CloudSyncPageState();
+}
+
+class _CloudSyncPageState extends State<CloudSyncPage> {
+  late final _CloudSyncController _controller;
+  final ScrollController _logScrollController = ScrollController();
+  int _lastLogCount = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = _CloudSyncController()..addListener(_handleControllerChanged);
+    unawaited(_controller.initialize());
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _controller.attachDatabase(AppDatabaseScope.of(context));
+  }
+
+  @override
+  void dispose() {
+    _controller
+      ..removeListener(_handleControllerChanged)
+      ..dispose();
+    _logScrollController.dispose();
+    super.dispose();
+  }
+
+  void _handleControllerChanged() {
+    final logCount = _controller.state.logs.length;
+    if (logCount > _lastLogCount) {
+      _lastLogCount = logCount;
+      Future<void>.delayed(const Duration(milliseconds: 100), () {
+        if (!mounted || !_logScrollController.hasClients) return;
+        _logScrollController.animateTo(
+          _logScrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      });
       return;
     }
-    _setWorking(true);
-    _addLog('开始上传本地数据...');
-
-    try {
-      final db = AppDatabaseScope.of(context);
-      final syncService = SupabaseSyncService(db);
-
-      await syncService.syncToCloud(onProgress: (msg) => _addLog(msg));
-
-      final localCounts = await _queryLocalDataCounts(db);
-      _addLog('上传完成：本地 ${localCounts.total} 条已写入云端。');
-      await _saveSyncSnapshot('上传', localCounts: localCounts);
-      await _refreshCloudCounts(silent: true);
-      if (mounted) AppToast.show(context, '同步至云端成功');
-    } catch (e) {
-      _addLog('上传失败: $e');
-      if (mounted) AppToast.show(context, '同步失败');
-    } finally {
-      _setWorking(false);
-    }
+    _lastLogCount = logCount;
   }
 
-  Future<void> _showRestoreDialog() async {
-    if (_user == null) {
+  Future<void> _handleActionResult(
+    Future<_CloudSyncActionResult> Function() action,
+  ) async {
+    final result = await action();
+    if (!mounted) return;
+    if (result.hasToast) {
+      AppToast.show(context, result.toastMessage!);
+    }
+    if (!mounted || !result.hasDialog) return;
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: Text(result.dialogTitle!),
+        content: Text(result.dialogMessage!),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('确定'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showRestoreDialog(_CloudSyncViewState state) async {
+    if (!state.isLoggedIn) {
       AppToast.show(context, '请先登录');
       return;
     }
@@ -332,128 +622,19 @@ class _CloudSyncPageState extends State<CloudSyncPage> {
     );
 
     if (confirm == true) {
-      await _performRestore();
-    } else {
-      _addLog('已取消恢复操作。');
+      await _handleActionResult(_controller.restoreFromCloud);
     }
   }
 
-  Future<void> _performRestore() async {
-    _setWorking(true);
-    _addLog('开始从云端拉取数据...');
-
-    try {
-      final db = AppDatabaseScope.of(context);
-      final syncService = SupabaseSyncService(db);
-
-      await syncService.syncFromCloud(onProgress: (msg) => _addLog(msg));
-
-      final localCounts = await _queryLocalDataCounts(db);
-      _addLog('恢复完成：本地当前共有 ${localCounts.total} 条同步数据。');
-      await _saveSyncSnapshot('恢复', localCounts: localCounts);
-      await _refreshCloudCounts(silent: true);
-      if (mounted) {
-        showDialog<void>(
-          context: context,
-          barrierDismissible: false,
-          builder: (context) => AlertDialog(
-            title: const Text('恢复成功'),
-            content: const Text('数据已恢复。若其它页面仍显示旧数据，请返回后重新进入页面。'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('确定'),
-              ),
-            ],
-          ),
-        );
-      }
-    } catch (e) {
-      _addLog('恢复失败: $e');
-      if (mounted) AppToast.show(context, '恢复失败: $e');
-    } finally {
-      _setWorking(false);
-    }
-  }
-
-  Future<void> _refreshBackupVersions({bool silent = false}) async {
-    if (_user == null) {
-      if (!mounted) return;
-      setState(() {
-        _backupVersions = const <CloudBackupVersion>[];
-        _backupVersionError = null;
-        _backupVersionLoading = false;
-      });
-      return;
-    }
-    if (!mounted) return;
-    setState(() {
-      _backupVersionLoading = true;
-      _backupVersionError = null;
-    });
-    try {
-      final rows = await _cloudBackupService.listVersions();
-      if (!mounted) return;
-      setState(() {
-        _backupVersions = rows;
-        _backupVersionLoading = false;
-      });
-      if (!silent) _addLog('备份版本列表已刷新：${rows.length} 条。');
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _backupVersionError = '备份版本读取失败';
-        _backupVersionLoading = false;
-      });
-      if (!silent) _addLog('备份版本读取失败: $e');
-    }
-  }
-
-  Future<void> _manualBackupToCloud() async {
-    if (_user == null) {
+  Future<void> _confirmRestoreVersion(
+    _CloudSyncViewState state,
+    CloudBackupVersion version,
+  ) async {
+    if (!state.isLoggedIn) {
       AppToast.show(context, '请先登录');
       return;
     }
-    if (_isWorking) return;
-    _setWorking(true);
-    _addLog('开始手动云端备份…');
-    try {
-      await _cloudBackupService.createManualBackup(
-        onProgress: (msg) => _addLog(msg),
-      );
-      _addLog('手动备份完成。');
-      await _refreshBackupVersions(silent: true);
-      if (mounted) AppToast.show(context, '手动备份成功');
-    } catch (e) {
-      _addLog('手动备份失败: $e');
-      if (mounted) AppToast.show(context, '手动备份失败');
-    } finally {
-      _setWorking(false);
-    }
-  }
-
-  Future<void> _maybeRunAutoBackup({bool silent = false}) async {
-    if (_user == null) return;
-    if (_isWorking) return;
-    try {
-      final v = await _cloudBackupService.runAutoBackupIfNeeded(
-        onProgress: silent ? (_) {} : (msg) => _addLog(msg),
-      );
-      if (v != null) {
-        if (!silent) _addLog('自动备份已更新。');
-        await _refreshBackupVersions(silent: true);
-      }
-    } catch (e) {
-      if (!silent) _addLog('自动备份失败: $e');
-    }
-  }
-
-  Future<void> _restoreFromBackupVersion(CloudBackupVersion version) async {
-    if (_user == null) {
-      AppToast.show(context, '请先登录');
-      return;
-    }
-    if (_isWorking) return;
+    if (state.isWorking) return;
     final kindLabel = version.kind == CloudBackupKind.auto ? '自动备份' : '手动备份';
     final confirm = await showDialog<bool>(
       context: context,
@@ -481,123 +662,121 @@ class _CloudSyncPageState extends State<CloudSyncPage> {
         );
       },
     );
-    if (confirm != true) return;
-
-    _setWorking(true);
-    _addLog('开始按版本恢复…');
-    try {
-      await _cloudBackupService.restoreVersion(
-        version: version,
-        onProgress: (msg) => _addLog(msg),
+    if (confirm == true) {
+      await _handleActionResult(
+        () => _controller.restoreFromBackupVersion(version),
       );
-      final db = _db;
-      if (db != null) {
-        final localCounts = await _queryLocalDataCounts(db);
-        await _saveSyncSnapshot('版本恢复', localCounts: localCounts);
-      }
-      if (!mounted) return;
-      showDialog<void>(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => AlertDialog(
-          title: const Text('恢复成功'),
-          content: const Text('数据已恢复。若其它页面仍显示旧数据，请返回后重新进入页面。'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('确定'),
-            ),
-          ],
-        ),
-      );
-    } catch (e) {
-      _addLog('版本恢复失败: $e');
-      if (mounted) AppToast.show(context, '版本恢复失败');
-    } finally {
-      _setWorking(false);
     }
+  }
+
+  String _formatDateTime(DateTime? time) {
+    if (time == null) return '暂无记录';
+    final now = DateTime.now();
+    final sameDay =
+        now.year == time.year && now.month == time.month && now.day == time.day;
+    final hh = time.hour.toString().padLeft(2, '0');
+    final mm = time.minute.toString().padLeft(2, '0');
+    if (sameDay) return '今天 $hh:$mm';
+    final y = time.year.toString().padLeft(4, '0');
+    final m = time.month.toString().padLeft(2, '0');
+    final d = time.day.toString().padLeft(2, '0');
+    return '$y-$m-$d $hh:$mm';
   }
 
   String _formatBytes(int bytes) {
     if (bytes <= 0) return '0 B';
     const units = ['B', 'KB', 'MB', 'GB'];
-    var v = bytes.toDouble();
-    var idx = 0;
-    while (v >= 1024 && idx < units.length - 1) {
-      v /= 1024;
-      idx++;
+    var value = bytes.toDouble();
+    var index = 0;
+    while (value >= 1024 && index < units.length - 1) {
+      value /= 1024;
+      index++;
     }
-    return '${v.toStringAsFixed(idx == 0 ? 0 : 1)} ${units[idx]}';
+    return '${value.toStringAsFixed(index == 0 ? 0 : 1)} ${units[index]}';
   }
 
   @override
   Widget build(BuildContext context) {
-    final isLoggedIn = _user != null;
-    return AppScaffold(
-      backgroundColor: AppColors.surfaceApp,
-      body: Column(
-        children: [
-          PrototypeTopBar(
-            title: '云同步管理',
-            left: PrototypeIconButton(
-              icon: const FaIcon(FontAwesomeIcons.arrowLeft, size: 18),
-              backgroundColor: Colors.transparent,
-              foregroundColor: AppColors.textPrimary,
-              onPressed: _isWorking ? null : () => Navigator.of(context).pop(),
-            ),
-            right: PrototypeIconButton(
-              icon: const FaIcon(FontAwesomeIcons.rotate, size: 15),
-              backgroundColor: AppColors.indigo50,
-              foregroundColor: AppColors.indigo700,
-              onPressed: _isWorking || _cloudCountLoading || !isLoggedIn
-                  ? null
-                  : () => _refreshCloudCounts(),
-            ),
-          ),
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-              children: [
-                _buildStatusCard(isLoggedIn),
-                const SizedBox(height: 24),
-                _buildDataOverviewCard(isLoggedIn),
-                const SizedBox(height: 24),
-                _buildSectionTitle('快速操作'),
-                const SizedBox(height: 12),
-                _buildActionTile(
-                  title: '同步本地到云端',
-                  subtitle: '上传当前本地 ${_localCounts.total} 条同步数据',
-                  icon: FontAwesomeIcons.cloudArrowUp,
-                  onTap: _isWorking || !isLoggedIn ? null : _backupToCloud,
-                  isPrimary: true,
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, _) {
+        final state = _controller.state;
+        return AppScaffold(
+          backgroundColor: AppColors.surfaceApp,
+          body: Column(
+            children: [
+              PrototypeTopBar(
+                title: '云同步管理',
+                left: PrototypeIconButton(
+                  icon: const FaIcon(FontAwesomeIcons.arrowLeft, size: 18),
+                  backgroundColor: Colors.transparent,
+                  foregroundColor: AppColors.textPrimary,
+                  onPressed: state.isWorking
+                      ? null
+                      : () => Navigator.of(context).pop(),
                 ),
-                const SizedBox(height: 12),
-                _buildActionTile(
-                  title: '从云端恢复数据',
-                  subtitle: _cloudCounts == null
-                      ? '先读取云端统计后再恢复'
-                      : '拉取云端 ${_cloudCounts!.total} 条同步数据',
-                  icon: FontAwesomeIcons.cloudArrowDown,
-                  onTap: _isWorking || !isLoggedIn ? null : _showRestoreDialog,
-                  isPrimary: false,
+                right: PrototypeIconButton(
+                  icon: const FaIcon(FontAwesomeIcons.rotate, size: 15),
+                  backgroundColor: AppColors.indigo50,
+                  foregroundColor: AppColors.indigo700,
+                  onPressed:
+                      state.isWorking ||
+                          state.cloudCountLoading ||
+                          !state.isLoggedIn
+                      ? null
+                      : () => _controller.refreshCloudCounts(),
                 ),
-                const SizedBox(height: 24),
-                _buildSectionTitle('备份版本'),
-                const SizedBox(height: 12),
-                _buildBackupVersionsCard(isLoggedIn),
-                const SizedBox(height: 24),
-                _buildSyncScopeCard(),
-                const SizedBox(height: 24),
-                _buildLogPanel(),
-              ],
-            ),
+              ),
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+                  children: [
+                    _buildStatusCard(state),
+                    const SizedBox(height: 24),
+                    _buildDataOverviewCard(state),
+                    const SizedBox(height: 24),
+                    _buildSectionTitle('快速操作'),
+                    const SizedBox(height: 12),
+                    _buildActionTile(
+                      title: '同步本地到云端',
+                      subtitle: '上传当前本地 ${state.localCounts.total} 条同步数据',
+                      icon: FontAwesomeIcons.cloudArrowUp,
+                      onTap: state.isWorking || !state.isLoggedIn
+                          ? null
+                          : () => _handleActionResult(_controller.syncToCloud),
+                      isPrimary: true,
+                    ),
+                    const SizedBox(height: 12),
+                    _buildActionTile(
+                      title: '从云端恢复数据',
+                      subtitle: state.cloudCounts == null
+                          ? '先读取云端统计后再恢复'
+                          : '拉取云端 ${state.cloudCounts!.total} 条同步数据',
+                      icon: FontAwesomeIcons.cloudArrowDown,
+                      onTap: state.isWorking || !state.isLoggedIn
+                          ? null
+                          : () => _showRestoreDialog(state),
+                      isPrimary: false,
+                    ),
+                    const SizedBox(height: 24),
+                    _buildSectionTitle('备份版本'),
+                    const SizedBox(height: 12),
+                    _buildBackupVersionsCard(state),
+                    const SizedBox(height: 24),
+                    _buildSyncScopeCard(),
+                    const SizedBox(height: 24),
+                    _buildLogPanel(state),
+                  ],
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
-  Widget _buildStatusCard(bool isLoggedIn) {
+  Widget _buildStatusCard(_CloudSyncViewState state) {
     final colors = context.appColors;
     return PrototypeCard(
       padding: const EdgeInsets.all(16),
@@ -615,7 +794,7 @@ class _CloudSyncPageState extends State<CloudSyncPage> {
             alignment: Alignment.center,
             child: FaIcon(
               FontAwesomeIcons.cloud,
-              color: isLoggedIn ? colors.brandOnSoft : colors.textMuted,
+              color: state.isLoggedIn ? colors.brandOnSoft : colors.textMuted,
               size: 20,
             ),
           ),
@@ -628,7 +807,7 @@ class _CloudSyncPageState extends State<CloudSyncPage> {
                   children: [
                     Expanded(
                       child: Text(
-                        isLoggedIn ? '云端已连接' : '未连接云端',
+                        state.isLoggedIn ? '云端已连接' : '未连接云端',
                         style: AppTypography.base(
                           fontSize: AppTypography.fs16,
                           fontWeight: AppTypography.bold,
@@ -637,15 +816,17 @@ class _CloudSyncPageState extends State<CloudSyncPage> {
                       ),
                     ),
                     PrototypePill(
-                      label: _isWorking ? '同步中' : (isLoggedIn ? '已登录' : '未登录'),
-                      background: _isWorking
+                      label: state.isWorking
+                          ? '同步中'
+                          : (state.isLoggedIn ? '已登录' : '未登录'),
+                      background: state.isWorking
                           ? AppColors.orange100
-                          : (isLoggedIn
+                          : (state.isLoggedIn
                                 ? AppColors.green100
                                 : AppColors.gray100),
-                      foreground: _isWorking
+                      foreground: state.isWorking
                           ? AppColors.orange600
-                          : (isLoggedIn
+                          : (state.isLoggedIn
                                 ? AppColors.green600
                                 : AppColors.textTertiary),
                       padding: const EdgeInsets.symmetric(
@@ -657,13 +838,15 @@ class _CloudSyncPageState extends State<CloudSyncPage> {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  isLoggedIn ? (_user!.email ?? '未知账号') : '请先登录后使用云同步',
+                  state.isLoggedIn
+                      ? (state.user!.email ?? '未知账号')
+                      : '请先登录后使用云同步',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: AppTypography.base(
                     fontSize: AppTypography.fs14,
                     fontWeight: AppTypography.regular,
-                    color: isLoggedIn
+                    color: state.isLoggedIn
                         ? colors.textSecondary
                         : colors.textTertiary,
                   ),
@@ -674,23 +857,26 @@ class _CloudSyncPageState extends State<CloudSyncPage> {
                     Expanded(
                       child: _MiniMetric(
                         label: '上次同步',
-                        value: _formatDateTime(_lastSyncAt),
+                        value: _formatDateTime(state.lastSyncAt),
                       ),
                     ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: _MiniMetric(
                         label: '同步条目',
-                        value: _lastSyncAt == null
+                        value: state.lastSyncAt == null
                             ? '暂无记录'
-                            : '$_lastSyncItemCount 条',
+                            : '${state.lastSyncItemCount} 条',
                       ),
                     ),
                   ],
                 ),
-                if (_lastSyncAction != null) ...[
+                if (state.lastSyncAction != null) ...[
                   const SizedBox(height: 8),
-                  Text('最近操作：$_lastSyncAction', style: AppTypography.caption()),
+                  Text(
+                    '最近操作：${state.lastSyncAction}',
+                    style: AppTypography.caption(),
+                  ),
                 ],
               ],
             ),
@@ -700,17 +886,17 @@ class _CloudSyncPageState extends State<CloudSyncPage> {
     );
   }
 
-  Widget _buildDataOverviewCard(bool isLoggedIn) {
-    final cloudTotalText = !isLoggedIn
+  Widget _buildDataOverviewCard(_CloudSyncViewState state) {
+    final cloudTotalText = !state.isLoggedIn
         ? '未登录'
-        : (_cloudCountLoading
+        : (state.cloudCountLoading
               ? '读取中'
-              : (_cloudCountError != null
+              : (state.cloudCountError != null
                     ? '读取失败'
-                    : '${_cloudCounts?.total ?? 0}'));
-    final cloudSubtitle = !isLoggedIn
+                    : '${state.cloudCounts?.total ?? 0}'));
+    final cloudSubtitle = !state.isLoggedIn
         ? '登录后统计'
-        : (_cloudCountError ?? '当前账号云端数据');
+        : (state.cloudCountError ?? '当前账号云端数据');
 
     return PrototypeCard(
       padding: const EdgeInsets.all(16),
@@ -729,7 +915,7 @@ class _CloudSyncPageState extends State<CloudSyncPage> {
                   ),
                 ),
               ),
-              if (_cloudCountLoading)
+              if (state.cloudCountLoading)
                 const SizedBox(
                   width: 16,
                   height: 16,
@@ -746,7 +932,7 @@ class _CloudSyncPageState extends State<CloudSyncPage> {
               Expanded(
                 child: _CountSummaryTile(
                   title: '本地数据',
-                  value: '${_localCounts.total}',
+                  value: '${state.localCounts.total}',
                   subtitle: '本机数据库',
                   icon: FontAwesomeIcons.database,
                   background: AppColors.indigo50,
@@ -770,16 +956,16 @@ class _CloudSyncPageState extends State<CloudSyncPage> {
           const PrototypeDivider(),
           const SizedBox(height: 12),
           _CountsBreakdown(
-            localCounts: _localCounts,
-            cloudCounts: _cloudCounts,
-            showCloudCounts: isLoggedIn && !_cloudCountLoading,
+            localCounts: state.localCounts,
+            cloudCounts: state.cloudCounts,
+            showCloudCounts: state.isLoggedIn && !state.cloudCountLoading,
           ),
         ],
       ),
     );
   }
 
-  Widget _buildBackupVersionsCard(bool isLoggedIn) {
+  Widget _buildBackupVersionsCard(_CloudSyncViewState state) {
     return PrototypeCard(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -801,9 +987,12 @@ class _CloudSyncPageState extends State<CloudSyncPage> {
                 icon: const FaIcon(FontAwesomeIcons.rotate, size: 14),
                 backgroundColor: context.appColors.surfaceSubtle,
                 foregroundColor: AppColors.textSecondary,
-                onPressed: _isWorking || _backupVersionLoading || !isLoggedIn
+                onPressed:
+                    state.isWorking ||
+                        state.backupVersionLoading ||
+                        !state.isLoggedIn
                     ? null
-                    : () => _refreshBackupVersions(),
+                    : () => _controller.refreshBackupVersions(),
               ),
               const SizedBox(width: 8),
               PrototypeButton(
@@ -814,41 +1003,42 @@ class _CloudSyncPageState extends State<CloudSyncPage> {
                   horizontal: 12,
                   vertical: 10,
                 ),
-                onPressed: _isWorking || !isLoggedIn
+                onPressed: state.isWorking || !state.isLoggedIn
                     ? null
-                    : _manualBackupToCloud,
+                    : () => _handleActionResult(_controller.createManualBackup),
               ),
             ],
           ),
           const SizedBox(height: 12),
-          if (!isLoggedIn)
+          if (!state.isLoggedIn)
             Text('登录后可查看与创建云端备份版本。', style: AppTypography.caption())
-          else if (_backupVersionLoading)
+          else if (state.backupVersionLoading)
             const Center(
               child: Padding(
                 padding: EdgeInsets.all(12),
                 child: CircularProgressIndicator(strokeWidth: 2),
               ),
             )
-          else if (_backupVersionError != null)
-            Text(_backupVersionError!, style: AppTypography.caption())
-          else if (_backupVersions.isEmpty)
+          else if (state.backupVersionError != null)
+            Text(state.backupVersionError!, style: AppTypography.caption())
+          else if (state.backupVersions.isEmpty)
             Text('暂无备份版本', style: AppTypography.caption())
           else
             Column(
               children: [
-                for (final v in _backupVersions) ...[
+                for (final v in state.backupVersions) ...[
                   _BackupVersionRow(
                     version: v,
                     sizeLabel: _formatBytes(v.sizeBytes),
                     timeLabel: _formatDateTime(
                       DateTime.fromMillisecondsSinceEpoch(v.createdAt),
                     ),
-                    onRestore: _isWorking
+                    onRestore: state.isWorking
                         ? null
-                        : () => _restoreFromBackupVersion(v),
+                        : () => _confirmRestoreVersion(state, v),
                   ),
-                  if (v != _backupVersions.last) const SizedBox(height: 10),
+                  if (v != state.backupVersions.last)
+                    const SizedBox(height: 10),
                 ],
               ],
             ),
@@ -1010,7 +1200,7 @@ class _CloudSyncPageState extends State<CloudSyncPage> {
     );
   }
 
-  Widget _buildLogPanel() {
+  Widget _buildLogPanel(_CloudSyncViewState state) {
     return Container(
       height: 240,
       decoration: BoxDecoration(
@@ -1036,7 +1226,7 @@ class _CloudSyncPageState extends State<CloudSyncPage> {
                   ),
                 ),
                 PrototypePill(
-                  label: '本地 ${_localCounts.total} 条',
+                  label: '本地 ${state.localCounts.total} 条',
                   background: AppColors.white10,
                   foreground: AppColors.gray300,
                   fontSize: AppTypography.fs12,
@@ -1065,17 +1255,21 @@ class _CloudSyncPageState extends State<CloudSyncPage> {
                   width: 8,
                   height: 8,
                   decoration: BoxDecoration(
-                    color: _isWorking ? AppColors.orange600 : AppColors.gray500,
+                    color: state.isWorking
+                        ? AppColors.orange600
+                        : AppColors.gray500,
                     shape: BoxShape.circle,
                   ),
                 ),
                 const SizedBox(width: 4),
                 Text(
-                  _isWorking ? '同步中' : '空闲',
+                  state.isWorking ? '同步中' : '空闲',
                   style: AppTypography.base(
                     fontSize: AppTypography.fs12,
                     fontWeight: AppTypography.semibold,
-                    color: _isWorking ? AppColors.orange100 : AppColors.gray300,
+                    color: state.isWorking
+                        ? AppColors.orange100
+                        : AppColors.gray300,
                   ),
                 ),
               ],
@@ -1085,16 +1279,16 @@ class _CloudSyncPageState extends State<CloudSyncPage> {
           Expanded(
             child: Scrollbar(
               controller: _logScrollController,
-              thumbVisibility: _logs.isNotEmpty,
+              thumbVisibility: state.logs.isNotEmpty,
               child: ListView.builder(
                 controller: _logScrollController,
                 padding: const EdgeInsets.all(12),
-                itemCount: _logs.length,
+                itemCount: state.logs.length,
                 itemBuilder: (context, index) {
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 4),
                     child: Text(
-                      _logs[index],
+                      state.logs[index],
                       style: AppTypography.base(
                         fontSize: AppTypography.fs12,
                         fontWeight: AppTypography.regular,

@@ -144,6 +144,7 @@ class _CanvasState extends State<_Canvas> {
                             title: '编辑账簿',
                           );
                           if (!ok) return;
+                          if (!context.mounted) return;
                           await AppNav.push<bool>(
                             context,
                             AccountBookEditPage(bookId: b.bookId),
@@ -352,10 +353,12 @@ class _BookCardDb extends StatelessWidget {
 
 IconData _iconByReasonType(String reasonType) {
   final v = reasonType.trim();
-  if (v.contains('婚') || v.contains('宴') || v.contains('喜'))
+  if (v.contains('婚') || v.contains('宴') || v.contains('喜')) {
     return FontAwesomeIcons.heart;
-  if (v.contains('商务') || v.contains('公司') || v.contains('企业'))
+  }
+  if (v.contains('商务') || v.contains('公司') || v.contains('企业')) {
     return FontAwesomeIcons.briefcase;
+  }
   return FontAwesomeIcons.book;
 }
 

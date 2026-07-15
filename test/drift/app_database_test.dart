@@ -1,7 +1,6 @@
 import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:sqlite3/sqlite3.dart' show SqliteException;
 
 import 'package:newshangli/data/local/drift/app_database.dart';
 import 'package:newshangli/import/default_book_service.dart';

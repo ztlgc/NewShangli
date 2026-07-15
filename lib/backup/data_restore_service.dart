@@ -47,7 +47,7 @@ class DataRestoreService {
       await client.getFile(
         remotePath: remotePath,
         outputFile: zipFile,
-        onProgress: (_, __) {},
+        onProgress: (sent, total) {},
       );
       onProgress('正在校验备份包…');
       await _restoreFromZip(zipFile: zipFile, docsDir: docs, guardDir: guardDir, onProgress: onProgress);

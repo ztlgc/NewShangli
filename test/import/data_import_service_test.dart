@@ -61,8 +61,12 @@ void main() {
       final last = await handle.progress.last;
       expect(last.status, DataImportStatus.completed);
 
-      final persons = await (db.select(db.persons)..where((t) => t.bookId.equals(bookId))).get();
-      final records = await (db.select(db.giftRecords)..where((t) => t.bookId.equals(bookId))).get();
+      final persons = await (db.select(
+        db.persons,
+      )..where((t) => t.bookId.equals(bookId))).get();
+      final records = await (db.select(
+        db.giftRecords,
+      )..where((t) => t.bookId.equals(bookId))).get();
       expect(persons.length, 1);
       expect(persons.first.name, '张三');
       expect(records.length, 1);
@@ -107,7 +111,9 @@ void main() {
         kind: DataImportKind.personsOnly,
       );
 
-      await (db.update(db.dataImportJobs)..where((t) => t.jobId.equals(jobId))).write(
+      await (db.update(
+        db.dataImportJobs,
+      )..where((t) => t.jobId.equals(jobId))).write(
         DataImportJobsCompanion(
           lastRowIndex: const Value(1),
           updatedAt: Value(DateTime.now().millisecondsSinceEpoch),
@@ -118,7 +124,9 @@ void main() {
       final last = await handle.progress.last;
       expect(last.status, DataImportStatus.completed);
 
-      final persons = await (db.select(db.persons)..where((t) => t.bookId.equals(bookId))).get();
+      final persons = await (db.select(
+        db.persons,
+      )..where((t) => t.bookId.equals(bookId))).get();
       expect(persons.length, 1);
       expect(persons.first.personId, 'p2');
       expect(persons.first.name, '李四');
@@ -209,7 +217,9 @@ void main() {
       for (var c = 0; c < recordHeaders.length; c++) {
         recordSheet
             .cell(CellIndex.indexByColumnRow(columnIndex: c, rowIndex: 0))
-            .value = TextCellValue(recordHeaders[c]);
+            .value = TextCellValue(
+          recordHeaders[c],
+        );
       }
       final recordRow = <String>[
         '',
@@ -229,27 +239,53 @@ void main() {
       for (var c = 0; c < recordRow.length; c++) {
         recordSheet
             .cell(CellIndex.indexByColumnRow(columnIndex: c, rowIndex: 1))
-            .value = TextCellValue(recordRow[c]);
+            .value = TextCellValue(
+          recordRow[c],
+        );
       }
 
-      final personHeaders = <String>['关系人ID', '姓名', '关系', '手机号', '创建时间', '备注', '头像文件名'];
+      final personHeaders = <String>[
+        '关系人ID',
+        '姓名',
+        '关系',
+        '手机号',
+        '创建时间',
+        '备注',
+        '头像文件名',
+      ];
       for (var c = 0; c < personHeaders.length; c++) {
         personSheet
             .cell(CellIndex.indexByColumnRow(columnIndex: c, rowIndex: 0))
-            .value = TextCellValue(personHeaders[c]);
+            .value = TextCellValue(
+          personHeaders[c],
+        );
       }
-      final personRow = <String>['p1', '张三', '朋友', '13800000000', '2026-01-01 10:00', '', 'avatar_1.png'];
+      final personRow = <String>[
+        'p1',
+        '张三',
+        '朋友',
+        '13800000000',
+        '2026-01-01 10:00',
+        '',
+        'avatar_1.png',
+      ];
       for (var c = 0; c < personRow.length; c++) {
         personSheet
             .cell(CellIndex.indexByColumnRow(columnIndex: c, rowIndex: 1))
-            .value = TextCellValue(personRow[c]);
+            .value = TextCellValue(
+          personRow[c],
+        );
       }
       final xlsx = File('${tempDir.path}/input.xlsx');
       await xlsx.writeAsBytes(excel.encode()!, flush: true);
 
       final archive = Archive();
-      archive.addFile(ArchiveFile('media/avatars/avatar_1.png', 3, <int>[1, 2, 3]));
-      archive.addFile(ArchiveFile('media/attachments/att_1.jpg', 3, <int>[4, 5, 6]));
+      archive.addFile(
+        ArchiveFile('media/avatars/avatar_1.png', 3, <int>[1, 2, 3]),
+      );
+      archive.addFile(
+        ArchiveFile('media/attachments/att_1.jpg', 3, <int>[4, 5, 6]),
+      );
       final zipBytes = ZipEncoder().encode(archive)!;
       final zip = File('${tempDir.path}/media.zip');
       await zip.writeAsBytes(zipBytes, flush: true);
@@ -268,12 +304,154 @@ void main() {
       final last = await handle.progress.last;
       expect(last.status, DataImportStatus.completed);
 
-      final persons = await (db.select(db.persons)..where((t) => t.bookId.equals(bookId))).get();
-      final records = await (db.select(db.giftRecords)..where((t) => t.bookId.equals(bookId))).get();
+      final persons = await (db.select(
+        db.persons,
+      )..where((t) => t.bookId.equals(bookId))).get();
+      final records = await (db.select(
+        db.giftRecords,
+      )..where((t) => t.bookId.equals(bookId))).get();
       expect(persons.length, 1);
       expect((persons.first.avatarUri ?? '').isNotEmpty, true);
       expect(records.length, 1);
       expect((records.first.attachments ?? const <String>[]).isNotEmpty, true);
+    });
+
+    test('Excel加ZIP导入会拦截越界条目并正确区分头像与附件同名文件', () async {
+      final now = DateTime.now().millisecondsSinceEpoch;
+      final bookId = await db.accountBooksDao.insertOne(
+        AccountBooksCompanion.insert(
+          name: '测试账簿',
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+
+      final excel = Excel.createExcel();
+      excel.rename('Sheet1', '礼金记录');
+      final recordSheet = excel['礼金记录'];
+      final personSheet = excel['关系人'];
+      final recordHeaders = <String>[
+        '记录ID',
+        '收支方向',
+        '金额(元)',
+        '金额(分)',
+        '事由',
+        '关系人ID',
+        '关系人姓名',
+        '关系人关系',
+        '手机号',
+        '支付方式',
+        '发生时间',
+        '备注',
+        '附件1名称',
+      ];
+      for (var c = 0; c < recordHeaders.length; c++) {
+        recordSheet
+            .cell(CellIndex.indexByColumnRow(columnIndex: c, rowIndex: 0))
+            .value = TextCellValue(
+          recordHeaders[c],
+        );
+      }
+      final recordRow = <String>[
+        '',
+        '收入',
+        '20.00',
+        '2000',
+        '测试',
+        'p1',
+        '张三',
+        '朋友',
+        '13800000000',
+        '现金',
+        '2026-01-01 10:00',
+        '',
+        'same.png',
+      ];
+      for (var c = 0; c < recordRow.length; c++) {
+        recordSheet
+            .cell(CellIndex.indexByColumnRow(columnIndex: c, rowIndex: 1))
+            .value = TextCellValue(
+          recordRow[c],
+        );
+      }
+
+      final personHeaders = <String>[
+        '关系人ID',
+        '姓名',
+        '关系',
+        '手机号',
+        '创建时间',
+        '备注',
+        '头像文件名',
+      ];
+      for (var c = 0; c < personHeaders.length; c++) {
+        personSheet
+            .cell(CellIndex.indexByColumnRow(columnIndex: c, rowIndex: 0))
+            .value = TextCellValue(
+          personHeaders[c],
+        );
+      }
+      final personRow = <String>[
+        'p1',
+        '张三',
+        '朋友',
+        '13800000000',
+        '2026-01-01 10:00',
+        '',
+        'same.png',
+      ];
+      for (var c = 0; c < personRow.length; c++) {
+        personSheet
+            .cell(CellIndex.indexByColumnRow(columnIndex: c, rowIndex: 1))
+            .value = TextCellValue(
+          personRow[c],
+        );
+      }
+      final xlsx = File('${tempDir.path}/same_name_input.xlsx');
+      await xlsx.writeAsBytes(excel.encode()!, flush: true);
+
+      final archive = Archive();
+      archive.addFile(ArchiveFile('media/avatars/same.png', 3, <int>[1, 2, 3]));
+      archive.addFile(
+        ArchiveFile('media/attachments/same.png', 3, <int>[4, 5, 6]),
+      );
+      archive.addFile(ArchiveFile('../../escape.txt', 6, 'escape'.codeUnits));
+      final zipBytes = ZipEncoder().encode(archive)!;
+      final zip = File('${tempDir.path}/same_name_media.zip');
+      await zip.writeAsBytes(zipBytes, flush: true);
+
+      final service = DataImportService(
+        db: db,
+        documentsDirectoryProvider: () async => tempDir,
+      );
+      final jobId = await service.createJob(
+        bookId: bookId,
+        sourceFilePath: xlsx.path,
+        kind: DataImportKind.recordsAndPersons,
+        mediaZipPath: zip.path,
+      );
+      final handle = await service.start(jobId);
+      final last = await handle.progress.last;
+      expect(last.status, DataImportStatus.completed);
+
+      final persons = await (db.select(
+        db.persons,
+      )..where((t) => t.bookId.equals(bookId))).get();
+      final records = await (db.select(
+        db.giftRecords,
+      )..where((t) => t.bookId.equals(bookId))).get();
+      expect(persons.length, 1);
+      expect(records.length, 1);
+
+      final avatarPath = persons.first.avatarUri;
+      final attachmentPath = records.first.attachments?.first;
+      expect(avatarPath, isNotNull);
+      expect(attachmentPath, isNotNull);
+      expect(await File(avatarPath!).readAsBytes(), <int>[1, 2, 3]);
+      expect(await File(attachmentPath!).readAsBytes(), <int>[4, 5, 6]);
+
+      final escapedFile = File('${tempDir.path}/imports/files/escape.txt');
+      expect(await escapedFile.exists(), false);
     });
   });
 }

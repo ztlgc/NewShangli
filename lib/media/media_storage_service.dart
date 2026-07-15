@@ -7,11 +7,14 @@ class MediaStorageService {
   MediaStorageService({
     Future<Directory> Function()? documentsDirectoryProvider,
   }) : _documentsDirectoryProvider =
-            documentsDirectoryProvider ?? getApplicationDocumentsDirectory;
+           documentsDirectoryProvider ?? getApplicationDocumentsDirectory;
 
   final Future<Directory> Function() _documentsDirectoryProvider;
 
-  Future<String> saveAvatarFromPath(String sourcePath, {String? oldStoredPath}) async {
+  Future<String> saveAvatarFromPath(
+    String sourcePath, {
+    String? oldStoredPath,
+  }) async {
     final ext = _normalizedExtension(sourcePath);
     final dir = await _avatarDir();
     final name = 'avatar_${DateTime.now().microsecondsSinceEpoch}$ext';
@@ -38,18 +41,26 @@ class MediaStorageService {
     final raw = (storedPath ?? '').trim();
     if (raw.isEmpty) return null;
     if (raw.startsWith('http://') || raw.startsWith('https://')) return null;
+    String candidate;
     if (raw.startsWith('file://')) {
       try {
         final uri = Uri.parse(raw);
         if (uri.scheme != 'file') return null;
-        return uri.toFilePath(windows: Platform.isWindows);
+        candidate = uri.toFilePath(windows: Platform.isWindows);
       } catch (_) {
         return null;
       }
+    } else if (_isAbsolutePath(raw)) {
+      candidate = raw;
+    } else {
+      final docs = await _documentsDirectoryProvider();
+      candidate = p.join(docs.path, raw);
     }
-    if (_isAbsolutePath(raw)) return raw;
-    final docs = await _documentsDirectoryProvider();
-    return p.join(docs.path, p.normalize(raw));
+    final normalized = p.normalize(candidate);
+    if (!await _isWhitelistedMediaPath(normalized)) {
+      return null;
+    }
+    return normalized;
   }
 
   Future<Directory> mediaRootDir() async {
@@ -83,6 +94,25 @@ class MediaStorageService {
 
   bool _isAbsolutePath(String path) {
     return p.isAbsolute(path) || RegExp(r'^[A-Za-z]:[\\/]').hasMatch(path);
+  }
+
+  Future<bool> _isWhitelistedMediaPath(String absolutePath) async {
+    final mediaRoot = p.normalize((await mediaRootDir()).path);
+    return _isPathWithinRoot(absolutePath, mediaRoot);
+  }
+
+  bool _isPathWithinRoot(String targetPath, String rootPath) {
+    final normalizedTarget = _normalizeForComparison(targetPath);
+    final normalizedRoot = _normalizeForComparison(rootPath);
+    if (normalizedTarget == normalizedRoot) return true;
+    return normalizedTarget.startsWith(
+      '$normalizedRoot${Platform.pathSeparator}',
+    );
+  }
+
+  String _normalizeForComparison(String value) {
+    final normalized = p.normalize(value);
+    return Platform.isWindows ? normalized.toLowerCase() : normalized;
   }
 
   Future<void> _tryDeleteStoredPath(String? storedPath) async {

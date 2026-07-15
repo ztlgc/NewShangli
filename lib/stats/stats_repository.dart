@@ -38,14 +38,9 @@ class StatsSourceRecord {
 }
 
 class StatsRepository implements IStatsRepository {
-  StatsRepository({
-    required StatsDb db,
-    Duration cacheTtl = const Duration(seconds: 30),
-  })  : _db = db,
-        _cacheTtl = cacheTtl;
+  StatsRepository({required StatsDb db}) : _db = db;
 
   final StatsDb _db;
-  final Duration _cacheTtl;
 
   int? _lastSyncFingerprint;
   final Map<String, _CacheEntry> _cache = <String, _CacheEntry>{};
@@ -157,25 +152,6 @@ class StatsRepository implements IStatsRepository {
     return v;
   }
 
-  Future<List<StatsRecordLite>> _queryRecords(String bookId, int startS, int endS) async {
-    final rows = await _db.query(
-      'SELECT direction, amount_cent, event_name, person_name, occurred_at_s FROM records WHERE book_id = ? AND occurred_at_s >= ? AND occurred_at_s < ?',
-      <Object?>[bookId, startS, endS],
-    );
-    final out = <StatsRecordLite>[];
-    for (final r in rows) {
-      out.add(
-        StatsRecordLite(
-          direction: (r['direction'] as int?) ?? 0,
-          amountCent: (r['amount_cent'] as int?) ?? 0,
-          eventName: (r['event_name'] as String?) ?? '',
-          personName: (r['person_name'] as String?) ?? '',
-          occurredAt: DateTime.fromMillisecondsSinceEpoch(((r['occurred_at_s'] as int?) ?? 0) * 1000),
-        ),
-      );
-    }
-    return out;
-  }
 }
 
 class _CacheEntry {

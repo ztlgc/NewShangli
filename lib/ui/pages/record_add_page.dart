@@ -99,16 +99,19 @@ class _RecordAddPageState extends State<RecordAddPage> {
     }
     if (widget.recordId != null && !_authChecked) {
       _authChecked = true;
-      Future<void>(() async {
-        final ok = await requireEditProtectionPassword(context, title: '编辑记录');
-        if (!mounted) return;
-        if (!ok) {
-          AppNav.pop(context);
-          return;
-        }
-        setState(() => _authorized = true);
-      });
+      Future<void>(_authorizeEditRecord);
     }
+  }
+
+  Future<void> _authorizeEditRecord() async {
+    final navigator = Navigator.of(context);
+    final ok = await requireEditProtectionPassword(context, title: '编辑记录');
+    if (!mounted) return;
+    if (!ok) {
+      navigator.pop();
+      return;
+    }
+    setState(() => _authorized = true);
   }
 
   void _markDirty() {
@@ -151,6 +154,7 @@ class _RecordAddPageState extends State<RecordAddPage> {
   Future<void> _handleSave() async {
     if (_saving) return;
     await _ensureRequiredDefaults();
+    if (!mounted) return;
     final amountCent = _parseAmountCent(_amountController.text);
     if (amountCent == null || amountCent <= 0) {
       ScaffoldMessenger.of(
@@ -476,28 +480,34 @@ class _RecordAddPageState extends State<RecordAddPage> {
   Color _reasonIconBgColor(String name) {
     final n = name.trim();
     if (n.contains('婚')) return AppColors.pink100;
-    if (n.contains('满月') || n.contains('周岁') || n.contains('孩子'))
+    if (n.contains('满月') || n.contains('周岁') || n.contains('孩子')) {
       return AppColors.blue100;
+    }
     if (n.contains('生日')) return AppColors.orange100;
-    if (n.contains('乔迁') || n.contains('搬家') || n.contains('新居'))
+    if (n.contains('乔迁') || n.contains('搬家') || n.contains('新居')) {
       return AppColors.green100;
+    }
     if (n.contains('年') || n.contains('节')) return AppColors.red100;
-    if (n.contains('白事') || n.contains('丧') || n.contains('祭'))
+    if (n.contains('白事') || n.contains('丧') || n.contains('祭')) {
       return AppColors.gray200;
+    }
     return AppColors.purple100;
   }
 
   Color _reasonIconColor(String name) {
     final n = name.trim();
     if (n.contains('婚')) return AppColors.pink600;
-    if (n.contains('满月') || n.contains('周岁') || n.contains('孩子'))
+    if (n.contains('满月') || n.contains('周岁') || n.contains('孩子')) {
       return AppColors.blue600;
+    }
     if (n.contains('生日')) return AppColors.orange600;
-    if (n.contains('乔迁') || n.contains('搬家') || n.contains('新居'))
+    if (n.contains('乔迁') || n.contains('搬家') || n.contains('新居')) {
       return AppColors.green600;
+    }
     if (n.contains('年') || n.contains('节')) return AppColors.red600;
-    if (n.contains('白事') || n.contains('丧') || n.contains('祭'))
+    if (n.contains('白事') || n.contains('丧') || n.contains('祭')) {
       return AppColors.gray600;
+    }
     return AppColors.purple600;
   }
 
@@ -506,6 +516,7 @@ class _RecordAddPageState extends State<RecordAddPage> {
     final reasons =
         (await db.reasonsDao.listAll()).where((e) => e.enabled).toList()
           ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+    if (!mounted) return;
 
     final picked = await showModalBottomSheet<String>(
       context: context,
@@ -520,9 +531,8 @@ class _RecordAddPageState extends State<RecordAddPage> {
       ),
     );
 
-    if (picked == null) return;
+    if (!mounted || picked == null) return;
     if (picked == _ReasonPickerSheet.manageAction) {
-      if (!mounted) return;
       AppNav.push(context, const ReasonManagePage());
       return;
     }
@@ -595,6 +605,7 @@ class _RecordAddPageState extends State<RecordAddPage> {
     );
     if (picked == null) return;
     if (picked == '其他') {
+      if (!mounted) return;
       final input = await showDialog<String>(
         context: context,
         builder: (context) {
@@ -645,8 +656,14 @@ class _RecordAddPageState extends State<RecordAddPage> {
         ? _personName.trim()
         : '请选择';
     final title = widget.recordId == null ? '记录收支' : '编辑收支';
-    return WillPopScope(
-      onWillPop: _confirmDiscardIfNeeded,
+    return PopScope<void>(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        final ok = await _confirmDiscardIfNeeded();
+        if (!context.mounted || !ok) return;
+        Navigator.of(context).pop();
+      },
       child: AppScaffold(
         backgroundColor: AppColors.surfaceApp,
         body: Column(
@@ -1869,7 +1886,7 @@ int? _parseAmountCent(String raw) {
   var frac = '';
   if (parts.length > 1) frac = parts[1];
   if (frac.length == 1) frac = '${frac}0';
-  if (frac.length == 0) frac = '00';
+  if (frac.isEmpty) frac = '00';
   if (frac.length == 2) {
     final fracPart = int.tryParse(frac);
     if (fracPart == null) return null;

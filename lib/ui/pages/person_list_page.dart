@@ -186,6 +186,7 @@ class _CanvasState extends State<_Canvas> {
   Future<void> _deleteSelectedPersons(AppDatabase db) async {
     final okAuth = await requireEditProtectionPassword(context, title: '删除联系人');
     if (!okAuth) return;
+    if (!mounted) return;
     final ids = _selectedPersonIds.toList();
     if (ids.isEmpty) return;
     final ok = await showDialog<bool>(

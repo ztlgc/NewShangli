@@ -3,8 +3,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
 import 'package:newshangli/data/local/drift/app_database.dart';
+import 'package:newshangli/security/edit_protection.dart';
 import 'package:newshangli/ui/app_database_scope.dart';
 import 'package:newshangli/ui/pages/record_add_page.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 Future<AppDatabase> _buildDb({
   bool includeOtherBook = false,
@@ -51,8 +53,20 @@ Future<int> _recordCount(AppDatabase db) async {
   return row.data['c'] as int? ?? 0;
 }
 
+Future<void> _resetEditProtection() async {
+  SharedPreferences.setMockInitialValues(<String, Object>{});
+  await EditProtectionConfig.save(
+    const EditProtectionConfig(
+      enabled: false,
+      passwordSalt: '',
+      passwordHash: '',
+    ),
+  );
+}
+
 void main() {
   testWidgets('收支录入：保存后直接返回，不弹出放弃确认', (WidgetTester tester) async {
+    await _resetEditProtection();
     final db = await _buildDb();
     addTearDown(() async => db.close());
     final initialCount = await _recordCount(db);
@@ -100,6 +114,7 @@ void main() {
   });
 
   testWidgets('收支录入：编辑记录保存应保留原 bookId', (WidgetTester tester) async {
+    await _resetEditProtection();
     final db = await _buildDb(includeOtherBook: true);
     addTearDown(() async => db.close());
     final recordId = await db.giftRecordsDao.insertOne(

@@ -100,11 +100,13 @@ class _PersonEditPageState extends State<PersonEditPage> {
     }
     if (widget.personId != null && !_authChecked) {
       _authChecked = true;
-      Future<void>(() async {
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        if (!mounted) return;
+        final navigator = Navigator.of(context);
         final ok = await requireEditProtectionPassword(context, title: '编辑联系人');
         if (!mounted) return;
         if (!ok) {
-          AppNav.pop(context);
+          navigator.pop();
           return;
         }
         setState(() => _authorized = true);
@@ -267,6 +269,7 @@ class _PersonEditPageState extends State<PersonEditPage> {
     if (widget.personId != null) {
       final ok = await requireEditProtectionPassword(context, title: '编辑联系人');
       if (!ok) return;
+      if (!mounted) return;
     }
     FocusManager.instance.primaryFocus?.unfocus();
     setState(() {
@@ -592,6 +595,7 @@ class _PersonEditPageState extends State<PersonEditPage> {
   Future<void> _confirmDelete() async {
     final okAuth = await requireEditProtectionPassword(context, title: '删除联系人');
     if (!okAuth) return;
+    if (!mounted) return;
     final db = AppDatabaseScope.of(context);
     final name = _nameCtrl.text.trim().isEmpty ? '该联系人' : _nameCtrl.text.trim();
     final ok = await showDialog<bool>(
@@ -616,7 +620,7 @@ class _PersonEditPageState extends State<PersonEditPage> {
         );
       },
     );
-    if (ok != true) return;
+    if (!mounted || ok != true) return;
     await db.personsDao.deleteById(widget.personId!);
     if (!mounted) return;
     Navigator.of(context).pop(true);
@@ -677,6 +681,7 @@ class _PersonEditPageState extends State<PersonEditPage> {
   Future<void> _pickRelationship() async {
     final db = AppDatabaseScope.of(context);
     final types = await db.relationTypesDao.listAll();
+    if (!mounted) return;
     final picked = await showModalBottomSheet<String>(
       context: context,
       isScrollControlled: true,
@@ -790,7 +795,7 @@ class _PersonEditPageState extends State<PersonEditPage> {
         );
       },
     );
-    if (picked == null) return;
+    if (!mounted || picked == null) return;
     if (picked == '__custom__') {
       _inputCustomRelationship();
     } else {
@@ -826,11 +831,13 @@ class _PersonEditPageState extends State<PersonEditPage> {
         );
       },
     );
+    if (!mounted) return;
     if (ok != null && ok.isNotEmpty) {
       try {
         final db = AppDatabaseScope.of(context);
         await db.relationTypesDao.create(name: ok);
       } catch (_) {}
+      if (!mounted) return;
       setState(() => _relationship = ok);
     }
   }

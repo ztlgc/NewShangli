@@ -243,12 +243,14 @@ void main() {
         relationTypes.where((type) => type.name == 'Friend'),
         hasLength(1),
       );
+      expect(relationTypes.single.typeId, cloudTypeId);
 
       final relations = await db.select(db.contactRelations).get();
       expect(relations, hasLength(1));
       expect(relations.single.relationId, 'cloud_relation');
       expect(relations.single.personAId, p1);
       expect(relations.single.personBId, p2);
+      expect(relations.single.typeId, cloudTypeId);
       expect(relations.single.note, 'cloud relation');
     });
   });
