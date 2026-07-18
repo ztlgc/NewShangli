@@ -519,6 +519,12 @@ String _formatBackupTime(DateTime d) {
   return '${DateUtil.format(d)} ${two(d.hour)}:${two(d.minute)}';
 }
 
+String _formatBackupSemanticTime(DateTime d) {
+  String two(int n) => n.toString().padLeft(2, '0');
+  // 语义朗读优先使用纯数字时间，避免把农历等装饰性信息混入操作摘要，影响理解效率。
+  return '${d.year}-${two(d.month)}-${two(d.day)} ${two(d.hour)}:${two(d.minute)}';
+}
+
 String _formatBackupSize(int bytes) {
   if (bytes < 1024) return '${bytes}B';
   final kb = bytes / 1024.0;
@@ -956,8 +962,16 @@ class _BackupHistoryItem extends StatelessWidget {
   final BackupHistoryEntry entry;
   final VoidCallback? onRestore;
 
+  String get _restoreSemanticValue =>
+      '${backupHistoryTypeLabel(entry.type)}，${_formatBackupSemanticTime(entry.at)}，${_formatBackupSize(entry.sizeBytes)}';
+
+  String get _restoreSemanticHint => onRestore == null
+      ? '当前不可恢复该备份'
+      : '双击后恢复文件 ${entry.fileName}，并覆盖当前本地数据';
+
   @override
   Widget build(BuildContext context) {
+    final handleRestore = onRestore;
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -1008,11 +1022,15 @@ class _BackupHistoryItem extends StatelessWidget {
           Semantics(
             button: true,
             enabled: onRestore != null,
-            label: '恢复备份 ${entry.fileName}',
-            hint: '恢复该备份到当前本地数据',
+            label: '恢复备份文件 ${entry.fileName}',
+            value: _restoreSemanticValue,
+            hint: _restoreSemanticHint,
+            onTap: handleRestore,
+            // 将“备份文件标识 + 条目摘要 + 恢复动作”合并成单一语义节点，
+            // 让读屏和自动化测试都能稳定获取可操作信息。
             child: ExcludeSemantics(
               child: GestureDetector(
-                onTap: onRestore,
+                onTap: handleRestore,
                 child: Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 14,
@@ -1173,18 +1191,25 @@ class _Toggle extends StatelessWidget {
   Widget build(BuildContext context) {
     final enabled = onChanged != null;
     final on = value;
+    final handleToggle = enabled ? () => onChanged!(!value) : null;
     final colors = context.appColors;
     final bg = !enabled
         ? colors.surfaceDisabled
         : (on ? colors.stateSuccess : colors.surfaceDisabled);
     final alignment = on ? Alignment.centerRight : Alignment.centerLeft;
     return Semantics(
+      button: true,
       enabled: enabled,
       checked: value,
       label: semanticLabel,
+      value: value ? '已开启' : '已关闭',
+      hint: enabled ? '双击切换自动备份开关' : '自动备份开关当前不可切换',
+      onTap: handleToggle,
+      // 自定义开关没有原生 Switch 的状态播报，这里补足状态值与操作提示，
+      // 让“自动备份”不仅能被识别，还能明确当前状态和下一步动作。
       child: ExcludeSemantics(
         child: GestureDetector(
-          onTap: enabled ? () => onChanged!(!value) : null,
+          onTap: handleToggle,
           behavior: HitTestBehavior.opaque,
           child: Container(
             width: 44,

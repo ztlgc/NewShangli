@@ -90,8 +90,10 @@ class _CanvasState extends State<_Canvas> {
         return Align(
           alignment: Alignment.center,
           child: AlertDialog(
-            title: const Text('批量删除'),
-            content: Text('确认删除 ${_selectedRecordIds.length} 条记录？删除后将进入回收站。'),
+            // 这里的批量删除实际执行的是软删除，因此弹窗文案需要明确告知
+            // 用户“移入回收站”的结果，避免和回收站内的彻底删除混淆。
+            title: const Text('移入回收站'),
+            content: Text('确认将 ${_selectedRecordIds.length} 条记录移入回收站？'),
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(context).pop(false),
@@ -99,7 +101,7 @@ class _CanvasState extends State<_Canvas> {
               ),
               TextButton(
                 onPressed: () => Navigator.of(context).pop(true),
-                child: const Text('永久删除'),
+                child: const Text('移入回收站'),
               ),
             ],
           ),
@@ -115,7 +117,7 @@ class _CanvasState extends State<_Canvas> {
     _exitSelection();
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(const SnackBar(content: Text('已删除选中记录')));
+    ).showSnackBar(const SnackBar(content: Text('记录已移入回收站')));
   }
 
   @override
