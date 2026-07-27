@@ -9,10 +9,9 @@ import 'backup_config.dart';
 import 'webdav_client.dart';
 
 class DataRestoreService {
-  DataRestoreService({
-    Future<Directory> Function()? documentsDirectoryProvider,
-  }) : _documentsDirectoryProvider =
-            documentsDirectoryProvider ?? getApplicationDocumentsDirectory;
+  DataRestoreService({Future<Directory> Function()? documentsDirectoryProvider})
+    : _documentsDirectoryProvider =
+          documentsDirectoryProvider ?? getApplicationDocumentsDirectory;
 
   final Future<Directory> Function() _documentsDirectoryProvider;
 
@@ -21,7 +20,9 @@ class DataRestoreService {
     required BackupHistoryEntry entry,
     required void Function(String message) onProgress,
   }) async {
-    final baseUrl = BackupConfig.parseAndNormalizeWebDavBaseUrl(config.webDavBaseUrl);
+    final baseUrl = BackupConfig.parseAndNormalizeWebDavBaseUrl(
+      config.webDavBaseUrl,
+    );
     if (baseUrl == null) {
       throw const DataRestoreException('服务器地址格式不正确');
     }
@@ -29,14 +30,38 @@ class DataRestoreService {
       throw const DataRestoreException('请先配置 WebDAV 用户名与密码');
     }
     final docs = await _documentsDirectoryProvider();
-    final tmpDir = Directory(p.join(docs.path, 'backups', 'restore_tmp', DateTime.now().millisecondsSinceEpoch.toString()));
+    final tmpDir = Directory(
+      p.join(
+        docs.path,
+        'backups',
+        'restore_tmp',
+        DateTime.now().millisecondsSinceEpoch.toString(),
+      ),
+    );
     await tmpDir.create(recursive: true);
-    final guardDir = Directory(p.join(docs.path, 'backups', 'restore_guard', DateTime.now().millisecondsSinceEpoch.toString()));
+    final guardDir = Directory(
+      p.join(
+        docs.path,
+        'backups',
+        'restore_guard',
+        DateTime.now().millisecondsSinceEpoch.toString(),
+      ),
+    );
     await guardDir.create(recursive: true);
-    final zipFile = File(p.join(tmpDir.path, entry.fileName.trim().isEmpty ? 'restore.zip' : entry.fileName.trim()));
+    final zipFile = File(
+      p.join(
+        tmpDir.path,
+        entry.fileName.trim().isEmpty ? 'restore.zip' : entry.fileName.trim(),
+      ),
+    );
 
-    final remoteDir = BackupConfig.normalizeWebDavRemoteDir(config.webDavRemoteDir.trim());
-    final remotePath = _buildRemotePath(remoteDir: remoteDir, fileName: entry.fileName);
+    final remoteDir = BackupConfig.normalizeWebDavRemoteDir(
+      config.webDavRemoteDir.trim(),
+    );
+    final remotePath = _buildRemotePath(
+      remoteDir: remoteDir,
+      fileName: entry.fileName,
+    );
     final client = WebDavClient(
       baseUrl: baseUrl,
       username: config.webDavUsername.trim(),
@@ -50,7 +75,12 @@ class DataRestoreService {
         onProgress: (sent, total) {},
       );
       onProgress('正在校验备份包…');
-      await _restoreFromZip(zipFile: zipFile, docsDir: docs, guardDir: guardDir, onProgress: onProgress);
+      await _restoreFromZip(
+        zipFile: zipFile,
+        docsDir: docs,
+        guardDir: guardDir,
+        onProgress: onProgress,
+      );
     } finally {
       await client.close();
       if (await tmpDir.exists()) {
@@ -64,7 +94,14 @@ class DataRestoreService {
     required void Function(String message) onProgress,
   }) async {
     final docs = await _documentsDirectoryProvider();
-    final guardDir = Directory(p.join(docs.path, 'backups', 'restore_guard', DateTime.now().millisecondsSinceEpoch.toString()));
+    final guardDir = Directory(
+      p.join(
+        docs.path,
+        'backups',
+        'restore_guard',
+        DateTime.now().millisecondsSinceEpoch.toString(),
+      ),
+    );
     await guardDir.create(recursive: true);
 
     onProgress('正在校验备份包…');
@@ -72,6 +109,16 @@ class DataRestoreService {
       zipFile: zipFile,
       docsDir: docs,
       guardDir: guardDir,
+      onProgress: onProgress,
+    );
+  }
+
+  Future<void> restoreFromLocalPath({
+    required String zipFilePath,
+    required void Function(String message) onProgress,
+  }) {
+    return restoreFromLocalZip(
+      zipFile: File(zipFilePath),
       onProgress: onProgress,
     );
   }
@@ -86,7 +133,12 @@ class DataRestoreService {
       throw const DataRestoreException('备份包不存在');
     }
     final bytes = await zipFile.readAsBytes();
-    final archive = ZipDecoder().decodeBytes(bytes, verify: true);
+    Archive archive;
+    try {
+      archive = ZipDecoder().decodeBytes(bytes, verify: true);
+    } catch (_) {
+      throw const DataRestoreException('备份包不是有效的 ZIP 文件');
+    }
     ArchiveFile? manifestEntry;
     for (final file in archive.files) {
       if (file.name == 'manifest.json') {
@@ -102,7 +154,9 @@ class DataRestoreService {
     if (manifest is! Map) {
       throw const DataRestoreException('manifest 内容无效');
     }
-    final dbFileInArchive = (manifest['dbFile'] as String?) ?? 'db/newshangli_drift.snapshot.sqlite';
+    final dbFileInArchive =
+        (manifest['dbFile'] as String?) ??
+        'db/newshangli_drift.snapshot.sqlite';
     ArchiveFile? dbEntry;
     for (final file in archive.files) {
       if (file.name == dbFileInArchive) {
@@ -166,7 +220,9 @@ class DataRestoreService {
     required Archive archive,
     required Directory docsDir,
   }) async {
-    final mediaEntries = archive.files.where((e) => e.name.startsWith('media/'));
+    final mediaEntries = archive.files.where(
+      (e) => e.name.startsWith('media/'),
+    );
     final mediaRoot = Directory(p.join(docsDir.path, 'media'));
     if (await mediaRoot.exists()) {
       await mediaRoot.delete(recursive: true);
@@ -174,7 +230,9 @@ class DataRestoreService {
     await mediaRoot.create(recursive: true);
     for (final entry in mediaEntries) {
       if (entry.isFile == false) continue;
-      final output = File(p.join(docsDir.path, entry.name.replaceAll('/', p.separator)));
+      final output = File(
+        p.join(docsDir.path, entry.name.replaceAll('/', p.separator)),
+      );
       await output.parent.create(recursive: true);
       await output.writeAsBytes(entry.content as List<int>, flush: true);
     }
@@ -222,12 +280,19 @@ class DataRestoreService {
     }
   }
 
-  String _buildRemotePath({required String remoteDir, required String fileName}) {
+  String _buildRemotePath({
+    required String remoteDir,
+    required String fileName,
+  }) {
     final dir = remoteDir.trim();
     if (dir.isEmpty) return fileName;
     var normalized = dir;
-    normalized = normalized.startsWith('/') ? normalized.substring(1) : normalized;
-    normalized = normalized.endsWith('/') ? normalized.substring(0, normalized.length - 1) : normalized;
+    normalized = normalized.startsWith('/')
+        ? normalized.substring(1)
+        : normalized;
+    normalized = normalized.endsWith('/')
+        ? normalized.substring(0, normalized.length - 1)
+        : normalized;
     return p.posix.join(normalized, fileName);
   }
 }

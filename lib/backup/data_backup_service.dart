@@ -9,18 +9,19 @@ import 'package:sqlite3/sqlite3.dart' as sqlite;
 import 'backup_config.dart';
 import 'webdav_client.dart';
 
-typedef BackupSnapshotExecutor = Future<void> Function({
-  required String sourceDbPath,
-  required String outputDbPath,
-});
+typedef BackupSnapshotExecutor =
+    Future<void> Function({
+      required String sourceDbPath,
+      required String outputDbPath,
+    });
 
 class DataBackupService {
   DataBackupService({
     Future<Directory> Function()? documentsDirectoryProvider,
     BackupSnapshotExecutor? snapshotExecutor,
-  })  : _documentsDirectoryProvider =
-            documentsDirectoryProvider ?? getApplicationDocumentsDirectory,
-        _snapshotExecutor = snapshotExecutor ?? _defaultSnapshotExecutor;
+  }) : _documentsDirectoryProvider =
+           documentsDirectoryProvider ?? getApplicationDocumentsDirectory,
+       _snapshotExecutor = snapshotExecutor ?? _defaultSnapshotExecutor;
 
   final Future<Directory> Function() _documentsDirectoryProvider;
   final BackupSnapshotExecutor _snapshotExecutor;
@@ -48,12 +49,15 @@ class DataBackupService {
       throw const BackupException('请先填写密码');
     }
     final remoteDirRaw = config.webDavRemoteDir.trim();
-    if (remoteDirRaw.isNotEmpty && !BackupConfig.isValidWebDavRemoteDir(remoteDirRaw)) {
+    if (remoteDirRaw.isNotEmpty &&
+        !BackupConfig.isValidWebDavRemoteDir(remoteDirRaw)) {
       throw const BackupException('远程目录格式不正确');
     }
     final remoteDir = BackupConfig.normalizeWebDavRemoteDir(remoteDirRaw);
 
-    onProgress(const BackupProgress(stage: BackupStage.packaging, message: '正在打包…'));
+    onProgress(
+      const BackupProgress(stage: BackupStage.packaging, message: '正在打包…'),
+    );
     final localFile = await _createBackupZip(onProgress: onProgress);
 
     final client = WebDavClient(
@@ -62,7 +66,9 @@ class DataBackupService {
       password: config.webDavPassword,
     );
     try {
-      onProgress(const BackupProgress(stage: BackupStage.uploading, message: '正在连接网盘…'));
+      onProgress(
+        const BackupProgress(stage: BackupStage.uploading, message: '正在连接网盘…'),
+      );
       final test = await client.test();
       if (!test.ok) {
         throw BackupException(test.message);
@@ -76,7 +82,9 @@ class DataBackupService {
       );
       final remoteUrl = client.resolvePath(remotePath).toString();
 
-      onProgress(const BackupProgress(stage: BackupStage.uploading, message: '正在上传…'));
+      onProgress(
+        const BackupProgress(stage: BackupStage.uploading, message: '正在上传…'),
+      );
       await client.putFile(
         remotePath: remotePath,
         file: localFile,
@@ -110,7 +118,9 @@ class DataBackupService {
         ),
       );
 
-      onProgress(const BackupProgress(stage: BackupStage.done, message: '备份完成'));
+      onProgress(
+        const BackupProgress(stage: BackupStage.done, message: '备份完成'),
+      );
       return BackupRunResult(localFile: localFile, remoteUrl: remoteUrl);
     } finally {
       await client.close();
@@ -124,12 +134,46 @@ class DataBackupService {
     return _createBackupZip(onProgress: onProgress, includeMedia: includeMedia);
   }
 
+  Future<LocalBackupDirectoryInfo> inspectLocalBackupDirectory({
+    String? preferredOutputDir,
+  }) async {
+    final outputDir = await _resolveLocalBackupOutputDirectory(
+      preferredOutputDir: preferredOutputDir,
+    );
+    final writable = await _isDirectoryWritable(outputDir);
+    return LocalBackupDirectoryInfo(
+      directory: outputDir,
+      writable: writable,
+      usingDefault: (preferredOutputDir?.trim().isEmpty ?? true),
+    );
+  }
+
+  Future<File> exportLocalBackupZip({
+    required void Function(BackupProgress progress) onProgress,
+    String? preferredOutputDir,
+    bool includeMedia = true,
+  }) async {
+    final outputDir = await _resolveLocalBackupOutputDirectory(
+      preferredOutputDir: preferredOutputDir,
+    );
+    final writable = await _isDirectoryWritable(outputDir);
+    if (!writable) {
+      throw BackupException('备份目录不可写：${outputDir.path}');
+    }
+    return _createBackupZip(
+      onProgress: onProgress,
+      includeMedia: includeMedia,
+      outputDirectory: outputDir,
+    );
+  }
+
   Future<File> _createBackupZip({
     required void Function(BackupProgress progress) onProgress,
     bool includeMedia = true,
+    Directory? outputDirectory,
   }) async {
     final dir = await _documentsDirectoryProvider();
-    final backupDir = Directory(p.join(dir.path, 'backups'));
+    final backupDir = outputDirectory ?? Directory(p.join(dir.path, 'backups'));
     await backupDir.create(recursive: true);
 
     final ts = DateTime.now();
@@ -154,10 +198,17 @@ class DataBackupService {
         await snapshot.file.delete();
       }
     }
-    
-    _MediaArchiveSummary mediaSummary = const _MediaArchiveSummary(fileCount: 0, totalBytes: 0);
+
+    _MediaArchiveSummary mediaSummary = const _MediaArchiveSummary(
+      fileCount: 0,
+      totalBytes: 0,
+    );
     if (includeMedia) {
-      mediaSummary = await _addMediaToArchive(archive: archive, docsDir: dir, included: included);
+      mediaSummary = await _addMediaToArchive(
+        archive: archive,
+        docsDir: dir,
+        included: included,
+      );
     }
 
     final manifest = <String, Object?>{
@@ -171,10 +222,16 @@ class DataBackupService {
       'schemaVersion': null,
       'files': included,
     };
-    final manifestBytes = utf8.encode(const JsonEncoder.withIndent('  ').convert(manifest));
-    archive.addFile(ArchiveFile('manifest.json', manifestBytes.length, manifestBytes));
+    final manifestBytes = utf8.encode(
+      const JsonEncoder.withIndent('  ').convert(manifest),
+    );
+    archive.addFile(
+      ArchiveFile('manifest.json', manifestBytes.length, manifestBytes),
+    );
 
-    onProgress(const BackupProgress(stage: BackupStage.packaging, message: '正在生成 ZIP…'));
+    onProgress(
+      const BackupProgress(stage: BackupStage.packaging, message: '正在生成 ZIP…'),
+    );
     final zipped = ZipEncoder().encode(archive);
     if (zipped == null) {
       throw const BackupException('ZIP 打包失败');
@@ -190,7 +247,8 @@ class DataBackupService {
     final dir = await _documentsDirectoryProvider();
     final snapshotDir = Directory(p.join(dir.path, 'backups', 'snapshots'));
     await snapshotDir.create(recursive: true);
-    final fileName = 'newshangli_snapshot_${ts.millisecondsSinceEpoch}_${DateTime.now().microsecondsSinceEpoch}.sqlite';
+    final fileName =
+        'newshangli_snapshot_${ts.millisecondsSinceEpoch}_${DateTime.now().microsecondsSinceEpoch}.sqlite';
     final snapshotFile = File(p.join(snapshotDir.path, fileName));
     if (await snapshotFile.exists()) {
       await snapshotFile.delete();
@@ -234,7 +292,10 @@ class DataBackupService {
     }
     var fileCount = 0;
     var totalBytes = 0;
-    await for (final entity in mediaDir.list(recursive: true, followLinks: false)) {
+    await for (final entity in mediaDir.list(
+      recursive: true,
+      followLinks: false,
+    )) {
       if (entity is! File) continue;
       final relative = p.relative(entity.path, from: docsDir.path);
       final archivePath = p.posix.normalize(relative.replaceAll('\\', '/'));
@@ -249,17 +310,63 @@ class DataBackupService {
 
   String _buildFileNameBase(DateTime ts) {
     String two(int n) => n.toString().padLeft(2, '0');
-    final t = '${ts.year}${two(ts.month)}${two(ts.day)}_${two(ts.hour)}${two(ts.minute)}${two(ts.second)}';
+    final t =
+        '${ts.year}${two(ts.month)}${two(ts.day)}_${two(ts.hour)}${two(ts.minute)}${two(ts.second)}';
     return '尚礼_备份_$t';
   }
 
-  String _buildRemotePath({required String remoteDir, required String fileName}) {
+  String _buildRemotePath({
+    required String remoteDir,
+    required String fileName,
+  }) {
     final dir = remoteDir.trim();
     if (dir.isEmpty) return fileName;
     var normalized = dir;
-    normalized = normalized.startsWith('/') ? normalized.substring(1) : normalized;
-    normalized = normalized.endsWith('/') ? normalized.substring(0, normalized.length - 1) : normalized;
+    normalized = normalized.startsWith('/')
+        ? normalized.substring(1)
+        : normalized;
+    normalized = normalized.endsWith('/')
+        ? normalized.substring(0, normalized.length - 1)
+        : normalized;
     return p.posix.join(normalized, fileName);
+  }
+
+  Future<Directory> _resolveLocalBackupOutputDirectory({
+    String? preferredOutputDir,
+  }) async {
+    final normalized = preferredOutputDir?.trim() ?? '';
+    try {
+      if (normalized.isNotEmpty) {
+        final preferredDir = Directory(normalized);
+        await preferredDir.create(recursive: true);
+        return preferredDir;
+      }
+      final docs = await _documentsDirectoryProvider();
+      final backupDir = Directory(p.join(docs.path, 'backups'));
+      await backupDir.create(recursive: true);
+      return backupDir;
+    } catch (e) {
+      throw BackupException('无法创建备份目录：$e');
+    }
+  }
+
+  Future<bool> _isDirectoryWritable(Directory dir) async {
+    try {
+      await dir.create(recursive: true);
+      final probe = File(
+        p.join(
+          dir.path,
+          '.newshangli_write_probe_${DateTime.now().microsecondsSinceEpoch}.tmp',
+        ),
+      );
+      await probe.writeAsString('ok', flush: true);
+      if (await probe.exists()) {
+        await probe.delete();
+      }
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 
   static Future<void> _defaultSnapshotExecutor({
@@ -286,6 +393,18 @@ class BackupRunResult {
 
   final File localFile;
   final String remoteUrl;
+}
+
+class LocalBackupDirectoryInfo {
+  const LocalBackupDirectoryInfo({
+    required this.directory,
+    required this.writable,
+    required this.usingDefault,
+  });
+
+  final Directory directory;
+  final bool writable;
+  final bool usingDefault;
 }
 
 enum BackupStage { packaging, uploading, done }

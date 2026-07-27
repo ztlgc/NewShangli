@@ -1,5 +1,10 @@
+import 'dart:async';
+import 'dart:io';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:path/path.dart' as p;
 
 import '../../backup/backup_config.dart';
 import '../../backup/data_backup_service.dart';
@@ -45,14 +50,22 @@ class _CanvasState extends State<_Canvas> {
     autoBackupEnabled: false,
     backupFrequency: BackupFrequency.daily,
   );
-  BackupLastState? _last;
+  BackupLastState? _cloudLast;
+  BackupLastState? _localLast;
+  BackupFailureState? _cloudFailure;
+  BackupFailureState? _localFailure;
+  String? _preferredLocalBackupDir;
+  LocalBackupDirectoryInfo? _localDirInfo;
   List<BackupHistoryEntry> _history = const <BackupHistoryEntry>[];
   bool _loading = true;
   bool _saving = false;
   bool _backingUp = false;
   bool _testing = false;
   bool _restoring = false;
+  bool _localBackingUp = false;
+  bool _localRestoring = false;
   BackupProgress? _progress;
+  String? _localRunningText;
 
   bool get _webDavReady {
     if (!_config.webDavEnabled) return false;
@@ -62,29 +75,18 @@ class _CanvasState extends State<_Canvas> {
     return true;
   }
 
-  bool get _busy => _saving || _backingUp || _testing || _restoring;
+  bool get _busy =>
+      _saving ||
+      _backingUp ||
+      _testing ||
+      _restoring ||
+      _localBackingUp ||
+      _localRestoring;
 
   @override
   void initState() {
     super.initState();
-    Future<void>(() async {
-      final c = await BackupConfig.load();
-      final last = await BackupStateStore.getLastBackup();
-      final history = await BackupStateStore.getHistory();
-      final remoteDirRaw = c.webDavRemoteDir.trim();
-      final normalizedRemoteDir =
-          remoteDirRaw.isNotEmpty &&
-              !BackupConfig.isValidWebDavRemoteDir(remoteDirRaw)
-          ? ''
-          : remoteDirRaw;
-      if (!mounted) return;
-      setState(() {
-        _config = c.copyWith(webDavRemoteDir: normalizedRemoteDir);
-        _last = last;
-        _history = history;
-        _loading = false;
-      });
-    });
+    Future<void>(_loadPageState);
   }
 
   @override
@@ -132,26 +134,57 @@ class _CanvasState extends State<_Canvas> {
           child: ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              _BackupMainCard(
-                loading: _loading,
-                enabled: _config.webDavEnabled,
-                last: _last,
+              const _Overline(title: '状态摘要'),
+              const SizedBox(height: 12),
+              _BackupStatusSummaryCard(
+                cloudLast: _cloudLast,
+                localLast: _localLast,
+                cloudFailure: _cloudFailure,
+                localFailure: _localFailure,
                 runningText: progressText,
-                running: _backingUp,
-                onBackup: _busy ? null : _runBackup,
+                cloudRunning: _backingUp || _testing || _restoring,
+                localRunning: _localBackingUp || _localRestoring,
+                localRunningText: _localRunningText,
               ),
               const SizedBox(height: 24),
-              _Overline(title: '备份设置'),
+              const _Overline(title: 'WebDAV云端备份'),
               const SizedBox(height: 12),
               _DriveExtraConfigCard(
+                loading: _loading,
                 config: _config,
-                history: _history,
+                last: _cloudLast,
+                runningText: progressText,
+                running: _backingUp,
                 saving: _busy,
-                onToggleAutoBackup: (v) =>
-                    _setConfig(_config.copyWith(autoBackupEnabled: v)),
+                onBackup: _busy ? null : _runBackup,
+                onToggleAutoBackup: _busy ? null : _toggleAutoBackup,
                 onPickFrequency: _busy ? null : _pickBackupFrequency,
                 webDavConfigured: _webDavReady,
                 onOpenWebDavConfig: _busy ? null : _openWebDavConfigDialog,
+              ),
+              const SizedBox(height: 24),
+              const _Overline(title: '本地备份'),
+              const SizedBox(height: 12),
+              _LocalBackupSectionCard(
+                resolvedPath:
+                    _localDirInfo?.directory.path ??
+                    _preferredLocalBackupDir ??
+                    '应用默认目录/backups',
+                pathWritable: _localDirInfo?.writable,
+                usingDefault: _localDirInfo?.usingDefault ?? true,
+                last: _localLast,
+                failure: _localFailure,
+                running: _localBackingUp || _localRestoring,
+                runningText: _localRunningText,
+                onPickDirectory: _busy ? null : _pickLocalBackupDirectory,
+                onExport: _busy ? null : _exportLocalBackup,
+                onImport: _busy ? null : _pickLocalBackupZip,
+              ),
+              const SizedBox(height: 24),
+              const _Overline(title: '历史记录'),
+              const SizedBox(height: 12),
+              _BackupHistoryCard(
+                history: _history,
                 onRestore: _busy ? null : _restoreBackup,
               ),
             ],
@@ -163,6 +196,67 @@ class _CanvasState extends State<_Canvas> {
 
   void _setConfig(BackupConfig next) {
     setState(() => _config = next);
+  }
+
+  Future<void> _loadPageState() async {
+    final c = await BackupConfig.load();
+    final cloudLast = await BackupStateStore.getLastBackup();
+    final localLast = await BackupStateStore.getLastBackupFor(
+      BackupTarget.local,
+    );
+    final history = await BackupStateStore.getHistory();
+    final cloudFailure = await BackupStateStore.getLastFailure(
+      BackupTarget.cloud,
+    );
+    final localFailure = await BackupStateStore.getLastFailure(
+      BackupTarget.local,
+    );
+    final preferredLocalBackupDir =
+        await BackupStateStore.getPreferredLocalBackupDir();
+    final remoteDirRaw = c.webDavRemoteDir.trim();
+    final normalizedRemoteDir =
+        remoteDirRaw.isNotEmpty &&
+            !BackupConfig.isValidWebDavRemoteDir(remoteDirRaw)
+        ? ''
+        : remoteDirRaw;
+    if (!mounted) return;
+    setState(() {
+      _config = c.copyWith(webDavRemoteDir: normalizedRemoteDir);
+      _cloudLast = cloudLast;
+      _localLast = localLast;
+      _history = history;
+      _cloudFailure = cloudFailure;
+      _localFailure = localFailure;
+      _preferredLocalBackupDir = preferredLocalBackupDir;
+      _loading = false;
+    });
+    unawaited(
+      _refreshLocalDirectoryInfo(preferredOutputDir: preferredLocalBackupDir),
+    );
+  }
+
+  Future<void> _refreshLocalDirectoryInfo({String? preferredOutputDir}) async {
+    final effectiveDir = preferredOutputDir ?? _preferredLocalBackupDir;
+    try {
+      final info = await DataBackupService().inspectLocalBackupDirectory(
+        preferredOutputDir: effectiveDir,
+      );
+      if (!mounted) return;
+      setState(() {
+        _preferredLocalBackupDir = effectiveDir?.trim().isEmpty ?? true
+            ? null
+            : effectiveDir!.trim();
+        _localDirInfo = info;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _preferredLocalBackupDir = effectiveDir?.trim().isEmpty ?? true
+            ? null
+            : effectiveDir!.trim();
+        _localDirInfo = null;
+      });
+    }
   }
 
   Future<bool> _persistConfig() async {
@@ -199,6 +293,36 @@ class _CanvasState extends State<_Canvas> {
         context,
       ).showSnackBar(SnackBar(content: Text('保存失败：$e')));
       return false;
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  Future<void> _toggleAutoBackup(bool enabled) async {
+    if (_saving) return;
+    final previous = _config;
+    final next = _config.copyWith(autoBackupEnabled: enabled);
+    setState(() => _config = next);
+    await _saveCloudSettings(next, fallback: previous);
+  }
+
+  Future<void> _saveCloudSettings(
+    BackupConfig next, {
+    BackupConfig? fallback,
+  }) async {
+    setState(() => _saving = true);
+    try {
+      await BackupConfig.save(next);
+      if (!mounted) return;
+      setState(() => _config = next);
+    } catch (e) {
+      if (!mounted) return;
+      if (fallback != null) {
+        setState(() => _config = fallback);
+      }
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('保存失败：$e')));
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -252,17 +376,35 @@ class _CanvasState extends State<_Canvas> {
         },
         historyType: BackupHistoryType.manual,
       );
+      await BackupStateStore.clearLastFailure(BackupTarget.cloud);
       final last = await BackupStateStore.getLastBackup();
       final history = await BackupStateStore.getHistory();
+      final cloudFailure = await BackupStateStore.getLastFailure(
+        BackupTarget.cloud,
+      );
       if (!mounted) return;
       setState(() {
-        _last = last;
+        _cloudLast = last;
         _history = history;
+        _cloudFailure = cloudFailure;
       });
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('备份完成')));
     } on WebDavException catch (e) {
+      await BackupStateStore.setLastFailure(
+        target: BackupTarget.cloud,
+        message: e.message,
+      );
+      if (mounted) {
+        setState(() {
+          _cloudFailure = BackupFailureState(
+            target: BackupTarget.cloud,
+            at: DateTime.now(),
+            message: e.message,
+          );
+        });
+      }
       if (!mounted) return;
       showDialog(
         context: context,
@@ -278,6 +420,19 @@ class _CanvasState extends State<_Canvas> {
         ),
       );
     } catch (e) {
+      await BackupStateStore.setLastFailure(
+        target: BackupTarget.cloud,
+        message: e.toString(),
+      );
+      if (mounted) {
+        setState(() {
+          _cloudFailure = BackupFailureState(
+            target: BackupTarget.cloud,
+            at: DateTime.now(),
+            message: e.toString(),
+          );
+        });
+      }
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
@@ -315,7 +470,13 @@ class _CanvasState extends State<_Canvas> {
       return;
     }
 
-    setState(() => _testing = true);
+    setState(() {
+      _testing = true;
+      _progress = const BackupProgress(
+        stage: BackupStage.packaging,
+        message: '正在测试连接…',
+      );
+    });
     final client = WebDavClient(
       baseUrl: baseUrl,
       username: _config.webDavUsername.trim(),
@@ -325,10 +486,26 @@ class _CanvasState extends State<_Canvas> {
       final r = await client.test();
       if (!mounted) return;
       if (r.ok) {
+        await BackupStateStore.clearLastFailure(BackupTarget.cloud);
+        final cloudFailure = await BackupStateStore.getLastFailure(
+          BackupTarget.cloud,
+        );
+        setState(() => _cloudFailure = cloudFailure);
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text(r.message)));
       } else {
+        await BackupStateStore.setLastFailure(
+          target: BackupTarget.cloud,
+          message: r.message,
+        );
+        setState(() {
+          _cloudFailure = BackupFailureState(
+            target: BackupTarget.cloud,
+            at: DateTime.now(),
+            message: r.message,
+          );
+        });
         showDialog(
           context: context,
           builder: (context) => AlertDialog(
@@ -345,7 +522,12 @@ class _CanvasState extends State<_Canvas> {
       }
     } finally {
       await client.close();
-      if (mounted) setState(() => _testing = false);
+      if (mounted) {
+        setState(() {
+          _testing = false;
+          _progress = null;
+        });
+      }
     }
   }
 
@@ -396,10 +578,17 @@ class _CanvasState extends State<_Canvas> {
       },
     );
     if (picked == null) return;
-    _setConfig(_config.copyWith(backupFrequency: picked));
+    final previous = _config;
+    final next = _config.copyWith(backupFrequency: picked);
+    setState(() => _config = next);
+    await _saveCloudSettings(next, fallback: previous);
   }
 
   Future<void> _restoreBackup(BackupHistoryEntry entry) async {
+    if (entry.target == BackupTarget.local) {
+      await _restoreLocalBackupEntry(entry);
+      return;
+    }
     if (_restoring) return;
     if (!_webDavReady) {
       ScaffoldMessenger.of(
@@ -453,12 +642,28 @@ class _CanvasState extends State<_Canvas> {
           },
         );
       });
+      await BackupStateStore.clearLastFailure(BackupTarget.cloud);
+      final cloudFailure = await BackupStateStore.getLastFailure(
+        BackupTarget.cloud,
+      );
       if (!mounted) return;
+      setState(() => _cloudFailure = cloudFailure);
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('恢复成功')));
     } catch (e) {
+      await BackupStateStore.setLastFailure(
+        target: BackupTarget.cloud,
+        message: e.toString(),
+      );
       if (!mounted) return;
+      setState(() {
+        _cloudFailure = BackupFailureState(
+          target: BackupTarget.cloud,
+          at: DateTime.now(),
+          message: e.toString(),
+        );
+      });
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('恢复失败：$e')));
@@ -512,6 +717,250 @@ class _CanvasState extends State<_Canvas> {
       },
     );
   }
+
+  Future<void> _pickLocalBackupDirectory() async {
+    try {
+      final pickedDir = await FilePicker.platform.getDirectoryPath(
+        dialogTitle: '选择本地备份目录',
+      );
+      if (pickedDir == null || pickedDir.trim().isEmpty) return;
+      final service = DataBackupService();
+      final pickedInfo = await service.inspectLocalBackupDirectory(
+        preferredOutputDir: pickedDir,
+      );
+      if (!pickedInfo.writable) {
+        await BackupStateStore.setPreferredLocalBackupDir(null);
+        await _refreshLocalDirectoryInfo(preferredOutputDir: null);
+        await _setLocalFailure('所选目录当前不可写，已继续使用默认备份目录');
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('所选目录当前不可写，已继续使用默认备份目录'),
+          ),
+        );
+        return;
+      }
+      await BackupStateStore.setPreferredLocalBackupDir(pickedInfo.directory.path);
+      await _refreshLocalDirectoryInfo(
+        preferredOutputDir: pickedInfo.directory.path,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('已更新本地备份目录')));
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('当前平台暂不支持选择目录，继续使用默认目录')));
+    }
+  }
+
+  Future<void> _exportLocalBackup() async {
+    if (_localBackingUp) return;
+    final service = DataBackupService();
+    if (mounted) {
+      setState(() {
+        _localBackingUp = true;
+        _localRunningText = '准备导出…';
+      });
+    }
+    try {
+      final directoryInfo = await service.inspectLocalBackupDirectory(
+        preferredOutputDir: _preferredLocalBackupDir,
+      );
+      if (!directoryInfo.writable) {
+        await _setLocalFailure('备份目录不可写：${directoryInfo.directory.path}');
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('备份目录不可写：${directoryInfo.directory.path}')),
+        );
+        return;
+      }
+      final file = await service.exportLocalBackupZip(
+        preferredOutputDir: _preferredLocalBackupDir,
+        onProgress: (progress) {
+          if (!mounted) return;
+          setState(() => _localRunningText = _formatProgress(progress));
+        },
+      );
+      final sizeBytes = await file.length();
+      final now = DateTime.now();
+      await BackupStateStore.setLastBackupFor(
+        target: BackupTarget.local,
+        at: now,
+        fileName: p.basename(file.path),
+        sizeBytes: sizeBytes,
+        localPath: file.path,
+      );
+      await BackupStateStore.addHistory(
+        BackupHistoryEntry(
+          type: BackupHistoryType.manual,
+          at: now,
+          fileName: p.basename(file.path),
+          sizeBytes: sizeBytes,
+          target: BackupTarget.local,
+          localPath: file.path,
+        ),
+      );
+      await BackupStateStore.clearLastFailure(BackupTarget.local);
+      final localLast = await BackupStateStore.getLastBackupFor(
+        BackupTarget.local,
+      );
+      final history = await BackupStateStore.getHistory();
+      final localFailure = await BackupStateStore.getLastFailure(
+        BackupTarget.local,
+      );
+      if (!mounted) return;
+      setState(() {
+        _localLast = localLast;
+        _history = history;
+        _localFailure = localFailure;
+      });
+      await _refreshLocalDirectoryInfo(
+        preferredOutputDir: _preferredLocalBackupDir,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('本地备份已导出到：${file.path}')));
+    } catch (e) {
+      await _setLocalFailure(e.toString());
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('本地备份失败：$e')));
+    } finally {
+      if (mounted) {
+        setState(() {
+          _localBackingUp = false;
+          _localRunningText = null;
+        });
+      }
+    }
+  }
+
+  Future<void> _pickLocalBackupZip() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: const <String>['zip'],
+      withData: false,
+    );
+    if (!mounted) return;
+    if (result == null || result.files.isEmpty) return;
+    final picked = result.files.first;
+    if (picked.path == null || picked.path!.trim().isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('无法读取备份文件路径，请重试')));
+      return;
+    }
+    await _restoreLocalZipFile(
+      filePath: picked.path!,
+      displayName: picked.name,
+    );
+  }
+
+  Future<void> _restoreLocalBackupEntry(BackupHistoryEntry entry) async {
+    final localPath = entry.localPath?.trim() ?? '';
+    if (localPath.isEmpty) {
+      await _setLocalFailure('本地备份记录缺少文件路径');
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('本地备份记录缺少文件路径')));
+      return;
+    }
+    if (!await File(localPath).exists()) {
+      await _setLocalFailure('本地备份文件不存在：$localPath');
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('本地备份文件不存在')));
+      return;
+    }
+    await _restoreLocalZipFile(
+      filePath: localPath,
+      displayName: entry.fileName,
+    );
+  }
+
+  Future<void> _restoreLocalZipFile({
+    required String filePath,
+    required String displayName,
+  }) async {
+    if (_localRestoring) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('确认导入恢复'),
+          content: Text('恢复将覆盖当前本地数据：$displayName'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('取消'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('继续恢复'),
+            ),
+          ],
+        );
+      },
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() {
+      _localRestoring = true;
+      _localRunningText = '准备恢复…';
+    });
+    try {
+      final controller = AppDatabaseControllerScope.of(context);
+      await controller.withDatabasePaused(() async {
+        final service = DataRestoreService();
+        await service.restoreFromLocalPath(
+          zipFilePath: filePath,
+          onProgress: (message) {
+            if (!mounted) return;
+            setState(() => _localRunningText = message);
+          },
+        );
+      });
+      await BackupStateStore.clearLastFailure(BackupTarget.local);
+      final localFailure = await BackupStateStore.getLastFailure(
+        BackupTarget.local,
+      );
+      if (!mounted) return;
+      setState(() => _localFailure = localFailure);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('本地恢复成功')));
+    } catch (e) {
+      await _setLocalFailure(e.toString());
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('本地恢复失败：$e')));
+    } finally {
+      if (mounted) {
+        setState(() {
+          _localRestoring = false;
+          _localRunningText = null;
+        });
+      }
+    }
+  }
+
+  Future<void> _setLocalFailure(String message) async {
+    await BackupStateStore.setLastFailure(
+      target: BackupTarget.local,
+      message: message,
+    );
+    final failure = await BackupStateStore.getLastFailure(BackupTarget.local);
+    if (!mounted) return;
+    setState(() => _localFailure = failure);
+  }
 }
 
 String _formatBackupTime(DateTime d) {
@@ -535,107 +984,44 @@ String _formatBackupSize(int bytes) {
   return '${gb.toStringAsFixed(1)}GB';
 }
 
-class _BackupMainCard extends StatelessWidget {
-  const _BackupMainCard({
+class _DriveExtraConfigCard extends StatelessWidget {
+  const _DriveExtraConfigCard({
     required this.loading,
-    required this.enabled,
+    required this.config,
     required this.last,
     required this.running,
     required this.runningText,
+    required this.saving,
     required this.onBackup,
+    required this.onToggleAutoBackup,
+    required this.onPickFrequency,
+    required this.webDavConfigured,
+    required this.onOpenWebDavConfig,
   });
 
   final bool loading;
-  final bool enabled;
+  final BackupConfig config;
   final BackupLastState? last;
   final bool running;
   final String? runningText;
+  final bool saving;
   final VoidCallback? onBackup;
+  final ValueChanged<bool>? onToggleAutoBackup;
+  final VoidCallback? onPickFrequency;
+  final bool webDavConfigured;
+  final VoidCallback? onOpenWebDavConfig;
 
   @override
   Widget build(BuildContext context) {
-    final subtitle = running
+    final statusLabel = config.webDavEnabled ? '已开启' : '未开启';
+    final detailText = running
         ? (runningText ?? '备份中…')
         : (loading
               ? '读取配置中…'
               : (last == null
                     ? '暂无备份记录'
                     : '上次备份：${_formatBackupTime(last!.at)} • ${_formatBackupSize(last!.sizeBytes)}'));
-    final title = enabled ? '云端备份已开启' : '云端备份未开启';
-    return PrototypeCard(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        children: [
-          Container(
-            width: 80,
-            height: 80,
-            decoration: BoxDecoration(
-              color: enabled
-                  ? context.appColors.stateSuccessSoft
-                  : context.appColors.surfaceSubtle,
-              shape: BoxShape.circle,
-            ),
-            alignment: Alignment.center,
-            child: FaIcon(
-              FontAwesomeIcons.cloudArrowUp,
-              size: 30,
-              color: enabled
-                  ? context.appColors.stateSuccess
-                  : context.appColors.textTertiary,
-            ),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            title,
-            style: AppTypography.base(
-              fontSize: 18,
-              fontWeight: AppTypography.bold,
-              color: AppColors.textPrimary,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            subtitle,
-            style: AppTypography.base(
-              fontSize: 14,
-              fontWeight: AppTypography.regular,
-              color: AppColors.textTertiary,
-            ),
-          ),
-          const SizedBox(height: 24),
-          PrototypePrimaryButton(
-            label: running ? '备份中' : '立即备份',
-            onTap: onBackup,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _DriveExtraConfigCard extends StatelessWidget {
-  const _DriveExtraConfigCard({
-    required this.config,
-    required this.history,
-    required this.saving,
-    required this.onToggleAutoBackup,
-    required this.onPickFrequency,
-    required this.webDavConfigured,
-    required this.onOpenWebDavConfig,
-    required this.onRestore,
-  });
-
-  final BackupConfig config;
-  final List<BackupHistoryEntry> history;
-  final bool saving;
-  final ValueChanged<bool> onToggleAutoBackup;
-  final VoidCallback? onPickFrequency;
-  final bool webDavConfigured;
-  final VoidCallback? onOpenWebDavConfig;
-  final ValueChanged<BackupHistoryEntry>? onRestore;
-
-  @override
-  Widget build(BuildContext context) {
+    final subtitle = '$statusLabel · $detailText';
     return Container(
       decoration: BoxDecoration(
         color: context.appColors.surfaceCard,
@@ -644,6 +1030,67 @@ class _DriveExtraConfigCard extends StatelessWidget {
       ),
       child: Column(
         children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: config.webDavEnabled
+                            ? context.appColors.stateSuccessSoft
+                            : context.appColors.surfaceSubtle,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      alignment: Alignment.center,
+                      child: FaIcon(
+                        FontAwesomeIcons.cloudArrowUp,
+                        size: 16,
+                        color: config.webDavEnabled
+                            ? context.appColors.stateSuccess
+                            : context.appColors.textTertiary,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '备份状态',
+                            style: AppTypography.base(
+                              fontSize: 16,
+                              fontWeight: AppTypography.bold,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            subtitle,
+                            style: AppTypography.base(
+                              fontSize: 12,
+                              fontWeight: AppTypography.regular,
+                              color: AppColors.textTertiary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                PrototypePrimaryButton(
+                  label: running ? '备份中' : '立即备份',
+                  onTap: onBackup,
+                ),
+              ],
+            ),
+          ),
+          const PrototypeDivider(color: AppColors.borderDivider),
           _OptionRow(
             title: '自动备份',
             subtitle: '仅在 Wi-Fi 环境下进行',
@@ -669,7 +1116,7 @@ class _DriveExtraConfigCard extends StatelessWidget {
           ),
           const PrototypeDivider(color: AppColors.borderDivider),
           _OptionRow(
-            title: '网盘配置（WebDAV）',
+            title: 'WebDAV 配置',
             subtitle: webDavConfigured ? '已配置' : '未设置',
             trailing: const FaIcon(
               FontAwesomeIcons.chevronRight,
@@ -677,44 +1124,339 @@ class _DriveExtraConfigCard extends StatelessWidget {
               color: AppColors.gray300,
             ),
             onTap: saving ? null : onOpenWebDavConfig,
-            semanticLabel: '网盘配置',
+            semanticLabel: 'WebDAV 配置',
             semanticValue: webDavConfigured ? '已配置' : '未设置',
             semanticHint: '打开 WebDAV 配置',
           ),
-          const PrototypeDivider(color: AppColors.borderDivider),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '历史备份',
-                  style: AppTypography.base(
-                    fontSize: 12,
-                    fontWeight: AppTypography.bold,
-                    color: AppColors.textTertiary,
-                  ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LocalBackupSectionCard extends StatelessWidget {
+  const _LocalBackupSectionCard({
+    required this.resolvedPath,
+    required this.pathWritable,
+    required this.usingDefault,
+    required this.last,
+    required this.failure,
+    required this.running,
+    required this.runningText,
+    required this.onPickDirectory,
+    required this.onExport,
+    required this.onImport,
+  });
+
+  final String resolvedPath;
+  final bool? pathWritable;
+  final bool usingDefault;
+  final BackupLastState? last;
+  final BackupFailureState? failure;
+  final bool running;
+  final String? runningText;
+  final VoidCallback? onPickDirectory;
+  final VoidCallback? onExport;
+  final VoidCallback? onImport;
+
+  @override
+  Widget build(BuildContext context) {
+    final subtitle = running
+        ? (runningText ?? '处理中…')
+        : (last == null
+              ? '尚未生成本地备份'
+              : '最近一次本地备份：${_formatBackupTime(last!.at)} • ${_formatBackupSize(last!.sizeBytes)}');
+    final failureText = failure == null ? '暂无失败记录' : '最近失败：${failure!.message}';
+    final pathStatusText = pathWritable == null
+        ? '目录状态读取中…'
+        : (pathWritable! ? (usingDefault ? '默认目录，可写' : '自定义目录，可写') : '目录不可写');
+    return PrototypeCard(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: context.appColors.surfaceSubtle,
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                const SizedBox(height: 12),
-                if (history.isNotEmpty)
-                  Column(
-                    children: [
-                      for (int i = 0; i < history.length; i++) ...[
-                        _BackupHistoryItem(
-                          entry: history[i],
-                          onRestore: onRestore == null
-                              ? null
-                              : () => onRestore!(history[i]),
-                        ),
-                        if (i != history.length - 1) const SizedBox(height: 8),
-                      ],
-                    ],
-                  ),
-              ],
-            ),
+                alignment: Alignment.center,
+                child: FaIcon(
+                  FontAwesomeIcons.hardDrive,
+                  size: 16,
+                  color: context.appColors.textSecondary,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '本地 ZIP 备份',
+                      style: AppTypography.base(
+                        fontSize: 16,
+                        fontWeight: AppTypography.bold,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      subtitle,
+                      style: AppTypography.base(
+                        fontSize: 12,
+                        fontWeight: AppTypography.regular,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          _BackupInfoLine(label: '保存位置', value: resolvedPath),
+          const SizedBox(height: 8),
+          _BackupInfoLine(label: '目录状态', value: pathStatusText),
+          const SizedBox(height: 8),
+          _BackupInfoLine(label: '状态', value: failureText),
+          const SizedBox(height: 16),
+          PrototypeSecondaryButton(
+            label: '更改位置',
+            onTap: onPickDirectory,
+            semanticLabel: '更改本地备份保存位置',
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: PrototypeSecondaryButton(
+                  label: running && onExport == null ? '处理中' : '导出备份',
+                  onTap: onExport,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: PrototypeSecondaryButton(label: '导入恢复', onTap: onImport),
+              ),
+            ],
           ),
         ],
       ),
+    );
+  }
+}
+
+class _BackupStatusSummaryCard extends StatelessWidget {
+  const _BackupStatusSummaryCard({
+    required this.cloudLast,
+    required this.localLast,
+    required this.cloudFailure,
+    required this.localFailure,
+    required this.runningText,
+    required this.cloudRunning,
+    required this.localRunning,
+    required this.localRunningText,
+  });
+
+  final BackupLastState? cloudLast;
+  final BackupLastState? localLast;
+  final BackupFailureState? cloudFailure;
+  final BackupFailureState? localFailure;
+  final String? runningText;
+  final bool cloudRunning;
+  final bool localRunning;
+  final String? localRunningText;
+
+  @override
+  Widget build(BuildContext context) {
+    return PrototypeCard(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        children: [
+          _BackupStatusTile(
+            icon: FontAwesomeIcons.cloudArrowUp,
+            title: 'WebDAV云端备份',
+            statusText: cloudRunning
+                ? (runningText ?? '处理中…')
+                : (cloudLast == null
+                      ? '暂无成功记录'
+                      : '最近成功：${_formatBackupTime(cloudLast!.at)}'),
+            detailText: cloudFailure == null
+                ? '最近失败：无'
+                : '最近失败：${_formatBackupTime(cloudFailure!.at)} • ${cloudFailure!.message}',
+          ),
+          const SizedBox(height: 12),
+          const PrototypeDivider(color: AppColors.borderDivider),
+          const SizedBox(height: 12),
+          _BackupStatusTile(
+            icon: FontAwesomeIcons.hardDrive,
+            title: '本地备份',
+            statusText: localRunning
+                ? (localRunningText ?? '处理中…')
+                : (localLast == null
+                      ? '暂无成功记录'
+                      : '最近成功：${_formatBackupTime(localLast!.at)}'),
+            detailText: localFailure == null
+                ? '最近失败：无'
+                : '最近失败：${_formatBackupTime(localFailure!.at)} • ${localFailure!.message}',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _BackupStatusTile extends StatelessWidget {
+  const _BackupStatusTile({
+    required this.icon,
+    required this.title,
+    required this.statusText,
+    required this.detailText,
+  });
+
+  final IconData icon;
+  final String title;
+  final String statusText;
+  final String detailText;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            color: context.appColors.surfaceSubtle,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          alignment: Alignment.center,
+          child: FaIcon(icon, size: 14, color: context.appColors.textSecondary),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: AppTypography.base(
+                  fontSize: 14,
+                  fontWeight: AppTypography.bold,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                statusText,
+                style: AppTypography.base(
+                  fontSize: 12,
+                  fontWeight: AppTypography.regular,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                detailText,
+                style: AppTypography.base(
+                  fontSize: 12,
+                  fontWeight: AppTypography.regular,
+                  color: AppColors.textMuted,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _BackupHistoryCard extends StatelessWidget {
+  const _BackupHistoryCard({required this.history, required this.onRestore});
+
+  final List<BackupHistoryEntry> history;
+  final ValueChanged<BackupHistoryEntry>? onRestore;
+
+  @override
+  Widget build(BuildContext context) {
+    return PrototypeCard(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (history.isEmpty)
+            Text(
+              '暂无历史备份',
+              style: AppTypography.base(
+                fontSize: 14,
+                fontWeight: AppTypography.regular,
+                color: AppColors.textMuted,
+              ),
+            )
+          else
+            Column(
+              children: [
+                for (int i = 0; i < history.length; i++) ...[
+                  _BackupHistoryItem(
+                    entry: history[i],
+                    onRestore: onRestore == null
+                        ? null
+                        : (history[i].target == BackupTarget.local &&
+                                  (history[i].localPath?.trim().isEmpty ?? true)
+                              ? null
+                              : () => onRestore!(history[i])),
+                  ),
+                  if (i != history.length - 1) const SizedBox(height: 8),
+                ],
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _BackupInfoLine extends StatelessWidget {
+  const _BackupInfoLine({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 64,
+          child: Text(
+            label,
+            style: AppTypography.base(
+              fontSize: 12,
+              fontWeight: AppTypography.medium,
+              color: AppColors.textTertiary,
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            value,
+            style: AppTypography.base(
+              fontSize: 12,
+              fontWeight: AppTypography.regular,
+              color: AppColors.textSecondary,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -965,9 +1707,8 @@ class _BackupHistoryItem extends StatelessWidget {
   String get _restoreSemanticValue =>
       '${backupHistoryTypeLabel(entry.type)}，${_formatBackupSemanticTime(entry.at)}，${_formatBackupSize(entry.sizeBytes)}';
 
-  String get _restoreSemanticHint => onRestore == null
-      ? '当前不可恢复该备份'
-      : '双击后恢复文件 ${entry.fileName}，并覆盖当前本地数据';
+  String get _restoreSemanticHint =>
+      onRestore == null ? '当前不可恢复该备份' : '双击后恢复文件 ${entry.fileName}，并覆盖当前本地数据';
 
   @override
   Widget build(BuildContext context) {
@@ -1005,6 +1746,15 @@ class _BackupHistoryItem extends StatelessWidget {
                     fontSize: 14,
                     fontWeight: AppTypography.medium,
                     color: AppColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  entry.target == BackupTarget.local ? '本地备份' : 'WebDAV云端备份',
+                  style: AppTypography.base(
+                    fontSize: 12,
+                    fontWeight: AppTypography.regular,
+                    color: AppColors.textTertiary,
                   ),
                 ),
                 const SizedBox(height: 4),

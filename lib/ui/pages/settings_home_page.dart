@@ -86,7 +86,7 @@ class _CanvasState extends State<_Canvas> {
         iconBg: AppColors.orange50,
         iconFg: AppColors.orange500,
         icon: FontAwesomeIcons.cloudArrowUp,
-        title: 'WebDAV 数据备份',
+        title: '数据备份',
         onTap: () =>
             AppNav.push(context, const DataBackupPage(), requiresLogin: true),
       ),

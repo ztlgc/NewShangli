@@ -26,10 +26,13 @@ void main() {
 
       final service = DataBackupService(
         documentsDirectoryProvider: () async => tempDir,
-        snapshotExecutor: ({required sourceDbPath, required outputDbPath}) async {
-          expect(sourceDbPath.endsWith('newshangli_drift.sqlite'), true);
-          await File(outputDbPath).writeAsBytes(const <int>[7, 8, 9], flush: true);
-        },
+        snapshotExecutor:
+            ({required sourceDbPath, required outputDbPath}) async {
+              expect(sourceDbPath.endsWith('newshangli_drift.sqlite'), true);
+              await File(
+                outputDbPath,
+              ).writeAsBytes(const <int>[7, 8, 9], flush: true);
+            },
       );
 
       final zip = await service.buildLocalBackupZip(onProgress: (_) {});
@@ -41,7 +44,9 @@ void main() {
       expect(dbNames, <String>['db/newshangli_drift.snapshot.sqlite']);
       expect(names.contains('manifest.json'), true);
 
-      final manifestEntry = archive.files.firstWhere((f) => f.name == 'manifest.json');
+      final manifestEntry = archive.files.firstWhere(
+        (f) => f.name == 'manifest.json',
+      );
       final manifestText = utf8.decode(manifestEntry.content as List<int>);
       final manifest = jsonDecode(manifestText) as Map<String, dynamic>;
       expect(manifest['backupMode'], 'snapshot_vacuum_into');
@@ -49,7 +54,9 @@ void main() {
       expect((manifest['dbSizeBytes'] as num?)?.toInt(), 3);
 
       final snapshotDir = Directory('${tempDir.path}/backups/snapshots');
-      final remains = snapshotDir.existsSync() ? snapshotDir.listSync() : <FileSystemEntity>[];
+      final remains = snapshotDir.existsSync()
+          ? snapshotDir.listSync()
+          : <FileSystemEntity>[];
       expect(remains, isEmpty);
     });
 
@@ -59,9 +66,10 @@ void main() {
 
       final service = DataBackupService(
         documentsDirectoryProvider: () async => tempDir,
-        snapshotExecutor: ({required sourceDbPath, required outputDbPath}) async {
-          throw const BackupException('mock snapshot failed');
-        },
+        snapshotExecutor:
+            ({required sourceDbPath, required outputDbPath}) async {
+              throw const BackupException('mock snapshot failed');
+            },
       );
 
       await expectLater(
@@ -82,10 +90,13 @@ void main() {
 
       final service = DataBackupService(
         documentsDirectoryProvider: () async => tempDir,
-        snapshotExecutor: ({required sourceDbPath, required outputDbPath}) async {
-          await File(outputDbPath).writeAsBytes(const <int>[1, 2], flush: true);
-          throw const BackupException('mock after file created');
-        },
+        snapshotExecutor:
+            ({required sourceDbPath, required outputDbPath}) async {
+              await File(
+                outputDbPath,
+              ).writeAsBytes(const <int>[1, 2], flush: true);
+              throw const BackupException('mock after file created');
+            },
       );
 
       await expectLater(
@@ -94,7 +105,9 @@ void main() {
       );
 
       final snapshotDir = Directory('${tempDir.path}/backups/snapshots');
-      final remains = snapshotDir.existsSync() ? snapshotDir.listSync() : <FileSystemEntity>[];
+      final remains = snapshotDir.existsSync()
+          ? snapshotDir.listSync()
+          : <FileSystemEntity>[];
       expect(remains, isEmpty);
     });
 
@@ -110,9 +123,12 @@ void main() {
 
       final service = DataBackupService(
         documentsDirectoryProvider: () async => tempDir,
-        snapshotExecutor: ({required sourceDbPath, required outputDbPath}) async {
-          await File(outputDbPath).writeAsBytes(const <int>[4], flush: true);
-        },
+        snapshotExecutor:
+            ({required sourceDbPath, required outputDbPath}) async {
+              await File(
+                outputDbPath,
+              ).writeAsBytes(const <int>[4], flush: true);
+            },
       );
 
       final zip = await service.buildLocalBackupZip(onProgress: (_) {});
@@ -121,12 +137,42 @@ void main() {
       expect(names.contains('media/avatars/a.png'), true);
       expect(names.contains('media/attachments/b.jpg'), true);
 
-      final manifestEntry = archive.files.firstWhere((f) => f.name == 'manifest.json');
+      final manifestEntry = archive.files.firstWhere(
+        (f) => f.name == 'manifest.json',
+      );
       final manifestText = utf8.decode(manifestEntry.content as List<int>);
       final manifest = jsonDecode(manifestText) as Map<String, dynamic>;
       expect(manifest['mediaIncluded'], true);
       expect((manifest['mediaFilesCount'] as num?)?.toInt(), 2);
       expect((manifest['mediaBytes'] as num?)?.toInt(), 4);
+    });
+
+    test('本地导出可写入指定目录并复用同一套ZIP结构', () async {
+      final sourceDb = File('${tempDir.path}/newshangli_drift.sqlite');
+      await sourceDb.writeAsBytes(const <int>[1, 2, 3, 4], flush: true);
+      final outputDir = Directory('${tempDir.path}/custom_backup_dir');
+
+      final service = DataBackupService(
+        documentsDirectoryProvider: () async => tempDir,
+        snapshotExecutor:
+            ({required sourceDbPath, required outputDbPath}) async {
+              await File(
+                outputDbPath,
+              ).writeAsBytes(const <int>[5, 6], flush: true);
+            },
+      );
+
+      final zip = await service.exportLocalBackupZip(
+        preferredOutputDir: outputDir.path,
+        onProgress: (_) {},
+      );
+      expect(zip.path.startsWith(outputDir.path), true);
+      expect(await zip.exists(), true);
+
+      final archive = ZipDecoder().decodeBytes(await zip.readAsBytes());
+      final names = archive.files.map((f) => f.name).toList();
+      expect(names.contains('manifest.json'), true);
+      expect(names.contains('db/newshangli_drift.snapshot.sqlite'), true);
     });
   });
 

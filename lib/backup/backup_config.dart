@@ -40,6 +40,27 @@ BackupFrequency backupFrequencyFromStorage(String? value) {
 
 enum BackupHistoryType { auto, manual }
 
+enum BackupTarget { cloud, local }
+
+String backupTargetToStorage(BackupTarget value) {
+  switch (value) {
+    case BackupTarget.cloud:
+      return 'cloud';
+    case BackupTarget.local:
+      return 'local';
+  }
+}
+
+BackupTarget backupTargetFromStorage(String? value) {
+  switch (value) {
+    case 'local':
+      return BackupTarget.local;
+    case 'cloud':
+    default:
+      return BackupTarget.cloud;
+  }
+}
+
 String backupHistoryTypeLabel(BackupHistoryType value) {
   switch (value) {
     case BackupHistoryType.auto:
@@ -74,6 +95,8 @@ class BackupHistoryEntry {
     required this.at,
     required this.fileName,
     required this.sizeBytes,
+    this.target = BackupTarget.cloud,
+    this.localPath,
     this.remoteUrl,
   });
 
@@ -81,6 +104,8 @@ class BackupHistoryEntry {
   final DateTime at;
   final String fileName;
   final int sizeBytes;
+  final BackupTarget target;
+  final String? localPath;
   final String? remoteUrl;
 
   Map<String, dynamic> toJson() {
@@ -89,6 +114,8 @@ class BackupHistoryEntry {
       'atMs': at.millisecondsSinceEpoch,
       'fileName': fileName,
       'sizeBytes': sizeBytes,
+      'target': backupTargetToStorage(target),
+      'localPath': localPath,
       'remoteUrl': remoteUrl,
     };
   }
@@ -96,9 +123,13 @@ class BackupHistoryEntry {
   factory BackupHistoryEntry.fromJson(Map<String, dynamic> json) {
     return BackupHistoryEntry(
       type: backupHistoryTypeFromStorage(json['type'] as String?),
-      at: DateTime.fromMillisecondsSinceEpoch((json['atMs'] as num?)?.toInt() ?? 0),
+      at: DateTime.fromMillisecondsSinceEpoch(
+        (json['atMs'] as num?)?.toInt() ?? 0,
+      ),
       fileName: (json['fileName'] as String?) ?? '',
       sizeBytes: (json['sizeBytes'] as num?)?.toInt() ?? 0,
+      target: backupTargetFromStorage(json['target'] as String?),
+      localPath: (json['localPath'] as String?)?.trim(),
       remoteUrl: json['remoteUrl'] as String?,
     );
   }
@@ -145,7 +176,9 @@ class BackupConfig {
 
   static const String defaultWebDavRemoteDir = 'backup/newshangli';
 
-  static final RegExp _remoteDirPattern = RegExp(r'^[A-Za-z0-9._-]+(\/[A-Za-z0-9._-]+)*$');
+  static final RegExp _remoteDirPattern = RegExp(
+    r'^[A-Za-z0-9._-]+(\/[A-Za-z0-9._-]+)*$',
+  );
 
   static bool isValidWebDavRemoteDir(String value) {
     final trimmed = value.trim();
@@ -210,22 +243,31 @@ class BackupConfig {
       webDavPassword: prefs.getString(_kWebDavPasswordKey) ?? '',
       webDavRemoteDir: normalizedRemoteDir,
       autoBackupEnabled: prefs.getBool(_kAutoBackupEnabledKey) ?? false,
-      backupFrequency: backupFrequencyFromStorage(prefs.getString(_kBackupFrequencyKey)),
+      backupFrequency: backupFrequencyFromStorage(
+        prefs.getString(_kBackupFrequencyKey),
+      ),
     );
   }
 
   static Future<void> save(BackupConfig config) async {
     final prefs = await SharedPreferences.getInstance();
     final remoteDirRaw = config.webDavRemoteDir.trim();
-    final normalizedRemoteDir = isValidWebDavRemoteDir(remoteDirRaw) ? normalizeWebDavRemoteDir(remoteDirRaw) : '';
-    final normalizedBaseUrl = parseAndNormalizeWebDavBaseUrl(config.webDavBaseUrl)?.toString() ?? config.webDavBaseUrl.trim();
+    final normalizedRemoteDir = isValidWebDavRemoteDir(remoteDirRaw)
+        ? normalizeWebDavRemoteDir(remoteDirRaw)
+        : '';
+    final normalizedBaseUrl =
+        parseAndNormalizeWebDavBaseUrl(config.webDavBaseUrl)?.toString() ??
+        config.webDavBaseUrl.trim();
     await prefs.setBool(_kWebDavEnabledKey, config.webDavEnabled);
     await prefs.setString(_kWebDavBaseUrlKey, normalizedBaseUrl);
     await prefs.setString(_kWebDavUsernameKey, config.webDavUsername.trim());
     await prefs.setString(_kWebDavPasswordKey, config.webDavPassword);
     await prefs.setString(_kWebDavRemoteDirKey, normalizedRemoteDir);
     await prefs.setBool(_kAutoBackupEnabledKey, config.autoBackupEnabled);
-    await prefs.setString(_kBackupFrequencyKey, backupFrequencyToStorage(config.backupFrequency));
+    await prefs.setString(
+      _kBackupFrequencyKey,
+      backupFrequencyToStorage(config.backupFrequency),
+    );
   }
 }
 
@@ -233,7 +275,26 @@ class BackupStateStore {
   static const String _kLastBackupAtMsKey = 'backup_last_backup_at_ms_v1';
   static const String _kLastBackupNameKey = 'backup_last_backup_name_v1';
   static const String _kLastBackupSizeKey = 'backup_last_backup_size_b_v1';
-  static const String _kLastBackupRemoteUrlKey = 'backup_last_backup_remote_url_v1';
+  static const String _kLastBackupRemoteUrlKey =
+      'backup_last_backup_remote_url_v1';
+  static const String _kLastLocalBackupAtMsKey =
+      'backup_last_local_backup_at_ms_v1';
+  static const String _kLastLocalBackupNameKey =
+      'backup_last_local_backup_name_v1';
+  static const String _kLastLocalBackupSizeKey =
+      'backup_last_local_backup_size_b_v1';
+  static const String _kLastLocalBackupPathKey =
+      'backup_last_local_backup_path_v1';
+  static const String _kPreferredLocalBackupDirKey =
+      'backup_preferred_local_dir_v1';
+  static const String _kLastCloudFailureAtMsKey =
+      'backup_last_cloud_failure_at_ms_v1';
+  static const String _kLastCloudFailureMessageKey =
+      'backup_last_cloud_failure_message_v1';
+  static const String _kLastLocalFailureAtMsKey =
+      'backup_last_local_failure_at_ms_v1';
+  static const String _kLastLocalFailureMessageKey =
+      'backup_last_local_failure_message_v1';
   static const String _kBackupHistoryKey = 'backup_history_entries_v1';
   static const int _historyLimit = 20;
 
@@ -243,28 +304,122 @@ class BackupStateStore {
     required int sizeBytes,
     String? remoteUrl,
   }) async {
+    await setLastBackupFor(
+      target: BackupTarget.cloud,
+      at: at,
+      fileName: fileName,
+      sizeBytes: sizeBytes,
+      remoteUrl: remoteUrl,
+    );
+  }
+
+  static Future<void> setLastBackupFor({
+    required BackupTarget target,
+    required DateTime at,
+    required String fileName,
+    required int sizeBytes,
+    String? localPath,
+    String? remoteUrl,
+  }) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt(_kLastBackupAtMsKey, at.millisecondsSinceEpoch);
-    await prefs.setString(_kLastBackupNameKey, fileName);
-    await prefs.setInt(_kLastBackupSizeKey, sizeBytes);
-    if (remoteUrl == null || remoteUrl.trim().isEmpty) {
-      await prefs.remove(_kLastBackupRemoteUrlKey);
-    } else {
-      await prefs.setString(_kLastBackupRemoteUrlKey, remoteUrl.trim());
+    final keys = _keysForTarget(target);
+    await prefs.setInt(keys.lastBackupAtMsKey, at.millisecondsSinceEpoch);
+    await prefs.setString(keys.lastBackupNameKey, fileName);
+    await prefs.setInt(keys.lastBackupSizeKey, sizeBytes);
+    if (keys.lastBackupLocalPathKey != null) {
+      if (localPath == null || localPath.trim().isEmpty) {
+        await prefs.remove(keys.lastBackupLocalPathKey!);
+      } else {
+        await prefs.setString(keys.lastBackupLocalPathKey!, localPath.trim());
+      }
+    }
+    if (keys.lastBackupRemoteUrlKey != null) {
+      if (remoteUrl == null || remoteUrl.trim().isEmpty) {
+        await prefs.remove(keys.lastBackupRemoteUrlKey!);
+      } else {
+        await prefs.setString(keys.lastBackupRemoteUrlKey!, remoteUrl.trim());
+      }
     }
   }
 
   static Future<BackupLastState?> getLastBackup() async {
+    return getLastBackupFor(BackupTarget.cloud);
+  }
+
+  static Future<BackupLastState?> getLastBackupFor(BackupTarget target) async {
     final prefs = await SharedPreferences.getInstance();
-    final atMs = prefs.getInt(_kLastBackupAtMsKey);
-    final name = prefs.getString(_kLastBackupNameKey);
-    final size = prefs.getInt(_kLastBackupSizeKey);
-    if (atMs == null || name == null || name.trim().isEmpty || size == null) return null;
+    final keys = _keysForTarget(target);
+    final atMs = prefs.getInt(keys.lastBackupAtMsKey);
+    final name = prefs.getString(keys.lastBackupNameKey);
+    final size = prefs.getInt(keys.lastBackupSizeKey);
+    if (atMs == null || name == null || name.trim().isEmpty || size == null)
+      return null;
     return BackupLastState(
       at: DateTime.fromMillisecondsSinceEpoch(atMs),
       fileName: name,
       sizeBytes: size,
-      remoteUrl: prefs.getString(_kLastBackupRemoteUrlKey),
+      target: target,
+      localPath: keys.lastBackupLocalPathKey == null
+          ? null
+          : prefs.getString(keys.lastBackupLocalPathKey!),
+      remoteUrl: keys.lastBackupRemoteUrlKey == null
+          ? null
+          : prefs.getString(keys.lastBackupRemoteUrlKey!),
+    );
+  }
+
+  static Future<void> setPreferredLocalBackupDir(String? path) async {
+    final prefs = await SharedPreferences.getInstance();
+    final normalized = path?.trim() ?? '';
+    if (normalized.isEmpty) {
+      await prefs.remove(_kPreferredLocalBackupDirKey);
+      return;
+    }
+    await prefs.setString(_kPreferredLocalBackupDirKey, normalized);
+  }
+
+  static Future<String?> getPreferredLocalBackupDir() async {
+    final prefs = await SharedPreferences.getInstance();
+    final value = prefs.getString(_kPreferredLocalBackupDirKey)?.trim() ?? '';
+    return value.isEmpty ? null : value;
+  }
+
+  static Future<void> setLastFailure({
+    required BackupTarget target,
+    required String message,
+    DateTime? at,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    final keys = _keysForTarget(target);
+    final normalized = message.trim();
+    if (normalized.isEmpty) {
+      await clearLastFailure(target);
+      return;
+    }
+    await prefs.setInt(
+      keys.lastFailureAtMsKey,
+      (at ?? DateTime.now()).millisecondsSinceEpoch,
+    );
+    await prefs.setString(keys.lastFailureMessageKey, normalized);
+  }
+
+  static Future<void> clearLastFailure(BackupTarget target) async {
+    final prefs = await SharedPreferences.getInstance();
+    final keys = _keysForTarget(target);
+    await prefs.remove(keys.lastFailureAtMsKey);
+    await prefs.remove(keys.lastFailureMessageKey);
+  }
+
+  static Future<BackupFailureState?> getLastFailure(BackupTarget target) async {
+    final prefs = await SharedPreferences.getInstance();
+    final keys = _keysForTarget(target);
+    final atMs = prefs.getInt(keys.lastFailureAtMsKey);
+    final message = prefs.getString(keys.lastFailureMessageKey)?.trim() ?? '';
+    if (atMs == null || message.isEmpty) return null;
+    return BackupFailureState(
+      target: target,
+      at: DateTime.fromMillisecondsSinceEpoch(atMs),
+      message: message,
     );
   }
 
@@ -304,6 +459,29 @@ class BackupStateStore {
       return <BackupHistoryEntry>[];
     }
   }
+
+  static _BackupTargetStoreKeys _keysForTarget(BackupTarget target) {
+    switch (target) {
+      case BackupTarget.cloud:
+        return const _BackupTargetStoreKeys(
+          lastBackupAtMsKey: _kLastBackupAtMsKey,
+          lastBackupNameKey: _kLastBackupNameKey,
+          lastBackupSizeKey: _kLastBackupSizeKey,
+          lastBackupRemoteUrlKey: _kLastBackupRemoteUrlKey,
+          lastFailureAtMsKey: _kLastCloudFailureAtMsKey,
+          lastFailureMessageKey: _kLastCloudFailureMessageKey,
+        );
+      case BackupTarget.local:
+        return const _BackupTargetStoreKeys(
+          lastBackupAtMsKey: _kLastLocalBackupAtMsKey,
+          lastBackupNameKey: _kLastLocalBackupNameKey,
+          lastBackupSizeKey: _kLastLocalBackupSizeKey,
+          lastBackupLocalPathKey: _kLastLocalBackupPathKey,
+          lastFailureAtMsKey: _kLastLocalFailureAtMsKey,
+          lastFailureMessageKey: _kLastLocalFailureMessageKey,
+        );
+    }
+  }
 }
 
 class BackupLastState {
@@ -311,11 +489,47 @@ class BackupLastState {
     required this.at,
     required this.fileName,
     required this.sizeBytes,
+    this.target = BackupTarget.cloud,
+    this.localPath,
     this.remoteUrl,
   });
 
   final DateTime at;
   final String fileName;
   final int sizeBytes;
+  final BackupTarget target;
+  final String? localPath;
   final String? remoteUrl;
+}
+
+class BackupFailureState {
+  const BackupFailureState({
+    required this.target,
+    required this.at,
+    required this.message,
+  });
+
+  final BackupTarget target;
+  final DateTime at;
+  final String message;
+}
+
+class _BackupTargetStoreKeys {
+  const _BackupTargetStoreKeys({
+    required this.lastBackupAtMsKey,
+    required this.lastBackupNameKey,
+    required this.lastBackupSizeKey,
+    required this.lastFailureAtMsKey,
+    required this.lastFailureMessageKey,
+    this.lastBackupLocalPathKey,
+    this.lastBackupRemoteUrlKey,
+  });
+
+  final String lastBackupAtMsKey;
+  final String lastBackupNameKey;
+  final String lastBackupSizeKey;
+  final String? lastBackupLocalPathKey;
+  final String? lastBackupRemoteUrlKey;
+  final String lastFailureAtMsKey;
+  final String lastFailureMessageKey;
 }
