@@ -6,6 +6,64 @@ import 'package:newshangli/backup/supabase_sync_service.dart';
 import 'package:newshangli/data/local/drift/app_database.dart';
 
 void main() {
+  group('SupabaseSyncService cloud payload rules', () {
+    test('account book cloud row keeps book_time as millisecond integer', () {
+      final now = DateTime(2026, 4, 25, 12, 30).millisecondsSinceEpoch;
+      final row = SupabaseSyncService.accountBookToCloudRow(
+        AccountBook(
+          bookId: 'book_1',
+          name: '测试账簿',
+          reasonType: '',
+          themeColor: '#312E81',
+          icon: null,
+          description: null,
+          attachments: const <String>['a.png'],
+          bookTime: now,
+          isDefault: 1,
+          createdAt: now - 1000,
+          updatedAt: now,
+          deletedAt: null,
+        ),
+        'user_1',
+      );
+
+      expect(row['book_time'], now);
+      expect(row['book_time'], isA<int>());
+      expect(row['user_id'], 'user_1');
+    });
+
+    test('normalize media path for cloud converts absolute local path', () {
+      final mediaRoot = r'C:\app\data\media';
+      final absolute = r'C:\app\data\media\attachments\att_1.jpg';
+
+      final value = SupabaseSyncService.normalizeMediaPathForCloud(
+        absolute,
+        mediaRootPath: mediaRoot,
+      );
+
+      expect(value, 'attachments/att_1.jpg');
+    });
+
+    test(
+      'materialize cloud media path supports portable and legacy values',
+      () {
+        final mediaRoot = r'C:\restore\data\media';
+
+        final portable = SupabaseSyncService.materializeCloudMediaPath(
+          'attachments/att_1.jpg',
+          mediaRootPath: mediaRoot,
+        );
+        final legacyAbsolute = SupabaseSyncService.materializeCloudMediaPath(
+          r'D:\old\device\media\avatars\avatar_1.png',
+          mediaRootPath: mediaRoot,
+        );
+
+        expect(portable, r'C:\restore\data\media\attachments\att_1.jpg');
+        expect(legacyAbsolute, r'C:\restore\data\media\avatars\avatar_1.png');
+      },
+    );
+  });
+
   group('SupabaseSyncService cloud restore merge rules', () {
     late AppDatabase db;
 

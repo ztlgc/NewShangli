@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -8,6 +9,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../backup/cloud_backup_service.dart';
 import '../../backup/supabase_sync_service.dart';
 import '../../data/local/drift/app_database.dart';
+import '../../media/media_storage_service.dart';
 import '../app_database_scope.dart';
 import '../app_scaffold.dart';
 import '../app_tokens.dart';
@@ -433,7 +435,9 @@ class _CloudSyncController extends ChangeNotifier {
         (SELECT COUNT(*) FROM relation_type) AS relation_types,
         (SELECT COUNT(*) FROM contact_relation) AS contact_relations
       ''').getSingle();
-    return _SyncDataCounts.fromRow(row.data);
+    final base = _SyncDataCounts.fromRow(row.data);
+    final attachments = await _countLocalAttachments();
+    return base.copyWith(attachments: attachments);
   }
 
   Stream<_SyncDataCounts> _watchLocalDataCounts(AppDatabase db) {
@@ -458,9 +462,11 @@ class _CloudSyncController extends ChangeNotifier {
           },
         )
         .watch()
-        .map((rows) {
+        .asyncMap((rows) async {
           if (rows.isEmpty) return _SyncDataCounts.zero;
-          return _SyncDataCounts.fromRow(rows.first.data);
+          final base = _SyncDataCounts.fromRow(rows.first.data);
+          final attachments = await _countLocalAttachments();
+          return base.copyWith(attachments: attachments);
         });
   }
 
@@ -479,6 +485,7 @@ class _CloudSyncController extends ChangeNotifier {
       countRows('reason'),
       countRows('relation_type'),
       countRows('contact_relation'),
+      _countCloudAttachments(user.id),
     ]);
 
     return _SyncDataCounts(
@@ -488,7 +495,43 @@ class _CloudSyncController extends ChangeNotifier {
       reasons: results[3],
       relationTypes: results[4],
       contactRelations: results[5],
+      attachments: results[6],
     );
+  }
+
+  Future<int> _countLocalAttachments() async {
+    final mediaRoot = await MediaStorageService().mediaRootDir();
+    if (!await mediaRoot.exists()) return 0;
+    final entities = await mediaRoot
+        .list(recursive: true, followLinks: false)
+        .toList();
+    return entities.whereType<File>().length;
+  }
+
+  Future<int> _countCloudAttachments(String userId) async {
+    final storage = Supabase.instance.client.storage.from('media');
+    final rootEntries = await storage.list(path: userId);
+    final rootFiles = rootEntries.where((entry) {
+      final name = entry.name.trim();
+      return name.isNotEmpty &&
+          name != '.emptyFolderPlaceholder' &&
+          name != 'avatars' &&
+          name != 'attachments';
+    });
+
+    final avatarEntries = await storage.list(path: '$userId/avatars');
+    final attachmentEntries = await storage.list(path: '$userId/attachments');
+
+    int countFiles(List<FileObject> entries) {
+      return entries.where((entry) {
+        final name = entry.name.trim();
+        return name.isNotEmpty && name != '.emptyFolderPlaceholder';
+      }).length;
+    }
+
+    return rootFiles.length +
+        countFiles(avatarEntries) +
+        countFiles(attachmentEntries);
   }
 
   AppDatabase _requireDb() {
@@ -739,7 +782,7 @@ class _CloudSyncPageState extends State<CloudSyncPage> {
                     const SizedBox(height: 12),
                     _buildActionTile(
                       title: '同步本地到云端',
-                      subtitle: '上传当前本地 ${state.localCounts.total} 条同步数据',
+                      subtitle: '上传当前本地 ${state.localCounts.total} 项同步内容',
                       icon: FontAwesomeIcons.cloudArrowUp,
                       onTap: state.isWorking || !state.isLoggedIn
                           ? null
@@ -751,7 +794,7 @@ class _CloudSyncPageState extends State<CloudSyncPage> {
                       title: '从云端恢复数据',
                       subtitle: state.cloudCounts == null
                           ? '先读取云端统计后再恢复'
-                          : '拉取云端 ${state.cloudCounts!.total} 条同步数据',
+                          : '拉取云端 ${state.cloudCounts!.total} 项同步内容',
                       icon: FontAwesomeIcons.cloudArrowDown,
                       onTap: state.isWorking || !state.isLoggedIn
                           ? null
@@ -1184,7 +1227,7 @@ class _CloudSyncPageState extends State<CloudSyncPage> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '统计与同步范围一致：账簿、关系人、礼金记录、事由、关系类型、联系人关系。附件媒体会随同步流程处理，但不计入条目数。',
+                  '统计与同步范围一致：账簿、关系人、礼金记录、事由、关系类型、联系人关系，以及附件媒体文件。',
                   style: AppTypography.base(
                     fontSize: AppTypography.fs12,
                     fontWeight: AppTypography.regular,
@@ -1314,6 +1357,7 @@ class _SyncDataCounts {
     required this.reasons,
     required this.relationTypes,
     required this.contactRelations,
+    required this.attachments,
   });
 
   static const zero = _SyncDataCounts(
@@ -1323,6 +1367,7 @@ class _SyncDataCounts {
     reasons: 0,
     relationTypes: 0,
     contactRelations: 0,
+    attachments: 0,
   );
 
   factory _SyncDataCounts.fromRow(Map<String, Object?> row) {
@@ -1340,6 +1385,7 @@ class _SyncDataCounts {
       reasons: readCount('reasons'),
       relationTypes: readCount('relation_types'),
       contactRelations: readCount('contact_relations'),
+      attachments: readCount('attachments'),
     );
   }
 
@@ -1349,6 +1395,27 @@ class _SyncDataCounts {
   final int reasons;
   final int relationTypes;
   final int contactRelations;
+  final int attachments;
+
+  _SyncDataCounts copyWith({
+    int? accountBooks,
+    int? persons,
+    int? giftRecords,
+    int? reasons,
+    int? relationTypes,
+    int? contactRelations,
+    int? attachments,
+  }) {
+    return _SyncDataCounts(
+      accountBooks: accountBooks ?? this.accountBooks,
+      persons: persons ?? this.persons,
+      giftRecords: giftRecords ?? this.giftRecords,
+      reasons: reasons ?? this.reasons,
+      relationTypes: relationTypes ?? this.relationTypes,
+      contactRelations: contactRelations ?? this.contactRelations,
+      attachments: attachments ?? this.attachments,
+    );
+  }
 
   int get total =>
       accountBooks +
@@ -1356,7 +1423,8 @@ class _SyncDataCounts {
       giftRecords +
       reasons +
       relationTypes +
-      contactRelations;
+      contactRelations +
+      attachments;
 }
 
 class _MiniMetric extends StatelessWidget {
@@ -1493,6 +1561,7 @@ class _CountsBreakdown extends StatelessWidget {
       ('事由', localCounts.reasons, cloud?.reasons),
       ('关系类型', localCounts.relationTypes, cloud?.relationTypes),
       ('联系人关系', localCounts.contactRelations, cloud?.contactRelations),
+      ('附件', localCounts.attachments, cloud?.attachments),
     ];
 
     return Column(

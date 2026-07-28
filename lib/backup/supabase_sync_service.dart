@@ -12,14 +12,6 @@ class SupabaseSyncService {
 
   SupabaseSyncService(this._db);
 
-  String _formatDateYmdFromMillis(int millis) {
-    final d = DateTime.fromMillisecondsSinceEpoch(millis);
-    final y = d.year.toString().padLeft(4, '0');
-    final m = d.month.toString().padLeft(2, '0');
-    final day = d.day.toString().padLeft(2, '0');
-    return '$y-$m-$day';
-  }
-
   static int _parseBookTimeMillisValue(dynamic value) {
     if (value == null) {
       return DateTime.now().millisecondsSinceEpoch;
@@ -59,6 +51,162 @@ class SupabaseSyncService {
     if (value is num) return value != 0;
     if (value is String) return value.toLowerCase() == 'true' || value == '1';
     return false;
+  }
+
+  static bool _looksLikeRemoteUrl(String value) {
+    return value.startsWith('http://') || value.startsWith('https://');
+  }
+
+  static bool _isAbsolutePath(String value) {
+    return p.isAbsolute(value) || RegExp(r'^[A-Za-z]:[\\/]').hasMatch(value);
+  }
+
+  static bool _isWithinRoot(String targetPath, String rootPath) {
+    final normalizedTarget = p.normalize(targetPath);
+    final normalizedRoot = p.normalize(rootPath);
+    final target = Platform.isWindows
+        ? normalizedTarget.toLowerCase()
+        : normalizedTarget;
+    final root = Platform.isWindows
+        ? normalizedRoot.toLowerCase()
+        : normalizedRoot;
+    if (target == root) return true;
+    return target.startsWith('$root${Platform.pathSeparator}');
+  }
+
+  static String _stripLeadingCurrentDir(String value) {
+    if (value == '.') return '';
+    if (value.startsWith('./')) return value.substring(2);
+    return value;
+  }
+
+  /// 将本地存储路径提取为可跨设备复用的媒体相对路径。
+  ///
+  /// 例如：
+  /// - `C:\foo\media\attachments\a.jpg` -> `attachments/a.jpg`
+  /// - `media/avatars\a.png` -> `avatars/a.png`
+  @visibleForTesting
+  static String? extractPortableMediaRelativePath(String? storedPath) {
+    final raw = (storedPath ?? '').trim();
+    if (raw.isEmpty) return null;
+    if (_looksLikeRemoteUrl(raw)) return raw;
+
+    String normalized = raw;
+    if (raw.startsWith('file://')) {
+      try {
+        normalized = Uri.parse(raw).toFilePath(windows: Platform.isWindows);
+      } catch (_) {
+        normalized = raw.substring('file://'.length);
+      }
+    }
+
+    normalized = normalized.replaceAll('\\', '/');
+    final mediaMarker = '/media/';
+    final markerIndex = normalized.toLowerCase().lastIndexOf(mediaMarker);
+    if (markerIndex >= 0) {
+      final relative = normalized.substring(markerIndex + mediaMarker.length);
+      return _stripLeadingCurrentDir(p.posix.normalize(relative));
+    }
+
+    var candidate = normalized;
+    if (candidate.toLowerCase().startsWith('media/')) {
+      candidate = candidate.substring('media/'.length);
+    } else if (candidate.startsWith('/')) {
+      candidate = candidate.substring(1);
+    }
+
+    if (candidate.startsWith('attachments/') ||
+        candidate.startsWith('avatars/')) {
+      return _stripLeadingCurrentDir(p.posix.normalize(candidate));
+    }
+
+    if (!_isAbsolutePath(raw)) {
+      return _stripLeadingCurrentDir(p.posix.normalize(candidate));
+    }
+
+    return null;
+  }
+
+  /// 将本地数据库中的媒体路径规范化为云端可存储的相对路径。
+  @visibleForTesting
+  static String? normalizeMediaPathForCloud(
+    String? storedPath, {
+    required String mediaRootPath,
+  }) {
+    final raw = (storedPath ?? '').trim();
+    if (raw.isEmpty) return null;
+    if (_looksLikeRemoteUrl(raw)) return raw;
+
+    if (_isAbsolutePath(raw)) {
+      final normalizedAbsolute = p.normalize(raw);
+      if (_isWithinRoot(normalizedAbsolute, mediaRootPath)) {
+        final relative = p.relative(normalizedAbsolute, from: mediaRootPath);
+        return _stripLeadingCurrentDir(
+          p.posix.normalize(relative.replaceAll('\\', '/')),
+        );
+      }
+    }
+
+    return extractPortableMediaRelativePath(raw);
+  }
+
+  static List<String>? _normalizeMediaPathListForCloud(
+    List<String>? storedPaths, {
+    required String mediaRootPath,
+  }) {
+    if (storedPaths == null || storedPaths.isEmpty) return null;
+    final normalized = storedPaths
+        .map(
+          (path) =>
+              normalizeMediaPathForCloud(path, mediaRootPath: mediaRootPath),
+        )
+        .whereType<String>()
+        .where((path) => path.trim().isNotEmpty)
+        .toList();
+    if (normalized.isEmpty) return null;
+    return normalized;
+  }
+
+  /// 将云端存储的相对路径还原为当前设备的本地媒体绝对路径。
+  ///
+  /// 这一步兼容两种旧数据：
+  /// - 云端已经是 `attachments/a.jpg` 这种相对路径
+  /// - 云端历史上写入了其它设备的绝对路径，但仍包含 `media/...`
+  @visibleForTesting
+  static String? materializeCloudMediaPath(
+    String? storedPath, {
+    required String mediaRootPath,
+  }) {
+    final raw = (storedPath ?? '').trim();
+    if (raw.isEmpty) return null;
+    if (_looksLikeRemoteUrl(raw)) return raw;
+
+    final relative = extractPortableMediaRelativePath(raw);
+    if (relative == null || relative.isEmpty) return null;
+    final segments = p.posix
+        .normalize(relative)
+        .split('/')
+        .where((segment) => segment.isNotEmpty && segment != '.')
+        .toList();
+    if (segments.isEmpty) return null;
+    return p.joinAll(<String>[mediaRootPath, ...segments]);
+  }
+
+  static List<String>? _materializeCloudMediaPathList(
+    List<String>? storedPaths, {
+    required String mediaRootPath,
+  }) {
+    if (storedPaths == null || storedPaths.isEmpty) return null;
+    final materialized = storedPaths
+        .map(
+          (path) =>
+              materializeCloudMediaPath(path, mediaRootPath: mediaRootPath),
+        )
+        .whereType<String>()
+        .where((path) => path.trim().isNotEmpty)
+        .toList();
+    if (materialized.isEmpty) return null;
+    return materialized;
   }
 
   static List<Map<String, dynamic>> _rows(List<dynamic> data) {
@@ -103,6 +251,7 @@ class SupabaseSyncService {
     List<Map<String, dynamic>> rows,
     Map<String, String> bookIdMap, {
     required AccountBook? localDefaultBeforeRestore,
+    required String mediaRootPath,
   }) async {
     if (rows.isEmpty) return;
 
@@ -138,7 +287,10 @@ class SupabaseSyncService {
           icon: _nullableStringValue(row['icon']),
           description: _nullableStringValue(row['description']),
           attachments: row['attachments'] != null
-              ? List<String>.from(row['attachments'] as Iterable)
+              ? _materializeCloudMediaPathList(
+                  List<String>.from(row['attachments'] as Iterable),
+                  mediaRootPath: mediaRootPath,
+                )
               : null,
           bookTime: _parseBookTimeMillisValue(row['book_time']),
           isDefault: _intValue(row['is_default']),
@@ -186,6 +338,7 @@ class SupabaseSyncService {
     AppDatabase db,
     List<Map<String, dynamic>> rows,
     Map<String, String> bookIdMap,
+    String mediaRootPath,
   ) async {
     if (rows.isEmpty) return;
     await db.batch((batch) {
@@ -202,7 +355,10 @@ class SupabaseSyncService {
             phone: _nullableStringValue(p['phone']),
             birthday: _nullableStringValue(p['birthday']),
             anniversary: _nullableStringValue(p['anniversary']),
-            avatarUri: _nullableStringValue(p['avatar_uri']),
+            avatarUri: materializeCloudMediaPath(
+              _nullableStringValue(p['avatar_uri']),
+              mediaRootPath: mediaRootPath,
+            ),
             note: _nullableStringValue(p['note']),
             createdAt: _intValue(p['created_at']),
             updatedAt: _intValue(p['updated_at']),
@@ -218,6 +374,7 @@ class SupabaseSyncService {
     AppDatabase db,
     List<Map<String, dynamic>> rows,
     Map<String, String> bookIdMap,
+    String mediaRootPath,
   ) async {
     if (rows.isEmpty) return;
     await db.batch((batch) {
@@ -238,7 +395,10 @@ class SupabaseSyncService {
             paymentMethod: _nullableStringValue(r['payment_method']),
             note: _nullableStringValue(r['note']),
             attachments: r['attachments'] != null
-                ? List<String>.from(r['attachments'] as Iterable)
+                ? _materializeCloudMediaPathList(
+                    List<String>.from(r['attachments'] as Iterable),
+                    mediaRootPath: mediaRootPath,
+                  )
                 : null,
             createdAt: _intValue(r['created_at']),
             updatedAt: _intValue(r['updated_at']),
@@ -380,6 +540,7 @@ class SupabaseSyncService {
     required AppDatabase db,
     required _CloudRestorePayload payload,
     AccountBook? localDefaultBeforeRestore,
+    String mediaRootPath = 'media',
   }) async {
     final bookIdMap = <String, String>{};
     final effectiveLocalDefault =
@@ -389,9 +550,10 @@ class SupabaseSyncService {
       payload.books,
       bookIdMap,
       localDefaultBeforeRestore: effectiveLocalDefault,
+      mediaRootPath: mediaRootPath,
     );
-    await _restorePersons(db, payload.persons, bookIdMap);
-    await _restoreGiftRecords(db, payload.records, bookIdMap);
+    await _restorePersons(db, payload.persons, bookIdMap, mediaRootPath);
+    await _restoreGiftRecords(db, payload.records, bookIdMap, mediaRootPath);
     await _restoreReasons(db, payload.reasons);
     await _restoreRelationTypes(db, payload.relationTypes);
     await _restoreContactRelations(db, payload.contactRelations);
@@ -420,11 +582,36 @@ class SupabaseSyncService {
     );
   }
 
+  @visibleForTesting
+  static Map<String, dynamic> accountBookToCloudRow(
+    AccountBook book,
+    String userId,
+  ) {
+    return <String, dynamic>{
+      'book_id': book.bookId,
+      'name': book.name,
+      'reason_type': book.reasonType,
+      'theme_color': book.themeColor,
+      'icon': book.icon,
+      'description': book.description,
+      'attachments': book.attachments,
+      // 云端字段与本地 Drift 一致，统一使用毫秒时间戳，避免 bigint 列收到日期字符串。
+      'book_time': book.bookTime,
+      'is_default': book.isDefault,
+      'created_at': book.createdAt,
+      'updated_at': book.updatedAt,
+      'deleted_at': book.deletedAt,
+      'user_id': userId,
+    };
+  }
+
   Future<void> syncToCloud({required void Function(String) onProgress}) async {
     final user = _supabase.auth.currentUser;
     if (user == null) {
       throw Exception('用户未登录，无法同步');
     }
+    final docs = await getApplicationDocumentsDirectory();
+    final mediaRootPath = p.join(docs.path, 'media');
 
     // 1. 同步账簿
     onProgress('正在同步账簿...');
@@ -433,19 +620,11 @@ class SupabaseSyncService {
       final booksData = books
           .map(
             (b) => {
-              'book_id': b.bookId,
-              'name': b.name,
-              'reason_type': b.reasonType,
-              'theme_color': b.themeColor,
-              'icon': b.icon,
-              'description': b.description,
-              'attachments': b.attachments,
-              'book_time': _formatDateYmdFromMillis(b.bookTime),
-              'is_default': b.isDefault,
-              'created_at': b.createdAt,
-              'updated_at': b.updatedAt,
-              'deleted_at': b.deletedAt,
-              'user_id': user.id,
+              ...accountBookToCloudRow(b, user.id),
+              'attachments': _normalizeMediaPathListForCloud(
+                b.attachments,
+                mediaRootPath: mediaRootPath,
+              ),
             },
           )
           .toList();
@@ -466,7 +645,10 @@ class SupabaseSyncService {
               'phone': p.phone,
               'birthday': p.birthday,
               'anniversary': p.anniversary,
-              'avatar_uri': p.avatarUri,
+              'avatar_uri': normalizeMediaPathForCloud(
+                p.avatarUri,
+                mediaRootPath: mediaRootPath,
+              ),
               'note': p.note,
               'created_at': p.createdAt,
               'updated_at': p.updatedAt,
@@ -495,7 +677,10 @@ class SupabaseSyncService {
               'occurred_at': r.occurredAt,
               'payment_method': r.paymentMethod,
               'note': r.note,
-              'attachments': r.attachments,
+              'attachments': _normalizeMediaPathListForCloud(
+                r.attachments,
+                mediaRootPath: mediaRootPath,
+              ),
               'created_at': r.createdAt,
               'updated_at': r.updatedAt,
               'deleted_at': r.deletedAt,
@@ -626,6 +811,8 @@ class SupabaseSyncService {
 
     // 7. 恢复附件媒体
     onProgress('正在写入恢复数据...');
+    final docs = await getApplicationDocumentsDirectory();
+    final mediaRootPath = p.join(docs.path, 'media');
     await _restoreTablesFromCloudPayload(
       db: _db,
       payload: _CloudRestorePayload(
@@ -637,6 +824,7 @@ class SupabaseSyncService {
         contactRelations: _rows(contactRelationsData),
       ),
       localDefaultBeforeRestore: localDefaultBeforeRestore,
+      mediaRootPath: mediaRootPath,
     );
     onProgress('正在拉取附件媒体...');
     await _syncMediaFromCloud(user.id, onProgress);
@@ -656,6 +844,8 @@ class SupabaseSyncService {
     final entities = await mediaDir
         .list(recursive: true, followLinks: false)
         .toList();
+    var uploadCount = 0;
+    final failedFiles = <String>[];
     for (final entity in entities) {
       if (entity is File) {
         final relative = p.relative(entity.path, from: mediaDir.path);
@@ -670,10 +860,17 @@ class SupabaseSyncService {
                 entity,
                 fileOptions: const FileOptions(upsert: true),
               );
+          uploadCount++;
         } catch (e) {
+          failedFiles.add(relative);
           onProgress('上传附件失败: $relative ($e)');
         }
       }
+    }
+
+    onProgress('附件上传完成：成功 $uploadCount 个，失败 ${failedFiles.length} 个。');
+    if (failedFiles.isNotEmpty) {
+      throw Exception('有 ${failedFiles.length} 个附件上传失败，请查看同步日志');
     }
   }
 
@@ -689,11 +886,11 @@ class SupabaseSyncService {
         await mediaDir.create(recursive: true);
       }
 
-      final candidates = <String>[
-        userId,
-        '$userId/avatars',
-        '$userId/attachments',
-      ];
+      // 当前媒体全部落在 avatars / attachments 两个目录下。
+      // 这里不再遍历根目录，避免把文件夹节点误当成文件下载。
+      final candidates = <String>['$userId/avatars', '$userId/attachments'];
+      var downloadCount = 0;
+      final failedFiles = <String>[];
       for (final prefix in candidates) {
         final List<FileObject> remoteFiles = await _supabase.storage
             .from('media')
@@ -727,15 +924,23 @@ class SupabaseSyncService {
                 .download(remotePath);
             final localFile = File(localPath);
             await localFile.writeAsBytes(bytes);
+            downloadCount++;
           } catch (e) {
+            failedFiles.add(remotePath);
             onProgress(
               '下载附件失败: ${relativePrefix.isEmpty ? file.name : '$relativePrefix/${file.name}'} ($e)',
             );
           }
         }
       }
+
+      onProgress('附件下载完成：成功 $downloadCount 个，失败 ${failedFiles.length} 个。');
+      if (failedFiles.isNotEmpty) {
+        throw Exception('有 ${failedFiles.length} 个附件下载失败，请查看同步日志');
+      }
     } catch (e) {
       onProgress('获取云端附件列表失败 ($e)');
+      rethrow;
     }
   }
 }
