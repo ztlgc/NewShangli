@@ -11,6 +11,9 @@ import '../../backup/data_backup_service.dart';
 import '../../backup/data_restore_service.dart';
 import '../../backup/webdav_client.dart';
 import '../app_database_scope.dart';
+import '../app_dialog.dart';
+import '../app_notifier.dart';
+import '../app_notification_tokens.dart';
 import '../app_tokens.dart';
 import '../app_scaffold.dart';
 import '../app_session.dart';
@@ -265,11 +268,9 @@ class _CanvasState extends State<_Canvas> {
     if (remoteDirRaw.isNotEmpty &&
         !BackupConfig.isValidWebDavRemoteDir(remoteDirRaw)) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('远程目录格式不正确')));
-        setState(() => _saving = false);
-      }
+      AppNotifier.error(context, '远程目录格式不正确');
+      setState(() => _saving = false);
+    }
       return false;
     }
     final normalizedRemoteDir = BackupConfig.normalizeWebDavRemoteDir(
@@ -283,15 +284,11 @@ class _CanvasState extends State<_Canvas> {
     try {
       await BackupConfig.save(next);
       if (!mounted) return false;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('已保存')));
+      AppNotifier.success(context, '已保存');
       return true;
     } catch (e) {
       if (!mounted) return false;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('保存失败：$e')));
+      AppNotifier.error(context, '保存失败：$e');
       return false;
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -320,9 +317,7 @@ class _CanvasState extends State<_Canvas> {
       if (fallback != null) {
         setState(() => _config = fallback);
       }
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('保存失败：$e')));
+      AppNotifier.error(context, '保存失败：$e');
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -331,24 +326,18 @@ class _CanvasState extends State<_Canvas> {
   Future<void> _runBackup() async {
     final session = AppSessionScope.of(context);
     if (!session.networkAvailable) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('网络异常，请稍后重试')));
+      AppNotifier.error(context, '网络异常，请稍后重试');
       return;
     }
     if (!_webDavReady) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('请先完善 WebDAV 配置')));
+      AppNotifier.error(context, '请先完善 WebDAV 配置');
       return;
     }
 
     final remoteDirRaw = _config.webDavRemoteDir.trim();
     if (remoteDirRaw.isNotEmpty &&
         !BackupConfig.isValidWebDavRemoteDir(remoteDirRaw)) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('远程目录格式不正确')));
+      AppNotifier.error(context, '远程目录格式不正确');
       return;
     }
     final nextConfig = _config.copyWith(
@@ -388,9 +377,7 @@ class _CanvasState extends State<_Canvas> {
         _history = history;
         _cloudFailure = cloudFailure;
       });
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('备份完成')));
+      AppNotifier.success(context, '备份完成');
     } on WebDavException catch (e) {
       await BackupStateStore.setLastFailure(
         target: BackupTarget.cloud,
@@ -434,9 +421,7 @@ class _CanvasState extends State<_Canvas> {
         });
       }
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('备份失败：$e')));
+      AppNotifier.error(context, '备份失败：$e');
     } finally {
       if (mounted) {
         setState(() {
@@ -450,16 +435,12 @@ class _CanvasState extends State<_Canvas> {
   Future<void> _testWebDav() async {
     final baseUrlRaw = _config.webDavBaseUrl.trim();
     if (baseUrlRaw.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('请先填写服务器地址')));
+      AppNotifier.warning(context, '请先填写服务器地址');
       return;
     }
     final baseUrl = BackupConfig.parseAndNormalizeWebDavBaseUrl(baseUrlRaw);
     if (baseUrl == null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('服务器地址格式不正确')));
+      AppNotifier.warning(context, '服务器地址格式不正确');
       return;
     }
     if (_config.webDavUsername.trim().isEmpty ||
@@ -491,9 +472,7 @@ class _CanvasState extends State<_Canvas> {
           BackupTarget.cloud,
         );
         setState(() => _cloudFailure = cloudFailure);
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(r.message)));
+        AppNotifier.error(context, r.message);
       } else {
         await BackupStateStore.setLastFailure(
           target: BackupTarget.cloud,
@@ -591,29 +570,16 @@ class _CanvasState extends State<_Canvas> {
     }
     if (_restoring) return;
     if (!_webDavReady) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('请先完善 WebDAV 配置')));
+      AppNotifier.error(context, '请先完善 WebDAV 配置');
       return;
     }
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('确认恢复备份'),
-          content: Text('恢复将覆盖当前本地数据：${entry.fileName}'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('取消'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('继续恢复'),
-            ),
-          ],
-        );
-      },
+    final confirmed = await AppDialog.confirm(
+      context,
+      title: '确认恢复备份',
+      message: '恢复将覆盖当前本地数据：${entry.fileName}',
+      confirmLabel: '继续恢复',
+      cancelLabel: '取消',
+      tone: AppNotificationTone.warning,
     );
     if (confirmed != true || !mounted) return;
 
@@ -648,9 +614,7 @@ class _CanvasState extends State<_Canvas> {
       );
       if (!mounted) return;
       setState(() => _cloudFailure = cloudFailure);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('恢复成功')));
+      AppNotifier.success(context, '恢复成功');
     } catch (e) {
       await BackupStateStore.setLastFailure(
         target: BackupTarget.cloud,
@@ -733,10 +697,9 @@ class _CanvasState extends State<_Canvas> {
         await _refreshLocalDirectoryInfo(preferredOutputDir: null);
         await _setLocalFailure('所选目录当前不可写，已继续使用默认备份目录');
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('所选目录当前不可写，已继续使用默认备份目录'),
-          ),
+        AppNotifier.warning(
+          context,
+          '所选目录当前不可写，已继续使用默认备份目录',
         );
         return;
       }
@@ -745,14 +708,13 @@ class _CanvasState extends State<_Canvas> {
         preferredOutputDir: pickedInfo.directory.path,
       );
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('已更新本地备份目录')));
+      AppNotifier.success(context, '已更新本地备份目录');
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
+      AppNotifier.warning(
         context,
-      ).showSnackBar(const SnackBar(content: Text('当前平台暂不支持选择目录，继续使用默认目录')));
+        '当前平台暂不支持选择目录，继续使用默认目录',
+      );
     }
   }
 
@@ -850,9 +812,7 @@ class _CanvasState extends State<_Canvas> {
     if (result == null || result.files.isEmpty) return;
     final picked = result.files.first;
     if (picked.path == null || picked.path!.trim().isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('无法读取备份文件路径，请重试')));
+      AppNotifier.warning(context, '无法读取备份文件路径，请重试');
       return;
     }
     await _restoreLocalZipFile(
@@ -866,9 +826,7 @@ class _CanvasState extends State<_Canvas> {
     if (localPath.isEmpty) {
       await _setLocalFailure('本地备份记录缺少文件路径');
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('本地备份记录缺少文件路径')));
+      AppNotifier.warning(context, '本地备份记录缺少文件路径');
       return;
     }
     if (!await File(localPath).exists()) {
@@ -933,15 +891,11 @@ class _CanvasState extends State<_Canvas> {
       );
       if (!mounted) return;
       setState(() => _localFailure = localFailure);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('本地恢复成功')));
+      AppNotifier.success(context, '本地恢复成功');
     } catch (e) {
       await _setLocalFailure(e.toString());
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('本地恢复失败：$e')));
+      AppNotifier.error(context, '本地恢复失败：$e');
     } finally {
       if (mounted) {
         setState(() {

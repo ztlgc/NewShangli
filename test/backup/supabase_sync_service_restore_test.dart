@@ -62,6 +62,46 @@ void main() {
         expect(legacyAbsolute, r'C:\restore\data\media\avatars\avatar_1.png');
       },
     );
+
+    test('cloud restore backfills normalized_name for legacy rows', () async {
+      final db = AppDatabase.forTesting(NativeDatabase.memory());
+      addTearDown(() async {
+        await db.close();
+      });
+
+      final now = DateTime(2026, 4, 25, 12, 30).millisecondsSinceEpoch;
+
+      await SupabaseSyncService.restoreTablesForTesting(
+        db: db,
+        booksData: const [],
+        reasonsData: [
+          {
+            'reason_id': 'cloud_reason',
+            'name': 'Wedding',
+            'description': 'cloud',
+            'enabled': true,
+            'created_at': now - 1000,
+            'updated_at': now,
+          },
+        ],
+        relationTypesData: [
+          {
+            'type_id': 'cloud_type',
+            'name': 'Friend',
+            'created_at': now - 1000,
+            'updated_at': now,
+          },
+        ],
+      );
+
+      final reason = await db.reasonsDao.findById('cloud_reason');
+      final relationType = await db.relationTypesDao.findById('cloud_type');
+
+      expect(reason, isNotNull);
+      expect(reason!.normalizedName, 'wedding');
+      expect(relationType, isNotNull);
+      expect(relationType!.normalizedName, 'friend');
+    });
   });
 
   group('SupabaseSyncService cloud restore merge rules', () {
@@ -164,152 +204,158 @@ void main() {
       expect(record!.bookId, localDefaultId);
     });
 
-    test('same reason and same contact relation use cloud version', () async {
-      const bookId = 'book_1';
-      const p1 = 'person_1';
-      const p2 = 'person_2';
-      const localTypeId = 'local_type';
-      const cloudTypeId = 'cloud_type';
-      final now = DateTime(2026, 4, 25).millisecondsSinceEpoch;
+    test(
+      'same reason and same contact relation use cloud version case-insensitively',
+      () async {
+        const bookId = 'book_1';
+        const p1 = 'person_1';
+        const p2 = 'person_2';
+        const localTypeId = 'local_type';
+        const cloudTypeId = 'cloud_type';
+        final now = DateTime(2026, 4, 25).millisecondsSinceEpoch;
 
-      await db
-          .into(db.accountBooks)
-          .insert(
-            AccountBooksCompanion.insert(
-              bookId: const Value(bookId),
-              name: 'Book',
-              isDefault: const Value(1),
-              createdAt: now,
-              updatedAt: now,
-            ),
-          );
-      await db
-          .into(db.persons)
-          .insert(
-            PersonsCompanion.insert(
-              personId: const Value(p1),
-              bookId: bookId,
-              name: 'Alice',
-              createdAt: now,
-              updatedAt: now,
-            ),
-          );
-      await db
-          .into(db.persons)
-          .insert(
-            PersonsCompanion.insert(
-              personId: const Value(p2),
-              bookId: bookId,
-              name: 'Bob',
-              createdAt: now,
-              updatedAt: now,
-            ),
-          );
-      await db
-          .into(db.reasons)
-          .insert(
-            ReasonsCompanion.insert(
-              reasonId: 'local_reason',
-              name: 'Wedding',
-              description: const Value('local reason'),
-              enabled: const Value(false),
-              createdAt: now - 2000,
-              updatedAt: now - 2000,
-            ),
-          );
-      await db
-          .into(db.relationTypes)
-          .insert(
-            RelationTypesCompanion.insert(
-              typeId: localTypeId,
-              name: 'Friend',
-              createdAt: now - 2000,
-              updatedAt: now - 2000,
-            ),
-          );
-      await db
-          .into(db.contactRelations)
-          .insert(
-            ContactRelationsCompanion.insert(
-              relationId: 'local_relation',
-              personAId: p1,
-              personBId: p2,
-              typeId: localTypeId,
-              note: const Value('local relation'),
-              createdAt: now - 2000,
-              updatedAt: now - 2000,
-            ),
-          );
+        await db
+            .into(db.accountBooks)
+            .insert(
+              AccountBooksCompanion.insert(
+                bookId: const Value(bookId),
+                name: 'Book',
+                isDefault: const Value(1),
+                createdAt: now,
+                updatedAt: now,
+              ),
+            );
+        await db
+            .into(db.persons)
+            .insert(
+              PersonsCompanion.insert(
+                personId: const Value(p1),
+                bookId: bookId,
+                name: 'Alice',
+                createdAt: now,
+                updatedAt: now,
+              ),
+            );
+        await db
+            .into(db.persons)
+            .insert(
+              PersonsCompanion.insert(
+                personId: const Value(p2),
+                bookId: bookId,
+                name: 'Bob',
+                createdAt: now,
+                updatedAt: now,
+              ),
+            );
+        await db
+            .into(db.reasons)
+            .insert(
+              ReasonsCompanion.insert(
+                reasonId: 'local_reason',
+                name: 'Wedding',
+                normalizedName: 'wedding',
+                description: const Value('local reason'),
+                enabled: const Value(false),
+                createdAt: now - 2000,
+                updatedAt: now - 2000,
+              ),
+            );
+        await db
+            .into(db.relationTypes)
+            .insert(
+              RelationTypesCompanion.insert(
+                typeId: localTypeId,
+                name: 'Friend',
+                normalizedName: 'friend',
+                createdAt: now - 2000,
+                updatedAt: now - 2000,
+              ),
+            );
+        await db
+            .into(db.contactRelations)
+            .insert(
+              ContactRelationsCompanion.insert(
+                relationId: 'local_relation',
+                personAId: p1,
+                personBId: p2,
+                typeId: localTypeId,
+                note: const Value('local relation'),
+                createdAt: now - 2000,
+                updatedAt: now - 2000,
+              ),
+            );
 
-      await SupabaseSyncService.restoreTablesForTesting(
-        db: db,
-        booksData: [
-          {
-            'book_id': bookId,
-            'name': 'Book',
-            'reason_type': '',
-            'theme_color': '#312E81',
-            'icon': null,
-            'description': null,
-            'book_time': now,
-            'is_default': 1,
-            'created_at': now,
-            'updated_at': now,
-            'deleted_at': null,
-          },
-        ],
-        reasonsData: [
-          {
-            'reason_id': 'cloud_reason',
-            'name': 'Wedding',
-            'description': 'cloud reason',
-            'enabled': true,
-            'created_at': now,
-            'updated_at': now,
-          },
-        ],
-        relationTypesData: [
-          {
-            'type_id': cloudTypeId,
-            'name': 'Friend',
-            'created_at': now,
-            'updated_at': now,
-          },
-        ],
-        contactRelationsData: [
-          {
-            'relation_id': 'cloud_relation',
-            'person_a_id': p2,
-            'person_b_id': p1,
-            'type_id': cloudTypeId,
-            'note': 'cloud relation',
-            'created_at': now,
-            'updated_at': now,
-          },
-        ],
-      );
+        await SupabaseSyncService.restoreTablesForTesting(
+          db: db,
+          booksData: [
+            {
+              'book_id': bookId,
+              'name': 'Book',
+              'reason_type': '',
+              'theme_color': '#312E81',
+              'icon': null,
+              'description': null,
+              'book_time': now,
+              'is_default': 1,
+              'created_at': now,
+              'updated_at': now,
+              'deleted_at': null,
+            },
+          ],
+          reasonsData: [
+            {
+              'reason_id': 'cloud_reason',
+              'name': 'wedding',
+              'description': 'cloud reason',
+              'enabled': true,
+              'created_at': now,
+              'updated_at': now,
+            },
+          ],
+          relationTypesData: [
+            {
+              'type_id': cloudTypeId,
+              'name': 'friend',
+              'created_at': now,
+              'updated_at': now,
+            },
+          ],
+          contactRelationsData: [
+            {
+              'relation_id': 'cloud_relation',
+              'person_a_id': p2,
+              'person_b_id': p1,
+              'type_id': cloudTypeId,
+              'note': 'cloud relation',
+              'created_at': now,
+              'updated_at': now,
+            },
+          ],
+        );
 
-      final reasons = await db.reasonsDao.listAll();
-      expect(reasons.where((reason) => reason.name == 'Wedding'), hasLength(1));
-      final reason = reasons.singleWhere((reason) => reason.name == 'Wedding');
-      expect(reason.reasonId, 'cloud_reason');
-      expect(reason.description, 'cloud reason');
-      expect(reason.enabled, isTrue);
+        final reasons = await db.reasonsDao.listAll();
+        expect(reasons, hasLength(1));
+        final reason = reasons.single;
+        expect(reason.reasonId, 'cloud_reason');
+        expect(reason.name, 'wedding');
+        expect(reason.normalizedName, 'wedding');
+        expect(reason.description, 'cloud reason');
+        expect(reason.enabled, isTrue);
 
-      final relationTypes = await db.relationTypesDao.listAll();
-      expect(
-        relationTypes.where((type) => type.name == 'Friend'),
-        hasLength(1),
-      );
-      expect(relationTypes.single.typeId, cloudTypeId);
+        final relationTypes = await db.relationTypesDao.listAll();
+        expect(relationTypes, hasLength(1));
+        expect(relationTypes.single.typeId, cloudTypeId);
+        expect(relationTypes.single.name, 'friend');
+        expect(relationTypes.single.normalizedName, 'friend');
 
-      final relations = await db.select(db.contactRelations).get();
-      expect(relations, hasLength(1));
-      expect(relations.single.relationId, 'cloud_relation');
-      expect(relations.single.personAId, p1);
-      expect(relations.single.personBId, p2);
-      expect(relations.single.typeId, cloudTypeId);
-      expect(relations.single.note, 'cloud relation');
-    });
+        final relations = await db.select(db.contactRelations).get();
+        expect(relations, hasLength(1));
+        expect(relations.single.relationId, 'cloud_relation');
+        expect(relations.single.personAId, p1);
+        expect(relations.single.personBId, p2);
+        expect(relations.single.typeId, cloudTypeId);
+        expect(relations.single.note, 'cloud relation');
+      },
+    );
   });
 }

@@ -9,10 +9,12 @@ import 'package:lunar/lunar.dart';
 import '../../data/local/drift/app_database.dart';
 import '../../import/default_book_service.dart';
 import '../../media/media_storage_service.dart';
+import '../app_database_scope.dart';
+import '../app_dialog.dart';
+import '../app_notifier.dart';
+import '../app_notification_tokens.dart';
 import '../app_tokens.dart';
 import '../app_scaffold.dart';
-import '../app_database_scope.dart';
-import '../app_toast.dart';
 import '../contact_avatar.dart';
 import '../components.dart';
 import '../edit_protection_guard.dart';
@@ -598,33 +600,19 @@ class _PersonEditPageState extends State<PersonEditPage> {
     if (!mounted) return;
     final db = AppDatabaseScope.of(context);
     final name = _nameCtrl.text.trim().isEmpty ? '该联系人' : _nameCtrl.text.trim();
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (context) {
-        return Align(
-          alignment: Alignment.center,
-          child: AlertDialog(
-            title: const Text('删除联系人'),
-            content: Text('确认删除「$name」？删除后将进入回收站。'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(false),
-                child: const Text('取消'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(true),
-                child: const Text('删除'),
-              ),
-            ],
-          ),
-        );
-      },
+    final ok = await AppDialog.confirm(
+      context,
+      title: '删除联系人',
+      message: '确认删除「$name」？删除后将进入回收站。',
+      confirmLabel: '删除',
+      cancelLabel: '取消',
+      tone: AppNotificationTone.error,
     );
     if (!mounted || ok != true) return;
     await db.personsDao.deleteById(widget.personId!);
     if (!mounted) return;
     Navigator.of(context).pop(true);
-    _toast(context, '已移入回收站');
+    AppNotifier.success(context, '已移入回收站');
   }
 
   Future<void> _loadPersonFromDrift(String personId) async {
@@ -804,35 +792,22 @@ class _PersonEditPageState extends State<PersonEditPage> {
   }
 
   Future<void> _inputCustomRelationship() async {
-    final ctrl = TextEditingController();
-    final ok = await showDialog<String>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('自定义关系类型'),
-          content: TextField(
-            controller: ctrl,
-            autofocus: true,
-            decoration: const InputDecoration(hintText: '请输入关系名称'),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('取消'),
-            ),
-            TextButton(
-              onPressed: () {
-                final text = ctrl.text.trim();
-                if (text.isNotEmpty) Navigator.pop(context, text);
-              },
-              child: const Text('确定'),
-            ),
-          ],
-        );
-      },
+    final input = await AppDialog.showInput(
+      context,
+      title: '自定义关系类型',
+      fields: [
+        AppDialogField(
+          id: 'value',
+          label: '关系名称',
+          hint: '请输入关系名称',
+        ),
+      ],
+      confirmLabel: '确定',
+      cancelLabel: '取消',
     );
     if (!mounted) return;
-    if (ok != null && ok.isNotEmpty) {
+    final ok = input?['value']?.trim() ?? '';
+    if (ok.isNotEmpty) {
       try {
         final db = AppDatabaseScope.of(context);
         await db.relationTypesDao.create(name: ok);
@@ -865,7 +840,7 @@ class _PersonEditPageState extends State<PersonEditPage> {
   }
 
   void _toast(BuildContext context, String message) {
-    AppToast.show(context, message, duration: const Duration(seconds: 2));
+    AppNotifier.info(context, message);
   }
 }
 

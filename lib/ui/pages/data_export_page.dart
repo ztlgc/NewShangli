@@ -11,6 +11,7 @@ import 'package:share_plus/share_plus.dart';
 
 import '../../data/local/drift/app_database.dart';
 import '../../export/data_export_service.dart';
+import '../app_notifier.dart';
 import '../app_tokens.dart';
 import '../app_database_scope.dart';
 import '../app_scaffold.dart';
@@ -499,20 +500,14 @@ class _CanvasState extends State<_Canvas> {
         );
       } catch (_) {
         if (!mounted) return;
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('已导出到：${file.path}')));
+        AppNotifier.success(context, '已导出到：${file.path}');
       }
     } on DataExportException catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(e.message)));
+      AppNotifier.error(context, e.message);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('导出失败：$e')));
+      AppNotifier.error(context, '导出失败：$e');
     } finally {
       _progressTimer?.cancel();
       if (mounted) {
@@ -525,16 +520,12 @@ class _CanvasState extends State<_Canvas> {
     final file = _lastExportFile;
     if (file == null) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('请先导出文件')));
+      AppNotifier.warning(context, '请先导出文件');
       return;
     }
     if (!await file.exists()) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('导出文件不存在，请重新导出')));
+      AppNotifier.warning(context, '导出文件不存在，请重新导出');
       return;
     }
     try {
@@ -543,9 +534,7 @@ class _CanvasState extends State<_Canvas> {
       );
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('文件路径：${file.path}')));
+      AppNotifier.info(context, '文件路径：${file.path}');
     }
   }
 }

@@ -11,9 +11,11 @@ import '../../backup/supabase_sync_service.dart';
 import '../../data/local/drift/app_database.dart';
 import '../../media/media_storage_service.dart';
 import '../app_database_scope.dart';
+import '../app_dialog.dart';
+import '../app_notifier.dart';
+import '../app_notification_tokens.dart';
 import '../app_scaffold.dart';
 import '../app_tokens.dart';
-import '../app_toast.dart';
 import '../components.dart';
 import '../prototype_kit.dart';
 
@@ -612,56 +614,29 @@ class _CloudSyncPageState extends State<CloudSyncPage> {
     final result = await action();
     if (!mounted) return;
     if (result.hasToast) {
-      AppToast.show(context, result.toastMessage!);
+      AppNotifier.info(context, result.toastMessage!);
     }
     if (!mounted || !result.hasDialog) return;
-    await showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        title: Text(result.dialogTitle!),
-        content: Text(result.dialogMessage!),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('确定'),
-          ),
-        ],
-      ),
+    await AppDialog.showAlert(
+      context,
+      title: result.dialogTitle!,
+      message: result.dialogMessage!,
     );
   }
 
   Future<void> _showRestoreDialog(_CloudSyncViewState state) async {
     if (!state.isLoggedIn) {
-      AppToast.show(context, '请先登录');
+      AppNotifier.warning(context, '请先登录');
       return;
     }
 
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('恢复云端数据'),
-          content: const Text('此操作会从云端拉取当前账号的数据，并覆盖本地同 ID 的相关记录。是否继续？'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('取消'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              child: Text(
-                '继续恢复',
-                style: AppTypography.base(
-                  fontSize: AppTypography.fs14,
-                  fontWeight: AppTypography.medium,
-                  color: AppColors.red500,
-                ),
-              ),
-            ),
-          ],
-        );
-      },
+    final confirm = await AppDialog.confirm(
+      context,
+      title: '恢复云端数据',
+      message: '此操作会从云端拉取当前账号的数据，并覆盖本地同 ID 的相关记录。是否继续？',
+      confirmLabel: '继续恢复',
+      cancelLabel: '取消',
+      tone: AppNotificationTone.error,
     );
 
     if (confirm == true) {
@@ -674,36 +649,18 @@ class _CloudSyncPageState extends State<CloudSyncPage> {
     CloudBackupVersion version,
   ) async {
     if (!state.isLoggedIn) {
-      AppToast.show(context, '请先登录');
+      AppNotifier.warning(context, '请先登录');
       return;
     }
     if (state.isWorking) return;
     final kindLabel = version.kind == CloudBackupKind.auto ? '自动备份' : '手动备份';
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('按版本恢复'),
-          content: Text('将从云端 $kindLabel 下载备份包并覆盖恢复本地数据（含媒体文件）。是否继续？'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('取消'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              child: Text(
-                '继续恢复',
-                style: AppTypography.base(
-                  fontSize: AppTypography.fs14,
-                  fontWeight: AppTypography.medium,
-                  color: AppColors.red500,
-                ),
-              ),
-            ),
-          ],
-        );
-      },
+    final confirm = await AppDialog.confirm(
+      context,
+      title: '按版本恢复',
+      message: '将从云端 $kindLabel 下载备份包并覆盖恢复本地数据（含媒体文件）。是否继续？',
+      confirmLabel: '继续恢复',
+      cancelLabel: '取消',
+      tone: AppNotificationTone.error,
     );
     if (confirm == true) {
       await _handleActionResult(

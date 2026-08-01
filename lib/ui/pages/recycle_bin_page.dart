@@ -3,6 +3,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import '../../data/local/drift/app_database.dart';
 import '../app_database_scope.dart';
+import '../app_notifier.dart';
 import '../app_scaffold.dart';
 import '../app_tokens.dart';
 import '../components.dart';
@@ -369,18 +370,14 @@ class _TrashedRecordsTab extends StatelessWidget {
                 onRestore: () async {
                   await db.giftRecordsDao.restoreById(items[i].record.recordId);
                   if (!context.mounted) return;
-                  ScaffoldMessenger.of(
-                    context,
-                  ).showSnackBar(const SnackBar(content: Text('记录已恢复')));
+                  AppNotifier.success(context, '记录已恢复');
                 },
                 onPurge: () async {
                   final ok = await _confirmPurge(context, title: '彻底删除记录');
                   if (!context.mounted || ok != true) return;
                   await db.giftRecordsDao.purgeById(items[i].record.recordId);
                   if (!context.mounted) return;
-                  ScaffoldMessenger.of(
-                    context,
-                  ).showSnackBar(const SnackBar(content: Text('记录已彻底删除')));
+                  AppNotifier.success(context, '记录已彻底删除');
                 },
               ),
           ],
@@ -435,18 +432,14 @@ class _TrashedPersonsTab extends StatelessWidget {
                 onRestore: () async {
                   await db.personsDao.restoreById(items[i].personId);
                   if (!context.mounted) return;
-                  ScaffoldMessenger.of(
-                    context,
-                  ).showSnackBar(const SnackBar(content: Text('联系人已恢复')));
+                  AppNotifier.success(context, '联系人已恢复');
                 },
                 onPurge: () async {
                   final ok = await _confirmPurge(context, title: '彻底删除联系人');
                   if (!context.mounted || ok != true) return;
                   await db.personsDao.purgeById(items[i].personId);
                   if (!context.mounted) return;
-                  ScaffoldMessenger.of(
-                    context,
-                  ).showSnackBar(const SnackBar(content: Text('联系人已彻底删除')));
+                  AppNotifier.success(context, '联系人已彻底删除');
                 },
               ),
           ],

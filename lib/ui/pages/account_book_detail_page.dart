@@ -9,6 +9,9 @@ import '../../data/local/drift/app_database.dart';
 import '../../media/media_storage_service.dart';
 import '../app_data.dart';
 import '../app_database_scope.dart';
+import '../app_dialog.dart';
+import '../app_notifier.dart';
+import '../app_notification_tokens.dart';
 import '../app_scaffold.dart';
 import '../app_tokens.dart';
 import '../navigation.dart';
@@ -61,14 +64,10 @@ class _Canvas extends StatelessWidget {
         book.copyWith(attachments: Value(next.isEmpty ? null : next)),
       );
       if (!context.mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('已添加附件')));
+      AppNotifier.success(context, '已添加附件');
     } catch (e) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('添加附件失败：$e')));
+      AppNotifier.error(context, '添加附件失败：$e');
     }
   }
 
@@ -77,24 +76,13 @@ class _Canvas extends StatelessWidget {
     AccountBook book,
     String path,
   ) async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('删除附件'),
-          content: const Text('确认删除该附件？'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('取消'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('删除'),
-            ),
-          ],
-        );
-      },
+    final ok = await AppDialog.confirm(
+      context,
+      title: '删除附件',
+      message: '确认删除该附件？',
+      confirmLabel: '删除',
+      cancelLabel: '取消',
+      tone: AppNotificationTone.error,
     );
     if (ok != true) return;
     if (!context.mounted) return;
@@ -109,14 +97,10 @@ class _Canvas extends StatelessWidget {
       );
       await MediaStorageService().deleteStoredPath(path);
       if (!context.mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('附件已删除')));
+      AppNotifier.success(context, '附件已删除');
     } catch (e) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('删除附件失败：$e')));
+      AppNotifier.error(context, '删除附件失败：$e');
     }
   }
 

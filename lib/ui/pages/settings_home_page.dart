@@ -6,7 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../app_tokens.dart';
 import '../app_scaffold.dart';
-import '../app_toast.dart';
+import '../app_notifier.dart';
 import '../components.dart';
 import '../navigation.dart';
 import '../prototype_kit.dart';
@@ -517,10 +517,10 @@ class _LogoutButtonState extends State<_LogoutButton> {
     try {
       await Supabase.instance.client.auth.signOut();
       if (!mounted) return;
-      AppToast.show(context, '已退出登录');
+      AppNotifier.info(context, '已退出登录');
     } catch (e) {
       if (!mounted) return;
-      AppToast.show(context, '退出登录失败');
+      AppNotifier.error(context, '退出登录失败');
     }
   }
 

@@ -213,6 +213,9 @@ class SupabaseSyncService {
     return data.map((row) => Map<String, dynamic>.from(row as Map)).toList();
   }
 
+  static String _normalizeUniqueName(String? value) =>
+      (value ?? '').trim().toLowerCase();
+
   static (String, String) _normalizePair(String a, String b) {
     final x = a.trim();
     final y = b.trim();
@@ -430,6 +433,9 @@ class SupabaseSyncService {
               Reason(
                 reasonId: reasonId,
                 name: name,
+                normalizedName:
+                    _nullableStringValue(row['normalized_name']) ??
+                    _normalizeUniqueName(name),
                 description: _nullableStringValue(row['description']),
                 enabled: _boolValue(row['enabled']),
                 createdAt: _intValue(row['created_at']),
@@ -450,6 +456,33 @@ class SupabaseSyncService {
       for (final row in rows) {
         final cloudTypeId = _stringValue(row['type_id']);
         final name = _stringValue(row['name']);
+        final normalizedName =
+            _nullableStringValue(row['normalized_name']) ??
+            _normalizeUniqueName(name);
+        final duplicates = await db
+            .customSelect(
+              'SELECT type_id FROM relation_type '
+              'WHERE normalized_name = ? AND type_id <> ?;',
+              variables: [
+                Variable<String>(normalizedName),
+                Variable<String>(cloudTypeId),
+              ],
+              readsFrom: {db.relationTypes},
+            )
+            .get();
+        for (final duplicate in duplicates) {
+          final duplicateTypeId = duplicate.data['type_id'] as String;
+          await (db.update(
+            db.relationTypes,
+          )..where((t) => t.typeId.equals(duplicateTypeId))).write(
+            RelationTypesCompanion(
+              normalizedName: Value(
+                '${normalizedName}__legacy__$duplicateTypeId',
+              ),
+              updatedAt: Value(_intValue(row['updated_at'])),
+            ),
+          );
+        }
         final current = await db.relationTypesDao.findById(cloudTypeId);
         if (current == null) {
           await db
@@ -458,6 +491,7 @@ class SupabaseSyncService {
                 RelationType(
                   typeId: cloudTypeId,
                   name: name,
+                  normalizedName: normalizedName,
                   createdAt: _intValue(row['created_at']),
                   updatedAt: _intValue(row['updated_at']),
                 ),
@@ -468,22 +502,12 @@ class SupabaseSyncService {
           )..where((t) => t.typeId.equals(cloudTypeId))).write(
             RelationTypesCompanion(
               name: Value(name),
+              normalizedName: Value(normalizedName),
               createdAt: Value(_intValue(row['created_at'])),
               updatedAt: Value(_intValue(row['updated_at'])),
             ),
           );
         }
-        final duplicates = await db
-            .customSelect(
-              'SELECT type_id FROM relation_type '
-              'WHERE name = ? COLLATE NOCASE AND type_id <> ?;',
-              variables: [
-                Variable<String>(name),
-                Variable<String>(cloudTypeId),
-              ],
-              readsFrom: {db.relationTypes},
-            )
-            .get();
         for (final duplicate in duplicates) {
           final duplicateTypeId = duplicate.data['type_id'] as String;
           await db.customStatement(
@@ -700,6 +724,7 @@ class SupabaseSyncService {
             (r) => {
               'reason_id': r.reasonId,
               'name': r.name,
+              'normalized_name': _normalizeUniqueName(r.name),
               'description': r.description,
               'enabled': r.enabled,
               'created_at': r.createdAt,
@@ -708,7 +733,9 @@ class SupabaseSyncService {
             },
           )
           .toList();
-      await _supabase.from('reason').upsert(reasonsData);
+      await _supabase
+          .from('reason')
+          .upsert(reasonsData, onConflict: 'normalized_name');
     }
 
     // 5. 同步关系类型
@@ -720,13 +747,16 @@ class SupabaseSyncService {
             (rt) => {
               'type_id': rt.typeId,
               'name': rt.name,
+              'normalized_name': _normalizeUniqueName(rt.name),
               'created_at': rt.createdAt,
               'updated_at': rt.updatedAt,
               'user_id': user.id,
             },
           )
           .toList();
-      await _supabase.from('relation_type').upsert(relationTypesData);
+      await _supabase
+          .from('relation_type')
+          .upsert(relationTypesData, onConflict: 'normalized_name');
     }
 
     // 6. 同步联系人关系

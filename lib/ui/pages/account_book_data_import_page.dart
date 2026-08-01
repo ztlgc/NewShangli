@@ -3,8 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import '../../data/local/drift/app_database.dart';
-import '../app_toast.dart';
 import '../app_database_scope.dart';
+import '../app_dialog.dart';
+import '../app_notifier.dart';
 import '../app_scaffold.dart';
 import '../app_tokens.dart';
 import '../components.dart';
@@ -234,29 +235,16 @@ class _AccountBookDataImportPageState extends State<AccountBookDataImportPage> {
   }
 
   Future<void> _showExamples() async {
-    await showDialog<void>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('格式范例'),
-          content: const SingleChildScrollView(
-            child: Text(
-              '支持以下格式：\n\n'
-              '1) 王小明 500\n'
-              '2) 李华, 800\n'
-              '3) 赵大宝 1000元\n'
-              '4) 王芳 666 (同学)\n'
-              '5) 刘强,1200（客户）',
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('知道了'),
-            ),
-          ],
-        );
-      },
+    await AppDialog.showAlert(
+      context,
+      title: '格式范例',
+      message:
+          '支持以下格式：\n\n'
+          '1) 王小明 500\n'
+          '2) 李华, 800\n'
+          '3) 赵大宝 1000元\n'
+          '4) 王芳 666 (同学)\n'
+          '5) 刘强,1200（客户）',
     );
   }
 
@@ -366,20 +354,12 @@ class _AccountBookDataImportPageState extends State<AccountBookDataImportPage> {
       final duplicateDetails = duplicateRecords.isEmpty
           ? ''
           : '\n\n重复记录：\n${duplicateRecords.take(10).join('\n')}${duplicateRecords.length > 10 ? '\n…等 ${duplicateRecords.length} 条' : ''}';
-      showDialog<void>(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('导入完成'),
-          content: Text(
+      await AppDialog.showAlert(
+        context,
+        title: '导入完成',
+        message:
             '成功 $success 条\n重复跳过 $duplicate 条\n解析失败 $invalid 条$duplicateDetails',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('确定'),
-            ),
-          ],
-        ),
+        closeLabel: '确定',
       );
     } catch (e) {
       _toast('导入失败：$e');
@@ -412,7 +392,7 @@ class _AccountBookDataImportPageState extends State<AccountBookDataImportPage> {
 
   void _toast(String msg) {
     if (!mounted) return;
-    AppToast.show(context, msg);
+    AppNotifier.info(context, msg);
   }
 }
 

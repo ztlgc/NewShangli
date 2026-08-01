@@ -3,10 +3,13 @@ import 'package:drift/drift.dart';
 import '../data/local/drift/app_database.dart';
 
 class PrototypeDatabaseSeeder {
+  static String _normalizeName(String value) => value.trim().toLowerCase();
+
   static Future<void> seed(AppDatabase db) async {
     final countExp = db.accountBooks.bookId.count();
-    final row = await (db.selectOnly(db.accountBooks)..addColumns([countExp]))
-        .getSingle();
+    final row = await (db.selectOnly(
+      db.accountBooks,
+    )..addColumns([countExp])).getSingle();
     final existing = row.read(countExp) ?? 0;
     if (existing > 0) return;
 
@@ -14,7 +17,9 @@ class PrototypeDatabaseSeeder {
     int ms(DateTime d) => d.millisecondsSinceEpoch;
 
     final defaultBookCreatedAt = now.subtract(const Duration(days: 365));
-    await db.into(db.accountBooks).insert(
+    await db
+        .into(db.accountBooks)
+        .insert(
           AccountBook(
             bookId: 'book_default',
             name: '默认账簿',
@@ -227,12 +232,13 @@ class PrototypeDatabaseSeeder {
       batch.insertAll(db.giftRecords, records);
     });
 
-    final reasonNames = records
-        .map((e) => (e.eventName ?? '').trim())
-        .where((e) => e.isNotEmpty)
-        .toSet()
-        .toList()
-      ..sort((a, b) => a.compareTo(b));
+    final reasonNames =
+        records
+            .map((e) => (e.eventName ?? '').trim())
+            .where((e) => e.isNotEmpty)
+            .toSet()
+            .toList()
+          ..sort((a, b) => a.compareTo(b));
     final reasons = <Reason>[];
     for (var i = 0; i < reasonNames.length; i++) {
       final name = reasonNames[i];
@@ -240,6 +246,7 @@ class PrototypeDatabaseSeeder {
         Reason(
           reasonId: 'reason_${i + 1}',
           name: name,
+          normalizedName: _normalizeName(name),
           description: null,
           enabled: true,
           createdAt: ms(now),
@@ -255,18 +262,21 @@ class PrototypeDatabaseSeeder {
       RelationType(
         typeId: 'rt_friend',
         name: '朋友',
+        normalizedName: _normalizeName('朋友'),
         createdAt: ms(now),
         updatedAt: ms(now),
       ),
       RelationType(
         typeId: 'rt_family',
         name: '家人',
+        normalizedName: _normalizeName('家人'),
         createdAt: ms(now),
         updatedAt: ms(now),
       ),
       RelationType(
         typeId: 'rt_colleague',
         name: '同事',
+        normalizedName: _normalizeName('同事'),
         createdAt: ms(now),
         updatedAt: ms(now),
       ),
@@ -278,7 +288,9 @@ class PrototypeDatabaseSeeder {
         mode: InsertMode.insertOrReplace,
       );
     });
-    await db.into(db.contactRelations).insert(
+    await db
+        .into(db.contactRelations)
+        .insert(
           ContactRelation(
             relationId: 'cr_zhangwei_wangqiang_friend',
             personAId: 'p_zhangwei',
@@ -292,4 +304,3 @@ class PrototypeDatabaseSeeder {
         );
   }
 }
-

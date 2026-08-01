@@ -8,6 +8,9 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../../data/local/drift/app_database.dart';
 import '../../media/media_storage_service.dart';
 import '../app_database_scope.dart';
+import '../app_dialog.dart';
+import '../app_notifier.dart';
+import '../app_notification_tokens.dart';
 import '../app_tokens.dart';
 import '../app_scaffold.dart';
 import '../components.dart';
@@ -233,9 +236,7 @@ class _CanvasState extends State<_Canvas> {
     final record = await db.giftRecordsDao.findById(widget.recordId);
     if (!mounted) return;
     if (record == null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('记录不存在')));
+      AppNotifier.warning(context, '记录不存在');
       return;
     }
     final result = await FilePicker.platform.pickFiles(
@@ -259,14 +260,10 @@ class _CanvasState extends State<_Canvas> {
       );
       if (!mounted) return;
       _reloadRecord();
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('已添加附件')));
+      AppNotifier.success(context, '已添加附件');
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('添加附件失败：$e')));
+      AppNotifier.error(context, '添加附件失败：$e');
     }
   }
 }
@@ -650,35 +647,19 @@ class _BottomActions extends StatelessWidget {
     if (!okAuth) return;
     if (!context.mounted) return;
     final db = AppDatabaseScope.of(context);
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (context) {
-        return Align(
-          alignment: Alignment.center,
-          child: AlertDialog(
-            title: const Text('删除记录'),
-            content: const Text('确认删除该记录？删除后将进入回收站。'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(false),
-                child: const Text('取消'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(true),
-                child: const Text('删除'),
-              ),
-            ],
-          ),
-        );
-      },
+    final ok = await AppDialog.confirm(
+      context,
+      title: '删除记录',
+      message: '确认删除该记录？删除后将进入回收站。',
+      confirmLabel: '删除',
+      cancelLabel: '取消',
+      tone: AppNotificationTone.error,
     );
     if (ok != true) return;
     await db.giftRecordsDao.deleteById(recordId);
     if (!context.mounted) return;
     AppNav.pop(context);
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('记录已移入回收站')));
+    AppNotifier.success(context, '记录已移入回收站');
   }
 
   @override

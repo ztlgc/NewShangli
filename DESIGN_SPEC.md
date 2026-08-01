@@ -457,6 +457,109 @@ lib/
 - 设计基准尺寸：393 × 852（iPhone 14 Pro 级别）
 - 沉浸式状态栏（`SystemUiMode.immersiveSticky`）
 
+### 3.5 通知系统规范
+
+为消除不同模块通知方式不一致的问题，所有应用内通知统一收敛为 4 类，各司其职。
+
+#### 3.5.1 四类通知总览
+
+| 类别 | 适用场景 | 形态 | 是否阻塞 | 默认时长 | API 入口 |
+| --- | --- | --- | --- | --- | --- |
+| **Toast** | 轻量提示（成功/失败/字段校验/网络状态/路由拦截） | 屏幕顶部悬浮卡片 | 否 | success/info 2s；warning/error 3.5s；带主操作 5s | `AppNotifier.toast(context, ...)` |
+| **SnackBar** | 与具体页面强关联的反馈（删除 N 项成功/失败、Undo） | Scaffold 底部浮动条带 | 否 | 4s；带操作 6s | `AppNotifier.snack(context, ...)` |
+| **Dialog** | 阻塞式确认/表单/告警（删除二次确认、密码验证、必填表单输入） | 屏幕中央模态卡片 | 是 | 直至用户操作 | `AppDialog.confirm/showInput/showAlert(...)` |
+| **BottomSheet** | 选择/筛选/详情（关系类型选择、原因选择、备份频率、文件选择） | 屏幕底部抽屉 | 半阻塞 | 直至用户操作 | `AppBottomSheet.show/showPicker<T>(...)` |
+
+> **强制约束**：禁止再使用 Material 默认 `SnackBar`、`AlertDialog`、`showModalBottomSheet` 与旧的 `AppToast.show`；所有新增通知必须经由 `AppNotifier` / `AppDialog` / `AppBottomSheet` 入口。
+
+#### 3.5.2 Toast 规范
+
+- **位置**：屏幕顶部 `SafeArea` 下方 16px；居中；最大宽度 420px；水平边距 16px
+- **样式**：
+  - 容器：白底（暗色 `surfaceCard`），圆角 12px，`AppShadows.lg`，1px `borderSubtle` 边框
+  - 左侧 4px 状态色竖条
+  - 24px 圆形软色图标头 + 14px FA 图标
+  - 可选标题（16px Bold）+ 必选正文（14px Regular）
+  - 可选主操作按钮（文本按钮，颜色 = 状态色）
+- **语义态 → 状态色**：
+  - `success` → `stateSuccess`
+  - `error` → `stateDanger`
+  - `warning` → `stateWarning`
+  - `info` → `brandPrimary`
+  - `neutral` → `neutralAccent`
+- **动效**：入场 250ms `Curves.easeOutCubic`（从 `Offset(0, -0.2)` 淡入下滑）；退场 200ms `Curves.easeIn`
+- **多消息策略**：**后入覆盖**（连续触发时新消息立即替换旧消息，旧消息不堆叠）
+- **可访问性**：文本节点 `IgnorePointer` + `Semantics(liveRegion: true)`；主操作按钮保留点击
+
+#### 3.5.3 SnackBar 规范
+
+- **位置**：Scaffold 底部，水平边距 16px，距 FAB / BottomNav 自动避让
+- **样式**：
+  - 容器：暗色 `surfaceSubtle` / 亮色 `AppColors.gray900`，圆角 12px，`AppShadows.lg`
+  - 可选 18px FA 图标
+  - 14px Medium 文本（亮色模式白色，暗色模式 `textPrimary`）
+  - 可选操作按钮：14px Semibold 文本按钮，颜色 = `AppColors.indigo200`
+- **动效**：Material 默认 SnackBar 动画（不破坏用户预期）
+- **多消息策略**：通过 `ScaffoldMessenger.hideCurrentSnackBar()` 实现后入覆盖
+
+#### 3.5.4 Dialog 规范
+
+- **位置**：屏幕居中，水平 24px 内边距；最大宽度 360px
+- **样式**：
+  - 容器：白底（暗色 `surfaceCard`），圆角 16px (`AppRadii.br2xl`)，`AppShadows.lg` 阴影，1px `borderSubtle` 边框
+  - 可选 40px 圆角软色图标头 + 16px FA 图标
+  - 标题 18px Bold；副标题/描述 14px Regular `textSecondary`
+  - 按钮：底部一行双按钮等宽，高度 44px；次按钮 = `surfaceSubtle` 底 + `textSecondary` 文；主按钮 = `brandPrimary` 底 + 白色文；危险主按钮 = `stateDanger` 底
+- **动效**：入场 200ms `Curves.easeOutBack`（缩放 0.9→1.0 + 淡入）；退场 150ms 淡出 + 缩放至 0.95
+- **横屏适配**：`MediaQuery.orientation == landscape` 时自动切换为 BottomSheet 形态，避免过窄
+- **可访问性**：标题用 `Semantics(header: true)`；主按钮 `autofocus: true` 默认聚焦
+- **API 形态**：
+  - `AppDialog.confirm(context, title, message, confirmLabel, cancelLabel, danger, tone, icon)` → `Future<bool?>`
+  - `AppDialog.showInput(context, title, fields, confirmLabel, cancelLabel, tone, icon)` → `Future<Map<String, String>?>`
+  - `AppDialog.showAlert(context, title, message, closeLabel, tone, icon)` → `Future<void>`
+
+#### 3.5.5 BottomSheet 规范
+
+- **位置**：屏幕底部；圆角顶部 24px；最大高度 = 屏高 × 0.9
+- **样式**：
+  - 容器：白底（暗色 `surfaceCard`），顶部圆角 24px，`AppShadows.lg` 阴影
+  - 顶部 drag handle（48×4px，`borderDefault`）居中顶部 8px
+  - 可选 56px 标题栏：18px Bold 标题 + 关闭按钮
+  - 内容：16px 内边距；高度自适应（内容不足时不强制全高）
+- **动效**：Material 默认 BottomSheet 动画
+- **关闭**：drag handle 下拉 / 点遮罩 / 点关闭按钮 / 选中结果后自动 `Navigator.pop`
+- **API 形态**：
+  - `AppBottomSheet.show<T>(context, title, child)` → `Future<T?>`
+  - `AppBottomSheet.showPicker<T>(context, title, options)` → `Future<T?>`（点击项自动 pop）
+
+#### 3.5.6 动效时长表
+
+| 元素 | 入场 | 退场 | 缓动 |
+| --- | --- | --- | --- |
+| Toast | 250ms | 200ms | `Curves.easeOutCubic` / `Curves.easeIn` |
+| SnackBar | Material 默认 450ms | Material 默认 | Material |
+| Dialog | 200ms | 150ms | `Curves.easeOutBack` / `Curves.easeIn` |
+| BottomSheet | Material 默认 300ms | Material 默认 | Material |
+
+#### 3.5.7 兼容性与平台适配
+
+- **不同 Android 版本**：仅使用 Flutter Material API，避免平台 Channel；`SafeArea` + `MediaQuery.viewPadding` 处理刘海/挖孔
+- **不同屏幕尺寸**：
+  - Toast / SnackBar 水平 16px 边距 + 最大宽 420px
+  - Dialog 最大宽 360px
+  - BottomSheet 最大高度 90% 屏高
+- **字体缩放**：通知文本使用 `AppTypography.base`，允许系统字号缩放
+- **方向旋转**：Dialog 在 `landscape` 时切换为 BottomSheet 形式
+- **状态栏**：Toast `SafeArea` 顶部对齐，不抢占 `AppScaffold` 顶部应用栏
+
+#### 3.5.8 新增通知场景的执行清单
+
+1. 确认通知类别（Toast / SnackBar / Dialog / BottomSheet），无把握时在 PR 描述中说明选择理由
+2. 选择语义态（success / error / warning / info / neutral）并匹配状态色
+3. 通过 `AppNotifier` / `AppDialog` / `AppBottomSheet` 调用，禁止再使用 Material 默认组件
+4. 若新增图标，使用 `FontAwesomeIcons` 命名规范，避免重复
+5. 同步更新本章节的"四类通知总览"表格
+
 ## 4. 测试与质量要求
 
 ### 4.1 单元测试

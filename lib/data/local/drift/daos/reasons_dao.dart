@@ -4,20 +4,30 @@ part of '../app_database.dart';
 class ReasonsDao extends DatabaseAccessor<AppDatabase> with _$ReasonsDaoMixin {
   ReasonsDao(super.db);
 
+  String _normalizeName(String value) => value.trim().toLowerCase();
+
   Stream<List<Reason>> watchAll() {
-    return (select(reasons)..orderBy([(t) => OrderingTerm.desc(t.updatedAt)])).watch();
+    return (select(
+      reasons,
+    )..orderBy([(t) => OrderingTerm.desc(t.updatedAt)])).watch();
   }
 
   Future<List<Reason>> listAll() {
-    return (select(reasons)..orderBy([(t) => OrderingTerm.desc(t.updatedAt)])).get();
+    return (select(
+      reasons,
+    )..orderBy([(t) => OrderingTerm.desc(t.updatedAt)])).get();
   }
 
   Future<Reason?> findById(String id) {
-    return (select(reasons)..where((t) => t.reasonId.equals(id))).getSingleOrNull();
+    return (select(
+      reasons,
+    )..where((t) => t.reasonId.equals(id))).getSingleOrNull();
   }
 
   Future<Reason?> findByName(String name) {
-    return (select(reasons)..where((t) => t.name.equals(name))).getSingleOrNull();
+    return (select(reasons)
+          ..where((t) => t.normalizedName.equals(_normalizeName(name))))
+        .getSingleOrNull();
   }
 
   Future<String> create({
@@ -31,6 +41,7 @@ class ReasonsDao extends DatabaseAccessor<AppDatabase> with _$ReasonsDaoMixin {
       ReasonsCompanion.insert(
         reasonId: id,
         name: name.trim(),
+        normalizedName: _normalizeName(name),
         description: Value(_normalizeText(description)),
         enabled: Value(enabled),
         createdAt: now,
@@ -49,19 +60,18 @@ class ReasonsDao extends DatabaseAccessor<AppDatabase> with _$ReasonsDaoMixin {
     await (update(reasons)..where((t) => t.reasonId.equals(id))).write(
       ReasonsCompanion(
         name: Value(name.trim()),
+        normalizedName: Value(_normalizeName(name)),
         description: Value(_normalizeText(description)),
         updatedAt: Value(now),
       ),
     );
   }
 
-  Future<void> setEnabled({
-    required String id,
-    required bool enabled,
-  }) async {
+  Future<void> setEnabled({required String id, required bool enabled}) async {
     if (!enabled) {
-      final enabledRows =
-          await (select(reasons)..where((t) => t.enabled.equals(true))).get();
+      final enabledRows = await (select(
+        reasons,
+      )..where((t) => t.enabled.equals(true))).get();
       if (enabledRows.length <= 1 &&
           enabledRows.any((row) => row.reasonId == id)) {
         throw StateError('至少保留一个启用的事由');
@@ -69,10 +79,7 @@ class ReasonsDao extends DatabaseAccessor<AppDatabase> with _$ReasonsDaoMixin {
     }
     final now = DateTime.now().millisecondsSinceEpoch;
     await (update(reasons)..where((t) => t.reasonId.equals(id))).write(
-      ReasonsCompanion(
-        enabled: Value(enabled),
-        updatedAt: Value(now),
-      ),
+      ReasonsCompanion(enabled: Value(enabled), updatedAt: Value(now)),
     );
   }
 

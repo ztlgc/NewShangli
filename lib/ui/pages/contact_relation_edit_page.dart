@@ -3,6 +3,9 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import '../../data/local/drift/app_database.dart';
 import '../app_database_scope.dart';
+import '../app_dialog.dart';
+import '../app_notifier.dart';
+import '../app_notification_tokens.dart';
 import '../app_tokens.dart';
 import '../app_scaffold.dart';
 import '../contact_avatar.dart';
@@ -321,9 +324,7 @@ class _ContactRelationEditPageState extends State<ContactRelationEditPage> {
     final b = _personBId;
     final t = _typeId;
     if (a == null || b == null || t == null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('请先选择联系人与关系类型')));
+      AppNotifier.warning(context, '请先选择联系人与关系类型');
       return;
     }
     setState(() => _saving = true);
@@ -346,9 +347,7 @@ class _ContactRelationEditPageState extends State<ContactRelationEditPage> {
           note: _noteCtrl.text,
         );
         if (!mounted) return;
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('已创建')));
+        AppNotifier.success(context, '已创建');
         AppNav.pop(context);
       } else {
         await db.contactRelationsDao.updateOne(
@@ -359,54 +358,35 @@ class _ContactRelationEditPageState extends State<ContactRelationEditPage> {
           note: _noteCtrl.text,
         );
         if (!mounted) return;
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('已保存')));
+        AppNotifier.success(context, '已保存');
         AppNav.pop(context);
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('保存失败：$e')));
+      AppNotifier.error(context, '保存失败：$e');
     } finally {
       if (mounted) setState(() => _saving = false);
     }
   }
 
   Future<void> _confirmDelete(BuildContext context, AppDatabase db) async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('删除关系'),
-          content: const Text('确认删除该联系人关系？'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('取消'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('删除'),
-            ),
-          ],
-        );
-      },
+    final ok = await AppDialog.confirm(
+      context,
+      title: '删除关系',
+      message: '确认删除该联系人关系？',
+      confirmLabel: '删除',
+      cancelLabel: '取消',
+      tone: AppNotificationTone.error,
     );
     if (ok != true) return;
     try {
       await db.contactRelationsDao.deleteById(widget.id!);
       if (!context.mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('已删除')));
+      AppNotifier.success(context, '已删除');
       AppNav.pop(context);
     } catch (e) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('删除失败：$e')));
+      AppNotifier.error(context, '删除失败：$e');
     }
   }
 

@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 
 import '../../security/edit_protection.dart';
+import '../app_dialog.dart';
+import '../app_notifier.dart';
 import '../app_scaffold.dart';
 import '../app_tokens.dart';
 import '../components.dart';
-import '../edit_protection_guard.dart';
-import '../prototype_kit.dart';
 import '../navigation.dart';
+import '../prototype_kit.dart';
 
 class EditProtectionPage extends StatelessWidget {
   const EditProtectionPage({super.key});
@@ -73,9 +74,10 @@ class _CanvasState extends State<_Canvas> {
       if (!mounted) return;
       setState(() => _config = c);
       if (mounted) {
-        ScaffoldMessenger.of(
+        AppNotifier.success(
           context,
-        ).showSnackBar(SnackBar(content: Text(value ? '编辑保护已开启' : '编辑保护已关闭')));
+          value ? '编辑保护已开启' : '编辑保护已关闭',
+        );
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -101,83 +103,67 @@ class _CanvasState extends State<_Canvas> {
     if (!mounted) return;
     setState(() => _config = c);
     if (mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('密码已更新')));
+      AppNotifier.success(context, '密码已更新');
     }
   }
 
   Future<bool> _verifyPasswordDialog({required String title}) async {
-    final password = await showEditProtectionPasswordDialog(
+    final input = await AppDialog.showInput(
       context,
       title: title,
+      confirmLabel: '验证',
+      cancelLabel: '取消',
+      fields: const [
+        AppDialogField(
+          id: 'password',
+          label: '编辑密码',
+          hint: '请输入编辑密码',
+          obscureText: true,
+        ),
+      ],
     );
-    final v = password?.trim() ?? '';
+    final v = (input?['password'] ?? '').trim();
     if (v.isEmpty) return false;
     final ok = await _service.verifyPassword(v);
     if (!ok && mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('密码错误')));
+      AppNotifier.error(context, '密码错误');
     }
     return ok;
   }
 
   Future<bool> _setNewPasswordDialog() async {
-    final p1 = TextEditingController();
-    final p2 = TextEditingController();
-    final result = await showDialog<bool>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('设置编辑密码'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: p1,
-                obscureText: true,
-                decoration: const InputDecoration(hintText: '请输入新密码'),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: p2,
-                obscureText: true,
-                decoration: const InputDecoration(hintText: '再次输入新密码'),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('取消'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('保存'),
-            ),
-          ],
-        );
-      },
+    final result = await AppDialog.showInput(
+      context,
+      title: '设置编辑密码',
+      confirmLabel: '保存',
+      cancelLabel: '取消',
+      fields: const [
+        AppDialogField(
+          id: 'p1',
+          label: '新密码',
+          hint: '请输入新密码',
+          obscureText: true,
+        ),
+        AppDialogField(
+          id: 'p2',
+          label: '再次输入',
+          hint: '再次输入新密码',
+          obscureText: true,
+        ),
+      ],
     );
-    final s1 = p1.text.trim();
-    final s2 = p2.text.trim();
-    p1.dispose();
-    p2.dispose();
-    if (result != true) return false;
+    final s1 = (result?['p1'] ?? '').trim();
+    final s2 = (result?['p2'] ?? '').trim();
+    if (result == null) return false;
     if (s1.length < 4) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('密码至少 4 位')));
+        AppNotifier.warning(context, '密码至少 4 位');
       }
       return false;
     }
     if (s1 != s2) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('两次输入不一致')));
+        AppNotifier.warning(context, '两次输入不一致');
       }
       return false;
     }

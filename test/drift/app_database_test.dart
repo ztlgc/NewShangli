@@ -1,6 +1,9 @@
+import 'dart:io';
+
 import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:sqlite3/sqlite3.dart' as sqlite;
 
 import 'package:newshangli/data/local/drift/app_database.dart';
 import 'package:newshangli/import/default_book_service.dart';
@@ -321,6 +324,66 @@ void main() {
           .join('\n');
 
       expect(planText, contains('idx_gift_record_book_occurred'));
+    });
+
+    test('旧库(schema 12)缺少 normalized_name 时按开发阶段策略自动重建', () async {
+      // 构造一个 schema 12 结构的旧库文件：
+      // - 只有旧的 reason 表（没有 normalized_name 列）
+      // - 且带有一个旧的 LOWER(name) 唯一索引
+      final Directory dir = await Directory.systemTemp.createTemp(
+        'drift_upgrade_test',
+      );
+      addTearDown(() async {
+        if (dir.existsSync()) {
+          await dir.delete(recursive: true);
+        }
+      });
+      final File dbFile = File(
+        '${dir.path}${Platform.pathSeparator}legacy.sqlite',
+      );
+
+      final sqlite.Database legacy = sqlite.sqlite3.open(dbFile.path);
+      try {
+        legacy.execute(
+          'CREATE TABLE reason ('
+          'reason_id TEXT NOT NULL PRIMARY KEY, '
+          'name TEXT NOT NULL, '
+          'description TEXT, '
+          'enabled INTEGER NOT NULL DEFAULT 1, '
+          'created_at INTEGER NOT NULL, '
+          'updated_at INTEGER NOT NULL'
+          ');',
+        );
+        legacy.execute(
+          'CREATE UNIQUE INDEX idx_reason_name ON reason(name COLLATE NOCASE);',
+        );
+        legacy.execute('PRAGMA user_version = 12;');
+      } finally {
+        legacy.dispose();
+      }
+
+      // 用当前 schema(13) 打开旧库，触发 onUpgrade
+      final AppDatabase upgraded = AppDatabase.forTesting(
+        NativeDatabase(dbFile),
+      );
+      addTearDown(() async {
+        await upgraded.close();
+      });
+
+      // 验证数据库可正常打开，且 reason 表已重建出 normalized_name 列
+      final List<QueryRow> columns = await upgraded
+          .customSelect("PRAGMA table_info('reason');")
+          .get();
+      final bool hasNormalizedColumn = columns.any(
+        (row) => (row.data['name'] as String?) == 'normalized_name',
+      );
+      expect(hasNormalizedColumn, isTrue);
+
+      // 验证新结构可正常写入并查询
+      await upgraded.reasonsDao.create(name: '婚礼礼金');
+      final List<Reason> reasons = await upgraded.reasonsDao.listAll();
+      expect(reasons, hasLength(1));
+      expect(reasons.single.normalizedName, '婚礼礼金');
     });
   });
 }

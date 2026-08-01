@@ -9,6 +9,8 @@ import '../../data/local/entity_remarks_store.dart';
 import '../../media/media_storage_service.dart';
 import '../app_data.dart';
 import '../app_database_scope.dart';
+import '../app_dialog.dart';
+import '../app_notifier.dart';
 import '../app_tokens.dart';
 import '../app_scaffold.dart';
 import '../contact_avatar.dart';
@@ -221,14 +223,10 @@ class _CanvasState extends State<_Canvas> {
       );
       if (!mounted) return;
       _reload();
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('头像已更新')));
+      AppNotifier.success(context, '头像已更新');
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('头像更新失败：$e')));
+      AppNotifier.error(context, '头像更新失败：$e');
     }
   }
 
@@ -541,34 +539,22 @@ class _EntityRemarksCardState extends State<_EntityRemarksCard> {
   }
 
   Future<void> _addRemark(BuildContext context, AppDatabase db) async {
-    final controller = TextEditingController();
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('新增备注'),
-          content: TextField(
-            controller: controller,
-            maxLines: 6,
-            minLines: 3,
-            decoration: const InputDecoration(hintText: '请输入备注内容'),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('取消'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('保存'),
-            ),
-          ],
-        );
-      },
+    final input = await AppDialog.showInput(
+      context,
+      title: '新增备注',
+      fields: [
+        AppDialogField(
+          id: 'remark',
+          label: '备注',
+          hint: '请输入备注内容',
+          maxLines: 6,
+          minLines: 3,
+        ),
+      ],
+      confirmLabel: '保存',
+      cancelLabel: '取消',
     );
-    final text = controller.text.trim();
-    controller.dispose();
-    if (ok != true) return;
+    final text = input?['remark']?.trim() ?? '';
     if (text.isEmpty) return;
     await EntityRemarksStore(db).addRemark(
       entityType: widget.entityType,
@@ -577,9 +563,7 @@ class _EntityRemarksCardState extends State<_EntityRemarksCard> {
     );
     if (!context.mounted) return;
     _reload();
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('备注已添加')));
+    AppNotifier.success(context, '备注已添加');
   }
 
   @override

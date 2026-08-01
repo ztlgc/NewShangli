@@ -3,6 +3,9 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import '../../data/local/drift/app_database.dart';
 import '../app_database_scope.dart';
+import '../app_dialog.dart';
+import '../app_notifier.dart';
+import '../app_notification_tokens.dart';
 import '../app_tokens.dart';
 import '../app_scaffold.dart';
 import '../components.dart';
@@ -176,37 +179,22 @@ class _CanvasState extends State<_Canvas> {
     AppDatabase db,
     Reason reason,
   ) async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('删除事由'),
-          content: Text('确认删除「${reason.name}」？'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('取消'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('删除'),
-            ),
-          ],
-        );
-      },
+    final ok = await AppDialog.confirm(
+      context,
+      title: '删除事由',
+      message: '确认删除「${reason.name}」？',
+      confirmLabel: '删除',
+      cancelLabel: '取消',
+      tone: AppNotificationTone.error,
     );
     if (ok != true) return;
     try {
       await db.reasonsDao.deleteById(reason.reasonId);
       if (!context.mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('已删除')));
+      AppNotifier.success(context, '已删除');
     } catch (e) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('删除失败：$e')));
+      AppNotifier.error(context, '删除失败：$e');
     }
   }
 }

@@ -8,6 +8,9 @@ import 'package:lpinyin/lpinyin.dart';
 
 import '../../data/local/drift/app_database.dart';
 import '../app_data.dart';
+import '../app_dialog.dart';
+import '../app_notifier.dart';
+import '../app_notification_tokens.dart';
 import '../app_database_scope.dart';
 import '../app_tokens.dart';
 import '../app_scaffold.dart';
@@ -189,27 +192,13 @@ class _CanvasState extends State<_Canvas> {
     if (!mounted) return;
     final ids = _selectedPersonIds.toList();
     if (ids.isEmpty) return;
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (context) {
-        return Align(
-          alignment: Alignment.center,
-          child: AlertDialog(
-            title: const Text('删除联系人'),
-            content: Text('确认删除已选择的${ids.length}位联系人？删除后将进入回收站。'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(false),
-                child: const Text('取消'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(true),
-                child: const Text('删除'),
-              ),
-            ],
-          ),
-        );
-      },
+    final ok = await AppDialog.confirm(
+      context,
+      title: '删除联系人',
+      message: '确认删除已选择的${ids.length}位联系人？删除后将进入回收站。',
+      confirmLabel: '删除',
+      cancelLabel: '取消',
+      tone: AppNotificationTone.error,
     );
     if (!mounted || ok != true) return;
     for (final id in ids) {
@@ -220,9 +209,7 @@ class _CanvasState extends State<_Canvas> {
       _selectedPersonIds = <String>{};
       _multiSelectMode = false;
     });
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text('已删除：${ids.length}项')));
+    AppNotifier.success(context, '已删除：${ids.length}项');
   }
 
   void _exitMultiSelectMode() {
@@ -688,10 +675,10 @@ class _PersonRowState extends State<_PersonRow> {
 
   void _handleTap() {
     if (widget.id.startsWith('p_')) {
-      ScaffoldMessenger.of(context).hideCurrentSnackBar();
-      ScaffoldMessenger.of(
+      AppNotifier.info(
         context,
-      ).showSnackBar(const SnackBar(content: Text('这是演示数据，添加真实联系人后将自动消失')));
+        '这是演示数据，添加真实联系人后将自动消失',
+      );
     } else {
       widget.onTap();
     }
@@ -699,10 +686,10 @@ class _PersonRowState extends State<_PersonRow> {
 
   void _handleLongPress() {
     if (widget.id.startsWith('p_')) {
-      ScaffoldMessenger.of(context).hideCurrentSnackBar();
-      ScaffoldMessenger.of(
+      AppNotifier.info(
         context,
-      ).showSnackBar(const SnackBar(content: Text('这是演示数据，添加真实联系人后将自动消失')));
+        '这是演示数据，添加真实联系人后将自动消失',
+      );
     } else {
       widget.onLongPress();
     }

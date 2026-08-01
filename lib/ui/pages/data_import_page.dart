@@ -13,6 +13,7 @@ import '../../import/data_import_template_service.dart';
 import '../../import/default_book_service.dart';
 import '../../import/import_file_reader.dart';
 import '../app_database_scope.dart';
+import '../app_notifier.dart';
 import '../app_tokens.dart';
 import '../app_scaffold.dart';
 import '../components.dart';
@@ -218,9 +219,7 @@ class _CanvasState extends State<_Canvas> {
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('模板生成失败：$e')));
+      AppNotifier.error(context, '模板生成失败：$e');
     }
   }
 

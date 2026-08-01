@@ -5,6 +5,9 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../../data/local/drift/app_database.dart';
 import '../app_data.dart';
 import '../app_database_scope.dart';
+import '../app_dialog.dart';
+import '../app_notifier.dart';
+import '../app_notification_tokens.dart';
 import '../app_tokens.dart';
 import '../app_scaffold.dart';
 import '../components.dart';
@@ -84,29 +87,15 @@ class _CanvasState extends State<_Canvas> {
 
   Future<void> _confirmBatchDelete(AppDatabase db) async {
     if (_selectedRecordIds.isEmpty) return;
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (context) {
-        return Align(
-          alignment: Alignment.center,
-          child: AlertDialog(
-            // 这里的批量删除实际执行的是软删除，因此弹窗文案需要明确告知
-            // 用户“移入回收站”的结果，避免和回收站内的彻底删除混淆。
-            title: const Text('移入回收站'),
-            content: Text('确认将 ${_selectedRecordIds.length} 条记录移入回收站？'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(false),
-                child: const Text('取消'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(true),
-                child: const Text('移入回收站'),
-              ),
-            ],
-          ),
-        );
-      },
+    // 这里的批量删除实际执行的是软删除，因此弹窗文案需要明确告知
+    // 用户"移入回收站"的结果，避免和回收站内的彻底删除混淆。
+    final ok = await AppDialog.confirm(
+      context,
+      title: '移入回收站',
+      message: '确认将 ${_selectedRecordIds.length} 条记录移入回收站？',
+      confirmLabel: '移入回收站',
+      cancelLabel: '取消',
+      tone: AppNotificationTone.warning,
     );
     if (ok != true) return;
     final ids = _selectedRecordIds.toList(growable: false);
@@ -115,9 +104,7 @@ class _CanvasState extends State<_Canvas> {
     }
     if (!mounted) return;
     _exitSelection();
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('记录已移入回收站')));
+    AppNotifier.success(context, '记录已移入回收站');
   }
 
   @override
@@ -361,9 +348,9 @@ class _CanvasState extends State<_Canvas> {
                         return;
                       }
                       if (monthRecords[j].id.startsWith('r_')) {
-                        ScaffoldMessenger.of(context).hideCurrentSnackBar();
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('这是演示数据，添加真实记录后将自动消失')),
+                        AppNotifier.info(
+                          context,
+                          '这是演示数据，添加真实记录后将自动消失',
                         );
                         return;
                       }
@@ -378,20 +365,14 @@ class _CanvasState extends State<_Canvas> {
                         return;
                       }
                       if (monthRecords[j].id.startsWith('r_')) {
-                        ScaffoldMessenger.of(context).hideCurrentSnackBar();
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('演示数据不可操作')),
-                        );
+                        AppNotifier.info(context, '演示数据不可操作');
                         return;
                       }
                       _enterSelection(monthRecords[j].id);
                     },
                     onSelectionToggle: () {
                       if (monthRecords[j].id.startsWith('r_')) {
-                        ScaffoldMessenger.of(context).hideCurrentSnackBar();
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('演示数据不可操作')),
-                        );
+                        AppNotifier.info(context, '演示数据不可操作');
                         return;
                       }
                       _toggleSelection(monthRecords[j].id);

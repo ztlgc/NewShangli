@@ -5,25 +5,29 @@ class RelationTypesDao extends DatabaseAccessor<AppDatabase>
     with _$RelationTypesDaoMixin {
   RelationTypesDao(super.db);
 
+  String _normalizeName(String value) => value.trim().toLowerCase();
+
   Stream<List<RelationType>> watchAll() {
-    return (select(relationTypes)
-          ..orderBy([(t) => OrderingTerm.desc(t.updatedAt)]))
-        .watch();
+    return (select(
+      relationTypes,
+    )..orderBy([(t) => OrderingTerm.desc(t.updatedAt)])).watch();
   }
 
   Future<List<RelationType>> listAll() {
-    return (select(relationTypes)
-          ..orderBy([(t) => OrderingTerm.desc(t.updatedAt)]))
-        .get();
+    return (select(
+      relationTypes,
+    )..orderBy([(t) => OrderingTerm.desc(t.updatedAt)])).get();
   }
 
   Future<RelationType?> findById(String id) {
-    return (select(relationTypes)..where((t) => t.typeId.equals(id)))
-        .getSingleOrNull();
+    return (select(
+      relationTypes,
+    )..where((t) => t.typeId.equals(id))).getSingleOrNull();
   }
 
   Future<RelationType?> findByName(String name) {
-    return (select(relationTypes)..where((t) => t.name.equals(name)))
+    return (select(relationTypes)
+          ..where((t) => t.normalizedName.equals(_normalizeName(name))))
         .getSingleOrNull();
   }
 
@@ -34,6 +38,7 @@ class RelationTypesDao extends DatabaseAccessor<AppDatabase>
       RelationTypesCompanion.insert(
         typeId: id,
         name: name.trim(),
+        normalizedName: _normalizeName(name),
         createdAt: now,
         updatedAt: now,
       ),
@@ -41,10 +46,7 @@ class RelationTypesDao extends DatabaseAccessor<AppDatabase>
     return id;
   }
 
-  Future<void> updateType({
-    required String id,
-    required String name,
-  }) async {
+  Future<void> updateType({required String id, required String name}) async {
     final now = DateTime.now().millisecondsSinceEpoch;
     final old = await findById(id);
     final next = name.trim();
@@ -52,6 +54,7 @@ class RelationTypesDao extends DatabaseAccessor<AppDatabase>
       await (update(relationTypes)..where((t) => t.typeId.equals(id))).write(
         RelationTypesCompanion(
           name: Value(next),
+          normalizedName: Value(_normalizeName(next)),
           updatedAt: Value(now),
         ),
       );

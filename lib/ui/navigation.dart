@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'app_toast.dart';
+import 'app_notifier.dart';
 import 'app_session.dart';
 
 class AppNav {
@@ -51,7 +51,7 @@ class AppNav {
   static void pop(BuildContext context) => Navigator.of(context).maybePop();
 
   static void _toast(BuildContext context, String message) {
-    AppToast.show(context, message, duration: const Duration(seconds: 2));
+    AppNotifier.info(context, message);
   }
 }
 

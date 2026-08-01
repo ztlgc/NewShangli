@@ -1051,12 +1051,7 @@ class _KpiHeroCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final days = range.endExclusive.difference(range.start).inDays;
-    final dayCount = days <= 0 ? 1 : days;
-
     final net = data.incomeTotalCent - data.expenseTotalCent;
-    final avgExpense = data.expenseTotalCent ~/ dayCount;
-    final avgIncome = data.incomeTotalCent ~/ dayCount;
 
     final compareExpense = compare?.expenseTotalCent;
     final compareIncome = compare?.incomeTotalCent;
@@ -1208,16 +1203,6 @@ class _KpiHeroCard extends StatelessWidget {
                 icon: FontAwesomeIcons.list,
                 label: '有金额活动',
                 value: '$totalCount 个时段',
-              ),
-              _CountChip(
-                icon: FontAwesomeIcons.clock,
-                label: '日均支出',
-                value: formatCentToYuan(avgExpense),
-              ),
-              _CountChip(
-                icon: FontAwesomeIcons.clock,
-                label: '日均收入',
-                value: formatCentToYuan(avgIncome),
               ),
             ],
           ),
@@ -1764,9 +1749,10 @@ class _CategoryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
-    const pieSize = 132.0;
-    const pieRadius = 50.0;
-    const pieCenterSpaceRadius = 34.0;
+    // 饼图尺寸：缩小到约原大小的 75%，避免在分类卡片中视觉占比过重
+    const pieSize = 100.0;
+    const pieRadius = 38.0;
+    const pieCenterSpaceRadius = 26.0;
 
     final palette = <Color>[
       const Color(0xFF4F46E5), // indigo600

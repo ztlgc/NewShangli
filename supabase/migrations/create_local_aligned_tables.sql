@@ -61,6 +61,7 @@ CREATE TABLE IF NOT EXISTS public.gift_record (
 CREATE TABLE IF NOT EXISTS public.reason (
   reason_id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
+  normalized_name TEXT NOT NULL,
   description TEXT,
   enabled BOOLEAN NOT NULL DEFAULT TRUE,
   created_at BIGINT NOT NULL,
@@ -71,6 +72,7 @@ CREATE TABLE IF NOT EXISTS public.reason (
 CREATE TABLE IF NOT EXISTS public.relation_type (
   type_id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
+  normalized_name TEXT NOT NULL,
   created_at BIGINT NOT NULL,
   updated_at BIGINT NOT NULL,
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE
@@ -134,14 +136,14 @@ ON public.gift_record(book_id, occurred_at);
 CREATE INDEX IF NOT EXISTS idx_gift_record_book_person
 ON public.gift_record(book_id, person_id);
 
-CREATE UNIQUE INDEX IF NOT EXISTS idx_reason_name
-ON public.reason(LOWER(name));
+CREATE UNIQUE INDEX IF NOT EXISTS idx_reason_normalized_name
+ON public.reason(normalized_name);
 
 CREATE INDEX IF NOT EXISTS idx_reason_updated_at
 ON public.reason(updated_at DESC);
 
-CREATE UNIQUE INDEX IF NOT EXISTS idx_relation_type_name
-ON public.relation_type(LOWER(name));
+CREATE UNIQUE INDEX IF NOT EXISTS idx_relation_type_normalized_name
+ON public.relation_type(normalized_name);
 
 CREATE INDEX IF NOT EXISTS idx_relation_type_updated_at
 ON public.relation_type(updated_at DESC);

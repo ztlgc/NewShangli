@@ -9,6 +9,8 @@ import '../../data/local/drift/app_database.dart';
 import '../../import/default_book_service.dart';
 import '../../media/media_storage_service.dart';
 import '../app_database_scope.dart';
+import '../app_dialog.dart';
+import '../app_notifier.dart';
 import '../app_tokens.dart';
 import '../app_scaffold.dart';
 import '../components.dart';
@@ -157,30 +159,22 @@ class _RecordAddPageState extends State<RecordAddPage> {
     if (!mounted) return;
     final amountCent = _parseAmountCent(_amountController.text);
     if (amountCent == null || amountCent <= 0) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('请输入正确金额')));
+      AppNotifier.warning(context, '请输入正确金额');
       return;
     }
     final pid = _personId;
     if (pid == null || pid.trim().isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('请选择关系人')));
+      AppNotifier.warning(context, '请选择关系人');
       return;
     }
     final eventName = _eventName.trim();
     if (eventName.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('请选择事由')));
+      AppNotifier.warning(context, '请选择事由');
       return;
     }
     final payment = _paymentMethod.trim();
     if (payment.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('请选择支付方式')));
+      AppNotifier.warning(context, '请选择支付方式');
       return;
     }
 
@@ -302,9 +296,7 @@ class _RecordAddPageState extends State<RecordAddPage> {
     final books = await db.select(db.accountBooks).get();
     if (!mounted) return;
     if (books.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('暂无账簿，请先创建')));
+      AppNotifier.warning(context, '暂无账簿，请先创建');
       return;
     }
     final picked = await showDialog<String>(
@@ -544,9 +536,10 @@ class _RecordAddPageState extends State<RecordAddPage> {
 
   Future<void> _pickDate() async {
     if (_occurredAtLockedByBookTime) {
-      ScaffoldMessenger.of(
+      AppNotifier.info(
         context,
-      ).showSnackBar(const SnackBar(content: Text('该账簿已设置账簿时间，记录时间将与账簿时间一致')));
+        '该账簿已设置账簿时间，记录时间将与账簿时间一致',
+      );
       return;
     }
     final initialDate = DateTime(
@@ -606,31 +599,21 @@ class _RecordAddPageState extends State<RecordAddPage> {
     if (picked == null) return;
     if (picked == '其他') {
       if (!mounted) return;
-      final input = await showDialog<String>(
-        context: context,
-        builder: (context) {
-          final controller = TextEditingController(text: _paymentMethod);
-          return AlertDialog(
-            title: const Text('自定义支付方式'),
-            content: TextField(
-              controller: controller,
-              autofocus: true,
-              decoration: const InputDecoration(hintText: '请输入支付方式'),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('取消'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(controller.text),
-                child: const Text('确定'),
-              ),
-            ],
-          );
-        },
+      final input = await AppDialog.showInput(
+        context,
+        title: '自定义支付方式',
+        confirmLabel: '确定',
+        cancelLabel: '取消',
+        fields: [
+          AppDialogField(
+            id: 'value',
+            label: '支付方式',
+            hint: '请输入支付方式',
+            initialValue: _paymentMethod,
+          ),
+        ],
       );
-      final v = input?.trim();
+      final v = input?['value']?.trim();
       if (v == null || v.isEmpty) return;
       setState(() {
         _paymentMethod = v;
@@ -802,9 +785,7 @@ class _RecordAddPageState extends State<RecordAddPage> {
       });
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('添加附件失败：$e')));
+      AppNotifier.error(context, '添加附件失败：$e');
     }
   }
 

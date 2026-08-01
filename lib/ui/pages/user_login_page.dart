@@ -5,8 +5,8 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../app_scaffold.dart';
+import '../app_notifier.dart';
 import '../app_tokens.dart';
-import '../app_toast.dart';
 import '../prototype_kit.dart';
 
 /// 页面：用户登录页面
@@ -52,7 +52,7 @@ class _UserLoginPageState extends State<UserLoginPage> {
     final password = _passwordController.text;
 
     if (email.isEmpty || password.isEmpty) {
-      AppToast.show(context, '请输入邮箱和密码');
+      AppNotifier.warning(context, '请输入邮箱和密码');
       return;
     }
 
@@ -67,17 +67,17 @@ class _UserLoginPageState extends State<UserLoginPage> {
           .timeout(const Duration(seconds: 15));
 
       if (!mounted) return;
-      AppToast.show(context, '登录成功');
+      AppNotifier.success(context, '登录成功');
       Navigator.of(context).pop(true); // 登录成功返回 true
     } on TimeoutException {
       if (!mounted) return;
-      AppToast.show(context, '登录超时，请检查网络或稍后重试');
+      AppNotifier.error(context, '登录超时，请检查网络或稍后重试');
     } on AuthException catch (e) {
       if (!mounted) return;
-      AppToast.show(context, _buildLoginErrorMessage(e));
+      AppNotifier.error(context, _buildLoginErrorMessage(e));
     } catch (e) {
       if (!mounted) return;
-      AppToast.show(context, '发生未知错误: $e');
+      AppNotifier.error(context, '发生未知错误: $e');
     } finally {
       if (mounted) {
         setState(() {

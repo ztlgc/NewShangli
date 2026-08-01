@@ -2,9 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import '../security/edit_protection.dart';
-import 'app_tokens.dart';
-import 'prototype_kit.dart';
+import 'app_dialog.dart';
+import 'app_notifier.dart';
+import 'app_notification_tokens.dart';
 
+/// 触发编辑保护密码校验流程：
+/// 1. 读取本地配置，未开启则直接放行
+/// 2. 弹出统一 [AppDialog.showInput] 密码输入框
+/// 3. 校验失败时通过 [AppNotifier] 触发统一 Toast
+///
+/// 业务侧统一通过本入口调用，未来新增敏感操作时无需重复实现弹窗。
 Future<bool> requireEditProtectionPassword(
   BuildContext context, {
   required String title,
@@ -12,255 +19,31 @@ Future<bool> requireEditProtectionPassword(
   final config = await EditProtectionConfig.load();
   if (!config.enabled) return true;
   if (!context.mounted) return false;
-  final password = await showEditProtectionPasswordDialog(
+
+  final result = await AppDialog.showInput(
     context,
     title: title,
+    message: '验证后继续操作',
+    confirmLabel: '确认',
+    cancelLabel: '取消',
+    tone: AppNotificationTone.info,
+    icon: FontAwesomeIcons.lock,
+    fields: const [
+      AppDialogField(
+        id: 'password',
+        label: '编辑密码',
+        hint: '请输入编辑密码',
+        obscureText: true,
+      ),
+    ],
   );
-  final v = password?.trim() ?? '';
-  if (v.isEmpty) return false;
-  final ok = await EditProtectionService().verifyPassword(v);
+
+  final password = result?['password']?.trim() ?? '';
+  if (password.isEmpty) return false;
+
+  final ok = await EditProtectionService().verifyPassword(password);
   if (!ok && context.mounted) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('密码错误')));
+    AppNotifier.error(context, '密码错误');
   }
   return ok;
-}
-
-Future<String?> showEditProtectionPasswordDialog(
-  BuildContext context, {
-  required String title,
-}) async {
-  final controller = TextEditingController();
-  try {
-    return await showDialog<String>(
-      context: context,
-      barrierDismissible: true,
-      builder: (context) {
-        return _EditProtectionPasswordDialog(
-          title: title,
-          controller: controller,
-        );
-      },
-    );
-  } finally {
-    controller.dispose();
-  }
-}
-
-class _EditProtectionPasswordDialog extends StatefulWidget {
-  const _EditProtectionPasswordDialog({
-    required this.title,
-    required this.controller,
-  });
-
-  final String title;
-  final TextEditingController controller;
-
-  @override
-  State<_EditProtectionPasswordDialog> createState() =>
-      _EditProtectionPasswordDialogState();
-}
-
-class _EditProtectionPasswordDialogState
-    extends State<_EditProtectionPasswordDialog> {
-  bool _obscure = true;
-
-  void _submit() {
-    Navigator.of(context).pop(widget.controller.text);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.appColors;
-    return Dialog(
-      backgroundColor: Colors.transparent,
-      elevation: 0,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 24),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 360),
-        child: Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: colors.surfaceCard,
-            borderRadius: AppRadii.br2xl,
-            border: Border.all(color: colors.borderSubtle),
-            boxShadow: AppShadows.lg,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: colors.brandSoft,
-                      borderRadius: AppRadii.brXl,
-                    ),
-                    alignment: Alignment.center,
-                    child: FaIcon(
-                      FontAwesomeIcons.lock,
-                      size: 16,
-                      color: colors.brandOnSoft,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          widget.title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: AppTypography.base(
-                            fontSize: AppTypography.fs18,
-                            fontWeight: AppTypography.bold,
-                            color: colors.textPrimary,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          '验证后继续操作',
-                          style: AppTypography.base(
-                            fontSize: AppTypography.fs12,
-                            fontWeight: AppTypography.regular,
-                            color: colors.textTertiary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 18),
-              TextField(
-                controller: widget.controller,
-                autofocus: true,
-                obscureText: _obscure,
-                textInputAction: TextInputAction.done,
-                onSubmitted: (_) => _submit(),
-                style: AppTypography.base(
-                  fontSize: AppTypography.fs16,
-                  fontWeight: AppTypography.medium,
-                  color: colors.textPrimary,
-                ),
-                decoration: InputDecoration(
-                  hintText: '请输入编辑密码',
-                  hintStyle: AppTypography.base(
-                    fontSize: AppTypography.fs14,
-                    fontWeight: AppTypography.regular,
-                    color: colors.textMuted,
-                  ),
-                  prefixIcon: const Padding(
-                    padding: EdgeInsets.only(left: 14, right: 10),
-                    child: FaIcon(FontAwesomeIcons.key, size: 15),
-                  ),
-                  prefixIconConstraints: const BoxConstraints(
-                    minWidth: 40,
-                    minHeight: 44,
-                  ),
-                  suffixIcon: IconButton(
-                    visualDensity: VisualDensity.compact,
-                    onPressed: () => setState(() => _obscure = !_obscure),
-                    icon: FaIcon(
-                      _obscure
-                          ? FontAwesomeIcons.eye
-                          : FontAwesomeIcons.eyeSlash,
-                      size: 15,
-                    ),
-                  ),
-                  suffixIconColor: colors.textTertiary,
-                  filled: true,
-                  fillColor: colors.surfaceSubtle,
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 14,
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: AppRadii.brXl,
-                    borderSide: BorderSide(color: colors.borderDefault),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: AppRadii.brXl,
-                    borderSide: BorderSide(
-                      color: colors.borderFocus,
-                      width: 1.4,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 18),
-              Row(
-                children: [
-                  Expanded(
-                    child: _DialogActionButton(
-                      label: '取消',
-                      background: AppColors.gray100,
-                      foreground: AppColors.textSecondary,
-                      onTap: () => Navigator.of(context).pop(),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: _DialogActionButton(
-                      label: '确认',
-                      background: AppColors.brandPrimary,
-                      foreground: AppColors.white,
-                      onTap: _submit,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _DialogActionButton extends StatelessWidget {
-  const _DialogActionButton({
-    required this.label,
-    required this.background,
-    required this.foreground,
-    required this.onTap,
-  });
-
-  final String label;
-  final Color background;
-  final Color foreground;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.appColors;
-    return PressableScale(
-      onTap: onTap,
-      child: Container(
-        height: 44,
-        decoration: BoxDecoration(
-          color: background == AppColors.brandPrimary
-              ? colors.brandPrimary
-              : colors.surfaceFor(background),
-          borderRadius: AppRadii.brXl,
-        ),
-        alignment: Alignment.center,
-        child: Text(
-          label,
-          style: AppTypography.base(
-            fontSize: AppTypography.fs14,
-            fontWeight: AppTypography.semibold,
-            color: foreground == AppColors.white
-                ? colors.textInverse
-                : colors.foregroundFor(foreground),
-          ),
-        ),
-      ),
-    );
-  }
 }

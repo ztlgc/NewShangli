@@ -4,8 +4,8 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import '../../data/local/drift/app_database.dart';
 import '../../utils/date_util.dart';
-import '../app_toast.dart';
 import '../app_database_scope.dart';
+import '../app_notifier.dart';
 import '../app_tokens.dart';
 import '../app_scaffold.dart';
 import '../components.dart';
@@ -348,7 +348,7 @@ class _CanvasState extends State<_Canvas> {
 
 
   void _toast(String message) {
-    AppToast.show(context, message);
+    AppNotifier.info(context, message);
   }
 
   @override

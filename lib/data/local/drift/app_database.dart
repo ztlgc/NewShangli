@@ -53,7 +53,7 @@ class AppDatabase extends _$AppDatabase {
   ///
   /// 版本升级时在 [migration] 中补齐迁移逻辑，并同步单元测试。
   @override
-  int get schemaVersion => 12;
+  int get schemaVersion => 13;
 
   /// 统一注入迁移策略：
   /// - onCreate：创建所有表与索引
@@ -175,6 +175,38 @@ class AppDatabase extends _$AppDatabase {
           'ALTER TABLE account_book ADD COLUMN attachments TEXT;',
         );
       }
+      // 开发阶段策略：schema 结构不兼容的旧库（schema 12 及以下）不做数据迁移，
+      // 直接删除全部表并按当前结构重建，避免旧库缺少 normalized_name 等列导致数据库打不开。
+      if (from < 13) {
+        await customStatement('PRAGMA foreign_keys = OFF;');
+        const rebuildTables = <String>[
+          'contact_relation',
+          'relation_type',
+          'reason',
+          'gift_record',
+          'person',
+          'account_book',
+          'data_import_job',
+          'entity_remark',
+        ];
+        for (final tableName in rebuildTables) {
+          await customStatement('DROP TABLE IF EXISTS $tableName;');
+        }
+        await m.createAll();
+        await customStatement('PRAGMA foreign_keys = ON;');
+        await customStatement('''
+          CREATE TABLE IF NOT EXISTS entity_remark (
+            remark_id TEXT NOT NULL PRIMARY KEY,
+            entity_type TEXT NOT NULL,
+            entity_id TEXT NOT NULL,
+            content TEXT NOT NULL,
+            created_at INTEGER NOT NULL
+          );
+        ''');
+        await _ensureIndexes();
+        return;
+      }
+      await _ensureIndexes();
     },
     beforeOpen: (details) async {
       await customStatement('PRAGMA foreign_keys = ON;');
@@ -207,6 +239,22 @@ class AppDatabase extends _$AppDatabase {
     await createIndexIfTableExists(
       'gift_record',
       'CREATE INDEX IF NOT EXISTS idx_gift_record_book_person ON gift_record(book_id, person_id);',
+    );
+    await createIndexIfTableExists(
+      'reason',
+      'CREATE UNIQUE INDEX IF NOT EXISTS idx_reason_normalized_name ON reason(normalized_name);',
+    );
+    await createIndexIfTableExists(
+      'reason',
+      'CREATE INDEX IF NOT EXISTS idx_reason_updated_at ON reason(updated_at DESC);',
+    );
+    await createIndexIfTableExists(
+      'relation_type',
+      'CREATE UNIQUE INDEX IF NOT EXISTS idx_relation_type_normalized_name ON relation_type(normalized_name);',
+    );
+    await createIndexIfTableExists(
+      'relation_type',
+      'CREATE INDEX IF NOT EXISTS idx_relation_type_updated_at ON relation_type(updated_at DESC);',
     );
     await createIndexIfTableExists(
       'data_import_job',

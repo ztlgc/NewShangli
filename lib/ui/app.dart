@@ -13,6 +13,14 @@ class NewShangliApp extends StatelessWidget {
 
   final AppDatabase Function()? databaseFactory;
 
+  /// 全局 ScaffoldMessengerKey
+  ///
+  /// 用于在无 BuildContext 的场景（如 Service / 后台任务）通过
+  /// `appMessengerKey.currentState` 主动弹出 SnackBar。
+  /// 普通页面调用请使用 `AppNotifier.snack(context, ...)`。
+  static final GlobalKey<ScaffoldMessengerState> appMessengerKey =
+      GlobalKey<ScaffoldMessengerState>();
+
   @override
   Widget build(BuildContext context) {
     final session = AppSession();
@@ -25,6 +33,7 @@ class NewShangliApp extends StatelessWidget {
           databaseFactory: databaseFactory,
           child: MaterialApp(
             debugShowCheckedModeBanner: false,
+            scaffoldMessengerKey: appMessengerKey,
             title: '尚礼',
             theme: AppTheme.light(),
             darkTheme: AppTheme.dark(),

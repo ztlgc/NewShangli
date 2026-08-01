@@ -2293,6 +2293,21 @@ class $ReasonsTable extends Reasons with TableInfo<$ReasonsTable, Reason> {
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _normalizedNameMeta = const VerificationMeta(
+    'normalizedName',
+  );
+  @override
+  late final GeneratedColumn<String> normalizedName = GeneratedColumn<String>(
+    'normalized_name',
+    aliasedName,
+    false,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 1,
+      maxTextLength: 64,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
   static const VerificationMeta _descriptionMeta = const VerificationMeta(
     'description',
   );
@@ -2347,6 +2362,7 @@ class $ReasonsTable extends Reasons with TableInfo<$ReasonsTable, Reason> {
   List<GeneratedColumn> get $columns => [
     reasonId,
     name,
+    normalizedName,
     description,
     enabled,
     createdAt,
@@ -2379,6 +2395,17 @@ class $ReasonsTable extends Reasons with TableInfo<$ReasonsTable, Reason> {
       );
     } else if (isInserting) {
       context.missing(_nameMeta);
+    }
+    if (data.containsKey('normalized_name')) {
+      context.handle(
+        _normalizedNameMeta,
+        normalizedName.isAcceptableOrUnknown(
+          data['normalized_name']!,
+          _normalizedNameMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_normalizedNameMeta);
     }
     if (data.containsKey('description')) {
       context.handle(
@@ -2428,6 +2455,10 @@ class $ReasonsTable extends Reasons with TableInfo<$ReasonsTable, Reason> {
         DriftSqlType.string,
         data['${effectivePrefix}name'],
       )!,
+      normalizedName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}normalized_name'],
+      )!,
       description: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}description'],
@@ -2456,6 +2487,9 @@ class $ReasonsTable extends Reasons with TableInfo<$ReasonsTable, Reason> {
 class Reason extends DataClass implements Insertable<Reason> {
   final String reasonId;
   final String name;
+
+  /// 归一化名称用于做稳定的唯一约束与云端 upsert 冲突目标。
+  final String normalizedName;
   final String? description;
   final bool enabled;
   final int createdAt;
@@ -2463,6 +2497,7 @@ class Reason extends DataClass implements Insertable<Reason> {
   const Reason({
     required this.reasonId,
     required this.name,
+    required this.normalizedName,
     this.description,
     required this.enabled,
     required this.createdAt,
@@ -2473,6 +2508,7 @@ class Reason extends DataClass implements Insertable<Reason> {
     final map = <String, Expression>{};
     map['reason_id'] = Variable<String>(reasonId);
     map['name'] = Variable<String>(name);
+    map['normalized_name'] = Variable<String>(normalizedName);
     if (!nullToAbsent || description != null) {
       map['description'] = Variable<String>(description);
     }
@@ -2486,6 +2522,7 @@ class Reason extends DataClass implements Insertable<Reason> {
     return ReasonsCompanion(
       reasonId: Value(reasonId),
       name: Value(name),
+      normalizedName: Value(normalizedName),
       description: description == null && nullToAbsent
           ? const Value.absent()
           : Value(description),
@@ -2503,6 +2540,7 @@ class Reason extends DataClass implements Insertable<Reason> {
     return Reason(
       reasonId: serializer.fromJson<String>(json['reasonId']),
       name: serializer.fromJson<String>(json['name']),
+      normalizedName: serializer.fromJson<String>(json['normalizedName']),
       description: serializer.fromJson<String?>(json['description']),
       enabled: serializer.fromJson<bool>(json['enabled']),
       createdAt: serializer.fromJson<int>(json['createdAt']),
@@ -2515,6 +2553,7 @@ class Reason extends DataClass implements Insertable<Reason> {
     return <String, dynamic>{
       'reasonId': serializer.toJson<String>(reasonId),
       'name': serializer.toJson<String>(name),
+      'normalizedName': serializer.toJson<String>(normalizedName),
       'description': serializer.toJson<String?>(description),
       'enabled': serializer.toJson<bool>(enabled),
       'createdAt': serializer.toJson<int>(createdAt),
@@ -2525,6 +2564,7 @@ class Reason extends DataClass implements Insertable<Reason> {
   Reason copyWith({
     String? reasonId,
     String? name,
+    String? normalizedName,
     Value<String?> description = const Value.absent(),
     bool? enabled,
     int? createdAt,
@@ -2532,6 +2572,7 @@ class Reason extends DataClass implements Insertable<Reason> {
   }) => Reason(
     reasonId: reasonId ?? this.reasonId,
     name: name ?? this.name,
+    normalizedName: normalizedName ?? this.normalizedName,
     description: description.present ? description.value : this.description,
     enabled: enabled ?? this.enabled,
     createdAt: createdAt ?? this.createdAt,
@@ -2541,6 +2582,9 @@ class Reason extends DataClass implements Insertable<Reason> {
     return Reason(
       reasonId: data.reasonId.present ? data.reasonId.value : this.reasonId,
       name: data.name.present ? data.name.value : this.name,
+      normalizedName: data.normalizedName.present
+          ? data.normalizedName.value
+          : this.normalizedName,
       description: data.description.present
           ? data.description.value
           : this.description,
@@ -2555,6 +2599,7 @@ class Reason extends DataClass implements Insertable<Reason> {
     return (StringBuffer('Reason(')
           ..write('reasonId: $reasonId, ')
           ..write('name: $name, ')
+          ..write('normalizedName: $normalizedName, ')
           ..write('description: $description, ')
           ..write('enabled: $enabled, ')
           ..write('createdAt: $createdAt, ')
@@ -2564,14 +2609,22 @@ class Reason extends DataClass implements Insertable<Reason> {
   }
 
   @override
-  int get hashCode =>
-      Object.hash(reasonId, name, description, enabled, createdAt, updatedAt);
+  int get hashCode => Object.hash(
+    reasonId,
+    name,
+    normalizedName,
+    description,
+    enabled,
+    createdAt,
+    updatedAt,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is Reason &&
           other.reasonId == this.reasonId &&
           other.name == this.name &&
+          other.normalizedName == this.normalizedName &&
           other.description == this.description &&
           other.enabled == this.enabled &&
           other.createdAt == this.createdAt &&
@@ -2581,6 +2634,7 @@ class Reason extends DataClass implements Insertable<Reason> {
 class ReasonsCompanion extends UpdateCompanion<Reason> {
   final Value<String> reasonId;
   final Value<String> name;
+  final Value<String> normalizedName;
   final Value<String?> description;
   final Value<bool> enabled;
   final Value<int> createdAt;
@@ -2589,6 +2643,7 @@ class ReasonsCompanion extends UpdateCompanion<Reason> {
   const ReasonsCompanion({
     this.reasonId = const Value.absent(),
     this.name = const Value.absent(),
+    this.normalizedName = const Value.absent(),
     this.description = const Value.absent(),
     this.enabled = const Value.absent(),
     this.createdAt = const Value.absent(),
@@ -2598,6 +2653,7 @@ class ReasonsCompanion extends UpdateCompanion<Reason> {
   ReasonsCompanion.insert({
     required String reasonId,
     required String name,
+    required String normalizedName,
     this.description = const Value.absent(),
     this.enabled = const Value.absent(),
     required int createdAt,
@@ -2605,11 +2661,13 @@ class ReasonsCompanion extends UpdateCompanion<Reason> {
     this.rowid = const Value.absent(),
   }) : reasonId = Value(reasonId),
        name = Value(name),
+       normalizedName = Value(normalizedName),
        createdAt = Value(createdAt),
        updatedAt = Value(updatedAt);
   static Insertable<Reason> custom({
     Expression<String>? reasonId,
     Expression<String>? name,
+    Expression<String>? normalizedName,
     Expression<String>? description,
     Expression<bool>? enabled,
     Expression<int>? createdAt,
@@ -2619,6 +2677,7 @@ class ReasonsCompanion extends UpdateCompanion<Reason> {
     return RawValuesInsertable({
       if (reasonId != null) 'reason_id': reasonId,
       if (name != null) 'name': name,
+      if (normalizedName != null) 'normalized_name': normalizedName,
       if (description != null) 'description': description,
       if (enabled != null) 'enabled': enabled,
       if (createdAt != null) 'created_at': createdAt,
@@ -2630,6 +2689,7 @@ class ReasonsCompanion extends UpdateCompanion<Reason> {
   ReasonsCompanion copyWith({
     Value<String>? reasonId,
     Value<String>? name,
+    Value<String>? normalizedName,
     Value<String?>? description,
     Value<bool>? enabled,
     Value<int>? createdAt,
@@ -2639,6 +2699,7 @@ class ReasonsCompanion extends UpdateCompanion<Reason> {
     return ReasonsCompanion(
       reasonId: reasonId ?? this.reasonId,
       name: name ?? this.name,
+      normalizedName: normalizedName ?? this.normalizedName,
       description: description ?? this.description,
       enabled: enabled ?? this.enabled,
       createdAt: createdAt ?? this.createdAt,
@@ -2655,6 +2716,9 @@ class ReasonsCompanion extends UpdateCompanion<Reason> {
     }
     if (name.present) {
       map['name'] = Variable<String>(name.value);
+    }
+    if (normalizedName.present) {
+      map['normalized_name'] = Variable<String>(normalizedName.value);
     }
     if (description.present) {
       map['description'] = Variable<String>(description.value);
@@ -2679,6 +2743,7 @@ class ReasonsCompanion extends UpdateCompanion<Reason> {
     return (StringBuffer('ReasonsCompanion(')
           ..write('reasonId: $reasonId, ')
           ..write('name: $name, ')
+          ..write('normalizedName: $normalizedName, ')
           ..write('description: $description, ')
           ..write('enabled: $enabled, ')
           ..write('createdAt: $createdAt, ')
@@ -2717,6 +2782,21 @@ class $RelationTypesTable extends RelationTypes
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _normalizedNameMeta = const VerificationMeta(
+    'normalizedName',
+  );
+  @override
+  late final GeneratedColumn<String> normalizedName = GeneratedColumn<String>(
+    'normalized_name',
+    aliasedName,
+    false,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 1,
+      maxTextLength: 64,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -2742,7 +2822,13 @@ class $RelationTypesTable extends RelationTypes
     $customConstraints: 'NOT NULL',
   );
   @override
-  List<GeneratedColumn> get $columns => [typeId, name, createdAt, updatedAt];
+  List<GeneratedColumn> get $columns => [
+    typeId,
+    name,
+    normalizedName,
+    createdAt,
+    updatedAt,
+  ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -2770,6 +2856,17 @@ class $RelationTypesTable extends RelationTypes
       );
     } else if (isInserting) {
       context.missing(_nameMeta);
+    }
+    if (data.containsKey('normalized_name')) {
+      context.handle(
+        _normalizedNameMeta,
+        normalizedName.isAcceptableOrUnknown(
+          data['normalized_name']!,
+          _normalizedNameMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_normalizedNameMeta);
     }
     if (data.containsKey('created_at')) {
       context.handle(
@@ -2804,6 +2901,10 @@ class $RelationTypesTable extends RelationTypes
         DriftSqlType.string,
         data['${effectivePrefix}name'],
       )!,
+      normalizedName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}normalized_name'],
+      )!,
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}created_at'],
@@ -2824,11 +2925,15 @@ class $RelationTypesTable extends RelationTypes
 class RelationType extends DataClass implements Insertable<RelationType> {
   final String typeId;
   final String name;
+
+  /// 归一化名称用于做稳定的唯一约束与云端 upsert 冲突目标。
+  final String normalizedName;
   final int createdAt;
   final int updatedAt;
   const RelationType({
     required this.typeId,
     required this.name,
+    required this.normalizedName,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -2837,6 +2942,7 @@ class RelationType extends DataClass implements Insertable<RelationType> {
     final map = <String, Expression>{};
     map['type_id'] = Variable<String>(typeId);
     map['name'] = Variable<String>(name);
+    map['normalized_name'] = Variable<String>(normalizedName);
     map['created_at'] = Variable<int>(createdAt);
     map['updated_at'] = Variable<int>(updatedAt);
     return map;
@@ -2846,6 +2952,7 @@ class RelationType extends DataClass implements Insertable<RelationType> {
     return RelationTypesCompanion(
       typeId: Value(typeId),
       name: Value(name),
+      normalizedName: Value(normalizedName),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -2859,6 +2966,7 @@ class RelationType extends DataClass implements Insertable<RelationType> {
     return RelationType(
       typeId: serializer.fromJson<String>(json['typeId']),
       name: serializer.fromJson<String>(json['name']),
+      normalizedName: serializer.fromJson<String>(json['normalizedName']),
       createdAt: serializer.fromJson<int>(json['createdAt']),
       updatedAt: serializer.fromJson<int>(json['updatedAt']),
     );
@@ -2869,6 +2977,7 @@ class RelationType extends DataClass implements Insertable<RelationType> {
     return <String, dynamic>{
       'typeId': serializer.toJson<String>(typeId),
       'name': serializer.toJson<String>(name),
+      'normalizedName': serializer.toJson<String>(normalizedName),
       'createdAt': serializer.toJson<int>(createdAt),
       'updatedAt': serializer.toJson<int>(updatedAt),
     };
@@ -2877,11 +2986,13 @@ class RelationType extends DataClass implements Insertable<RelationType> {
   RelationType copyWith({
     String? typeId,
     String? name,
+    String? normalizedName,
     int? createdAt,
     int? updatedAt,
   }) => RelationType(
     typeId: typeId ?? this.typeId,
     name: name ?? this.name,
+    normalizedName: normalizedName ?? this.normalizedName,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
   );
@@ -2889,6 +3000,9 @@ class RelationType extends DataClass implements Insertable<RelationType> {
     return RelationType(
       typeId: data.typeId.present ? data.typeId.value : this.typeId,
       name: data.name.present ? data.name.value : this.name,
+      normalizedName: data.normalizedName.present
+          ? data.normalizedName.value
+          : this.normalizedName,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -2899,6 +3013,7 @@ class RelationType extends DataClass implements Insertable<RelationType> {
     return (StringBuffer('RelationType(')
           ..write('typeId: $typeId, ')
           ..write('name: $name, ')
+          ..write('normalizedName: $normalizedName, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -2906,13 +3021,15 @@ class RelationType extends DataClass implements Insertable<RelationType> {
   }
 
   @override
-  int get hashCode => Object.hash(typeId, name, createdAt, updatedAt);
+  int get hashCode =>
+      Object.hash(typeId, name, normalizedName, createdAt, updatedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is RelationType &&
           other.typeId == this.typeId &&
           other.name == this.name &&
+          other.normalizedName == this.normalizedName &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -2920,12 +3037,14 @@ class RelationType extends DataClass implements Insertable<RelationType> {
 class RelationTypesCompanion extends UpdateCompanion<RelationType> {
   final Value<String> typeId;
   final Value<String> name;
+  final Value<String> normalizedName;
   final Value<int> createdAt;
   final Value<int> updatedAt;
   final Value<int> rowid;
   const RelationTypesCompanion({
     this.typeId = const Value.absent(),
     this.name = const Value.absent(),
+    this.normalizedName = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -2933,16 +3052,19 @@ class RelationTypesCompanion extends UpdateCompanion<RelationType> {
   RelationTypesCompanion.insert({
     required String typeId,
     required String name,
+    required String normalizedName,
     required int createdAt,
     required int updatedAt,
     this.rowid = const Value.absent(),
   }) : typeId = Value(typeId),
        name = Value(name),
+       normalizedName = Value(normalizedName),
        createdAt = Value(createdAt),
        updatedAt = Value(updatedAt);
   static Insertable<RelationType> custom({
     Expression<String>? typeId,
     Expression<String>? name,
+    Expression<String>? normalizedName,
     Expression<int>? createdAt,
     Expression<int>? updatedAt,
     Expression<int>? rowid,
@@ -2950,6 +3072,7 @@ class RelationTypesCompanion extends UpdateCompanion<RelationType> {
     return RawValuesInsertable({
       if (typeId != null) 'type_id': typeId,
       if (name != null) 'name': name,
+      if (normalizedName != null) 'normalized_name': normalizedName,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (rowid != null) 'rowid': rowid,
@@ -2959,6 +3082,7 @@ class RelationTypesCompanion extends UpdateCompanion<RelationType> {
   RelationTypesCompanion copyWith({
     Value<String>? typeId,
     Value<String>? name,
+    Value<String>? normalizedName,
     Value<int>? createdAt,
     Value<int>? updatedAt,
     Value<int>? rowid,
@@ -2966,6 +3090,7 @@ class RelationTypesCompanion extends UpdateCompanion<RelationType> {
     return RelationTypesCompanion(
       typeId: typeId ?? this.typeId,
       name: name ?? this.name,
+      normalizedName: normalizedName ?? this.normalizedName,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       rowid: rowid ?? this.rowid,
@@ -2980,6 +3105,9 @@ class RelationTypesCompanion extends UpdateCompanion<RelationType> {
     }
     if (name.present) {
       map['name'] = Variable<String>(name.value);
+    }
+    if (normalizedName.present) {
+      map['normalized_name'] = Variable<String>(normalizedName.value);
     }
     if (createdAt.present) {
       map['created_at'] = Variable<int>(createdAt.value);
@@ -2998,6 +3126,7 @@ class RelationTypesCompanion extends UpdateCompanion<RelationType> {
     return (StringBuffer('RelationTypesCompanion(')
           ..write('typeId: $typeId, ')
           ..write('name: $name, ')
+          ..write('normalizedName: $normalizedName, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('rowid: $rowid')
@@ -6522,6 +6651,7 @@ typedef $$ReasonsTableCreateCompanionBuilder =
     ReasonsCompanion Function({
       required String reasonId,
       required String name,
+      required String normalizedName,
       Value<String?> description,
       Value<bool> enabled,
       required int createdAt,
@@ -6532,6 +6662,7 @@ typedef $$ReasonsTableUpdateCompanionBuilder =
     ReasonsCompanion Function({
       Value<String> reasonId,
       Value<String> name,
+      Value<String> normalizedName,
       Value<String?> description,
       Value<bool> enabled,
       Value<int> createdAt,
@@ -6555,6 +6686,11 @@ class $$ReasonsTableFilterComposer
 
   ColumnFilters<String> get name => $composableBuilder(
     column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get normalizedName => $composableBuilder(
+    column: $table.normalizedName,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -6598,6 +6734,11 @@ class $$ReasonsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get normalizedName => $composableBuilder(
+    column: $table.normalizedName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get description => $composableBuilder(
     column: $table.description,
     builder: (column) => ColumnOrderings(column),
@@ -6633,6 +6774,11 @@ class $$ReasonsTableAnnotationComposer
 
   GeneratedColumn<String> get name =>
       $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get normalizedName => $composableBuilder(
+    column: $table.normalizedName,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<String> get description => $composableBuilder(
     column: $table.description,
@@ -6679,6 +6825,7 @@ class $$ReasonsTableTableManager
               ({
                 Value<String> reasonId = const Value.absent(),
                 Value<String> name = const Value.absent(),
+                Value<String> normalizedName = const Value.absent(),
                 Value<String?> description = const Value.absent(),
                 Value<bool> enabled = const Value.absent(),
                 Value<int> createdAt = const Value.absent(),
@@ -6687,6 +6834,7 @@ class $$ReasonsTableTableManager
               }) => ReasonsCompanion(
                 reasonId: reasonId,
                 name: name,
+                normalizedName: normalizedName,
                 description: description,
                 enabled: enabled,
                 createdAt: createdAt,
@@ -6697,6 +6845,7 @@ class $$ReasonsTableTableManager
               ({
                 required String reasonId,
                 required String name,
+                required String normalizedName,
                 Value<String?> description = const Value.absent(),
                 Value<bool> enabled = const Value.absent(),
                 required int createdAt,
@@ -6705,6 +6854,7 @@ class $$ReasonsTableTableManager
               }) => ReasonsCompanion.insert(
                 reasonId: reasonId,
                 name: name,
+                normalizedName: normalizedName,
                 description: description,
                 enabled: enabled,
                 createdAt: createdAt,
@@ -6737,6 +6887,7 @@ typedef $$RelationTypesTableCreateCompanionBuilder =
     RelationTypesCompanion Function({
       required String typeId,
       required String name,
+      required String normalizedName,
       required int createdAt,
       required int updatedAt,
       Value<int> rowid,
@@ -6745,6 +6896,7 @@ typedef $$RelationTypesTableUpdateCompanionBuilder =
     RelationTypesCompanion Function({
       Value<String> typeId,
       Value<String> name,
+      Value<String> normalizedName,
       Value<int> createdAt,
       Value<int> updatedAt,
       Value<int> rowid,
@@ -6798,6 +6950,11 @@ class $$RelationTypesTableFilterComposer
 
   ColumnFilters<String> get name => $composableBuilder(
     column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get normalizedName => $composableBuilder(
+    column: $table.normalizedName,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -6856,6 +7013,11 @@ class $$RelationTypesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get normalizedName => $composableBuilder(
+    column: $table.normalizedName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -6881,6 +7043,11 @@ class $$RelationTypesTableAnnotationComposer
 
   GeneratedColumn<String> get name =>
       $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get normalizedName => $composableBuilder(
+    column: $table.normalizedName,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<int> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -6944,12 +7111,14 @@ class $$RelationTypesTableTableManager
               ({
                 Value<String> typeId = const Value.absent(),
                 Value<String> name = const Value.absent(),
+                Value<String> normalizedName = const Value.absent(),
                 Value<int> createdAt = const Value.absent(),
                 Value<int> updatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => RelationTypesCompanion(
                 typeId: typeId,
                 name: name,
+                normalizedName: normalizedName,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 rowid: rowid,
@@ -6958,12 +7127,14 @@ class $$RelationTypesTableTableManager
               ({
                 required String typeId,
                 required String name,
+                required String normalizedName,
                 required int createdAt,
                 required int updatedAt,
                 Value<int> rowid = const Value.absent(),
               }) => RelationTypesCompanion.insert(
                 typeId: typeId,
                 name: name,
+                normalizedName: normalizedName,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 rowid: rowid,

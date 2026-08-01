@@ -176,6 +176,10 @@ class Reasons extends Table {
 
   TextColumn get name => text().named('name').withLength(min: 1, max: 64)();
 
+  /// 归一化名称用于做稳定的唯一约束与云端 upsert 冲突目标。
+  TextColumn get normalizedName =>
+      text().named('normalized_name').withLength(min: 1, max: 64)();
+
   TextColumn get description => text().named('description').nullable()();
 
   BoolColumn get enabled =>
@@ -189,8 +193,8 @@ class Reasons extends Table {
 
   List<Index> get indexes => [
     Index(
-      'idx_reason_name',
-      'CREATE UNIQUE INDEX IF NOT EXISTS idx_reason_name ON reason(name COLLATE NOCASE)',
+      'idx_reason_normalized_name',
+      'CREATE UNIQUE INDEX IF NOT EXISTS idx_reason_normalized_name ON reason(normalized_name)',
     ),
     Index(
       'idx_reason_updated_at',
@@ -210,6 +214,10 @@ class RelationTypes extends Table {
 
   TextColumn get name => text().named('name').withLength(min: 1, max: 64)();
 
+  /// 归一化名称用于做稳定的唯一约束与云端 upsert 冲突目标。
+  TextColumn get normalizedName =>
+      text().named('normalized_name').withLength(min: 1, max: 64)();
+
   IntColumn get createdAt =>
       integer().named('created_at').customConstraint('NOT NULL')();
 
@@ -218,8 +226,8 @@ class RelationTypes extends Table {
 
   List<Index> get indexes => [
     Index(
-      'idx_relation_type_name',
-      'CREATE UNIQUE INDEX IF NOT EXISTS idx_relation_type_name ON relation_type(name COLLATE NOCASE)',
+      'idx_relation_type_normalized_name',
+      'CREATE UNIQUE INDEX IF NOT EXISTS idx_relation_type_normalized_name ON relation_type(normalized_name)',
     ),
     Index(
       'idx_relation_type_updated_at',

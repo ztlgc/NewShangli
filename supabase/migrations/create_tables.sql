@@ -54,6 +54,7 @@ CREATE TABLE IF NOT EXISTS public.gift_record (
 CREATE TABLE IF NOT EXISTS public.reason (
   reason_id UUID PRIMARY KEY,
   name TEXT NOT NULL CHECK(length(name) BETWEEN 1 AND 64),
+  normalized_name TEXT NOT NULL CHECK(length(normalized_name) BETWEEN 1 AND 64),
   description TEXT,
   enabled BOOLEAN DEFAULT TRUE,
   created_at BIGINT NOT NULL,
@@ -65,6 +66,7 @@ CREATE TABLE IF NOT EXISTS public.reason (
 CREATE TABLE IF NOT EXISTS public.relation_type (
   type_id UUID PRIMARY KEY,
   name TEXT NOT NULL CHECK(length(name) BETWEEN 1 AND 64),
+  normalized_name TEXT NOT NULL CHECK(length(normalized_name) BETWEEN 1 AND 64),
   created_at BIGINT NOT NULL,
   updated_at BIGINT NOT NULL,
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE

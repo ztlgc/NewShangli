@@ -3,8 +3,8 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../app_scaffold.dart';
+import '../app_notifier.dart';
 import '../app_tokens.dart';
-import '../app_toast.dart';
 import '../components.dart';
 import '../prototype_kit.dart';
 
@@ -33,11 +33,11 @@ class _UserProfilePageState extends State<UserProfilePage> {
     try {
       await Supabase.instance.client.auth.signOut();
       if (!mounted) return;
-      AppToast.show(context, '已退出登录');
+      AppNotifier.info(context, '已退出登录');
       Navigator.of(context).pop(true); // 退出成功返回 true
     } catch (e) {
       if (!mounted) return;
-      AppToast.show(context, '退出失败：$e');
+      AppNotifier.error(context, '退出失败：$e');
       setState(() => _isLoggingOut = false);
     }
   }
