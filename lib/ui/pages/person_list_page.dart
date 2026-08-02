@@ -19,12 +19,16 @@ import '../components.dart';
 import '../edit_protection_guard.dart';
 import '../navigation.dart';
 import '../prototype_kit.dart';
+import '../tab_shell.dart';
 import '../widgets/person_display_row.dart';
 import 'person_detail_page.dart';
 import 'person_edit_page.dart';
-import 'record_home_page.dart';
-import 'settings_home_page.dart';
-import 'stats_page.dart';
+
+/// 悬浮导航栏下方的列表底部留白，避免最后一项被悬浮栏遮挡。
+const double _personListBottomClearance =
+    AppTokens.floatingNavHeight +
+    AppTokens.floatingNavBottomInset +
+    AppTokens.space3;
 
 /// 页面：关系人管理 - 列表页
 /// 对照原型：prototype/index.html -> "列表页"
@@ -96,7 +100,6 @@ class _CanvasState extends State<_Canvas> {
           onPersonTap: (id) => _handlePersonTap(context, id),
           onPersonLongPress: _enterMultiSelectMode,
           onPersonSelectionToggle: _togglePersonSelection,
-          onBottomNavTap: (index) => _handleBottomNavTap(context, index),
           onExitMultiSelect: _exitMultiSelectMode,
           onToggleSelectAll: _toggleSelectAll,
           onDelete: () {
@@ -126,22 +129,6 @@ class _CanvasState extends State<_Canvas> {
         .toList();
   }
 
-  void _handleBottomNavTap(BuildContext context, int index) {
-    if (index == 1) return;
-    if (index == 0) {
-      AppNav.replaceRoot(context, const RecordHomePage());
-      return;
-    }
-    if (index == 2) {
-      AppNav.replaceRoot(context, const StatsPage());
-      return;
-    }
-    if (index == 3) {
-      AppNav.replaceRoot(context, const SettingsHomePage());
-      return;
-    }
-  }
-
   void _handlePersonTap(BuildContext context, String id) {
     if (_multiSelectMode) {
       _togglePersonSelection(id);
@@ -156,6 +143,7 @@ class _CanvasState extends State<_Canvas> {
       _multiSelectMode = true;
       _selectedPersonIds = <String>{id};
     });
+    TabShellScope.setNavHidden(context, hidden: true);
   }
 
   void _togglePersonSelection(String id) {
@@ -172,6 +160,7 @@ class _CanvasState extends State<_Canvas> {
         _multiSelectMode = false;
       }
     });
+    TabShellScope.setNavHidden(context, hidden: _multiSelectMode);
   }
 
   void _toggleSelectAll(List<String> visiblePersonIds) {
@@ -184,6 +173,7 @@ class _CanvasState extends State<_Canvas> {
         _selectedPersonIds = visiblePersonIds.toSet();
       }
     });
+    TabShellScope.setNavHidden(context, hidden: _multiSelectMode);
   }
 
   Future<void> _deleteSelectedPersons(AppDatabase db) async {
@@ -209,6 +199,7 @@ class _CanvasState extends State<_Canvas> {
       _selectedPersonIds = <String>{};
       _multiSelectMode = false;
     });
+    TabShellScope.setNavHidden(context, hidden: false);
     AppNotifier.success(context, '已删除：${ids.length}项');
   }
 
@@ -217,6 +208,7 @@ class _CanvasState extends State<_Canvas> {
       _selectedPersonIds = <String>{};
       _multiSelectMode = false;
     });
+    TabShellScope.setNavHidden(context, hidden: false);
   }
 }
 
@@ -235,7 +227,6 @@ class _CanvasBody extends StatelessWidget {
     required this.onPersonTap,
     required this.onPersonLongPress,
     required this.onPersonSelectionToggle,
-    required this.onBottomNavTap,
     required this.onExitMultiSelect,
     required this.onToggleSelectAll,
     required this.onDelete,
@@ -250,7 +241,6 @@ class _CanvasBody extends StatelessWidget {
   final ValueChanged<String> onPersonTap;
   final ValueChanged<String> onPersonLongPress;
   final ValueChanged<String> onPersonSelectionToggle;
-  final ValueChanged<int> onBottomNavTap;
   final VoidCallback onExitMultiSelect;
   final ValueChanged<List<String>> onToggleSelectAll;
   final VoidCallback onDelete;
@@ -330,25 +320,30 @@ class _CanvasBody extends StatelessWidget {
         ),
         // 列表区域
         Expanded(
-          child: isSearching
-              ? _SearchResultList(
-                  persons: filtered!,
-                  multiSelectMode: multiSelectMode,
-                  selectedPersonIds: selectedPersonIds,
-                  onPersonTap: onPersonTap,
-                  onPersonLongPress: onPersonLongPress,
-                  onPersonSelectionToggle: onPersonSelectionToggle,
-                )
-              : _AzContactList(
-                  items: contactItems,
-                  multiSelectMode: multiSelectMode,
-                  selectedPersonIds: selectedPersonIds,
-                  onPersonTap: onPersonTap,
-                  onPersonLongPress: onPersonLongPress,
-                  onPersonSelectionToggle: onPersonSelectionToggle,
-                ),
+          child: Padding(
+            padding: EdgeInsets.only(
+              bottom: multiSelectMode ? 0 : _personListBottomClearance,
+            ),
+            child: isSearching
+                ? _SearchResultList(
+                    persons: filtered!,
+                    multiSelectMode: multiSelectMode,
+                    selectedPersonIds: selectedPersonIds,
+                    onPersonTap: onPersonTap,
+                    onPersonLongPress: onPersonLongPress,
+                    onPersonSelectionToggle: onPersonSelectionToggle,
+                  )
+                : _AzContactList(
+                    items: contactItems,
+                    multiSelectMode: multiSelectMode,
+                    selectedPersonIds: selectedPersonIds,
+                    onPersonTap: onPersonTap,
+                    onPersonLongPress: onPersonLongPress,
+                    onPersonSelectionToggle: onPersonSelectionToggle,
+                  ),
+          ),
         ),
-        // 底部导航 / 多选操作栏
+        // 多选操作栏（普通模式下底部由悬浮导航栏承担）
         if (multiSelectMode)
           _MultiSelectActionBar(
             selectedCount: selectedPersonIds.length,
@@ -357,9 +352,7 @@ class _CanvasBody extends StatelessWidget {
                 selectedPersonIds.length == allPersonIds.length,
             onToggleSelectAll: () => onToggleSelectAll(allPersonIds),
             onDelete: onDelete,
-          )
-        else
-          PrototypeBottomNav(activeIndex: 1, onTap: onBottomNavTap),
+          ),
       ],
     );
   }
@@ -675,10 +668,7 @@ class _PersonRowState extends State<_PersonRow> {
 
   void _handleTap() {
     if (widget.id.startsWith('p_')) {
-      AppNotifier.info(
-        context,
-        '这是演示数据，添加真实联系人后将自动消失',
-      );
+      AppNotifier.info(context, '这是演示数据，添加真实联系人后将自动消失');
     } else {
       widget.onTap();
     }
@@ -686,10 +676,7 @@ class _PersonRowState extends State<_PersonRow> {
 
   void _handleLongPress() {
     if (widget.id.startsWith('p_')) {
-      AppNotifier.info(
-        context,
-        '这是演示数据，添加真实联系人后将自动消失',
-      );
+      AppNotifier.info(context, '这是演示数据，添加真实联系人后将自动消失');
     } else {
       widget.onLongPress();
     }

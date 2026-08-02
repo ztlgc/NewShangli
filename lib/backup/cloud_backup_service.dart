@@ -57,6 +57,39 @@ class CloudBackupService {
 
   String _newId() => const Uuid().v4();
 
+  /// 确保 Storage Bucket 存在且已配置好 RLS 策略。
+  ///
+  /// 仅验证 bucket 是否可访问；不会尝试从客户端创建 bucket，
+  /// 因为通过 anon key 调用 createBucket 通常没有权限，
+  /// 即使成功也会创建一个没有 RLS 策略的 bucket（默认全部拒绝）。
+  /// 请通过 Supabase 迁移来创建 bucket 并配置策略：
+  ///   supabase/migrations/create_storage_backups_bucket.sql
+  Future<void> _ensureStorageBucket(String bucketId) async {
+    try {
+      await _supabase.storage.from(bucketId).list();
+    } on StorageException catch (e) {
+      final msg = e.message.toLowerCase();
+      if (e.statusCode == '404' || msg.contains('bucket not found') || msg.contains('not found')) {
+        throw CloudBackupException(
+          'Storage bucket "$bucketId" 不存在。'
+          '请在 Supabase 控制台运行迁移文件：'
+          'supabase/migrations/create_storage_${bucketId}_bucket.sql'
+          '（原始错误: ${e.message}）',
+        );
+      } else if (e.statusCode == '403' || msg.contains('row-level security') || msg.contains('unauthorized')) {
+        throw CloudBackupException(
+          'Storage bucket "$bucketId" 存在但 RLS 策略未正确配置，导致访问被拒绝。'
+          '请运行迁移文件来创建/修复策略：'
+          'supabase/migrations/create_storage_${bucketId}_bucket.sql'
+          '（原始错误: ${e.message}）',
+        );
+      } else {
+        rethrow;
+      }
+    }
+  }
+
+
   static bool isAutoBackupDue({
     required int? lastCreatedAtMs,
     required Duration interval,
@@ -113,6 +146,7 @@ class CloudBackupService {
       createdAtMs: createdAt,
       backupId: backupId,
     );
+    await _ensureStorageBucket('backups');
     onProgress('正在上传…');
     await _supabase.storage
         .from('backups')
@@ -222,6 +256,7 @@ class CloudBackupService {
     final sizeBytes = await zip.length();
     final createdAt = DateTime.now().millisecondsSinceEpoch;
     final remotePath = buildAutoStoragePath(userId);
+    await _ensureStorageBucket('backups');
     onProgress('正在上传…');
     await _supabase.storage
         .from('backups')

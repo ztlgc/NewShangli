@@ -13,12 +13,10 @@ import '../app_scaffold.dart';
 import '../components.dart';
 import '../navigation.dart';
 import '../prototype_kit.dart';
+import '../tab_shell.dart';
 import '../widgets/record_list_row.dart';
-import 'person_list_page.dart';
 import 'record_add_page.dart';
 import 'record_detail_page.dart';
-import 'settings_home_page.dart';
-import 'stats_page.dart';
 
 /// 页面：收支记录 - 首页
 /// 对照原型：prototype/index.html -> "Row 1: Record" -> "首页"
@@ -56,6 +54,7 @@ class _CanvasState extends State<_Canvas> {
         ..clear()
         ..add(firstId);
     });
+    TabShellScope.setNavHidden(context, hidden: true);
   }
 
   void _exitSelection() {
@@ -63,6 +62,7 @@ class _CanvasState extends State<_Canvas> {
       _selectionMode = false;
       _selectedRecordIds.clear();
     });
+    TabShellScope.setNavHidden(context, hidden: false);
   }
 
   void _toggleSelection(String id) {
@@ -77,6 +77,7 @@ class _CanvasState extends State<_Canvas> {
         _selectionMode = false;
       }
     });
+    TabShellScope.setNavHidden(context, hidden: _selectionMode);
   }
 
   @override
@@ -197,34 +198,20 @@ class _CanvasState extends State<_Canvas> {
                         ..addAll(_allVisibleRecordIds);
                     }
                   });
+                  TabShellScope.setNavHidden(context, hidden: _selectionMode);
                 },
                 onDelete: () => _confirmBatchDelete(db),
-              )
-            else
-              PrototypeBottomNav(
-                activeIndex: 0,
-                onTap: (index) {
-                  if (index == 0) return;
-                  if (index == 1) {
-                    AppNav.replaceRoot(context, const PersonListPage());
-                    return;
-                  }
-                  if (index == 2) {
-                    AppNav.replaceRoot(context, const StatsPage());
-                    return;
-                  }
-                  if (index == 3) {
-                    AppNav.replaceRoot(context, const SettingsHomePage());
-                    return;
-                  }
-                },
               ),
           ],
         ),
         if (!_selectionMode)
           Positioned(
             right: 16,
-            bottom: AppTokens.tabBarHeight + 13 + bottomInset,
+            bottom:
+                AppTokens.floatingNavHeight +
+                AppTokens.floatingNavBottomInset +
+                13 +
+                bottomInset,
             child: PressableScale(
               onTap: () => AppNav.push(context, const RecordAddPage()),
               pressedScale: 0.95,
@@ -348,10 +335,7 @@ class _CanvasState extends State<_Canvas> {
                         return;
                       }
                       if (monthRecords[j].id.startsWith('r_')) {
-                        AppNotifier.info(
-                          context,
-                          '这是演示数据，添加真实记录后将自动消失',
-                        );
+                        AppNotifier.info(context, '这是演示数据，添加真实记录后将自动消失');
                         return;
                       }
                       AppNav.push(

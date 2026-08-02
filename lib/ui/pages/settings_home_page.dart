@@ -14,11 +14,8 @@ import 'account_books_page.dart';
 import 'data_backup_page.dart';
 import 'data_export_page.dart';
 import 'data_import_page.dart';
-import 'person_list_page.dart';
 import 'edit_protection_page.dart';
-import 'record_home_page.dart';
 import 'reason_manage_page.dart';
-import 'stats_page.dart';
 import 'relation_type_manage_page.dart';
 import 'recycle_bin_page.dart';
 import 'user_login_page.dart';
@@ -222,24 +219,6 @@ class _CanvasState extends State<_Canvas> {
               const _LogoutButton(),
             ],
           ),
-        ),
-        PrototypeBottomNav(
-          activeIndex: 3,
-          onTap: (index) {
-            if (index == 3) return;
-            if (index == 0) {
-              AppNav.replaceRoot(context, const RecordHomePage());
-              return;
-            }
-            if (index == 1) {
-              AppNav.replaceRoot(context, const PersonListPage());
-              return;
-            }
-            if (index == 2) {
-              AppNav.replaceRoot(context, const StatsPage());
-              return;
-            }
-          },
         ),
       ],
     );

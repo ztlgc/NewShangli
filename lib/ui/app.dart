@@ -6,7 +6,7 @@ import 'app_data.dart';
 import 'app_database_scope.dart';
 import 'app_session.dart';
 import 'app_theme.dart';
-import 'pages/record_home_page.dart';
+import 'tab_shell.dart';
 
 class NewShangliApp extends StatelessWidget {
   const NewShangliApp({super.key, this.databaseFactory});
@@ -55,7 +55,7 @@ class NewShangliApp extends StatelessWidget {
                 ),
               );
             },
-            home: const RecordHomePage(),
+            home: const MainTabShell(),
           ),
         ),
       ),

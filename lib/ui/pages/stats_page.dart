@@ -20,7 +20,6 @@ import '../app_scaffold.dart';
 import '../app_tokens.dart';
 import '../components.dart';
 import '../lunar_date_picker.dart';
-import '../navigation.dart';
 import '../prototype_kit.dart';
 import '../stats/stats_view_model.dart';
 
@@ -28,10 +27,6 @@ import '../../stats/stats_db.dart';
 import '../../stats/stats_models.dart';
 import '../../stats/stats_repository.dart';
 import '../../stats/stats_time_range.dart';
-
-import 'person_list_page.dart';
-import 'record_home_page.dart';
-import 'settings_home_page.dart';
 
 /// 统计页专用色板：
 /// 收入：teal 色系（与品牌 indigo 互补，且与「入账」语义一致）
@@ -272,24 +267,6 @@ class _StatsPageBodyState extends State<_StatsPageBody> {
                 );
               },
             ),
-          ),
-          PrototypeBottomNav(
-            activeIndex: 2,
-            onTap: (index) {
-              if (index == 2) return;
-              if (index == 0) {
-                AppNav.replaceRoot(context, const RecordHomePage());
-                return;
-              }
-              if (index == 1) {
-                AppNav.replaceRoot(context, const PersonListPage());
-                return;
-              }
-              if (index == 3) {
-                AppNav.replaceRoot(context, const SettingsHomePage());
-                return;
-              }
-            },
           ),
         ],
       ),
@@ -585,10 +562,7 @@ class _Header extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 8,
-                  vertical: 3,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
                   color: colors.brandSoft,
                   borderRadius: BorderRadius.circular(9999),
@@ -665,9 +639,7 @@ class _SegmentedControl extends StatelessWidget {
                   style: AppTypography.base(
                     fontSize: 14,
                     fontWeight: AppTypography.semibold,
-                    color: selected
-                        ? colors.textInverse
-                        : colors.textSecondary,
+                    color: selected ? colors.textInverse : colors.textSecondary,
                   ),
                 ),
               ],
@@ -1077,10 +1049,7 @@ class _KpiHeroCard extends StatelessWidget {
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 8,
-                  vertical: 4,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(6),
@@ -1178,25 +1147,16 @@ class _KpiHeroCard extends StatelessWidget {
             children: [
               _DeltaChip(
                 label: '$compareLabel 支出',
-                delta: _computeDeltaPct(
-                  compareExpense,
-                  data.expenseTotalCent,
-                ),
+                delta: _computeDeltaPct(compareExpense, data.expenseTotalCent),
                 invertColor: true,
               ),
               _DeltaChip(
                 label: '$compareLabel 收入',
-                delta: _computeDeltaPct(
-                  compareIncome,
-                  data.incomeTotalCent,
-                ),
+                delta: _computeDeltaPct(compareIncome, data.incomeTotalCent),
               ),
               _DeltaChip(
                 label: '$compareLabel 净',
-                delta: _computeDeltaPct(
-                  compareNet,
-                  net,
-                ),
+                delta: _computeDeltaPct(compareNet, net),
                 invertColor: true,
               ),
               _CountChip(
@@ -1474,10 +1434,7 @@ class _TrendCard extends StatelessWidget {
                 ),
               ),
               const Spacer(),
-              _TrendMetricSegment(
-                value: metric,
-                onChange: onChangeMetric,
-              ),
+              _TrendMetricSegment(value: metric, onChange: onChangeMetric),
             ],
           ),
           const SizedBox(height: 16),
@@ -1501,9 +1458,7 @@ class _TrendCard extends StatelessWidget {
               child: BarChart(
                 duration: Duration.zero,
                 BarChartData(
-                  minY: metric == _TrendMetric.net
-                      ? -maxAbs * 1.15
-                      : 0,
+                  minY: metric == _TrendMetric.net ? -maxAbs * 1.15 : 0,
                   maxY: metric == _TrendMetric.net
                       ? maxAbs * 1.15
                       : maxAbs * 1.2,
@@ -1624,8 +1579,12 @@ class _TrendCard extends StatelessWidget {
                             toY: metric == _TrendMetric.net
                                 ? values[i]
                                 : values[i].abs(),
-                            color: _colorFor(values[i], metric,
-                                positiveColor, negativeColor),
+                            color: _colorFor(
+                              values[i],
+                              metric,
+                              positiveColor,
+                              negativeColor,
+                            ),
                             width: buckets.length > 24 ? 6 : 10,
                             borderRadius: BorderRadius.circular(3),
                             backDrawRodData: BackgroundBarChartRodData(
@@ -1769,7 +1728,9 @@ class _CategoryCard extends StatelessWidget {
     for (var i = 0; i < categories.length; i++) {
       final c = categories[i];
       final isOther = c.category == '其他';
-      final color = isOther ? colors.neutralAccent : palette[i % palette.length];
+      final color = isOther
+          ? colors.neutralAccent
+          : palette[i % palette.length];
       sections.add(
         PieChartSectionData(
           value: c.amountCent.toDouble(),
@@ -1803,10 +1764,7 @@ class _CategoryCard extends StatelessWidget {
               ),
               const Spacer(),
               Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 8,
-                  vertical: 3,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
                   color: colors.orangeSoft,
                   borderRadius: BorderRadius.circular(9999),
@@ -1884,9 +1842,7 @@ class _CategoryCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    for (var i = 0;
-                        i < categories.length && i < 5;
-                        i++) ...[
+                    for (var i = 0; i < categories.length && i < 5; i++) ...[
                       _CategoryProgressRow(
                         color: categories[i].category == '其他'
                             ? colors.neutralAccent
@@ -1896,9 +1852,7 @@ class _CategoryCard extends StatelessWidget {
                         totalCent: totalExpenseCent,
                       ),
                       if (i !=
-                          (categories.length < 5
-                              ? categories.length - 1
-                              : 4))
+                          (categories.length < 5 ? categories.length - 1 : 4))
                         const SizedBox(height: 10),
                     ],
                     if (categories.length > 5) ...[
@@ -2041,10 +1995,7 @@ class _TopContactsCard extends StatelessWidget {
               ),
               const Spacer(),
               Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 8,
-                  vertical: 3,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
                   color: colors.brandSoft,
                   borderRadius: BorderRadius.circular(9999),
@@ -2255,7 +2206,10 @@ class _RankBadge extends StatelessWidget {
     return Container(
       width: 28,
       height: 28,
-      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(8)),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(8),
+      ),
       alignment: Alignment.center,
       child: icon != null
           ? FaIcon(icon, size: 12, color: fg)

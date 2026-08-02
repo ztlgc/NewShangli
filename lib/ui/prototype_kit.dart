@@ -214,10 +214,16 @@ class _PressableScaleState extends State<PressableScale> {
 }
 
 class PrototypeBottomNav extends StatelessWidget {
-  const PrototypeBottomNav({super.key, required this.activeIndex, this.onTap});
+  const PrototypeBottomNav({
+    super.key,
+    required this.activeIndex,
+    this.onTap,
+    this.floating = false,
+  });
 
   final int activeIndex;
   final ValueChanged<int>? onTap;
+  final bool floating;
 
   @override
   Widget build(BuildContext context) {
@@ -226,15 +232,23 @@ class PrototypeBottomNav extends StatelessWidget {
         .clamp(0.0, double.infinity)
         .toDouble();
     return Container(
-      height: AppTokens.tabBarHeight + bottomInset,
+      height: floating
+          ? AppTokens.floatingNavHeight
+          : AppTokens.tabBarHeight + bottomInset,
       decoration: BoxDecoration(
         color: colors.surfaceCard,
-        border: Border(top: BorderSide(color: colors.borderDefault, width: 1)),
+        border: floating
+            ? Border.all(color: colors.borderSubtle, width: 1)
+            : Border(top: BorderSide(color: colors.borderDefault, width: 1)),
+        borderRadius: floating ? AppRadii.br2xl : null,
+        boxShadow: floating ? AppShadows.lg : null,
       ),
       child: Padding(
-        padding: EdgeInsets.only(bottom: bottomInset),
+        padding: EdgeInsets.only(bottom: floating ? 0 : bottomInset),
         child: SizedBox(
-          height: AppTokens.tabBarHeight,
+          height: floating
+              ? AppTokens.floatingNavHeight
+              : AppTokens.tabBarHeight,
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [

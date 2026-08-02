@@ -127,9 +127,83 @@ flutter build apk --release
 build/app/outputs/flutter-apk/app-release.apk
 ```
 
-## 云同步与配置说明
+## 接入 Supabase（云同步）
 
-项目包含 Supabase 同步服务和 `supabase/migrations/` 下的数据库迁移脚本。当前应用入口会初始化 Supabase 客户端；如果你准备公开发布或二次部署，建议将 Supabase URL、anon key 等客户端配置改为 `--dart-define`、本地配置文件或安全的构建环境注入方式。
+应用内置于可选的 Supabase 云同步能力，支持账簿、关系人、礼金记录、附件等数据的云端备份与多端恢复。
+
+### 1. 创建 Supabase 项目
+
+在 [supabase.com](https://supabase.com) 注册并创建一个项目。免费套餐包含 500 MB 数据库和 1 GB 存储空间，满足个人使用。
+
+### 2. 获取连接信息
+
+进入项目控制台，点击左侧 **Settings → API**，复制：
+
+- **Project URL**（例如 `https://xxxxx.supabase.co`）
+- **anon public key**（以 `eyJ` 开头的 JWT token）
+
+### 3. 配置本地连接文件
+
+在项目根目录创建 `supabase.local.json`（已加入 `.gitignore`，不会提交到仓库）：
+
+```json
+{
+  "url": "https://你的项目ID.supabase.co",
+  "anonKey": "你的 anon public key"
+}
+```
+
+应用启动时会自动加载该文件并初始化 Supabase 客户端。
+
+### 4. 开启认证方式
+
+应用通过 Supabase Auth 进行用户身份认证。进入 **Authentication → Providers**，至少开启一种登录方式：
+
+- **Email**：最简方式，开启后用户可通过邮箱注册和登录。建议关闭"确认邮件"以简化开发测试（生产环境建议开启）。
+
+### 5. 运行数据库迁移
+
+以下 SQL 脚本需要在 Supabase 控制台的 **SQL Editor** 中依次执行。这些脚本会创建云同步所需的数据库表和存储桶访问策略。
+
+#### 5.1 核心数据表
+
+按顺序执行：
+
+| 顺序 | 文件 | 说明 |
+| --- | --- | --- |
+| 1 | `supabase/migrations/create_tables.sql` | 创建核心业务表（账簿、关系人、礼金记录、事由、关系类型、联系人关系） |
+| 2 | `supabase/migrations/create_local_aligned_tables.sql` | 对齐本地数据库结构，添加 user_id 字段和 RLS 策略 |
+| 3 | `supabase/migrations/add_account_book_attachments.sql` | 账簿表增加 attachments 字段 |
+| 4 | `supabase/migrations/add_book_time_to_account_book.sql` | 账簿表增加 book_time 字段 |
+| 5 | `supabase/migrations/change_book_time_to_date.sql` | 调整 book_time 字段类型 |
+| 6 | `supabase/migrations/add_normalized_name_columns.sql` | 添加 normalized_name 字段，支持大小写不敏感去重 |
+
+#### 5.2 存储桶与 RLS 策略（必须）
+
+上传附件和备份文件前必须创建存储桶并配置访问策略，否则上传会失败（403 RLS violation）：
+
+| 文件 | 说明 |
+| --- | --- |
+| `supabase/migrations/create_storage_media_bucket.sql` | 创建 `media` 私有存储桶，配置 RLS 策略——仅允许已登录用户读写自己 ID 前缀下的文件 |
+| `supabase/migrations/create_storage_backups_bucket.sql` | 创建 `backups` 私有存储桶，配置同上 |
+
+#### 5.3 云备份版本记录
+
+| 文件 | 说明 |
+| --- | --- |
+| `supabase/migrations/create_cloud_backup_version.sql` | 创建云备份版本记录表，用于追踪自动/手动备份历史 |
+
+### 6. 开启 Storage 功能
+
+在 Supabase 控制台左侧 **Storage** 中确认 `media` 和 `backups` 两个存储桶已显示。如果运行了 5.2 中的迁移脚本，它们会自动创建。如果没有看到，可以在 SQL Editor 中手动执行对应迁移。
+
+### 7. 验证
+
+启动应用后进入云同步页面，登录账号并执行一次同步。如果附件上传成功（不再报 RLS 错误），说明配置完成。
+
+### 迁移文件说明
+
+所有迁移脚本位于 `supabase/migrations/` 目录下。脚本使用 `INSERT ... ON CONFLICT DO NOTHING` 和 `DROP POLICY IF EXISTS` 等幂等语法，即使在已有数据的项目上重复执行也是安全的。
 
 WebDAV 备份配置由用户在应用内填写并保存在本机偏好设置中。请避免在代码仓库中提交个人 WebDAV 地址、账号、密码或真实备份文件。
 

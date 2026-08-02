@@ -9,6 +9,15 @@ class AppTokens {
   static const double tapTargetMin = 44;
   static const double bottomSafeSpacing = 0;
 
+  /// 悬浮底部导航栏：距屏幕底部安全区外侧的间距。
+  static const double floatingNavBottomInset = 24;
+
+  /// 悬浮底部导航栏：左右两侧留白。
+  static const double floatingNavSideInset = 32;
+
+  /// 悬浮底部导航栏自身高度。
+  static const double floatingNavHeight = 56;
+
   static const double space0 = 0;
   static const double space0_5 = 2;
   static const double space1 = 4;

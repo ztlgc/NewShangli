@@ -862,6 +862,39 @@ class SupabaseSyncService {
     onProgress('本地数据恢复完成！');
   }
 
+  /// 确保 Storage Bucket 存在且已配置好 RLS 策略。
+  ///
+  /// 仅验证 bucket 是否可访问；不会尝试从客户端创建 bucket，
+  /// 因为通过 anon key 调用 createBucket 通常没有权限，
+  /// 即使成功也会创建一个没有 RLS 策略的 bucket（默认全部拒绝）。
+  /// 请通过 Supabase 迁移来创建 bucket 并配置策略：
+  ///   supabase/migrations/create_storage_media_bucket.sql
+  Future<void> _ensureStorageBucket(String bucketId) async {
+    try {
+      // 尝试列出 bucket 内容以验证是否存在以及 RLS 是否允许查询
+      await _supabase.storage.from(bucketId).list();
+    } on StorageException catch (e) {
+      final msg = e.message.toLowerCase();
+      if (e.statusCode == '404' || msg.contains('bucket not found') || msg.contains('not found')) {
+        throw Exception(
+          'Storage bucket "$bucketId" 不存在。'
+          '请在 Supabase 控制台运行迁移文件：'
+          'supabase/migrations/create_storage_${bucketId}_bucket.sql'
+          '（原始错误: ${e.message}）',
+        );
+      } else if (e.statusCode == '403' || msg.contains('row-level security') || msg.contains('unauthorized')) {
+        throw Exception(
+          'Storage bucket "$bucketId" 存在但 RLS 策略未正确配置，导致访问被拒绝。'
+          '请运行迁移文件来创建/修复策略：'
+          'supabase/migrations/create_storage_${bucketId}_bucket.sql'
+          '（原始错误: ${e.message}）',
+        );
+      } else {
+        rethrow;
+      }
+    }
+  }
+
   /// 同步本地媒体文件到云端
   Future<void> _syncMediaToCloud(
     String userId,
@@ -870,6 +903,9 @@ class SupabaseSyncService {
     final docs = await getApplicationDocumentsDirectory();
     final mediaDir = Directory(p.join(docs.path, 'media'));
     if (!await mediaDir.exists()) return;
+
+    // 确保 media bucket 存在
+    await _ensureStorageBucket('media');
 
     final entities = await mediaDir
         .list(recursive: true, followLinks: false)
@@ -891,6 +927,14 @@ class SupabaseSyncService {
                 fileOptions: const FileOptions(upsert: true),
               );
           uploadCount++;
+        } on StorageException catch (e) {
+          failedFiles.add(relative);
+          final detail = (e.statusCode == '403' ||
+                  e.message.toLowerCase().contains('row-level security'))
+              ? ' — RLS 策略拒绝访问，请确认已运行迁移：'
+                  'supabase/migrations/create_storage_media_bucket.sql'
+              : '';
+          onProgress('上传附件失败: $relative ($e)$detail');
         } catch (e) {
           failedFiles.add(relative);
           onProgress('上传附件失败: $relative ($e)');
@@ -910,6 +954,9 @@ class SupabaseSyncService {
     void Function(String) onProgress,
   ) async {
     try {
+      // 确保 media bucket 存在
+      await _ensureStorageBucket('media');
+
       final docs = await getApplicationDocumentsDirectory();
       final mediaDir = Directory(p.join(docs.path, 'media'));
       if (!await mediaDir.exists()) {
