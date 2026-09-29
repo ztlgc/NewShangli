@@ -746,8 +746,6 @@ class $PersonsTable extends Persons with TableInfo<$PersonsTable, Person> {
     false,
     type: DriftSqlType.string,
     requiredDuringInsert: true,
-    $customConstraints:
-        'NOT NULL REFERENCES account_book(book_id) ON DELETE CASCADE',
   );
   static const VerificationMeta _nameMeta = const VerificationMeta('name');
   @override
@@ -1042,6 +1040,8 @@ class $PersonsTable extends Persons with TableInfo<$PersonsTable, Person> {
 
 class Person extends DataClass implements Insertable<Person> {
   final String personId;
+
+  /// 创建来源，仅为元数据；全局联系人不随账本级联删除。
   final String bookId;
   final String name;
   final String relationshipType;
@@ -1506,7 +1506,8 @@ class $GiftRecordsTable extends GiftRecords
     false,
     type: DriftSqlType.int,
     requiredDuringInsert: true,
-    $customConstraints: 'NOT NULL CHECK(amount_cent > 0)',
+    $customConstraints:
+        'NOT NULL CHECK(typeof(amount_cent) = \'integer\' AND amount_cent BETWEEN 1 AND 99999999999999)',
   );
   static const VerificationMeta _currencyMeta = const VerificationMeta(
     'currency',
@@ -4823,13 +4824,6 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         'account_book',
         limitUpdateKind: UpdateKind.delete,
       ),
-      result: [TableUpdate('person', kind: UpdateKind.delete)],
-    ),
-    WritePropagation(
-      on: TableUpdateQuery.onTableName(
-        'account_book',
-        limitUpdateKind: UpdateKind.delete,
-      ),
       result: [TableUpdate('gift_record', kind: UpdateKind.delete)],
     ),
     WritePropagation(
@@ -4899,24 +4893,6 @@ typedef $$AccountBooksTableUpdateCompanionBuilder =
 final class $$AccountBooksTableReferences
     extends BaseReferences<_$AppDatabase, $AccountBooksTable, AccountBook> {
   $$AccountBooksTableReferences(super.$_db, super.$_table, super.$_typedResult);
-
-  static MultiTypedResultKey<$PersonsTable, List<Person>> _personsRefsTable(
-    _$AppDatabase db,
-  ) => MultiTypedResultKey.fromTable(
-    db.persons,
-    aliasName: $_aliasNameGenerator(db.accountBooks.bookId, db.persons.bookId),
-  );
-
-  $$PersonsTableProcessedTableManager get personsRefs {
-    final manager = $$PersonsTableTableManager($_db, $_db.persons).filter(
-      (f) => f.bookId.bookId.sqlEquals($_itemColumn<String>('book_id')!),
-    );
-
-    final cache = $_typedResult.readTableOrNull(_personsRefsTable($_db));
-    return ProcessedTableManager(
-      manager.$state.copyWith(prefetchedData: cache),
-    );
-  }
 
   static MultiTypedResultKey<$GiftRecordsTable, List<GiftRecord>>
   _giftRecordsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
@@ -5030,31 +5006,6 @@ class $$AccountBooksTableFilterComposer
     column: $table.deletedAt,
     builder: (column) => ColumnFilters(column),
   );
-
-  Expression<bool> personsRefs(
-    Expression<bool> Function($$PersonsTableFilterComposer f) f,
-  ) {
-    final $$PersonsTableFilterComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.bookId,
-      referencedTable: $db.persons,
-      getReferencedColumn: (t) => t.bookId,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$PersonsTableFilterComposer(
-            $db: $db,
-            $table: $db.persons,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
-          ),
-    );
-    return f(composer);
-  }
 
   Expression<bool> giftRecordsRefs(
     Expression<bool> Function($$GiftRecordsTableFilterComposer f) f,
@@ -5231,31 +5182,6 @@ class $$AccountBooksTableAnnotationComposer
   GeneratedColumn<int> get deletedAt =>
       $composableBuilder(column: $table.deletedAt, builder: (column) => column);
 
-  Expression<T> personsRefs<T extends Object>(
-    Expression<T> Function($$PersonsTableAnnotationComposer a) f,
-  ) {
-    final $$PersonsTableAnnotationComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.bookId,
-      referencedTable: $db.persons,
-      getReferencedColumn: (t) => t.bookId,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$PersonsTableAnnotationComposer(
-            $db: $db,
-            $table: $db.persons,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
-          ),
-    );
-    return f(composer);
-  }
-
   Expression<T> giftRecordsRefs<T extends Object>(
     Expression<T> Function($$GiftRecordsTableAnnotationComposer a) f,
   ) {
@@ -5321,7 +5247,6 @@ class $$AccountBooksTableTableManager
           (AccountBook, $$AccountBooksTableReferences),
           AccountBook,
           PrefetchHooks Function({
-            bool personsRefs,
             bool giftRecordsRefs,
             bool dataImportJobsRefs,
           })
@@ -5406,42 +5331,16 @@ class $$AccountBooksTableTableManager
               )
               .toList(),
           prefetchHooksCallback:
-              ({
-                personsRefs = false,
-                giftRecordsRefs = false,
-                dataImportJobsRefs = false,
-              }) {
+              ({giftRecordsRefs = false, dataImportJobsRefs = false}) {
                 return PrefetchHooks(
                   db: db,
                   explicitlyWatchedTables: [
-                    if (personsRefs) db.persons,
                     if (giftRecordsRefs) db.giftRecords,
                     if (dataImportJobsRefs) db.dataImportJobs,
                   ],
                   addJoins: null,
                   getPrefetchedDataCallback: (items) async {
                     return [
-                      if (personsRefs)
-                        await $_getPrefetchedData<
-                          AccountBook,
-                          $AccountBooksTable,
-                          Person
-                        >(
-                          currentTable: table,
-                          referencedTable: $$AccountBooksTableReferences
-                              ._personsRefsTable(db),
-                          managerFromTypedResult: (p0) =>
-                              $$AccountBooksTableReferences(
-                                db,
-                                table,
-                                p0,
-                              ).personsRefs,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.bookId == item.bookId,
-                              ),
-                          typedResults: items,
-                        ),
                       if (giftRecordsRefs)
                         await $_getPrefetchedData<
                           AccountBook,
@@ -5504,11 +5403,7 @@ typedef $$AccountBooksTableProcessedTableManager =
       $$AccountBooksTableUpdateCompanionBuilder,
       (AccountBook, $$AccountBooksTableReferences),
       AccountBook,
-      PrefetchHooks Function({
-        bool personsRefs,
-        bool giftRecordsRefs,
-        bool dataImportJobsRefs,
-      })
+      PrefetchHooks Function({bool giftRecordsRefs, bool dataImportJobsRefs})
     >;
 typedef $$PersonsTableCreateCompanionBuilder =
     PersonsCompanion Function({
@@ -5547,25 +5442,6 @@ final class $$PersonsTableReferences
     extends BaseReferences<_$AppDatabase, $PersonsTable, Person> {
   $$PersonsTableReferences(super.$_db, super.$_table, super.$_typedResult);
 
-  static $AccountBooksTable _bookIdTable(_$AppDatabase db) =>
-      db.accountBooks.createAlias(
-        $_aliasNameGenerator(db.persons.bookId, db.accountBooks.bookId),
-      );
-
-  $$AccountBooksTableProcessedTableManager get bookId {
-    final $_column = $_itemColumn<String>('book_id')!;
-
-    final manager = $$AccountBooksTableTableManager(
-      $_db,
-      $_db.accountBooks,
-    ).filter((f) => f.bookId.sqlEquals($_column));
-    final item = $_typedResult.readTableOrNull(_bookIdTable($_db));
-    if (item == null) return manager;
-    return ProcessedTableManager(
-      manager.$state.copyWith(prefetchedData: [item]),
-    );
-  }
-
   static MultiTypedResultKey<$GiftRecordsTable, List<GiftRecord>>
   _giftRecordsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
     db.giftRecords,
@@ -5600,6 +5476,11 @@ class $$PersonsTableFilterComposer
   });
   ColumnFilters<String> get personId => $composableBuilder(
     column: $table.personId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get bookId => $composableBuilder(
+    column: $table.bookId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -5653,29 +5534,6 @@ class $$PersonsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  $$AccountBooksTableFilterComposer get bookId {
-    final $$AccountBooksTableFilterComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.bookId,
-      referencedTable: $db.accountBooks,
-      getReferencedColumn: (t) => t.bookId,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$AccountBooksTableFilterComposer(
-            $db: $db,
-            $table: $db.accountBooks,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
-          ),
-    );
-    return composer;
-  }
-
   Expression<bool> giftRecordsRefs(
     Expression<bool> Function($$GiftRecordsTableFilterComposer f) f,
   ) {
@@ -5713,6 +5571,11 @@ class $$PersonsTableOrderingComposer
   });
   ColumnOrderings<String> get personId => $composableBuilder(
     column: $table.personId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get bookId => $composableBuilder(
+    column: $table.bookId,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -5765,29 +5628,6 @@ class $$PersonsTableOrderingComposer
     column: $table.deletedAt,
     builder: (column) => ColumnOrderings(column),
   );
-
-  $$AccountBooksTableOrderingComposer get bookId {
-    final $$AccountBooksTableOrderingComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.bookId,
-      referencedTable: $db.accountBooks,
-      getReferencedColumn: (t) => t.bookId,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$AccountBooksTableOrderingComposer(
-            $db: $db,
-            $table: $db.accountBooks,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
-          ),
-    );
-    return composer;
-  }
 }
 
 class $$PersonsTableAnnotationComposer
@@ -5801,6 +5641,9 @@ class $$PersonsTableAnnotationComposer
   });
   GeneratedColumn<String> get personId =>
       $composableBuilder(column: $table.personId, builder: (column) => column);
+
+  GeneratedColumn<String> get bookId =>
+      $composableBuilder(column: $table.bookId, builder: (column) => column);
 
   GeneratedColumn<String> get name =>
       $composableBuilder(column: $table.name, builder: (column) => column);
@@ -5835,29 +5678,6 @@ class $$PersonsTableAnnotationComposer
 
   GeneratedColumn<int> get deletedAt =>
       $composableBuilder(column: $table.deletedAt, builder: (column) => column);
-
-  $$AccountBooksTableAnnotationComposer get bookId {
-    final $$AccountBooksTableAnnotationComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.bookId,
-      referencedTable: $db.accountBooks,
-      getReferencedColumn: (t) => t.bookId,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$AccountBooksTableAnnotationComposer(
-            $db: $db,
-            $table: $db.accountBooks,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
-          ),
-    );
-    return composer;
-  }
 
   Expression<T> giftRecordsRefs<T extends Object>(
     Expression<T> Function($$GiftRecordsTableAnnotationComposer a) f,
@@ -5898,7 +5718,7 @@ class $$PersonsTableTableManager
           $$PersonsTableUpdateCompanionBuilder,
           (Person, $$PersonsTableReferences),
           Person,
-          PrefetchHooks Function({bool bookId, bool giftRecordsRefs})
+          PrefetchHooks Function({bool giftRecordsRefs})
         > {
   $$PersonsTableTableManager(_$AppDatabase db, $PersonsTable table)
     : super(
@@ -5979,42 +5799,11 @@ class $$PersonsTableTableManager
                 ),
               )
               .toList(),
-          prefetchHooksCallback: ({bookId = false, giftRecordsRefs = false}) {
+          prefetchHooksCallback: ({giftRecordsRefs = false}) {
             return PrefetchHooks(
               db: db,
               explicitlyWatchedTables: [if (giftRecordsRefs) db.giftRecords],
-              addJoins:
-                  <
-                    T extends TableManagerState<
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic
-                    >
-                  >(state) {
-                    if (bookId) {
-                      state =
-                          state.withJoin(
-                                currentTable: table,
-                                currentColumn: table.bookId,
-                                referencedTable: $$PersonsTableReferences
-                                    ._bookIdTable(db),
-                                referencedColumn: $$PersonsTableReferences
-                                    ._bookIdTable(db)
-                                    .bookId,
-                              )
-                              as T;
-                    }
-
-                    return state;
-                  },
+              addJoins: null,
               getPrefetchedDataCallback: (items) async {
                 return [
                   if (giftRecordsRefs)
@@ -6057,7 +5846,7 @@ typedef $$PersonsTableProcessedTableManager =
       $$PersonsTableUpdateCompanionBuilder,
       (Person, $$PersonsTableReferences),
       Person,
-      PrefetchHooks Function({bool bookId, bool giftRecordsRefs})
+      PrefetchHooks Function({bool giftRecordsRefs})
     >;
 typedef $$GiftRecordsTableCreateCompanionBuilder =
     GiftRecordsCompanion Function({
@@ -8438,7 +8227,6 @@ class AccountBooksDaoManager {
 }
 
 mixin _$PersonsDaoMixin on DatabaseAccessor<AppDatabase> {
-  $AccountBooksTable get accountBooks => attachedDatabase.accountBooks;
   $PersonsTable get persons => attachedDatabase.persons;
   PersonsDaoManager get managers => PersonsDaoManager(this);
 }
@@ -8446,8 +8234,6 @@ mixin _$PersonsDaoMixin on DatabaseAccessor<AppDatabase> {
 class PersonsDaoManager {
   final _$PersonsDaoMixin _db;
   PersonsDaoManager(this._db);
-  $$AccountBooksTableTableManager get accountBooks =>
-      $$AccountBooksTableTableManager(_db.attachedDatabase, _db.accountBooks);
   $$PersonsTableTableManager get persons =>
       $$PersonsTableTableManager(_db.attachedDatabase, _db.persons);
 }
@@ -8484,7 +8270,6 @@ class ReasonsDaoManager {
 
 mixin _$RelationTypesDaoMixin on DatabaseAccessor<AppDatabase> {
   $RelationTypesTable get relationTypes => attachedDatabase.relationTypes;
-  $AccountBooksTable get accountBooks => attachedDatabase.accountBooks;
   $PersonsTable get persons => attachedDatabase.persons;
   RelationTypesDaoManager get managers => RelationTypesDaoManager(this);
 }
@@ -8494,14 +8279,11 @@ class RelationTypesDaoManager {
   RelationTypesDaoManager(this._db);
   $$RelationTypesTableTableManager get relationTypes =>
       $$RelationTypesTableTableManager(_db.attachedDatabase, _db.relationTypes);
-  $$AccountBooksTableTableManager get accountBooks =>
-      $$AccountBooksTableTableManager(_db.attachedDatabase, _db.accountBooks);
   $$PersonsTableTableManager get persons =>
       $$PersonsTableTableManager(_db.attachedDatabase, _db.persons);
 }
 
 mixin _$ContactRelationsDaoMixin on DatabaseAccessor<AppDatabase> {
-  $AccountBooksTable get accountBooks => attachedDatabase.accountBooks;
   $PersonsTable get persons => attachedDatabase.persons;
   $RelationTypesTable get relationTypes => attachedDatabase.relationTypes;
   $ContactRelationsTable get contactRelations =>
@@ -8512,8 +8294,6 @@ mixin _$ContactRelationsDaoMixin on DatabaseAccessor<AppDatabase> {
 class ContactRelationsDaoManager {
   final _$ContactRelationsDaoMixin _db;
   ContactRelationsDaoManager(this._db);
-  $$AccountBooksTableTableManager get accountBooks =>
-      $$AccountBooksTableTableManager(_db.attachedDatabase, _db.accountBooks);
   $$PersonsTableTableManager get persons =>
       $$PersonsTableTableManager(_db.attachedDatabase, _db.persons);
   $$RelationTypesTableTableManager get relationTypes =>

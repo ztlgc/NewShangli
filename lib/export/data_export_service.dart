@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:archive/archive.dart';
 import 'package:excel/excel.dart';
+import 'package:drift/drift.dart' show BooleanExpressionOperators;
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
@@ -57,11 +58,8 @@ class DataExportService {
     final allPersons = await (db.select(
       db.persons,
     )..where((t) => t.deletedAt.isNull())).get();
-    final scopedPersons = request.bookId == null
-        ? allPersons
-        : allPersons.where((p) => p.bookId == request.bookId).toList();
     final personById = <String, Person>{
-      for (final p in scopedPersons) p.personId: p,
+      for (final person in allPersons) person.personId: person,
     };
 
     final allBooks = await (db.select(
@@ -74,7 +72,12 @@ class DataExportService {
     final recordQuery = db.select(db.giftRecords)
       ..where((t) => t.deletedAt.isNull());
     if (request.bookId != null) {
-      recordQuery.where((t) => t.bookId.equals(request.bookId!));
+      final selected = bookById[request.bookId];
+      recordQuery.where(
+        (t) => selected?.isDefault == 1
+            ? t.bookId.equals(request.bookId!) | t.direction.equals('支出')
+            : t.bookId.equals(request.bookId!),
+      );
     }
     final allRecords = await recordQuery.get();
     final records = allRecords
@@ -85,6 +88,12 @@ class DataExportService {
         )
         .toList();
 
+    final relatedIds = records.map((record) => record.personId).toSet();
+    final scopedPersons = request.bookId == null
+        ? allPersons
+        : allPersons
+              .where((person) => relatedIds.contains(person.personId))
+              .toList();
     final recordRows = <List<String>>[];
     final personRows = <List<String>>[];
     final links = <String, String>{};
@@ -93,8 +102,12 @@ class DataExportService {
       return len > prev ? len : prev;
     });
     final mediaBundle = await _prepareDriftMediaBundle(
-      records: records,
-      persons: scopedPersons,
+      records: request.includeImages && request.includeRecords
+          ? records
+          : const [],
+      persons: request.includeImages && request.includePersons
+          ? scopedPersons
+          : const [],
     );
 
     var recordCount = 0;
@@ -110,6 +123,10 @@ class DataExportService {
         '支付方式',
         '发生时间',
         '备注',
+        '所属账簿ID',
+        '账簿时间',
+        '账簿事由',
+        '默认账簿',
       ];
       for (var i = 1; i <= maxAttachmentCount; i++) {
         recordHeaders.add('附件$i名称');
@@ -129,6 +146,12 @@ class DataExportService {
           r.paymentMethod ?? '',
           _formatDateTime(DateTime.fromMillisecondsSinceEpoch(r.occurredAt)),
           r.note ?? '',
+          r.bookId,
+          DateTime.fromMillisecondsSinceEpoch(
+            bookById[r.bookId]!.bookTime,
+          ).toUtc().toIso8601String(),
+          bookById[r.bookId]!.reasonType,
+          bookById[r.bookId]!.isDefault.toString(),
         ];
         final refs =
             mediaBundle.recordAttachmentRefs[r.recordId] ?? const <_MediaRef>[];
@@ -162,6 +185,8 @@ class DataExportService {
         '创建时间',
         '备注',
         '头像文件名',
+        '生日',
+        '纪念日',
       ]);
       for (final person in scopedPersons) {
         personCount++;
@@ -176,13 +201,16 @@ class DataExportService {
           ),
           person.note ?? '',
           _displayCellText(
-            fileName:
-                avatarRef?.displayName ?? _extractFileName(person.avatarUri),
+            fileName: request.includeImages
+                ? (avatarRef?.displayName ?? _extractFileName(person.avatarUri))
+                : '',
             archivePath: request.format == DataExportFormat.zip
                 ? avatarRef?.archivePath
                 : null,
             links: links,
           ),
+          person.birthday ?? '',
+          person.anniversary ?? '',
         ]);
       }
     }
@@ -376,17 +404,14 @@ class DataExportService {
 
   DateTime _startOfDay(DateTime d) => DateTime(d.year, d.month, d.day);
 
-  String _formatDateTime(DateTime d) {
-    String two(int n) => n.toString().padLeft(2, '0');
-    return '${d.year}-${two(d.month)}-${two(d.day)} ${two(d.hour)}:${two(d.minute)}';
-  }
+  String _formatDateTime(DateTime d) => d.toUtc().toIso8601String();
 
   String _buildFileNameBase() {
     String two(int n) => n.toString().padLeft(2, '0');
     final ts = DateTime.now();
     final t =
         '${ts.year}${two(ts.month)}${two(ts.day)}_${two(ts.hour)}${two(ts.minute)}${two(ts.second)}';
-    return '尚礼_导出_$t';
+    return '尚礼_导出_${t}_${ts.microsecondsSinceEpoch}';
   }
 
   List<int> _encodeXlsx({
@@ -422,18 +447,8 @@ class DataExportService {
             CellIndex.indexByColumnRow(columnIndex: c, rowIndex: r),
           );
           final text = row[c];
-          final parsed = _parseLinkToken(text);
-          final link = parsed?.$2;
-          final display = parsed?.$1 ?? text;
-          if (link != null && text.trim().isNotEmpty) {
-            final escapedLink = link.replaceAll('"', '""');
-            final escapedText = display.replaceAll('"', '""');
-            cell.value = FormulaCellValue(
-              'HYPERLINK("$escapedLink","$escapedText")',
-            );
-          } else {
-            cell.value = TextCellValue(display);
-          }
+          // 业务文本始终作为文本输出，包括以 = 和链接标记开头的内容。
+          cell.value = TextCellValue(text);
           cell.cellStyle = r == 0 ? headerStyle : bodyStyle;
         }
       }
@@ -487,7 +502,7 @@ class DataExportService {
     final name = fileName.trim();
     if (name.isEmpty) return '';
     if (archivePath == null || archivePath.trim().isEmpty) return name;
-    return '[[LINK|${archivePath.replaceAll('\\', '/')}|$name]]';
+    return archivePath.replaceAll('\\', '/');
   }
 
   String _extractFileName(String? raw) {
@@ -495,17 +510,6 @@ class DataExportService {
     if (source.isEmpty) return '';
     final path = _tryParseFilePath(source) ?? source;
     return p.basename(path);
-  }
-
-  (String, String)? _parseLinkToken(String text) {
-    if (!text.startsWith('[[LINK|') || !text.endsWith(']]')) return null;
-    final body = text.substring(7, text.length - 2);
-    final idx = body.indexOf('|');
-    if (idx <= 0 || idx >= body.length - 1) return null;
-    final link = body.substring(0, idx).trim();
-    final name = body.substring(idx + 1).trim();
-    if (link.isEmpty || name.isEmpty) return null;
-    return (name, link);
   }
 
   Future<_DriftMediaBundle> _prepareDriftMediaBundle({

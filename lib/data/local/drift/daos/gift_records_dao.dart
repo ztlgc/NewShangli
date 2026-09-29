@@ -84,7 +84,6 @@ class GiftRecordsDao extends DatabaseAccessor<AppDatabase>
           ])
           ..where(giftRecords.bookId.equals(bookId))
           ..where(giftRecords.deletedAt.isNull())
-          ..where(persons.bookId.equals(bookId))
           ..where(persons.deletedAt.isNull())
           ..orderBy([OrderingTerm.desc(giftRecords.occurredAt)]);
 

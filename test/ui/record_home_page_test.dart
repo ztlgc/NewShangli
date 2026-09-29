@@ -100,7 +100,7 @@ void main() {
       expect(deletedRecord!.deletedAt, isNotNull);
     } finally {
       await tester.pumpWidget(const SizedBox.shrink());
-      await tester.pump(const Duration(milliseconds: 100));
+      await tester.pump(const Duration(seconds: 3));
       await db.close();
     }
   });

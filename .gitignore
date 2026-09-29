@@ -6,6 +6,10 @@
 .DS_Store
 .atom/
 .build/
+output/
+.stitch/
+.claude/
+.codex/
 .buildlog/
 .history
 .svn/

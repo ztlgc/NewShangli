@@ -20,7 +20,7 @@ void main() {
       } catch (_) {}
     });
 
-    test('本地ZIP恢复会写入数据库与媒体文件', () async {
+    test('旧格式和伪数据库被拒绝，原数据库与媒体保持不变', () async {
       final dbFile = File('${tempDir.path}/newshangli_drift.sqlite');
       await dbFile.writeAsBytes(const <int>[1, 1, 1], flush: true);
       final oldMedia = File('${tempDir.path}/media/avatars/old.png');
@@ -53,11 +53,14 @@ void main() {
       final service = DataRestoreService(
         documentsDirectoryProvider: () async => tempDir,
       );
-      await service.restoreFromLocalZip(zipFile: zipFile, onProgress: (_) {});
+      await expectLater(
+        service.restoreFromLocalZip(zipFile: zipFile, onProgress: (_) {}),
+        throwsA(isA<DataRestoreException>()),
+      );
 
-      expect(await dbFile.readAsBytes(), const <int>[7, 8, 9]);
-      expect(File('${tempDir.path}/media/avatars/new.png').existsSync(), true);
-      expect(oldMedia.existsSync(), false);
+      expect(await dbFile.readAsBytes(), const <int>[1, 1, 1]);
+      expect(File('${tempDir.path}/media/avatars/new.png').existsSync(), false);
+      expect(oldMedia.existsSync(), true);
     });
 
     test('本地ZIP非法时返回明确错误', () async {

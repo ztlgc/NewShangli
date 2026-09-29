@@ -33,8 +33,9 @@ class AccountBooksDao extends DatabaseAccessor<AppDatabase>
   Future<String> insertOne(AccountBooksCompanion companion) async {
     final int now = DateTime.now().millisecondsSinceEpoch;
     final Expression<int> countExp = accountBooks.bookId.count();
-    final TypedResult row =
-        await (selectOnly(accountBooks)..addColumns([countExp])).getSingle();
+    final TypedResult row = await (selectOnly(
+      accountBooks,
+    )..addColumns([countExp])).getSingle();
     final bool hasAnyBook = (row.read(countExp) ?? 0) > 0;
     final AccountBooksCompanion withDefaults = companion.copyWith(
       bookId: companion.bookId.present ? companion.bookId : Value(db.newId()),
@@ -54,7 +55,26 @@ class AccountBooksDao extends DatabaseAccessor<AppDatabase>
     final AccountBook updated = book.copyWith(
       updatedAt: DateTime.now().millisecondsSinceEpoch,
     );
-    return update(accountBooks).replace(updated);
+    return db.transaction(() async {
+      final previous = await findById(book.bookId);
+      if (previous == null) return false;
+      final changed = await update(accountBooks).replace(updated);
+      if (changed && book.isDefault != 1) {
+        if (previous.reasonType != book.reasonType) {
+          await db.giftRecordsDao.updateEventNameByBookId(
+            book.bookId,
+            book.reasonType,
+          );
+        }
+        if (previous.bookTime != book.bookTime) {
+          await db.giftRecordsDao.updateOccurredAtByBookId(
+            book.bookId,
+            book.bookTime,
+          );
+        }
+      }
+      return changed;
+    });
   }
 
   /// 删除账簿。

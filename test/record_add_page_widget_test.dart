@@ -82,7 +82,7 @@ void main() {
                   child: TextButton(
                     onPressed: () => Navigator.of(context).push(
                       MaterialPageRoute<void>(
-                        builder: (_) => const RecordAddPage(),
+                        builder: (_) => const RecordAddPage(initialPersonId: 'p1'),
                       ),
                     ),
                     child: const Text('打开录入'),

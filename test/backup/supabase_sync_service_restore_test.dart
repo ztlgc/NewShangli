@@ -357,5 +357,371 @@ void main() {
         expect(relations.single.note, 'cloud relation');
       },
     );
+
+    test(
+      'different book IDs remain distinct even with the same name',
+      () async {
+        const localDefaultId = 'local_default';
+        const localTripId = 'local_trip';
+        const cloudDefaultId = 'cloud_default';
+        const cloudTripId = 'cloud_trip';
+        const personId = 'person_trip';
+        const recordId = 'record_trip';
+        final now = DateTime(2026, 4, 26).millisecondsSinceEpoch;
+
+        await db
+            .into(db.accountBooks)
+            .insert(
+              AccountBooksCompanion.insert(
+                bookId: const Value(localDefaultId),
+                name: '默认账簿',
+                isDefault: const Value(1),
+                createdAt: now - 3000,
+                updatedAt: now - 3000,
+              ),
+            );
+        await db
+            .into(db.accountBooks)
+            .insert(
+              AccountBooksCompanion.insert(
+                bookId: const Value(localTripId),
+                name: '旅行',
+                isDefault: const Value(0),
+                createdAt: now - 2000,
+                updatedAt: now - 2000,
+              ),
+            );
+
+        await SupabaseSyncService.restoreTablesForTesting(
+          db: db,
+          booksData: [
+            {
+              'book_id': cloudDefaultId,
+              'name': '默认账簿',
+              'reason_type': '',
+              'theme_color': '#312E81',
+              'icon': null,
+              'description': null,
+              'book_time': now,
+              'is_default': 1,
+              'created_at': now - 1000,
+              'updated_at': now,
+              'deleted_at': null,
+            },
+            {
+              'book_id': cloudTripId,
+              'name': '旅行',
+              'reason_type': '',
+              'theme_color': '#22C55E',
+              'icon': null,
+              'description': null,
+              'book_time': now,
+              'is_default': 0,
+              'created_at': now - 1000,
+              'updated_at': now,
+              'deleted_at': null,
+            },
+          ],
+          personsData: [
+            {
+              'person_id': personId,
+              'book_id': cloudTripId,
+              'name': '张三',
+              'relationship_type': '朋友',
+              'phone': null,
+              'birthday': null,
+              'anniversary': null,
+              'avatar_uri': null,
+              'note': null,
+              'created_at': now,
+              'updated_at': now,
+              'deleted_at': null,
+            },
+          ],
+          recordsData: [
+            {
+              'record_id': recordId,
+              'book_id': cloudTripId,
+              'person_id': personId,
+              'direction': '支出',
+              'amount_cent': 5000,
+              'currency': 'CNY',
+              'event_name': '旅游',
+              'occurred_at': now,
+              'payment_method': null,
+              'note': null,
+              'attachments': null,
+              'created_at': now,
+              'updated_at': now,
+              'deleted_at': null,
+            },
+          ],
+        );
+
+        final books = await db.select(db.accountBooks).get();
+        expect(books, hasLength(3));
+        expect(books.map((b) => b.bookId).toSet(), <String>{
+          localDefaultId,
+          localTripId,
+          cloudTripId,
+        });
+        expect(books.where((b) => b.bookId == localTripId).single.name, '旅行');
+        expect(
+          books.where((b) => b.bookId == cloudTripId).single.themeColor,
+          '#22C55E',
+        );
+        expect(books.where((b) => b.isDefault == 1), hasLength(1));
+
+        final person = await db.personsDao.findById(personId);
+        expect(person, isNotNull);
+        expect(person!.bookId, cloudTripId);
+
+        final record = await db.giftRecordsDao.findById(recordId);
+        expect(record, isNotNull);
+        expect(record!.bookId, cloudTripId);
+      },
+    );
+
+    test(
+      'distinct IDs preserve same-name persons and similar records',
+      () async {
+        const localBookId = 'local_book';
+        const localPersonId = 'local_person';
+        const localRecordId = 'local_record';
+        const cloudBookId = 'cloud_book';
+        const cloudPersonId = 'cloud_person';
+        const cloudRecordId = 'cloud_record';
+        const cloudNewRecordId = 'cloud_new_record';
+        final now = DateTime(2026, 4, 27).millisecondsSinceEpoch;
+
+        await db
+            .into(db.accountBooks)
+            .insert(
+              AccountBooksCompanion.insert(
+                bookId: const Value(localBookId),
+                name: '默认账簿',
+                isDefault: const Value(1),
+                createdAt: now - 3000,
+                updatedAt: now - 3000,
+              ),
+            );
+        await db
+            .into(db.persons)
+            .insert(
+              PersonsCompanion.insert(
+                personId: const Value(localPersonId),
+                bookId: localBookId,
+                name: 'Alice',
+                phone: const Value('13800000000'),
+                createdAt: now - 3000,
+                updatedAt: now - 3000,
+              ),
+            );
+        await db
+            .into(db.giftRecords)
+            .insert(
+              GiftRecordsCompanion.insert(
+                recordId: const Value(localRecordId),
+                bookId: localBookId,
+                personId: localPersonId,
+                direction: const Value('收入'),
+                amountCent: 10000,
+                eventName: const Value('婚礼'),
+                occurredAt: now - 1000,
+                paymentMethod: const Value('微信'),
+                createdAt: now - 3000,
+                updatedAt: now - 3000,
+              ),
+            );
+
+        await SupabaseSyncService.restoreTablesForTesting(
+          db: db,
+          booksData: [
+            {
+              'book_id': cloudBookId,
+              'name': '默认账簿',
+              'reason_type': '',
+              'theme_color': '#312E81',
+              'icon': null,
+              'description': null,
+              'book_time': now,
+              'is_default': 1,
+              'created_at': now,
+              'updated_at': now,
+              'deleted_at': null,
+            },
+          ],
+          personsData: [
+            {
+              'person_id': cloudPersonId,
+              'book_id': cloudBookId,
+              'name': 'Alice',
+              'relationship_type': '朋友',
+              'phone': '13800000000',
+              'birthday': null,
+              'anniversary': null,
+              'avatar_uri': null,
+              'note': null,
+              'created_at': now,
+              'updated_at': now,
+              'deleted_at': null,
+            },
+          ],
+          recordsData: [
+            {
+              'record_id': cloudRecordId,
+              'book_id': cloudBookId,
+              'person_id': cloudPersonId,
+              'direction': '收入',
+              'amount_cent': 10000,
+              'currency': 'CNY',
+              'event_name': '婚礼',
+              'occurred_at': now - 1000,
+              'payment_method': '微信',
+              'note': null,
+              'attachments': null,
+              'created_at': now,
+              'updated_at': now,
+              'deleted_at': null,
+            },
+            {
+              'record_id': cloudNewRecordId,
+              'book_id': cloudBookId,
+              'person_id': cloudPersonId,
+              'direction': '支出',
+              'amount_cent': 2000,
+              'currency': 'CNY',
+              'event_name': '回礼',
+              'occurred_at': now,
+              'payment_method': '现金',
+              'note': null,
+              'attachments': null,
+              'created_at': now,
+              'updated_at': now,
+              'deleted_at': null,
+            },
+          ],
+        );
+
+        final persons = await db.select(db.persons).get();
+        expect(persons.map((p) => p.personId).toSet(), {
+          localPersonId,
+          cloudPersonId,
+        });
+
+        final records = await db.select(db.giftRecords).get();
+        expect(records, hasLength(3));
+        expect(records.map((r) => r.recordId).toSet(), <String>{
+          localRecordId,
+          cloudRecordId,
+          cloudNewRecordId,
+        });
+        final newRecord = records
+            .where((r) => r.recordId == cloudNewRecordId)
+            .single;
+        expect(newRecord.bookId, localBookId);
+        expect(newRecord.personId, cloudPersonId);
+      },
+    );
+
+    test(
+      'global contacts preserve distinct IDs across books with matching names and phones',
+      () async {
+        const localBookId = 'local_default';
+        const cloudBookId = 'cloud_trip';
+        const localPersonId = 'local_person';
+        const cloudPersonId = 'cloud_person';
+        const cloudRecordId = 'cloud_record';
+        final now = DateTime(2026, 4, 28).millisecondsSinceEpoch;
+
+        await db
+            .into(db.accountBooks)
+            .insert(
+              AccountBooksCompanion.insert(
+                bookId: const Value(localBookId),
+                name: '默认账簿',
+                isDefault: const Value(1),
+                createdAt: now - 3000,
+                updatedAt: now - 3000,
+              ),
+            );
+        await db
+            .into(db.persons)
+            .insert(
+              PersonsCompanion.insert(
+                personId: const Value(localPersonId),
+                bookId: localBookId,
+                name: 'Alice',
+                phone: const Value('13800000000'),
+                createdAt: now - 3000,
+                updatedAt: now - 3000,
+              ),
+            );
+
+        await SupabaseSyncService.restoreTablesForTesting(
+          db: db,
+          booksData: [
+            {
+              'book_id': cloudBookId,
+              'name': '旅行',
+              'reason_type': '',
+              'theme_color': '#22C55E',
+              'icon': null,
+              'description': null,
+              'book_time': now,
+              'is_default': 0,
+              'created_at': now,
+              'updated_at': now,
+              'deleted_at': null,
+            },
+          ],
+          personsData: [
+            {
+              'person_id': cloudPersonId,
+              'book_id': cloudBookId,
+              'name': 'Alice',
+              'relationship_type': '朋友',
+              'phone': '13800000000',
+              'birthday': null,
+              'anniversary': null,
+              'avatar_uri': null,
+              'note': null,
+              'created_at': now,
+              'updated_at': now,
+              'deleted_at': null,
+            },
+          ],
+          recordsData: [
+            {
+              'record_id': cloudRecordId,
+              'book_id': cloudBookId,
+              'person_id': cloudPersonId,
+              'direction': '收入',
+              'amount_cent': 6666,
+              'currency': 'CNY',
+              'event_name': '乔迁',
+              'occurred_at': now,
+              'payment_method': '微信',
+              'note': null,
+              'attachments': null,
+              'created_at': now,
+              'updated_at': now,
+              'deleted_at': null,
+            },
+          ],
+        );
+
+        final persons = await db.select(db.persons).get();
+        expect(persons.map((p) => p.personId).toSet(), {
+          localPersonId,
+          cloudPersonId,
+        });
+
+        final record = await db.giftRecordsDao.findById(cloudRecordId);
+        expect(record, isNotNull);
+        expect(record!.bookId, cloudBookId);
+        expect(record.personId, cloudPersonId);
+      },
+    );
   });
 }

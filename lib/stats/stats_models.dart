@@ -21,10 +21,7 @@ class StatsBarBucket {
 }
 
 class StatsCategorySlice {
-  const StatsCategorySlice({
-    required this.category,
-    required this.amountCent,
-  });
+  const StatsCategorySlice({required this.category, required this.amountCent});
 
   final String category;
   final int amountCent;
@@ -33,11 +30,13 @@ class StatsCategorySlice {
 class StatsRankItem {
   const StatsRankItem({
     required this.personName,
+    this.personId,
     required this.incomeCent,
     required this.expenseCent,
   });
 
   final String personName;
+  final String? personId;
   final int incomeCent;
   final int expenseCent;
 

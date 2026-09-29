@@ -13,14 +13,20 @@ class StatsViewModel extends ChangeNotifier {
     required AppDatabase db,
     StatsTimePreset initialPreset = StatsTimePreset.thisMonth,
     DateTime Function()? now,
-  })  : _repository = repository,
-        _db = db,
-        _preset = initialPreset,
-        _now = now ?? DateTime.now;
+  }) : _repository = repository,
+       _db = db,
+       _preset = initialPreset,
+       _now = now ?? DateTime.now;
 
   final IStatsRepository _repository;
   final AppDatabase _db;
   final DateTime Function() _now;
+
+  bool _disposed = false;
+  @override
+  void notifyListeners() {
+    if (!_disposed) super.notifyListeners();
+  }
 
   StatsTimePreset _preset;
   StatsDateRange? _customRange;
@@ -44,12 +50,14 @@ class StatsViewModel extends ChangeNotifier {
 
   Future<void> init() async {
     await _reloadRecords();
+    if (_disposed) return;
     _subscribeToRecords();
     await refresh();
   }
 
   @override
   void dispose() {
+    _disposed = true;
     _recordsSubscription?.cancel();
     super.dispose();
   }
@@ -65,7 +73,8 @@ class StatsViewModel extends ChangeNotifier {
   }
 
   Future<void> setCustomRange(StatsDateRange range) async {
-    if (_preset == StatsTimePreset.custom && _isSameRange(_customRange, range)) {
+    if (_preset == StatsTimePreset.custom &&
+        _isSameRange(_customRange, range)) {
       return;
     }
     _preset = StatsTimePreset.custom;
@@ -136,12 +145,12 @@ class StatsViewModel extends ChangeNotifier {
 
   void _subscribeToRecords() {
     _recordsSubscription?.cancel();
-    _recordsSubscription = _db.giftRecordsDao.watchAllWithPersonInAllBooks().listen((
-      rows,
-    ) {
-      _replaceRecords(rows);
-      unawaited(refresh());
-    });
+    _recordsSubscription = _db.giftRecordsDao
+        .watchAllWithPersonInAllBooks()
+        .listen((rows) {
+          _replaceRecords(rows);
+          unawaited(refresh());
+        });
   }
 
   bool _isSameRange(StatsDateRange? left, StatsDateRange right) {
@@ -149,7 +158,10 @@ class StatsViewModel extends ChangeNotifier {
     return left.start == right.start && left.endExclusive == right.endExclusive;
   }
 
-  StatsDateRange _resolveCompareRange(StatsTimePreset preset, StatsDateRange current) {
+  StatsDateRange _resolveCompareRange(
+    StatsTimePreset preset,
+    StatsDateRange current,
+  ) {
     switch (preset) {
       case StatsTimePreset.thisMonth:
         return StatsDateRange(
@@ -162,9 +174,11 @@ class StatsViewModel extends ChangeNotifier {
           endExclusive: current.start,
         );
       case StatsTimePreset.custom:
-        final isCalendarMonth = current.start.day == 1 &&
+        final isCalendarMonth =
+            current.start.day == 1 &&
             current.endExclusive.day == 1 &&
-            current.endExclusive == DateTime(current.start.year, current.start.month + 1, 1);
+            current.endExclusive ==
+                DateTime(current.start.year, current.start.month + 1, 1);
         if (isCalendarMonth) {
           return StatsDateRange(
             start: DateTime(current.start.year, current.start.month - 1, 1),
@@ -172,7 +186,8 @@ class StatsViewModel extends ChangeNotifier {
           );
         }
 
-        final isCalendarYear = current.start.month == 1 &&
+        final isCalendarYear =
+            current.start.month == 1 &&
             current.start.day == 1 &&
             current.endExclusive.month == 1 &&
             current.endExclusive.day == 1 &&
@@ -198,9 +213,7 @@ class StatsViewModel extends ChangeNotifier {
     _replaceRecords(rows);
   }
 
-  void _replaceRecords(
-    List<GiftRecordWithPerson> rows,
-  ) {
+  void _replaceRecords(List<GiftRecordWithPerson> rows) {
     _records = rows
         .map(
           (row) => StatsSourceRecord(
@@ -208,10 +221,17 @@ class StatsViewModel extends ChangeNotifier {
             bookId: row.record.bookId,
             direction: row.record.direction == '支出' ? 1 : 0,
             amountCent: row.record.amountCent,
-            eventName: (row.record.eventName ?? '').trim().isEmpty ? '未设置' : row.record.eventName!.trim(),
+            eventName: (row.record.eventName ?? '').trim().isEmpty
+                ? '未设置'
+                : row.record.eventName!.trim(),
             personName: row.person.name,
-            paymentMethod: (row.record.paymentMethod ?? '').trim().isEmpty ? '' : row.record.paymentMethod!.trim(),
-            occurredAt: DateTime.fromMillisecondsSinceEpoch(row.record.occurredAt),
+            personId: row.person.personId,
+            paymentMethod: (row.record.paymentMethod ?? '').trim().isEmpty
+                ? ''
+                : row.record.paymentMethod!.trim(),
+            occurredAt: DateTime.fromMillisecondsSinceEpoch(
+              row.record.occurredAt,
+            ),
             note: row.record.note,
           ),
         )

@@ -7,6 +7,8 @@ import 'package:path_provider/path_provider.dart';
 import 'package:sqlite3/sqlite3.dart' as sqlite;
 
 import 'backup_config.dart';
+import '../data/local/drift/app_database.dart';
+import 'package:crypto/crypto.dart';
 import 'webdav_client.dart';
 
 typedef BackupSnapshotExecutor =
@@ -216,10 +218,19 @@ class DataBackupService {
       'backupMode': 'snapshot_vacuum_into',
       'dbFile': snapshot.archivePath,
       'dbSizeBytes': snapshot.sizeBytes,
-      'mediaIncluded': mediaSummary.fileCount > 0,
+      'mediaIncluded': includeMedia,
       'mediaFilesCount': mediaSummary.fileCount,
       'mediaBytes': mediaSummary.totalBytes,
-      'schemaVersion': null,
+      'formatVersion': 1,
+      'schemaVersion': AppDatabase.currentSchemaVersion,
+      'dbSha256': sha256
+          .convert(
+            archive.files
+                    .firstWhere((f) => f.name == snapshot.archivePath)
+                    .content
+                as List<int>,
+          )
+          .toString(),
       'files': included,
     };
     final manifestBytes = utf8.encode(
@@ -312,7 +323,7 @@ class DataBackupService {
     String two(int n) => n.toString().padLeft(2, '0');
     final t =
         '${ts.year}${two(ts.month)}${two(ts.day)}_${two(ts.hour)}${two(ts.minute)}${two(ts.second)}';
-    return '尚礼_备份_$t';
+    return '尚礼_备份_${t}_${ts.microsecondsSinceEpoch}';
   }
 
   String _buildRemotePath({

@@ -7,6 +7,7 @@ class StatsRecordLite {
     required this.amountCent,
     required this.eventName,
     required this.personName,
+    this.personId,
     required this.occurredAt,
   });
 
@@ -14,6 +15,7 @@ class StatsRecordLite {
   final int amountCent;
   final String eventName;
   final String personName;
+  final String? personId;
   final DateTime occurredAt;
 }
 
@@ -28,6 +30,7 @@ StatsSnapshot computeStatsSnapshot({
 
   final categoryMap = <String, int>{};
   final rankMap = <String, (int income, int expense)>{};
+  final personNames = <String, String>{};
 
   for (final r in records) {
     if (r.direction == 0) {
@@ -38,7 +41,9 @@ StatsSnapshot computeStatsSnapshot({
       categoryMap[c] = (categoryMap[c] ?? 0) + r.amountCent;
     }
 
-    final p = r.personName.trim().isEmpty ? '未知' : r.personName.trim();
+    final name = r.personName.trim().isEmpty ? '未知' : r.personName.trim();
+    final p = r.personId ?? name;
+    personNames[p] = name;
     final old = rankMap[p] ?? (0, 0);
     if (r.direction == 0) {
       rankMap[p] = (old.$1 + r.amountCent, old.$2);
@@ -48,8 +53,13 @@ StatsSnapshot computeStatsSnapshot({
   }
 
   final categories = _buildCategories(categoryMap, expenseTotal);
-  final ranking = _buildRanking(rankMap);
-  final buckets = _buildBuckets(preset: preset, start: start, endExclusive: endExclusive, records: records);
+  final ranking = _buildRanking(rankMap, personNames);
+  final buckets = _buildBuckets(
+    preset: preset,
+    start: start,
+    endExclusive: endExclusive,
+    records: records,
+  );
 
   return StatsSnapshot(
     incomeTotalCent: incomeTotal,
@@ -60,8 +70,12 @@ StatsSnapshot computeStatsSnapshot({
   );
 }
 
-List<StatsCategorySlice> _buildCategories(Map<String, int> categoryMap, int totalExpense) {
-  final entries = categoryMap.entries.where((e) => e.value > 0).toList()..sort((a, b) => b.value.compareTo(a.value));
+List<StatsCategorySlice> _buildCategories(
+  Map<String, int> categoryMap,
+  int totalExpense,
+) {
+  final entries = categoryMap.entries.where((e) => e.value > 0).toList()
+    ..sort((a, b) => b.value.compareTo(a.value));
   final out = <StatsCategorySlice>[];
   var topSum = 0;
   for (final e in entries.take(8)) {
@@ -75,11 +89,21 @@ List<StatsCategorySlice> _buildCategories(Map<String, int> categoryMap, int tota
   return out;
 }
 
-List<StatsRankItem> _buildRanking(Map<String, (int income, int expense)> rankMap) {
+List<StatsRankItem> _buildRanking(
+  Map<String, (int income, int expense)> rankMap,
+  Map<String, String> names,
+) {
   final items = <StatsRankItem>[];
   for (final e in rankMap.entries) {
     if (e.value.$1 <= 0 && e.value.$2 <= 0) continue;
-    items.add(StatsRankItem(personName: e.key, incomeCent: e.value.$1, expenseCent: e.value.$2));
+    items.add(
+      StatsRankItem(
+        personId: e.key,
+        personName: names[e.key] ?? e.key,
+        incomeCent: e.value.$1,
+        expenseCent: e.value.$2,
+      ),
+    );
   }
   items.sort((a, b) => b.totalCent.compareTo(a.totalCent));
   return items.take(5).toList();
@@ -103,13 +127,20 @@ List<StatsBarBucket> _buildBuckets({
   final days = rawDays <= 0 ? 1 : rawDays;
 
   final endInclusive = endExclusive.subtract(const Duration(days: 1));
-  final sameMonth = start.year == endInclusive.year && start.month == endInclusive.month;
+  final sameMonth =
+      start.year == endInclusive.year && start.month == endInclusive.month;
 
-  final useDay = preset == StatsTimePreset.thisMonth || (preset == StatsTimePreset.custom && days <= 62);
+  final useDay =
+      preset == StatsTimePreset.thisMonth ||
+      (preset == StatsTimePreset.custom && days <= 62);
   if (useDay) {
     final byKey = <int, (int income, int expense)>{};
     for (final r in records) {
-      final dt = DateTime(r.occurredAt.year, r.occurredAt.month, r.occurredAt.day);
+      final dt = DateTime(
+        r.occurredAt.year,
+        r.occurredAt.month,
+        r.occurredAt.day,
+      );
       final k = dt.year * 10000 + dt.month * 100 + dt.day;
       final old = byKey[k] ?? (0, 0);
       if (r.direction == 0) {
@@ -124,7 +155,9 @@ List<StatsBarBucket> _buildBuckets({
     while (cursor.isBefore(endExclusive)) {
       final k = cursor.year * 10000 + cursor.month * 100 + cursor.day;
       final v = byKey[k] ?? (0, 0);
-      final label = sameMonth ? '${cursor.day}' : '${cursor.month}/${cursor.day}';
+      final label = sameMonth
+          ? '${cursor.day}'
+          : '${cursor.month}/${cursor.day}';
       final next = cursor.add(const Duration(days: 1));
       out.add(
         StatsBarBucket(
@@ -151,7 +184,9 @@ List<StatsBarBucket> _buildBuckets({
   }
 
   final monthCount = countMonths(start, endExclusive);
-  final useMonth = preset == StatsTimePreset.thisYear || (preset == StatsTimePreset.custom && monthCount <= 24);
+  final useMonth =
+      preset == StatsTimePreset.thisYear ||
+      (preset == StatsTimePreset.custom && monthCount <= 24);
   if (useMonth) {
     final byKey = <int, (int income, int expense)>{};
     for (final r in records) {
@@ -214,4 +249,3 @@ List<StatsBarBucket> _buildBuckets({
   }
   return out;
 }
-

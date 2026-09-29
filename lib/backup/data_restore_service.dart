@@ -6,6 +6,9 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
 import 'backup_config.dart';
+import 'restore_safety.dart';
+import '../data/local/drift/app_database.dart';
+import 'package:crypto/crypto.dart';
 import 'webdav_client.dart';
 
 class DataRestoreService {
@@ -35,7 +38,7 @@ class DataRestoreService {
         docs.path,
         'backups',
         'restore_tmp',
-        DateTime.now().millisecondsSinceEpoch.toString(),
+        DateTime.now().microsecondsSinceEpoch.toString(),
       ),
     );
     await tmpDir.create(recursive: true);
@@ -44,16 +47,11 @@ class DataRestoreService {
         docs.path,
         'backups',
         'restore_guard',
-        DateTime.now().millisecondsSinceEpoch.toString(),
+        DateTime.now().microsecondsSinceEpoch.toString(),
       ),
     );
     await guardDir.create(recursive: true);
-    final zipFile = File(
-      p.join(
-        tmpDir.path,
-        entry.fileName.trim().isEmpty ? 'restore.zip' : entry.fileName.trim(),
-      ),
-    );
+    final zipFile = File(p.join(tmpDir.path, 'restore.zip'));
 
     final remoteDir = BackupConfig.normalizeWebDavRemoteDir(
       config.webDavRemoteDir.trim(),
@@ -99,7 +97,7 @@ class DataRestoreService {
         docs.path,
         'backups',
         'restore_guard',
-        DateTime.now().millisecondsSinceEpoch.toString(),
+        DateTime.now().microsecondsSinceEpoch.toString(),
       ),
     );
     await guardDir.create(recursive: true);
@@ -123,7 +121,29 @@ class DataRestoreService {
     );
   }
 
+  static final _restoring = <String>{};
   Future<void> _restoreFromZip({
+    required File zipFile,
+    required Directory docsDir,
+    required Directory guardDir,
+    required void Function(String message) onProgress,
+  }) async {
+    final key = p.normalize(p.absolute(docsDir.path));
+    if (!_restoring.add(key)) throw const DataRestoreException('已有恢复任务正在运行');
+    try {
+      await RestoreSafety.recoverIfNeeded(docsDir);
+      await _restoreFromZipUnlocked(
+        zipFile: zipFile,
+        docsDir: docsDir,
+        guardDir: guardDir,
+        onProgress: onProgress,
+      );
+    } finally {
+      _restoring.remove(key);
+    }
+  }
+
+  Future<void> _restoreFromZipUnlocked({
     required File zipFile,
     required Directory docsDir,
     required Directory guardDir,
@@ -132,13 +152,17 @@ class DataRestoreService {
     if (!await zipFile.exists()) {
       throw const DataRestoreException('备份包不存在');
     }
+    if (await zipFile.length() > RestoreSafety.maxZipBytes) {
+      throw const DataRestoreException('备份文件超过 128 MB');
+    }
     final bytes = await zipFile.readAsBytes();
     Archive archive;
     try {
-      archive = ZipDecoder().decodeBytes(bytes, verify: true);
+      archive = RestoreSafety.decodeZip(bytes);
     } catch (_) {
       throw const DataRestoreException('备份包不是有效的 ZIP 文件');
     }
+    RestoreSafety.validateArchive(archive);
     ArchiveFile? manifestEntry;
     for (final file in archive.files) {
       if (file.name == 'manifest.json') {
@@ -168,6 +192,23 @@ class DataRestoreService {
       throw DataRestoreException('备份包缺少数据库文件：$dbFileInArchive');
     }
 
+    final stagedDb = File(p.join(guardDir.path, 'incoming.sqlite'));
+    final incomingBytes = dbEntry.content as List<int>;
+    final expectedHash = manifest['dbSha256'];
+    if (expectedHash is! String ||
+        sha256.convert(incomingBytes).toString() != expectedHash ||
+        manifest['formatVersion'] != 1 ||
+        manifest['schemaVersion'] != AppDatabase.currentSchemaVersion) {
+      throw const DataRestoreException('备份版本或校验和不匹配');
+    }
+    await stagedDb.writeAsBytes(incomingBytes, flush: true);
+    RestoreSafety.validateDatabase(stagedDb, AppDatabase.currentSchemaVersion);
+    RestoreSafety.rebaseMedia(
+      stagedDb,
+      docsDir,
+      archive.files.map((f) => f.name).toSet(),
+      includeMedia: manifest['mediaIncluded'] == true,
+    );
     final dbPath = p.join(docsDir.path, 'newshangli_drift.sqlite');
     final walPath = '$dbPath-wal';
     final shmPath = '$dbPath-shm';
@@ -193,25 +234,20 @@ class DataRestoreService {
       await _copyDir(mediaDir, guardMediaDir);
     }
 
+    await RestoreSafety.begin(docsDir, guardDir);
     try {
       onProgress('正在恢复数据库…');
-      await dbFile.writeAsBytes(dbEntry.content as List<int>, flush: true);
+      if (await dbFile.exists()) await dbFile.delete();
+      await stagedDb.rename(dbFile.path);
       if (await walFile.exists()) await walFile.delete();
       if (await shmFile.exists()) await shmFile.delete();
 
       onProgress('正在恢复媒体文件…');
       await _restoreMediaFromArchive(archive: archive, docsDir: docsDir);
+      RestoreSafety.validateDatabase(dbFile, AppDatabase.currentSchemaVersion);
+      await RestoreSafety.journal(docsDir).delete();
     } catch (e) {
-      await _rollbackFromGuard(
-        guardDb: guardDb,
-        guardWal: guardWal,
-        guardShm: guardShm,
-        dbFile: dbFile,
-        walFile: walFile,
-        shmFile: shmFile,
-        guardMediaDir: guardMediaDir,
-        mediaDir: mediaDir,
-      );
+      await RestoreSafety.recoverIfNeeded(docsDir);
       throw DataRestoreException('恢复失败，已回滚：$e');
     }
   }
@@ -235,37 +271,6 @@ class DataRestoreService {
       );
       await output.parent.create(recursive: true);
       await output.writeAsBytes(entry.content as List<int>, flush: true);
-    }
-  }
-
-  Future<void> _rollbackFromGuard({
-    required File guardDb,
-    required File guardWal,
-    required File guardShm,
-    required File dbFile,
-    required File walFile,
-    required File shmFile,
-    required Directory guardMediaDir,
-    required Directory mediaDir,
-  }) async {
-    if (await guardDb.exists()) {
-      await guardDb.copy(dbFile.path);
-    }
-    if (await guardWal.exists()) {
-      await guardWal.copy(walFile.path);
-    } else if (await walFile.exists()) {
-      await walFile.delete();
-    }
-    if (await guardShm.exists()) {
-      await guardShm.copy(shmFile.path);
-    } else if (await shmFile.exists()) {
-      await shmFile.delete();
-    }
-    if (await guardMediaDir.exists()) {
-      if (await mediaDir.exists()) {
-        await mediaDir.delete(recursive: true);
-      }
-      await _copyDir(guardMediaDir, mediaDir);
     }
   }
 

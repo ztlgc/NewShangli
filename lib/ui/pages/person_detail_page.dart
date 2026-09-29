@@ -103,17 +103,25 @@ class _Canvas extends StatefulWidget {
 
 class _CanvasState extends State<_Canvas> {
   final MediaStorageService _mediaStorageService = MediaStorageService();
-  late Future<_PersonDetailView?> _viewFuture;
+  late Stream<_PersonDetailView?> _viewStream;
+
+  Stream<_PersonDetailView?> _watchFromDb() {
+    final db = AppDatabaseScope.of(context);
+    return db
+        .customSelect('SELECT 1', readsFrom: {db.persons, db.giftRecords})
+        .watch()
+        .asyncMap((_) => _loadFromDb());
+  }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _viewFuture = _loadFromDb();
+    _viewStream = _watchFromDb();
   }
 
   void _reload() {
     if (!mounted) return;
-    setState(() => _viewFuture = _loadFromDb());
+    setState(() => _viewStream = _watchFromDb());
   }
 
   Future<_PersonDetailView?> _loadFromDb() async {
@@ -126,6 +134,7 @@ class _CanvasState extends State<_Canvas> {
       final records =
           await (db.select(db.giftRecords)
                 ..where((t) => t.personId.equals(id))
+                ..where((t) => t.deletedAt.isNull())
                 ..orderBy([(t) => OrderingTerm.desc(t.occurredAt)]))
               .get();
       var incomeCent = 0;
@@ -232,10 +241,10 @@ class _CanvasState extends State<_Canvas> {
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<_PersonDetailView?>(
-      future: _viewFuture,
+    return StreamBuilder<_PersonDetailView?>(
+      stream: _viewStream,
       builder: (context, snapshot) {
-        if (snapshot.connectionState != ConnectionState.done) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         }
         final view = snapshot.data;
@@ -311,11 +320,11 @@ class _CanvasState extends State<_Canvas> {
                       const SizedBox(height: 24),
                     ],
                   ),
-                  const Positioned(
+                  Positioned(
                     left: 0,
                     right: 0,
                     bottom: 0,
-                    child: _BottomActions(),
+                    child: _BottomActions(personId: widget.personId),
                   ),
                 ],
               ),
@@ -1076,7 +1085,8 @@ class _RecordRow extends StatelessWidget {
 }
 
 class _BottomActions extends StatelessWidget {
-  const _BottomActions();
+  const _BottomActions({required this.personId});
+  final String personId;
 
   @override
   Widget build(BuildContext context) {
@@ -1099,7 +1109,7 @@ class _BottomActions extends StatelessWidget {
               shadow: true,
               onTap: () => AppNav.push(
                 context,
-                const RecordAddPage(),
+                RecordAddPage(initialPersonId: personId),
                 requiresLogin: true,
               ),
             ),

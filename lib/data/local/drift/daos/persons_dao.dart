@@ -1,6 +1,6 @@
 part of '../app_database.dart';
 
-/// 关系人 DAO：所有读写都要求 book 维度入参，避免跨账簿污染。
+/// 全局联系人 DAO。旧接口的 bookId 仅保留调用兼容，不限制联系人范围。
 @DriftAccessor(tables: [Persons])
 class PersonsDao extends DatabaseAccessor<AppDatabase> with _$PersonsDaoMixin {
   PersonsDao(super.db);
@@ -14,7 +14,6 @@ class PersonsDao extends DatabaseAccessor<AppDatabase> with _$PersonsDaoMixin {
 
   Stream<List<Person>> watchAllInBook(String bookId) {
     return (select(persons)
-          ..where((t) => t.bookId.equals(bookId))
           ..where((t) => t.deletedAt.isNull())
           ..orderBy([(t) => OrderingTerm.asc(t.name)]))
         .watch();
@@ -108,7 +107,6 @@ class PersonsDao extends DatabaseAccessor<AppDatabase> with _$PersonsDaoMixin {
     }
 
     return (select(persons)
-          ..where((t) => t.bookId.equals(bookId))
           ..where((t) => t.deletedAt.isNull())
           ..where((t) => t.name.like('%$kw%') | t.phone.like('%$kw%'))
           ..orderBy([(t) => OrderingTerm.asc(t.name)])

@@ -268,9 +268,9 @@ class _CanvasState extends State<_Canvas> {
     if (remoteDirRaw.isNotEmpty &&
         !BackupConfig.isValidWebDavRemoteDir(remoteDirRaw)) {
       if (mounted) {
-      AppNotifier.error(context, '远程目录格式不正确');
-      setState(() => _saving = false);
-    }
+        AppNotifier.error(context, '远程目录格式不正确');
+        setState(() => _saving = false);
+      }
       return false;
     }
     final normalizedRemoteDir = BackupConfig.normalizeWebDavRemoteDir(
@@ -471,13 +471,15 @@ class _CanvasState extends State<_Canvas> {
         final cloudFailure = await BackupStateStore.getLastFailure(
           BackupTarget.cloud,
         );
+        if (!mounted) return;
         setState(() => _cloudFailure = cloudFailure);
-        AppNotifier.error(context, r.message);
+        AppNotifier.success(context, r.message);
       } else {
         await BackupStateStore.setLastFailure(
           target: BackupTarget.cloud,
           message: r.message,
         );
+        if (!mounted) return;
         setState(() {
           _cloudFailure = BackupFailureState(
             target: BackupTarget.cloud,
@@ -697,13 +699,12 @@ class _CanvasState extends State<_Canvas> {
         await _refreshLocalDirectoryInfo(preferredOutputDir: null);
         await _setLocalFailure('所选目录当前不可写，已继续使用默认备份目录');
         if (!mounted) return;
-        AppNotifier.warning(
-          context,
-          '所选目录当前不可写，已继续使用默认备份目录',
-        );
+        AppNotifier.warning(context, '所选目录当前不可写，已继续使用默认备份目录');
         return;
       }
-      await BackupStateStore.setPreferredLocalBackupDir(pickedInfo.directory.path);
+      await BackupStateStore.setPreferredLocalBackupDir(
+        pickedInfo.directory.path,
+      );
       await _refreshLocalDirectoryInfo(
         preferredOutputDir: pickedInfo.directory.path,
       );
@@ -711,10 +712,7 @@ class _CanvasState extends State<_Canvas> {
       AppNotifier.success(context, '已更新本地备份目录');
     } catch (_) {
       if (!mounted) return;
-      AppNotifier.warning(
-        context,
-        '当前平台暂不支持选择目录，继续使用默认目录',
-      );
+      AppNotifier.warning(context, '当前平台暂不支持选择目录，继续使用默认目录');
     }
   }
 
@@ -1047,10 +1045,10 @@ class _DriveExtraConfigCard extends StatelessWidget {
           const PrototypeDivider(color: AppColors.borderDivider),
           _OptionRow(
             title: '自动备份',
-            subtitle: '仅在 Wi-Fi 环境下进行',
+            subtitle: '尚未提供后台定时备份，请使用立即备份',
             trailing: _Toggle(
-              value: config.autoBackupEnabled,
-              onChanged: saving ? null : onToggleAutoBackup,
+              value: false,
+              onChanged: null,
               semanticLabel: '自动备份',
             ),
           ),
@@ -1063,7 +1061,7 @@ class _DriveExtraConfigCard extends StatelessWidget {
               size: 10,
               color: AppColors.gray300,
             ),
-            onTap: saving ? null : onPickFrequency,
+            onTap: null,
             semanticLabel: '备份频率',
             semanticValue: backupFrequencyLabel(config.backupFrequency),
             semanticHint: '打开备份频率选择',

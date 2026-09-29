@@ -20,7 +20,7 @@ class MediaStorageService {
     final name = 'avatar_${DateTime.now().microsecondsSinceEpoch}$ext';
     final dest = File(p.join(dir.path, name));
     await File(sourcePath).copy(dest.path);
-    await _tryDeleteStoredPath(oldStoredPath);
+    // 旧文件由业务提交后的清理流程处理，选择新头像不破坏已保存数据。
     return _toStoredPath(dest.path);
   }
 

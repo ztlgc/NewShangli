@@ -51,12 +51,15 @@ class StatsPage extends StatefulWidget {
 
 class _StatsPageState extends State<StatsPage> {
   StatsViewModel? _vm;
+  Object? _boundDatabase;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (_vm != null) return;
     final db = AppDatabaseScope.of(context);
+    if (identical(_boundDatabase, db)) return;
+    _vm?.dispose();
+    _boundDatabase = db;
     final vm = StatsViewModel(
       repository: widget.repository ?? _statsRepository,
       db: db,

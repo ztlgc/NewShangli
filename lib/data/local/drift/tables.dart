@@ -6,7 +6,7 @@ import 'converters.dart';
 /// 账簿表：account_book
 ///
 /// 关键规范：
-/// - 账簿是一级上下文：其它核心数据必须归属 book_id
+/// - 礼金记录归属账簿；联系人为全局实体
 /// - 主键使用 TEXT（UUID）
 class AccountBooks extends Table {
   @override
@@ -61,11 +61,8 @@ class Persons extends Table {
   TextColumn get personId =>
       text().named('person_id').clientDefault(() => const Uuid().v4())();
 
-  TextColumn get bookId => text()
-      .named('book_id')
-      .customConstraint(
-        'NOT NULL REFERENCES account_book(book_id) ON DELETE CASCADE',
-      )();
+  /// 创建来源，仅为元数据；全局联系人不随账本级联删除。
+  TextColumn get bookId => text().named('book_id')();
 
   TextColumn get name => text()
       .withLength(min: 1, max: 64)
@@ -129,7 +126,9 @@ class GiftRecords extends Table {
 
   IntColumn get amountCent => integer()
       .named('amount_cent')
-      .customConstraint('NOT NULL CHECK(amount_cent > 0)')();
+      .customConstraint(
+        "NOT NULL CHECK(typeof(amount_cent) = 'integer' AND amount_cent BETWEEN 1 AND 99999999999999)",
+      )();
 
   TextColumn get currency => text().withDefault(const Constant('CNY'))();
 

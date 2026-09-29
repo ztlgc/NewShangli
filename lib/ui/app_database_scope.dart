@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 
 import '../data/local/drift/app_database.dart';
+import '../import/data_import_service.dart';
 import '../data/local/drift/reason_relation_migrator.dart';
 
 class AppDatabaseProvider extends StatefulWidget {
@@ -19,6 +20,7 @@ class AppDatabaseProvider extends StatefulWidget {
 
 class _AppDatabaseProviderState extends State<AppDatabaseProvider> {
   late AppDatabase _db;
+  bool _paused = false;
 
   @override
   void initState() {
@@ -51,13 +53,21 @@ class _AppDatabaseProviderState extends State<AppDatabaseProvider> {
   }
 
   Future<T> withDatabasePaused<T>(Future<T> Function() action) async {
-    await _db.close();
+    if (_paused) throw StateError('数据库正在恢复，请稍候');
+    if (DataImportService.isRunning(_db)) {
+      throw StateError('导入进行中，请等待完成或暂停后再恢复');
+    }
+    setState(() => _paused = true);
     try {
+      await _db.close();
       return await action();
     } finally {
       _openDb();
-      if (mounted) {
-        setState(() {});
+      try {
+        await _db.customSelect('SELECT 1').get();
+      } finally {
+        _paused = false;
+        if (mounted) setState(() {});
       }
     }
   }
@@ -69,7 +79,7 @@ class _AppDatabaseProviderState extends State<AppDatabaseProvider> {
       withDatabasePaused: withDatabasePaused,
       child: AppDatabaseScope(
         db: _db,
-        child: widget.child,
+        child: AbsorbPointer(absorbing: _paused, child: widget.child),
       ),
     );
   }
@@ -85,15 +95,19 @@ class AppDatabaseControllerScope extends InheritedWidget {
 
   final Future<void> Function() restartDatabase;
   final Future<dynamic> Function(Future<dynamic> Function() action)
-      withDatabasePaused;
+  withDatabasePaused;
 
   static AppDatabaseControllerScope? maybeOf(BuildContext context) {
-    return context.dependOnInheritedWidgetOfExactType<AppDatabaseControllerScope>();
+    return context
+        .dependOnInheritedWidgetOfExactType<AppDatabaseControllerScope>();
   }
 
   static AppDatabaseControllerScope of(BuildContext context) {
     final scope = maybeOf(context);
-    assert(scope != null, 'AppDatabaseControllerScope not found in widget tree.');
+    assert(
+      scope != null,
+      'AppDatabaseControllerScope not found in widget tree.',
+    );
     return scope!;
   }
 
@@ -103,11 +117,7 @@ class AppDatabaseControllerScope extends InheritedWidget {
 }
 
 class AppDatabaseScope extends InheritedWidget {
-  const AppDatabaseScope({
-    super.key,
-    required this.db,
-    required super.child,
-  });
+  const AppDatabaseScope({super.key, required this.db, required super.child});
 
   final AppDatabase db;
 
@@ -122,5 +132,6 @@ class AppDatabaseScope extends InheritedWidget {
   }
 
   @override
-  bool updateShouldNotify(AppDatabaseScope oldWidget) => identical(db, oldWidget.db) == false;
+  bool updateShouldNotify(AppDatabaseScope oldWidget) =>
+      identical(db, oldWidget.db) == false;
 }

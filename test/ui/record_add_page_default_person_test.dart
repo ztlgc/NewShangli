@@ -7,7 +7,7 @@ import 'package:newshangli/ui/app_database_scope.dart';
 import 'package:newshangli/ui/pages/record_add_page.dart';
 
 void main() {
-  testWidgets('收支录入默认关系人不会命中已删除联系人', (tester) async {
+  testWidgets('从联系人入口录入沿用指定联系人，不选择数据库第一人', (tester) async {
     final db = AppDatabase.forTesting(NativeDatabase.memory());
     final now = DateTime.now().millisecondsSinceEpoch;
 
@@ -50,7 +50,7 @@ void main() {
     await tester.pumpWidget(
       AppDatabaseScope(
         db: db,
-        child: const MaterialApp(home: RecordAddPage()),
+        child: const MaterialApp(home: RecordAddPage(initialPersonId: 'person_active')),
       ),
     );
     await tester.pump(const Duration(milliseconds: 800));

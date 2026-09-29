@@ -1,8 +1,10 @@
-import 'package:drift/drift.dart' show Value;
+import 'dart:io';
+import 'package:path_provider/path_provider.dart';
+import '../../import/data_import_service.dart';
+import '../../import/import_value_codec.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
-import '../../data/local/drift/app_database.dart';
 import '../app_database_scope.dart';
 import '../app_dialog.dart';
 import '../app_notifier.dart';
@@ -249,121 +251,93 @@ class _AccountBookDataImportPageState extends State<AccountBookDataImportPage> {
   }
 
   Future<void> _handleImport() async {
+    if (_submitting) return;
     final text = _textCtrl.text.trim();
     if (text.isEmpty) {
       _toast('请先粘贴文本数据');
       return;
     }
-
     setState(() => _submitting = true);
     final db = AppDatabaseScope.of(context);
+    File? temporary;
     try {
-      final lines = text
-          .split(RegExp(r'\r?\n'))
-          .map((e) => e.trim())
-          .where((e) => e.isNotEmpty)
-          .toList();
-      if (lines.isEmpty) {
-        _toast('未识别到有效行');
-        return;
-      }
-
-      final persons = await (db.select(
-        db.persons,
-      )..where((t) => t.bookId.equals(widget.bookId))).get();
-      final personByName = <String, Person>{
-        for (final p in persons) p.name.trim(): p,
-      };
-      final existing = await (db.select(
-        db.giftRecords,
-      )..where((t) => t.bookId.equals(widget.bookId))).get();
       final book = await db.accountBooksDao.findById(widget.bookId);
-      final now = DateTime.now().millisecondsSinceEpoch;
-      final defaultReason = (book?.reasonType.trim().isNotEmpty ?? false)
-          ? book!.reasonType.trim()
-          : '粘贴导入';
-      final bookTime = book?.bookTime ?? now;
-      final lockByBookTime = book != null && book.isDefault != 1;
-      final existedKeys = <String>{
-        for (final r in existing.where((e) => e.direction == '收入'))
-          '${r.personId}|${r.amountCent}',
-      };
-
-      var success = 0;
-      var duplicate = 0;
-      var invalid = 0;
-      final duplicateRecords = <String>[];
-
-      for (final entry in lines.asMap().entries) {
-        final lineNo = entry.key + 1;
-        final line = entry.value;
-        final parsed = _parseLine(line);
+      if (book == null || book.deletedAt != null) throw StateError('账簿已删除');
+      final today = DateTime.now();
+      final date = book.isDefault != 1
+          ? DateTime.fromMillisecondsSinceEpoch(book.bookTime)
+          : DateTime(today.year, today.month, today.day);
+      final rows = <List<String>>[
+        ['数据类型', '关系人姓名', '金额(元)', '收支方向', '事由', '发生时间', '支付方式', '备注'],
+      ];
+      final invalidLines = <int>[];
+      final lines = text.split(RegExp(r'\r?\n'));
+      for (var i = 0; i < lines.length; i++) {
+        if (lines[i].trim().isEmpty) continue;
+        final parsed = _parseLine(lines[i]);
         if (parsed == null) {
-          invalid++;
+          invalidLines.add(i + 1);
           continue;
         }
-
-        var person = personByName[parsed.name];
-        if (person == null) {
-          final personId = await db.personsDao.insertOne(
-            PersonsCompanion.insert(
-              bookId: widget.bookId,
-              name: parsed.name,
-              createdAt: now,
-              updatedAt: now,
-            ),
-          );
-          person = await db.personsDao.findById(personId);
-          if (person == null) {
-            invalid++;
-            continue;
-          }
-          personByName[parsed.name] = person;
-        }
-
-        final key = '${person.personId}|${parsed.amountCent}';
-        if (existedKeys.contains(key)) {
-          duplicate++;
-          duplicateRecords.add(
-            '第$lineNo行：${parsed.name} ${((parsed.amountCent) / 100).toStringAsFixed(2)}元',
-          );
-          continue;
-        }
-
-        await db.giftRecordsDao.insertOne(
-          GiftRecordsCompanion.insert(
-            bookId: widget.bookId,
-            personId: person.personId,
-            amountCent: parsed.amountCent,
-            direction: const Value('收入'),
-            eventName: Value(defaultReason),
-            note: Value(parsed.note),
-            occurredAt: lockByBookTime
-                ? bookTime
-                : DateTime.now().millisecondsSinceEpoch,
-            paymentMethod: const Value('未设置'),
-            createdAt: now,
-            updatedAt: now,
-          ),
-        );
-        existedKeys.add(key);
-        success++;
+        rows.add([
+          '礼金收支记录',
+          parsed.name,
+          '${parsed.amountCent ~/ 100}.${(parsed.amountCent % 100).toString().padLeft(2, '0')}',
+          '收入',
+          book.reasonType.isEmpty ? '粘贴导入' : book.reasonType,
+          date.toIso8601String(),
+          '未设置',
+          parsed.note ?? '',
+        ]);
       }
-
+      if (invalidLines.isNotEmpty) {
+        throw FormatException('以下行无法识别，请修正后重试：${invalidLines.join('、')}');
+      }
+      if (rows.length == 1) throw const FormatException('未识别到有效行');
+      String cell(String value) => '"${value.replaceAll('"', '""')}"';
+      final directory = await getTemporaryDirectory();
+      temporary = File(
+        '${directory.path}${Platform.pathSeparator}shangli_paste_${db.newId()}.csv',
+      );
+      await temporary.writeAsString(
+        rows.map((row) => row.map(cell).join(',')).join('\r\n'),
+        flush: true,
+      );
+      final service = DataImportService(db: db);
+      final id = await service.createJob(
+        bookId: widget.bookId,
+        sourceFilePath: temporary.path,
+        kind: DataImportKind.recordsOnly,
+      );
+      final handle = await service.start(
+        id,
+        onDuplicate: (duplicate) async {
+          if (!mounted) throw const DataImportException('页面已退出');
+          return await AppDialog.confirm(
+                context,
+                title: '疑似重复记录',
+                message:
+                    '${duplicate.personName}，收入 ${(duplicate.amountCent / 100).toStringAsFixed(2)} 元。是否保留为新记录？',
+                confirmLabel: '保留',
+                cancelLabel: '跳过',
+              ) ==
+              true;
+        },
+      );
+      final result = await handle.progress.last;
       if (!mounted) return;
-      final duplicateDetails = duplicateRecords.isEmpty
-          ? ''
-          : '\n\n重复记录：\n${duplicateRecords.take(10).join('\n')}${duplicateRecords.length > 10 ? '\n…等 ${duplicateRecords.length} 条' : ''}';
       await AppDialog.showAlert(
         context,
-        title: '导入完成',
+        title: result.status == DataImportStatus.completed ? '导入完成' : '导入未完成',
         message:
-            '成功 $success 条\n重复跳过 $duplicate 条\n解析失败 $invalid 条$duplicateDetails',
-        closeLabel: '确定',
+            '写入 ${result.successRows} 个数据项（含新联系人）\n跳过 ${result.skippedRows} 行\n失败 ${result.failedRows} 行。可在文件导入的历史中查看日志。',
       );
     } catch (e) {
       _toast('导入失败：$e');
     } finally {
+      if (temporary != null && await temporary.exists()) {
+        await temporary.delete();
+      }
       if (mounted) setState(() => _submitting = false);
     }
   }
@@ -381,11 +355,11 @@ class _AccountBookDataImportPageState extends State<AccountBookDataImportPage> {
     final name = (m.group(1) ?? '').trim();
     final amountText = (m.group(2) ?? '').replaceAll(',', '');
     final note = (m.group(3) ?? '').trim();
-    final amount = double.tryParse(amountText);
+    final amount = ImportValueCodec.amountCent(amountText);
     if (name.isEmpty || amount == null || amount <= 0) return null;
     return _ParsedLine(
       name: name,
-      amountCent: (amount * 100).round(),
+      amountCent: amount,
       note: note.isEmpty ? null : note,
     );
   }

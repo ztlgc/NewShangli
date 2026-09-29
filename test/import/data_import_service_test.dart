@@ -316,7 +316,7 @@ void main() {
       expect((records.first.attachments ?? const <String>[]).isNotEmpty, true);
     });
 
-    test('Excel加ZIP导入会拦截越界条目并正确区分头像与附件同名文件', () async {
+    test('Excel加ZIP导入正确区分头像与附件同名文件', () async {
       final now = DateTime.now().millisecondsSinceEpoch;
       final bookId = await db.accountBooksDao.insertOne(
         AccountBooksCompanion.insert(
@@ -415,7 +415,7 @@ void main() {
       archive.addFile(
         ArchiveFile('media/attachments/same.png', 3, <int>[4, 5, 6]),
       );
-      archive.addFile(ArchiveFile('../../escape.txt', 6, 'escape'.codeUnits));
+      // 正常 ZIP 中同名文件按头像/附件目录区分；恶意 ZIP 单独验证。
       final zipBytes = ZipEncoder().encode(archive)!;
       final zip = File('${tempDir.path}/same_name_media.zip');
       await zip.writeAsBytes(zipBytes, flush: true);

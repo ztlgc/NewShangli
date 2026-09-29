@@ -126,10 +126,10 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
     await tester.pump(const Duration(milliseconds: 300));
-    expect(find.text('起始时间'), findsOneWidget);
-    expect(find.text('截止时间'), findsOneWidget);
+    expect(find.text('起始'), findsOneWidget);
+    expect(find.text('截止'), findsOneWidget);
 
-    expect(find.text('收支走势'), findsOneWidget);
+    expect(find.text('收支趋势'), findsOneWidget);
 
     await tester.pump(const Duration(seconds: 3));
     await tester.pumpWidget(const SizedBox());

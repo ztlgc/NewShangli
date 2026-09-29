@@ -4,12 +4,12 @@ import '../data/local/drift/app_database.dart';
 
 class DefaultBookService {
   Future<String> ensureDefaultBookId(AppDatabase db) async {
-    final books = await (db.select(
-      db.accountBooks,
-    )..orderBy([
-      (t) => OrderingTerm.asc(t.createdAt),
-      (t) => OrderingTerm.asc(t.bookId),
-    ])).get();
+    final books =
+        await (db.select(db.accountBooks)..orderBy([
+              (t) => OrderingTerm.asc(t.createdAt),
+              (t) => OrderingTerm.asc(t.bookId),
+            ]))
+            .get();
 
     if (books.isEmpty) {
       final now = DateTime.now().millisecondsSinceEpoch;
@@ -27,8 +27,8 @@ class DefaultBookService {
       );
     }
 
-    final keeper = books.first;
     final defaults = books.where((b) => b.isDefault == 1).toList();
+    final keeper = defaults.isEmpty ? books.first : defaults.first;
     final isValidSingleDefault =
         defaults.length == 1 && defaults.first.bookId == keeper.bookId;
     if (isValidSingleDefault) {
@@ -40,7 +40,9 @@ class DefaultBookService {
       await (db.update(db.accountBooks)).write(
         AccountBooksCompanion(isDefault: const Value(0), updatedAt: Value(now)),
       );
-      await (db.update(db.accountBooks)..where((t) => t.bookId.equals(keeper.bookId))).write(
+      await (db.update(
+        db.accountBooks,
+      )..where((t) => t.bookId.equals(keeper.bookId))).write(
         AccountBooksCompanion(isDefault: const Value(1), updatedAt: Value(now)),
       );
     });

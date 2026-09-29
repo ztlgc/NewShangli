@@ -56,6 +56,11 @@ class CloudBackupService {
   final DataRestoreService _dataRestoreService;
 
   String _newId() => const Uuid().v4();
+  void _assertAccount(String id) {
+    if (_supabase.auth.currentUser?.id != id) {
+      throw const CloudBackupException('账号已切换，操作已停止');
+    }
+  }
 
   /// 确保 Storage Bucket 存在且已配置好 RLS 策略。
   ///
@@ -69,14 +74,18 @@ class CloudBackupService {
       await _supabase.storage.from(bucketId).list();
     } on StorageException catch (e) {
       final msg = e.message.toLowerCase();
-      if (e.statusCode == '404' || msg.contains('bucket not found') || msg.contains('not found')) {
+      if (e.statusCode == '404' ||
+          msg.contains('bucket not found') ||
+          msg.contains('not found')) {
         throw CloudBackupException(
           'Storage bucket "$bucketId" 不存在。'
           '请在 Supabase 控制台运行迁移文件：'
           'supabase/migrations/create_storage_${bucketId}_bucket.sql'
           '（原始错误: ${e.message}）',
         );
-      } else if (e.statusCode == '403' || msg.contains('row-level security') || msg.contains('unauthorized')) {
+      } else if (e.statusCode == '403' ||
+          msg.contains('row-level security') ||
+          msg.contains('unauthorized')) {
         throw CloudBackupException(
           'Storage bucket "$bucketId" 存在但 RLS 策略未正确配置，导致访问被拒绝。'
           '请运行迁移文件来创建/修复策略：'
@@ -88,7 +97,6 @@ class CloudBackupService {
       }
     }
   }
-
 
   static bool isAutoBackupDue({
     required int? lastCreatedAtMs,
@@ -151,6 +159,7 @@ class CloudBackupService {
     await _supabase.storage
         .from('backups')
         .upload(remotePath, zip, fileOptions: const FileOptions(upsert: false));
+    _assertAccount(user.id);
     await _supabase.from('cloud_backup_version').insert({
       'backup_id': backupId,
       'kind': CloudBackupKind.manual,
@@ -160,6 +169,7 @@ class CloudBackupService {
       'created_at': createdAt,
       'user_id': user.id,
     });
+    _assertAccount(user.id);
     return CloudBackupVersion(
       backupId: backupId,
       kind: CloudBackupKind.manual,
@@ -202,19 +212,22 @@ class CloudBackupService {
         version.storagePath.trim().isEmpty) {
       throw const CloudBackupException('备份版本信息不完整');
     }
+    if (version.storageBucket != 'backups' ||
+        !version.storagePath.startsWith('${user.id}/') ||
+        version.storagePath.split('/').contains('..')) {
+      throw const CloudBackupException('备份不属于当前账号');
+    }
     onProgress('正在下载备份包…');
     final bytes = await _supabase.storage
         .from(version.storageBucket)
         .download(version.storagePath);
     final tmpDir = await getTemporaryDirectory();
     final tmpFile = File(
-      p.join(
-        tmpDir.path,
-        'cloud_restore_${DateTime.now().millisecondsSinceEpoch}_${version.backupId}.zip',
-      ),
+      p.join(tmpDir.path, 'cloud_restore_${_newId()}.zip'),
     );
     await tmpFile.writeAsBytes(bytes, flush: true);
     try {
+      _assertAccount(user.id);
       await _dataRestoreService.restoreFromLocalZip(
         zipFile: tmpFile,
         onProgress: onProgress,
@@ -255,13 +268,15 @@ class CloudBackupService {
     );
     final sizeBytes = await zip.length();
     final createdAt = DateTime.now().millisecondsSinceEpoch;
-    final remotePath = buildAutoStoragePath(userId);
+    final remotePath =
+        '$userId/auto/${createdAt}_${_newId()}.zip';
     await _ensureStorageBucket('backups');
     onProgress('正在上传…');
     await _supabase.storage
         .from('backups')
-        .upload(remotePath, zip, fileOptions: const FileOptions(upsert: true));
+        .upload(remotePath, zip, fileOptions: const FileOptions(upsert: false));
 
+    _assertAccount(userId);
     if (existing == null) {
       await _supabase.from('cloud_backup_version').insert({
         'backup_id': backupId,
@@ -281,7 +296,8 @@ class CloudBackupService {
             'size_bytes': sizeBytes,
             'created_at': createdAt,
           })
-          .eq('backup_id', backupId);
+          .eq('backup_id', backupId)
+          .eq('user_id', userId);
     }
     return CloudBackupVersion(
       backupId: backupId,

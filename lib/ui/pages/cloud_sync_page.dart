@@ -168,7 +168,7 @@ class _CloudSyncController extends ChangeNotifier {
     _appendLog('云同步模块初始化成功。');
     await refreshCloudCounts(silent: true);
     await refreshBackupVersions(silent: true);
-    await maybeRunAutoBackup(silent: true);
+    // 自动备份尚未接入统一配置，暂不隐式上传。
   }
 
   void attachDatabase(AppDatabase db) {
@@ -304,7 +304,7 @@ class _CloudSyncController extends ChangeNotifier {
         await refreshCloudCounts(silent: true);
         return const _CloudSyncActionResult.dialog(
           title: '恢复成功',
-          message: '数据已恢复。若其它页面仍显示旧数据，请返回后重新进入页面。',
+          message: '云端表数据已合并；本地独有数据已保留。',
         );
       },
     );
@@ -327,6 +327,7 @@ class _CloudSyncController extends ChangeNotifier {
 
   Future<_CloudSyncActionResult> restoreFromBackupVersion(
     CloudBackupVersion version,
+    Future<dynamic> Function(Future<dynamic> Function()) withDatabasePaused,
   ) async {
     if (_state.user == null) return const _CloudSyncActionResult.toast('请先登录');
     return _runAction(
@@ -334,18 +335,15 @@ class _CloudSyncController extends ChangeNotifier {
       failureLogPrefix: '版本恢复失败',
       failureFeedback: (_) => '版本恢复失败',
       task: () async {
-        await _cloudBackupService.restoreVersion(
-          version: version,
-          onProgress: _appendLog,
+        await withDatabasePaused(
+          () => _cloudBackupService.restoreVersion(
+            version: version,
+            onProgress: _appendLog,
+          ),
         );
-        final db = _db;
-        if (db != null) {
-          final localCounts = await _queryLocalDataCounts(db);
-          await _saveSyncSnapshot('版本恢复', localCounts: localCounts);
-        }
         return const _CloudSyncActionResult.dialog(
           title: '恢复成功',
-          message: '数据已恢复。若其它页面仍显示旧数据，请返回后重新进入页面。',
+          message: '数据已恢复，数据库已重新打开。',
         );
       },
     );
@@ -385,7 +383,7 @@ class _CloudSyncController extends ChangeNotifier {
     );
     unawaited(refreshCloudCounts(silent: true));
     unawaited(refreshBackupVersions(silent: true));
-    unawaited(maybeRunAutoBackup(silent: true));
+    // 自动备份尚未接入统一配置，暂不隐式上传。
   }
 
   Future<void> _loadSyncOverview(AppDatabase db) async {
@@ -632,8 +630,9 @@ class _CloudSyncPageState extends State<CloudSyncPage> {
 
     final confirm = await AppDialog.confirm(
       context,
-      title: '恢复云端数据',
-      message: '此操作会从云端拉取当前账号的数据，并覆盖本地同 ID 的相关记录。是否继续？',
+      title: '合并云端数据',
+      message:
+          '按 ID 合并当前账号的数据，保留本地独有数据，同 ID 联系人和记录取更新时间较新的版本。此操作不等同于完整备份恢复。是否继续？',
       confirmLabel: '继续恢复',
       cancelLabel: '取消',
       tone: AppNotificationTone.error,
@@ -662,9 +661,13 @@ class _CloudSyncPageState extends State<CloudSyncPage> {
       cancelLabel: '取消',
       tone: AppNotificationTone.error,
     );
-    if (confirm == true) {
+    if (confirm == true && mounted) {
+      final databaseController = AppDatabaseControllerScope.of(context);
       await _handleActionResult(
-        () => _controller.restoreFromBackupVersion(version),
+        () => _controller.restoreFromBackupVersion(
+          version,
+          databaseController.withDatabasePaused,
+        ),
       );
     }
   }

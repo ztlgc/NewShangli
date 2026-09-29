@@ -28,9 +28,10 @@ import '../../utils/date_util.dart';
 /// 页面：收支记录 - 收支录入
 /// 对照原型：prototype/index.html -> "收支录入"
 class RecordAddPage extends StatefulWidget {
-  const RecordAddPage({super.key, this.recordId});
+  const RecordAddPage({super.key, this.recordId, this.initialPersonId});
 
   final String? recordId;
+  final String? initialPersonId;
 
   @override
   State<RecordAddPage> createState() => _RecordAddPageState();
@@ -123,6 +124,7 @@ class _RecordAddPageState extends State<RecordAddPage> {
   }
 
   Future<bool> _confirmDiscardIfNeeded() async {
+    if (_saving) return false;
     if (!_dirty) return true;
     final ok = await showDialog<bool>(
       context: context,
@@ -155,7 +157,6 @@ class _RecordAddPageState extends State<RecordAddPage> {
 
   Future<void> _handleSave() async {
     if (_saving) return;
-    await _ensureRequiredDefaults();
     if (!mounted) return;
     final amountCent = _parseAmountCent(_amountController.text);
     if (amountCent == null || amountCent <= 0) {
@@ -181,56 +182,69 @@ class _RecordAddPageState extends State<RecordAddPage> {
     final db = AppDatabaseScope.of(context);
     setState(() => _saving = true);
     try {
-      final dbBookId = await _resolveDbBookId(db, _bookId);
-      final book = await db.accountBooksDao.findById(dbBookId);
-      final occurredAtMs = (book != null && book.isDefault != 1)
-          ? book.bookTime
-          : _occurredAt.millisecondsSinceEpoch;
-      final now = DateTime.now().millisecondsSinceEpoch;
-      if (widget.recordId == null) {
-        await db.giftRecordsDao.insertOne(
-          GiftRecordsCompanion.insert(
-            bookId: dbBookId,
-            personId: pid,
-            amountCent: amountCent,
-            direction: Value(_isIncome ? '收入' : '支出'),
-            eventName: Value(eventName),
-            paymentMethod: Value(payment),
-            occurredAt: occurredAtMs,
-            note: Value(
-              _noteController.text.trim().isEmpty
-                  ? null
-                  : _noteController.text.trim(),
-            ),
-            attachments: Value(_attachments.isEmpty ? null : _attachments),
-            createdAt: now,
-            updatedAt: now,
-          ),
-        );
-      } else {
-        final existing = await db.giftRecordsDao.findById(widget.recordId!);
-        if (existing == null) {
-          throw StateError('记录不存在');
+      await db.transaction(() async {
+        final dbBookId = await _resolveDbBookId(db, _bookId);
+        final person = await db.personsDao.findById(pid);
+        if (person == null || person.deletedAt != null) {
+          throw StateError('关系人已删除，请重新选择');
         }
-        await db.giftRecordsDao.updateOne(
-          existing.copyWith(
-            bookId: dbBookId,
-            personId: pid,
-            amountCent: amountCent,
-            direction: _isIncome ? '收入' : '支出',
-            eventName: Value(eventName),
-            paymentMethod: Value(payment),
-            occurredAt: occurredAtMs,
-            note: Value(
-              _noteController.text.trim().isEmpty
-                  ? null
-                  : _noteController.text.trim(),
+        final book = await db.accountBooksDao.findById(dbBookId);
+        if (book == null || book.deletedAt != null) {
+          throw StateError('账簿已删除，请重新选择');
+        }
+        final savedEventName = book.isDefault != 1
+            ? (book.reasonType.isEmpty ? eventName : book.reasonType)
+            : eventName;
+        final occurredAtMs = (book.isDefault != 1)
+            ? book.bookTime
+            : _occurredAt.millisecondsSinceEpoch;
+        final now = DateTime.now().millisecondsSinceEpoch;
+        if (widget.recordId == null) {
+          await db.giftRecordsDao.insertOne(
+            GiftRecordsCompanion.insert(
+              bookId: dbBookId,
+              personId: pid,
+              amountCent: amountCent,
+              direction: Value(_isIncome ? '收入' : '支出'),
+              eventName: Value(savedEventName),
+              paymentMethod: Value(payment),
+              occurredAt: occurredAtMs,
+              note: Value(
+                _noteController.text.trim().isEmpty
+                    ? null
+                    : _noteController.text.trim(),
+              ),
+              attachments: Value(_attachments.isEmpty ? null : _attachments),
+              createdAt: now,
+              updatedAt: now,
             ),
-            attachments: Value(_attachments.isEmpty ? null : _attachments),
-            deletedAt: const Value(null),
-          ),
-        );
-      }
+          );
+        } else {
+          final existing = await db.giftRecordsDao.findById(widget.recordId!);
+          if (existing == null || existing.deletedAt != null) {
+            throw StateError('记录不存在');
+          }
+          final changed = await db.giftRecordsDao.updateOne(
+            existing.copyWith(
+              bookId: dbBookId,
+              personId: pid,
+              amountCent: amountCent,
+              direction: _isIncome ? '收入' : '支出',
+              eventName: Value(savedEventName),
+              paymentMethod: Value(payment),
+              occurredAt: occurredAtMs,
+              note: Value(
+                _noteController.text.trim().isEmpty
+                    ? null
+                    : _noteController.text.trim(),
+              ),
+              attachments: Value(_attachments.isEmpty ? null : _attachments),
+              updatedAt: now,
+            ),
+          );
+          if (!changed) throw StateError('记录未更新');
+        }
+      });
       if (!mounted) return;
       _dirty = false;
       _closeAfterSave();
@@ -412,7 +426,7 @@ class _RecordAddPageState extends State<RecordAddPage> {
         );
       },
     );
-    if (picked == null) return;
+    if (picked == null || !mounted) return;
     setState(() {
       _bookId = picked;
       _dirty = true;
@@ -422,9 +436,10 @@ class _RecordAddPageState extends State<RecordAddPage> {
 
   Future<void> _syncOccurredAtFromBookTime() async {
     final db = AppDatabaseScope.of(context);
-    final dbBookId = await _resolveDbBookId(db, _bookId);
+    final selectedBookId = _bookId;
+    final dbBookId = await _resolveDbBookId(db, selectedBookId);
     final book = await db.accountBooksDao.findById(dbBookId);
-    if (book == null || !mounted) return;
+    if (book == null || !mounted || _bookId != selectedBookId) return;
     if (book.isDefault == 1) {
       setState(() {
         _occurredAtLockedByBookTime = false;
@@ -434,6 +449,7 @@ class _RecordAddPageState extends State<RecordAddPage> {
     }
     setState(() {
       _occurredAt = DateTime.fromMillisecondsSinceEpoch(book.bookTime);
+      _eventName = book.reasonType;
       _occurredAtLockedByBookTime = true;
       _dirty = true;
     });
@@ -504,6 +520,10 @@ class _RecordAddPageState extends State<RecordAddPage> {
   }
 
   Future<void> _pickReason() async {
+    if (_occurredAtLockedByBookTime) {
+      AppNotifier.info(context, '事由与账簿一致，请在账簿中修改');
+      return;
+    }
     final db = AppDatabaseScope.of(context);
     final reasons =
         (await db.reasonsDao.listAll()).where((e) => e.enabled).toList()
@@ -536,10 +556,7 @@ class _RecordAddPageState extends State<RecordAddPage> {
 
   Future<void> _pickDate() async {
     if (_occurredAtLockedByBookTime) {
-      AppNotifier.info(
-        context,
-        '该账簿已设置账簿时间，记录时间将与账簿时间一致',
-      );
+      AppNotifier.info(context, '该账簿已设置账簿时间，记录时间将与账簿时间一致');
       return;
     }
     final initialDate = DateTime(
@@ -658,61 +675,64 @@ class _RecordAddPageState extends State<RecordAddPage> {
               onSave: _handleSave,
             ),
             Expanded(
-              child: ListView(
-                padding: const EdgeInsets.all(16),
-                children: [
-                  _Segmented(
-                    isIncome: _isIncome,
-                    onChange: (value) {
-                      setState(() {
-                        _isIncome = value;
-                        _dirty = true;
-                      });
-                    },
-                  ),
-                  const SizedBox(height: 24),
-                  _AmountCard(
-                    controller: _amountController,
-                    onPresetTap: (yuan) {
-                      _suppressDirty = true;
-                      _amountController.text = yuan.toString();
-                      _suppressDirty = false;
-                      _markDirty();
-                    },
-                  ),
-                  const SizedBox(height: 24),
-                  StreamBuilder<List<AccountBook>>(
-                    stream: AppDatabaseScope.of(
-                      context,
-                    ).accountBooksDao.watchAll(),
-                    builder: (context, snapshot) {
-                      final books = snapshot.data ?? const <AccountBook>[];
-                      return _FormCard(
-                        bookName: _resolveBookName(books),
-                        personName: displayPersonName,
-                        eventName: _eventName.trim().isEmpty
-                            ? '请选择'
-                            : _eventName,
-                        dateLabel: _formatDate(_occurredAt),
-                        paymentMethod: _paymentMethod.trim().isEmpty
-                            ? '请选择'
-                            : _paymentMethod,
-                        onTapBook: _pickBook,
-                        onTapPerson: _pickPerson,
-                        onTapReason: _pickReason,
-                        onTapDate: _pickDate,
-                        onTapPayment: _pickPaymentMethod,
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 24),
-                  _NoteCard(
-                    controller: _noteController,
-                    attachments: _attachments,
-                    onAddImage: _pickAttachmentImage,
-                    onRemoveImage: _removeAttachmentAt,
-                  ),
-                ],
+              child: AbsorbPointer(
+                absorbing: _saving,
+                child: ListView(
+                  padding: const EdgeInsets.all(16),
+                  children: [
+                    _Segmented(
+                      isIncome: _isIncome,
+                      onChange: (value) {
+                        setState(() {
+                          _isIncome = value;
+                          _dirty = true;
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 24),
+                    _AmountCard(
+                      controller: _amountController,
+                      onPresetTap: (yuan) {
+                        _suppressDirty = true;
+                        _amountController.text = yuan.toString();
+                        _suppressDirty = false;
+                        _markDirty();
+                      },
+                    ),
+                    const SizedBox(height: 24),
+                    StreamBuilder<List<AccountBook>>(
+                      stream: AppDatabaseScope.of(
+                        context,
+                      ).accountBooksDao.watchAll(),
+                      builder: (context, snapshot) {
+                        final books = snapshot.data ?? const <AccountBook>[];
+                        return _FormCard(
+                          bookName: _resolveBookName(books),
+                          personName: displayPersonName,
+                          eventName: _eventName.trim().isEmpty
+                              ? '请选择'
+                              : _eventName,
+                          dateLabel: _formatDate(_occurredAt),
+                          paymentMethod: _paymentMethod.trim().isEmpty
+                              ? '请选择'
+                              : _paymentMethod,
+                          onTapBook: _pickBook,
+                          onTapPerson: _pickPerson,
+                          onTapReason: _pickReason,
+                          onTapDate: _pickDate,
+                          onTapPayment: _pickPaymentMethod,
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 24),
+                    _NoteCard(
+                      controller: _noteController,
+                      attachments: _attachments,
+                      onAddImage: _pickAttachmentImage,
+                      onRemoveImage: _removeAttachmentAt,
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
@@ -791,8 +811,7 @@ class _RecordAddPageState extends State<RecordAddPage> {
 
   Future<void> _removeAttachmentAt(int index) async {
     if (index < 0 || index >= _attachments.length) return;
-    final current = _attachments[index];
-    await _mediaStorageService.deleteStoredPath(current);
+    // 只修改草稿，保存前不能删除数据库仍然引用的文件。
     if (!mounted) return;
     setState(() {
       _attachments = List<String>.from(_attachments)..removeAt(index);
@@ -807,16 +826,16 @@ class _RecordAddPageState extends State<RecordAddPage> {
 
   Future<void> _initDefaultsFromDrift() async {
     final db = AppDatabaseScope.of(context);
-    // 仅从未删除联系人中选择默认值，避免软删除联系人被再次默认选中。
-    final persons =
-        await (db.select(db.persons)
-              ..where((t) => t.deletedAt.isNull())
-              ..limit(1))
-            .get();
+    final initialId = widget.initialPersonId;
+    final initialPerson = initialId == null
+        ? null
+        : await db.personsDao.findById(initialId);
     if (!mounted) return;
-    if (_personId == null && persons.isNotEmpty) {
-      _personId = persons.first.personId;
-      _personName = persons.first.name;
+    if (_personId == null &&
+        initialPerson != null &&
+        initialPerson.deletedAt == null) {
+      _personId = initialPerson.personId;
+      _personName = initialPerson.name;
     }
     final dbBookId = await _resolveDbBookId(db, _bookId);
     final book = await db.accountBooksDao.findById(dbBookId);
@@ -826,24 +845,18 @@ class _RecordAddPageState extends State<RecordAddPage> {
         _occurredAtLockedByBookTime = false;
       } else {
         _occurredAt = DateTime.fromMillisecondsSinceEpoch(book.bookTime);
+        _eventName = book.reasonType;
         _occurredAtLockedByBookTime = true;
       }
     }
-    final reasons = await db.reasonsDao.listAll();
+    final reasons = (await db.reasonsDao.listAll())
+        .where((reason) => reason.enabled)
+        .toList();
     if (!mounted) return;
     if (_eventName.trim().isEmpty && reasons.isNotEmpty) {
       _eventName = reasons.first.name;
     }
     setState(() {});
-  }
-
-  Future<void> _ensureRequiredDefaults() async {
-    if (_personId != null &&
-        _personId!.trim().isNotEmpty &&
-        _eventName.trim().isNotEmpty) {
-      return;
-    }
-    await _initDefaultsFromDrift();
   }
 
   void _closeAfterSave() {

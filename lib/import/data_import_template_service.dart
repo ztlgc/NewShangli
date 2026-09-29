@@ -65,7 +65,8 @@ class DataImportTemplateService {
 
     final ts = DateTime.now();
     String two(int n) => n.toString().padLeft(2, '0');
-    final nameBase = '尚礼_导入模板_${ts.year}${two(ts.month)}${two(ts.day)}_${two(ts.hour)}${two(ts.minute)}${two(ts.second)}';
+    final nameBase =
+        '尚礼_导入模板_${ts.year}${two(ts.month)}${two(ts.day)}_${two(ts.hour)}${two(ts.minute)}${two(ts.second)}';
 
     switch (format) {
       case DataImportTemplateFormat.csv:
@@ -93,7 +94,11 @@ class DataImportTemplateService {
   }
 
   String _escapeCsvCell(String s) {
-    final needsQuote = s.contains(',') || s.contains('"') || s.contains('\n') || s.contains('\r');
+    final needsQuote =
+        s.contains(',') ||
+        s.contains('"') ||
+        s.contains('\n') ||
+        s.contains('\r');
     if (!needsQuote) return s;
     return '"${s.replaceAll('"', '""')}"';
   }
@@ -104,7 +109,9 @@ class DataImportTemplateService {
     for (var r = 0; r < rows.length; r++) {
       final row = rows[r];
       for (var c = 0; c < row.length; c++) {
-        final cell = sheet.cell(CellIndex.indexByColumnRow(columnIndex: c, rowIndex: r));
+        final cell = sheet.cell(
+          CellIndex.indexByColumnRow(columnIndex: c, rowIndex: r),
+        );
         cell.value = TextCellValue(row[c]);
       }
     }

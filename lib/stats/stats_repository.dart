@@ -21,6 +21,7 @@ class StatsSourceRecord {
     required this.amountCent,
     required this.eventName,
     required this.personName,
+    this.personId,
     required this.paymentMethod,
     required this.occurredAt,
     this.note,
@@ -32,6 +33,7 @@ class StatsSourceRecord {
   final int amountCent;
   final String eventName;
   final String personName;
+  final String? personId;
   final String paymentMethod;
   final DateTime occurredAt;
   final String? note;
@@ -53,7 +55,11 @@ class StatsRepository implements IStatsRepository {
     DateTime? now,
     StatsDateRange? customRange,
   }) async {
-    final range = resolveStatsDateRange(preset, now: now, customRange: customRange);
+    final range = resolveStatsDateRange(
+      preset,
+      now: now,
+      customRange: customRange,
+    );
     final lite = _filterRecordsInMemory(
       records,
       bookId: bookId,
@@ -91,6 +97,7 @@ class StatsRepository implements IStatsRepository {
           amountCent: record.amountCent,
           eventName: record.eventName,
           personName: record.personName,
+          personId: record.personId,
           occurredAt: record.occurredAt,
         ),
       );
@@ -151,14 +158,10 @@ class StatsRepository implements IStatsRepository {
     if (v == null || v.isEmpty) return null;
     return v;
   }
-
 }
 
 class _CacheEntry {
-  const _CacheEntry({
-    required this.data,
-    required this.expiresAtMs,
-  });
+  const _CacheEntry({required this.data, required this.expiresAtMs});
 
   final StatsSnapshot data;
   final int expiresAtMs;

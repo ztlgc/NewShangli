@@ -265,6 +265,8 @@ class SupabaseSyncService {
         );
     final cloudDefault = defaultRows.isEmpty ? null : defaultRows.first;
     final localDefault = localDefaultBeforeRestore;
+
+    // 规则 1：默认账簿只能有一个——云端默认账簿并入本地默认账簿，而不是新建。
     if (cloudDefault != null && localDefault != null) {
       final cloudDefaultId = _stringValue(cloudDefault['book_id']);
       if (cloudDefaultId != localDefault.bookId) {
@@ -272,13 +274,8 @@ class SupabaseSyncService {
       }
     }
 
+    // 不按名称合并独立账簿，也不删除被映射的父实体。
     await db.transaction(() async {
-      for (final mappedId in bookIdMap.keys) {
-        await (db.delete(
-          db.accountBooks,
-        )..where((t) => t.bookId.equals(mappedId))).go();
-      }
-
       for (final row in rows) {
         final sourceBookId = _stringValue(row['book_id']);
         final bookId = bookIdMap[sourceBookId] ?? sourceBookId;
@@ -302,6 +299,7 @@ class SupabaseSyncService {
           deletedAt: _nullableIntValue(row['deleted_at']),
         );
         final existing = await db.accountBooksDao.findById(bookId);
+        if (existing != null && existing.updatedAt > book.updatedAt) continue;
         if (existing == null) {
           await db.into(db.accountBooks).insert(book);
         } else {
@@ -341,76 +339,81 @@ class SupabaseSyncService {
     AppDatabase db,
     List<Map<String, dynamic>> rows,
     Map<String, String> bookIdMap,
+    Map<String, String> personIdMap,
     String mediaRootPath,
   ) async {
     if (rows.isEmpty) return;
-    await db.batch((batch) {
-      batch.insertAll(
-        db.persons,
-        rows.map(
-          (p) => Person(
-            personId: _stringValue(p['person_id']),
-            bookId:
-                bookIdMap[_stringValue(p['book_id'])] ??
-                _stringValue(p['book_id']),
-            name: _stringValue(p['name']),
-            relationshipType: _stringValue(p['relationship_type'] ?? '其他'),
-            phone: _nullableStringValue(p['phone']),
-            birthday: _nullableStringValue(p['birthday']),
-            anniversary: _nullableStringValue(p['anniversary']),
-            avatarUri: materializeCloudMediaPath(
-              _nullableStringValue(p['avatar_uri']),
-              mediaRootPath: mediaRootPath,
-            ),
-            note: _nullableStringValue(p['note']),
-            createdAt: _intValue(p['created_at']),
-            updatedAt: _intValue(p['updated_at']),
-            deletedAt: _nullableIntValue(p['deleted_at']),
-          ),
+
+    // 联系人以稳定 ID 为唯一身份，同名/空电话不能证明是同一人。
+    for (final row in rows) {
+      final id = _stringValue(row['person_id']);
+      final existing = await db.personsDao.findByIdAny(id);
+      final updatedAt = _intValue(row['updated_at']);
+      if (existing != null && existing.updatedAt > updatedAt) continue;
+      final person = Person(
+        personId: id,
+        bookId:
+            bookIdMap[_stringValue(row['book_id'])] ??
+            _stringValue(row['book_id']),
+        name: _stringValue(row['name']),
+        relationshipType: _stringValue(row['relationship_type'] ?? '其他'),
+        phone: _nullableStringValue(row['phone']),
+        birthday: _nullableStringValue(row['birthday']),
+        anniversary: _nullableStringValue(row['anniversary']),
+        avatarUri: materializeCloudMediaPath(
+          _nullableStringValue(row['avatar_uri']),
+          mediaRootPath: mediaRootPath,
         ),
-        mode: InsertMode.insertOrReplace,
+        note: _nullableStringValue(row['note']),
+        createdAt: _intValue(row['created_at']),
+        updatedAt: updatedAt,
+        deletedAt: _nullableIntValue(row['deleted_at']),
       );
-    });
+      await db.into(db.persons).insertOnConflictUpdate(person);
+    }
   }
 
   static Future<void> _restoreGiftRecords(
     AppDatabase db,
     List<Map<String, dynamic>> rows,
     Map<String, String> bookIdMap,
+    Map<String, String> personIdMap,
     String mediaRootPath,
   ) async {
     if (rows.isEmpty) return;
-    await db.batch((batch) {
-      batch.insertAll(
-        db.giftRecords,
-        rows.map(
-          (r) => GiftRecord(
-            recordId: _stringValue(r['record_id']),
-            bookId:
-                bookIdMap[_stringValue(r['book_id'])] ??
-                _stringValue(r['book_id']),
-            personId: _stringValue(r['person_id']),
-            direction: _stringValue(r['direction']),
-            amountCent: _intValue(r['amount_cent']),
-            currency: _stringValue(r['currency'] ?? 'CNY'),
-            eventName: _nullableStringValue(r['event_name']),
-            occurredAt: _intValue(r['occurred_at']),
-            paymentMethod: _nullableStringValue(r['payment_method']),
-            note: _nullableStringValue(r['note']),
-            attachments: r['attachments'] != null
-                ? _materializeCloudMediaPathList(
-                    List<String>.from(r['attachments'] as Iterable),
-                    mediaRootPath: mediaRootPath,
-                  )
-                : null,
-            createdAt: _intValue(r['created_at']),
-            updatedAt: _intValue(r['updated_at']),
-            deletedAt: _nullableIntValue(r['deleted_at']),
-          ),
-        ),
-        mode: InsertMode.insertOrReplace,
+
+    for (final row in rows) {
+      final id = _stringValue(row['record_id']);
+      final existing = await db.giftRecordsDao.findByIdAny(id);
+      final updatedAt = _intValue(row['updated_at']);
+      if (existing != null && existing.updatedAt > updatedAt) continue;
+      final record = GiftRecord(
+        recordId: id,
+        bookId:
+            bookIdMap[_stringValue(row['book_id'])] ??
+            _stringValue(row['book_id']),
+        personId:
+            personIdMap[_stringValue(row['person_id'])] ??
+            _stringValue(row['person_id']),
+        direction: _stringValue(row['direction']),
+        amountCent: _intValue(row['amount_cent']),
+        currency: _stringValue(row['currency'] ?? 'CNY'),
+        eventName: _nullableStringValue(row['event_name']),
+        occurredAt: _intValue(row['occurred_at']),
+        paymentMethod: _nullableStringValue(row['payment_method']),
+        note: _nullableStringValue(row['note']),
+        attachments: row['attachments'] == null
+            ? null
+            : _materializeCloudMediaPathList(
+                List<String>.from(row['attachments'] as Iterable),
+                mediaRootPath: mediaRootPath,
+              ),
+        createdAt: _intValue(row['created_at']),
+        updatedAt: updatedAt,
+        deletedAt: _nullableIntValue(row['deleted_at']),
       );
-    });
+      await db.into(db.giftRecords).insertOnConflictUpdate(record);
+    }
   }
 
   static Future<void> _restoreReasons(
@@ -525,6 +528,7 @@ class SupabaseSyncService {
   static Future<void> _restoreContactRelations(
     AppDatabase db,
     List<Map<String, dynamic>> rows,
+    Map<String, String> personIdMap,
   ) async {
     if (rows.isEmpty) return;
     await db.transaction(() async {
@@ -532,8 +536,10 @@ class SupabaseSyncService {
         final relationId = _stringValue(row['relation_id']);
         final typeId = _stringValue(row['type_id']);
         final pair = _normalizePair(
-          _stringValue(row['person_a_id']),
-          _stringValue(row['person_b_id']),
+          personIdMap[_stringValue(row['person_a_id'])] ??
+              _stringValue(row['person_a_id']),
+          personIdMap[_stringValue(row['person_b_id'])] ??
+              _stringValue(row['person_b_id']),
         );
         await _deleteContactRelationWithSamePair(
           db: db,
@@ -567,20 +573,35 @@ class SupabaseSyncService {
     String mediaRootPath = 'media',
   }) async {
     final bookIdMap = <String, String>{};
+    final personIdMap = <String, String>{};
     final effectiveLocalDefault =
         localDefaultBeforeRestore ?? await db.accountBooksDao.findDefault();
-    await _restoreAccountBooks(
-      db,
-      payload.books,
-      bookIdMap,
-      localDefaultBeforeRestore: effectiveLocalDefault,
-      mediaRootPath: mediaRootPath,
-    );
-    await _restorePersons(db, payload.persons, bookIdMap, mediaRootPath);
-    await _restoreGiftRecords(db, payload.records, bookIdMap, mediaRootPath);
-    await _restoreReasons(db, payload.reasons);
-    await _restoreRelationTypes(db, payload.relationTypes);
-    await _restoreContactRelations(db, payload.contactRelations);
+    await db.transaction(() async {
+      await _restoreAccountBooks(
+        db,
+        payload.books,
+        bookIdMap,
+        localDefaultBeforeRestore: effectiveLocalDefault,
+        mediaRootPath: mediaRootPath,
+      );
+      await _restorePersons(
+        db,
+        payload.persons,
+        bookIdMap,
+        personIdMap,
+        mediaRootPath,
+      );
+      await _restoreGiftRecords(
+        db,
+        payload.records,
+        bookIdMap,
+        personIdMap,
+        mediaRootPath,
+      );
+      await _restoreReasons(db, payload.reasons);
+      await _restoreRelationTypes(db, payload.relationTypes);
+      await _restoreContactRelations(db, payload.contactRelations, personIdMap);
+    });
   }
 
   @visibleForTesting
@@ -788,6 +809,28 @@ class SupabaseSyncService {
   }
 
   /// 从云端拉取数据到本地 (Pull)
+  Future<List<Map<String, dynamic>>> _fetchAllRows(
+    String table,
+    String idColumn,
+    String userId,
+  ) async {
+    final result = <Map<String, dynamic>>[];
+    const pageSize = 500;
+    for (var offset = 0; ; offset += pageSize) {
+      if (_supabase.auth.currentUser?.id != userId) {
+        throw StateError('账号已切换，同步停止');
+      }
+      final rows = await _supabase
+          .from(table)
+          .select()
+          .eq('user_id', userId)
+          .order(idColumn)
+          .range(offset, offset + pageSize - 1);
+      result.addAll(_rows(rows));
+      if (rows.length < pageSize) return result;
+    }
+  }
+
   Future<void> syncFromCloud({
     required void Function(String) onProgress,
   }) async {
@@ -799,47 +842,44 @@ class SupabaseSyncService {
     // 1. 恢复账簿
     onProgress('正在拉取账簿...');
     final localDefaultBeforeRestore = await _db.accountBooksDao.findDefault();
-    final booksData = await _supabase
-        .from('account_book')
-        .select()
-        .eq('user_id', user.id);
+    final booksData = await _fetchAllRows('account_book', 'book_id', user.id);
 
     // 2. 恢复关系人
     onProgress('正在拉取关系人...');
-    final personsData = await _supabase
-        .from('person')
-        .select()
-        .eq('user_id', user.id);
+    final personsData = await _fetchAllRows('person', 'person_id', user.id);
 
     // 3. 恢复礼金记录
     onProgress('正在拉取礼金记录...');
-    final recordsData = await _supabase
-        .from('gift_record')
-        .select()
-        .eq('user_id', user.id);
+    final recordsData = await _fetchAllRows(
+      'gift_record',
+      'record_id',
+      user.id,
+    );
 
     // 4. 恢复事由
     onProgress('正在拉取事由...');
-    final reasonsData = await _supabase
-        .from('reason')
-        .select()
-        .eq('user_id', user.id);
+    final reasonsData = await _fetchAllRows('reason', 'reason_id', user.id);
 
     // 5. 恢复关系类型
     onProgress('正在拉取关系类型...');
-    final relationTypesData = await _supabase
-        .from('relation_type')
-        .select()
-        .eq('user_id', user.id);
+    final relationTypesData = await _fetchAllRows(
+      'relation_type',
+      'type_id',
+      user.id,
+    );
 
     // 6. 恢复联系人关系
     onProgress('正在拉取联系人关系...');
-    final contactRelationsData = await _supabase
-        .from('contact_relation')
-        .select()
-        .eq('user_id', user.id);
+    final contactRelationsData = await _fetchAllRows(
+      'contact_relation',
+      'relation_id',
+      user.id,
+    );
 
     // 7. 恢复附件媒体
+    if (_supabase.auth.currentUser?.id != user.id) {
+      throw StateError('账号已切换，同步停止');
+    }
     onProgress('正在写入恢复数据...');
     final docs = await getApplicationDocumentsDirectory();
     final mediaRootPath = p.join(docs.path, 'media');
@@ -875,14 +915,18 @@ class SupabaseSyncService {
       await _supabase.storage.from(bucketId).list();
     } on StorageException catch (e) {
       final msg = e.message.toLowerCase();
-      if (e.statusCode == '404' || msg.contains('bucket not found') || msg.contains('not found')) {
+      if (e.statusCode == '404' ||
+          msg.contains('bucket not found') ||
+          msg.contains('not found')) {
         throw Exception(
           'Storage bucket "$bucketId" 不存在。'
           '请在 Supabase 控制台运行迁移文件：'
           'supabase/migrations/create_storage_${bucketId}_bucket.sql'
           '（原始错误: ${e.message}）',
         );
-      } else if (e.statusCode == '403' || msg.contains('row-level security') || msg.contains('unauthorized')) {
+      } else if (e.statusCode == '403' ||
+          msg.contains('row-level security') ||
+          msg.contains('unauthorized')) {
         throw Exception(
           'Storage bucket "$bucketId" 存在但 RLS 策略未正确配置，导致访问被拒绝。'
           '请运行迁移文件来创建/修复策略：'
@@ -929,10 +973,11 @@ class SupabaseSyncService {
           uploadCount++;
         } on StorageException catch (e) {
           failedFiles.add(relative);
-          final detail = (e.statusCode == '403' ||
+          final detail =
+              (e.statusCode == '403' ||
                   e.message.toLowerCase().contains('row-level security'))
               ? ' — RLS 策略拒绝访问，请确认已运行迁移：'
-                  'supabase/migrations/create_storage_media_bucket.sql'
+                    'supabase/migrations/create_storage_media_bucket.sql'
               : '';
           onProgress('上传附件失败: $relative ($e)$detail');
         } catch (e) {
@@ -969,9 +1014,20 @@ class SupabaseSyncService {
       var downloadCount = 0;
       final failedFiles = <String>[];
       for (final prefix in candidates) {
-        final List<FileObject> remoteFiles = await _supabase.storage
-            .from('media')
-            .list(path: prefix);
+        final remoteFiles = <FileObject>[];
+        for (var offset = 0; ; offset += 500) {
+          if (_supabase.auth.currentUser?.id != userId) {
+            throw StateError('下载期间账号已切换，请重新同步');
+          }
+          final page = await _supabase.storage
+              .from('media')
+              .list(
+                path: prefix,
+                searchOptions: SearchOptions(limit: 500, offset: offset),
+              );
+          remoteFiles.addAll(page);
+          if (page.length < 500) break;
+        }
         if (remoteFiles.isEmpty) continue;
 
         final relativePrefix = prefix == userId
@@ -986,6 +1042,17 @@ class SupabaseSyncService {
 
         for (final file in remoteFiles) {
           if (file.name == '.emptyFolderPlaceholder') continue;
+          if (file.name.isEmpty ||
+              file.name == '.' ||
+              file.name == '..' ||
+              file.name.contains('/') ||
+              file.name.contains('\\') ||
+              file.name.contains(':')) {
+            throw FormatException('云端附件名称不安全');
+          }
+          if (_supabase.auth.currentUser?.id != userId) {
+            throw StateError('下载期间账号已切换，请重新同步');
+          }
 
           final remotePath = relativePrefix.isEmpty
               ? '$userId/${file.name}'

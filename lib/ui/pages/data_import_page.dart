@@ -14,6 +14,7 @@ import '../../import/default_book_service.dart';
 import '../../import/import_file_reader.dart';
 import '../app_database_scope.dart';
 import '../app_notifier.dart';
+import '../app_dialog.dart';
 import '../app_tokens.dart';
 import '../app_scaffold.dart';
 import '../components.dart';
@@ -313,7 +314,21 @@ class _CanvasState extends State<_Canvas> {
     });
 
     try {
-      final handle = await _importService.start(jobId);
+      final handle = await _importService.start(
+        jobId,
+        onDuplicate: (duplicate) async {
+          if (!mounted) throw const DataImportException('页面已退出，导入停止');
+          return await AppDialog.confirm(
+                context,
+                title: '疑似重复记录',
+                message:
+                    '第 ${duplicate.rowIndex} 行：${duplicate.personName}，${duplicate.direction} ${(duplicate.amountCent / 100).toStringAsFixed(2)} 元。是否仍保留为一条新记录？',
+                confirmLabel: '保留',
+                cancelLabel: '跳过',
+              ) ==
+              true;
+        },
+      );
       if (!mounted) return;
       setState(() => _runHandle = handle);
       _progressSub = handle.progress.listen(
@@ -370,6 +385,7 @@ class _CanvasState extends State<_Canvas> {
   bool _isTerminalStatus(DataImportStatus status) {
     return status == DataImportStatus.completed ||
         status == DataImportStatus.failed ||
+        status == DataImportStatus.paused ||
         status == DataImportStatus.canceled;
   }
 

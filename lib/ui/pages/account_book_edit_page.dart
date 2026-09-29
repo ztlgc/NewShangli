@@ -189,18 +189,6 @@ class _CanvasState extends State<_Canvas> {
           isDefault: _book!.isDefault,
         );
         await _db.accountBooksDao.updateOne(updated);
-        if (_book!.reasonType != _reasonType) {
-          await _db.giftRecordsDao.updateEventNameByBookId(
-            updated.bookId,
-            _reasonType,
-          );
-        }
-        if (_book!.bookTime != updated.bookTime) {
-          await _db.giftRecordsDao.updateOccurredAtByBookId(
-            updated.bookId,
-            updated.bookTime,
-          );
-        }
       }
       if (!mounted) return;
       Navigator.of(context).pop(true);
@@ -345,7 +333,6 @@ class _CanvasState extends State<_Canvas> {
     }
     setState(() => _reasonType = picked);
   }
-
 
   void _toast(String message) {
     AppNotifier.info(context, message);

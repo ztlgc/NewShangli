@@ -77,16 +77,16 @@ void main() {
       );
       final autoBackupSemanticsData = autoBackupSemantics.getSemanticsData();
       expect(autoBackupSemantics.label, '自动备份');
-      expect(autoBackupSemantics.value, '已开启');
-      expect(autoBackupSemantics.hint, '双击切换自动备份开关');
+      expect(autoBackupSemantics.value, '已关闭');
+      expect(autoBackupSemantics.hint, '自动备份开关当前不可切换');
       expect(autoBackupSemanticsData.hasFlag(SemanticsFlag.isButton), isTrue);
       expect(
         autoBackupSemanticsData.hasFlag(SemanticsFlag.hasCheckedState),
         isTrue,
       );
-      expect(autoBackupSemanticsData.hasFlag(SemanticsFlag.isChecked), isTrue);
-      expect(autoBackupSemanticsData.hasAction(SemanticsAction.tap), isTrue);
-      expect(find.bySemanticsLabel('备份频率'), findsOneWidget);
+      expect(autoBackupSemanticsData.hasFlag(SemanticsFlag.isChecked), isFalse);
+      expect(autoBackupSemanticsData.hasAction(SemanticsAction.tap), isFalse);
+      expect(find.text('备份频率'), findsOneWidget);
       expect(find.bySemanticsLabel('WebDAV 配置'), findsOneWidget);
 
       // 再继续滚动到历史记录和本地备份区块，避免测试对屏幕尺寸过于敏感。
@@ -135,7 +135,7 @@ void main() {
     }
   });
 
-  testWidgets('数据备份页会持久化云端自动备份与备份频率设置', (WidgetTester tester) async {
+  testWidgets('未实现的自动备份不可启用，并保留原频率配置', (WidgetTester tester) async {
     SharedPreferences.setMockInitialValues(<String, Object>{});
     const config = BackupConfig(
       webDavEnabled: true,
@@ -161,16 +161,10 @@ void main() {
     await tester.tap(find.bySemanticsLabel('自动备份'));
     await tester.pumpAndSettle();
 
-    var loaded = await BackupConfig.load();
-    expect(loaded.autoBackupEnabled, true);
-
-    await tester.tap(find.bySemanticsLabel('备份频率'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('每月'));
-    await tester.pumpAndSettle();
-
-    loaded = await BackupConfig.load();
-    expect(loaded.backupFrequency, BackupFrequency.monthly);
+    final loaded = await BackupConfig.load();
+    expect(loaded.autoBackupEnabled, false);
+    expect(loaded.backupFrequency, BackupFrequency.daily);
+    expect(find.text('尚未提供后台定时备份，请使用立即备份'), findsOneWidget);
   });
 
   testWidgets('数据备份页展示云端失败摘要', (WidgetTester tester) async {

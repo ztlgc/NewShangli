@@ -1,184 +1,125 @@
+import 'dart:io';
+import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:sqlite3/sqlite3.dart';
-
+import 'package:sqlite3/sqlite3.dart' as sqlite;
 import 'package:newshangli/data/local/drift/app_database.dart';
 
 void main() {
-  test('schema v2 -> v3：account_book.type 迁移为 reason_type 且历史值映射正确', () async {
-    final raw = sqlite3.openInMemory();
+  test('未发布旧版本拒绝打开且原表和数据保持不变', () async {
+    final dir = await Directory.systemTemp.createTemp('schema_reject_');
     try {
-      raw.execute('PRAGMA foreign_keys = ON;');
-      raw.execute('PRAGMA user_version = 2;');
-
-      raw.execute('''
-CREATE TABLE account_book (
-  book_id TEXT NOT NULL PRIMARY KEY,
-  name TEXT NOT NULL,
-  type TEXT NOT NULL DEFAULT 'default',
-  theme_color TEXT NOT NULL DEFAULT '#312E81',
-  icon TEXT NULL,
-  description TEXT NULL,
-  is_default INTEGER NOT NULL DEFAULT 0 CHECK(is_default IN (0, 1)),
-  created_at INTEGER NOT NULL,
-  updated_at INTEGER NOT NULL
-);
-''');
-
-      raw.execute('''
-CREATE TABLE person (
-  person_id TEXT NOT NULL PRIMARY KEY,
-  book_id TEXT NOT NULL,
-  name TEXT NOT NULL,
-  relationship_type TEXT NOT NULL DEFAULT '其他',
-  phone TEXT NULL,
-  birthday TEXT NULL,
-  anniversary TEXT NULL,
-  avatar_uri TEXT NULL,
-  note TEXT NULL,
-  created_at INTEGER NOT NULL,
-  updated_at INTEGER NOT NULL
-);
-''');
-
-      raw.execute('''
-INSERT INTO account_book(book_id, name, type, theme_color, is_default, created_at, updated_at) VALUES
-('b1', 'A', 'default',  '#312E81', 1, 1, 1),
-('b2', 'B', 'wedding',  '#312E81', 0, 1, 1),
-('b3', 'C', 'business', '#312E81', 0, 1, 1),
-('b4', 'D', '乔迁',     '#312E81', 0, 1, 1);
-''');
-
-      final db = AppDatabase.forTesting(NativeDatabase.opened(raw));
-      try {
-        final cols = await db
-            .customSelect('PRAGMA table_info(account_book);')
-            .get();
-        final names = cols
-            .map((e) => (e.data['name'] as String?) ?? '')
-            .toSet();
-        expect(names.contains('reason_type'), isTrue);
-        expect(names.contains('type'), isFalse);
-
-        final b1 = await db.accountBooksDao.findById('b1');
-        final b2 = await db.accountBooksDao.findById('b2');
-        final b3 = await db.accountBooksDao.findById('b3');
-        final b4 = await db.accountBooksDao.findById('b4');
-
-        expect(b1, isNotNull);
-        expect(b2, isNotNull);
-        expect(b3, isNotNull);
-        expect(b4, isNotNull);
-
-        expect(b1!.reasonType, '');
-        expect(b2!.reasonType, '结婚礼金');
-        expect(b3!.reasonType, '商务往来');
-        expect(b4!.reasonType, '乔迁');
-      } finally {
+      for (final version in [2, 9, 11, 12]) {
+        final file = File(dir.path + '/$version.sqlite');
+        final raw = sqlite.sqlite3.open(file.path);
+        raw.execute('CREATE TABLE marker(value TEXT)');
+        raw.execute("INSERT INTO marker VALUES('preserve')");
+        raw.execute('PRAGMA user_version=$version');
+        raw.dispose();
+        final db = AppDatabase.forTesting(NativeDatabase(file));
+        await expectLater(db.customSelect('SELECT 1').get(), throwsStateError);
         await db.close();
+        final check = sqlite.sqlite3.open(file.path);
+        expect(
+          check.select('SELECT value FROM marker').single['value'],
+          'preserve',
+        );
+        expect(
+          check.select('PRAGMA user_version').single.values.first,
+          version,
+        );
+        check.dispose();
       }
     } finally {
-      raw.dispose();
+      await dir.delete(recursive: true);
     }
   });
-
-  test('schema v9 -> v10：account_book 新增 book_time 并回填历史时间', () async {
-    final raw = sqlite3.openInMemory();
-    try {
-      raw.execute('PRAGMA foreign_keys = ON;');
-      raw.execute('PRAGMA user_version = 9;');
-
-      raw.execute('''
-CREATE TABLE account_book (
-  book_id TEXT NOT NULL PRIMARY KEY,
-  name TEXT NOT NULL,
-  reason_type TEXT NOT NULL DEFAULT '',
-  theme_color TEXT NOT NULL DEFAULT '#312E81',
-  icon TEXT NULL,
-  description TEXT NULL,
-  is_default INTEGER NOT NULL DEFAULT 0 CHECK(is_default IN (0, 1)),
-  created_at INTEGER NOT NULL,
-  updated_at INTEGER NOT NULL,
-  deleted_at INTEGER NULL
-);
-''');
-
-      raw.execute('''
-INSERT INTO account_book(book_id, name, reason_type, theme_color, is_default, created_at, updated_at, deleted_at) VALUES
-('b1', 'A', '', '#312E81', 1, 100, 200, NULL),
-('b2', 'B', '乔迁', '#312E81', 0, 300, 400, NULL);
-''');
-
-      final db = AppDatabase.forTesting(NativeDatabase.opened(raw));
-      try {
-        final cols = await db
-            .customSelect('PRAGMA table_info(account_book);')
-            .get();
-        final names = cols
-            .map((e) => (e.data['name'] as String?) ?? '')
-            .toSet();
-        expect(names.contains('book_time'), isTrue);
-
-        final b1 = await db.accountBooksDao.findById('b1');
-        final b2 = await db.accountBooksDao.findById('b2');
-
-        expect(b1, isNotNull);
-        expect(b2, isNotNull);
-        expect(b1!.bookTime, 100);
-        expect(b2!.bookTime, 300);
-      } finally {
-        await db.close();
-      }
-    } finally {
-      raw.dispose();
+  test('13到14解除联系人外键后保留跨本记录和所有业务字段', () async {
+    final dir = await Directory.systemTemp.createTemp('schema_upgrade_');
+    final file = File(dir.path + '/test.sqlite');
+    final initial = AppDatabase.forTesting(NativeDatabase(file));
+    for (final id in ['a', 'b']) {
+      await initial
+          .into(initial.accountBooks)
+          .insert(
+            AccountBooksCompanion.insert(
+              bookId: Value(id),
+              name: id,
+              createdAt: 1,
+              updatedAt: 1,
+            ),
+          );
     }
-  });
-
-  test('schema v11 -> v12: account_book adds nullable attachments', () async {
-    final raw = sqlite3.openInMemory();
+    await initial
+        .into(initial.persons)
+        .insert(
+          PersonsCompanion.insert(
+            personId: const Value('p'),
+            bookId: 'a',
+            name: '张三',
+            createdAt: 1,
+            updatedAt: 1,
+          ),
+        );
+    await initial
+        .into(initial.giftRecords)
+        .insert(
+          GiftRecordsCompanion.insert(
+            recordId: const Value('r'),
+            bookId: 'b',
+            personId: 'p',
+            amountCent: 12345,
+            occurredAt: 42,
+            direction: const Value('支出'),
+            note: const Value('保留'),
+            createdAt: 1,
+            updatedAt: 1,
+          ),
+        );
+    await initial.close();
+    final raw = sqlite.sqlite3.open(file.path);
+    var schema =
+        raw
+                .select("SELECT sql FROM sqlite_master WHERE name='person'")
+                .single['sql']
+            as String;
+    schema = schema
+        .replaceFirst('"person"', '"old_person"')
+        .replaceFirst(
+          '"book_id" TEXT NOT NULL',
+          '"book_id" TEXT NOT NULL REFERENCES account_book(book_id) ON DELETE CASCADE',
+        );
+    raw.execute(schema);
+    raw.execute('INSERT INTO old_person SELECT * FROM person');
+    raw.execute('DROP TABLE person');
+    raw.execute('ALTER TABLE old_person RENAME TO person');
+    raw.execute('PRAGMA user_version=13');
+    raw.dispose();
+    final upgraded = AppDatabase.forTesting(NativeDatabase(file));
     try {
-      raw.execute('PRAGMA foreign_keys = ON;');
-      raw.execute('PRAGMA user_version = 11;');
-
-      raw.execute('''
-CREATE TABLE account_book (
-  book_id TEXT NOT NULL PRIMARY KEY,
-  name TEXT NOT NULL,
-  reason_type TEXT NOT NULL DEFAULT '',
-  theme_color TEXT NOT NULL DEFAULT '#312E81',
-  icon TEXT NULL,
-  description TEXT NULL,
-  book_time INTEGER NOT NULL,
-  is_default INTEGER NOT NULL DEFAULT 0 CHECK(is_default IN (0, 1)),
-  created_at INTEGER NOT NULL,
-  updated_at INTEGER NOT NULL,
-  deleted_at INTEGER NULL
-);
-''');
-
-      raw.execute('''
-INSERT INTO account_book(book_id, name, reason_type, theme_color, book_time, is_default, created_at, updated_at, deleted_at) VALUES
-('b1', 'A', '', '#312E81', 100, 1, 100, 200, NULL);
-''');
-
-      final db = AppDatabase.forTesting(NativeDatabase.opened(raw));
-      try {
-        final cols = await db
-            .customSelect('PRAGMA table_info(account_book);')
-            .get();
-        final names = cols
-            .map((e) => (e.data['name'] as String?) ?? '')
-            .toSet();
-        expect(names.contains('attachments'), isTrue);
-
-        final b1 = await db.accountBooksDao.findById('b1');
-        expect(b1, isNotNull);
-        expect(b1!.attachments, isNull);
-      } finally {
-        await db.close();
-      }
+      final row = (await upgraded.select(upgraded.giftRecords).get()).single;
+      expect(
+        [
+          row.bookId,
+          row.personId,
+          row.amountCent,
+          row.occurredAt,
+          row.direction,
+          row.note,
+        ],
+        ['b', 'p', 12345, 42, '支出', '保留'],
+      );
+      expect(
+        await upgraded.customSelect('PRAGMA foreign_key_list(person)').get(),
+        isEmpty,
+      );
+      expect(
+        await upgraded.customSelect('PRAGMA foreign_key_check').get(),
+        isEmpty,
+      );
     } finally {
-      raw.dispose();
+      await upgraded.close();
+      await dir.delete(recursive: true);
     }
   });
 }
