@@ -1,3 +1,5 @@
+import 'dart:ui' show ImageFilter;
+
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
@@ -231,58 +233,71 @@ class PrototypeBottomNav extends StatelessWidget {
     final bottomInset = (MediaQuery.paddingOf(context).bottom - 12)
         .clamp(0.0, double.infinity)
         .toDouble();
-    return Container(
-      height: floating
-          ? AppTokens.floatingNavHeight
-          : AppTokens.tabBarHeight + bottomInset,
-      decoration: BoxDecoration(
-        color: colors.surfaceCard,
-        border: floating
-            ? Border.all(color: colors.borderSubtle, width: 1)
-            : Border(top: BorderSide(color: colors.borderDefault, width: 1)),
-        borderRadius: floating ? AppRadii.br2xl : null,
-        boxShadow: floating ? AppShadows.lg : null,
-      ),
-      child: Padding(
-        padding: EdgeInsets.only(bottom: floating ? 0 : bottomInset),
-        child: SizedBox(
-          height: floating
-              ? AppTokens.floatingNavHeight
-              : AppTokens.tabBarHeight,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _NavItem(
-                activeIndex: activeIndex,
-                index: 0,
-                label: '记录',
-                icon: const FaIcon(FontAwesomeIcons.book),
-                onTap: onTap,
+    final items = Row(
+      mainAxisAlignment: MainAxisAlignment.spaceAround,
+      children: [
+        _NavItem(
+          activeIndex: activeIndex,
+          index: 0,
+          label: '记录',
+          icon: const FaIcon(FontAwesomeIcons.book),
+          onTap: onTap,
+        ),
+        _NavItem(
+          activeIndex: activeIndex,
+          index: 1,
+          label: '关系',
+          icon: const FaIcon(FontAwesomeIcons.userGroup),
+          onTap: onTap,
+        ),
+        _NavItem(
+          activeIndex: activeIndex,
+          index: 2,
+          label: '统计',
+          icon: const FaIcon(FontAwesomeIcons.chartPie),
+          onTap: onTap,
+        ),
+        _NavItem(
+          activeIndex: activeIndex,
+          index: 3,
+          label: '设置',
+          icon: const FaIcon(FontAwesomeIcons.gear),
+          onTap: onTap,
+        ),
+      ],
+    );
+    if (floating) {
+      // 毛玻璃：外层承载圆角阴影，内层模糊背景 + 半透明表面。
+      return Container(
+        height: AppTokens.floatingNavHeight,
+        decoration: const BoxDecoration(
+          borderRadius: AppRadii.br2xl,
+          boxShadow: AppShadows.lg,
+        ),
+        child: ClipRRect(
+          borderRadius: AppRadii.br2xl,
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+            child: Container(
+              decoration: BoxDecoration(
+                color: colors.surfaceCard.withValues(alpha: 0.75),
+                border: Border.all(color: colors.borderSubtle, width: 1),
               ),
-              _NavItem(
-                activeIndex: activeIndex,
-                index: 1,
-                label: '关系',
-                icon: const FaIcon(FontAwesomeIcons.userGroup),
-                onTap: onTap,
-              ),
-              _NavItem(
-                activeIndex: activeIndex,
-                index: 2,
-                label: '统计',
-                icon: const FaIcon(FontAwesomeIcons.chartPie),
-                onTap: onTap,
-              ),
-              _NavItem(
-                activeIndex: activeIndex,
-                index: 3,
-                label: '设置',
-                icon: const FaIcon(FontAwesomeIcons.gear),
-                onTap: onTap,
-              ),
-            ],
+              child: items,
+            ),
           ),
         ),
+      );
+    }
+    return Container(
+      height: AppTokens.tabBarHeight + bottomInset,
+      decoration: BoxDecoration(
+        color: colors.surfaceCard,
+        border: Border(top: BorderSide(color: colors.borderDefault, width: 1)),
+      ),
+      child: Padding(
+        padding: EdgeInsets.only(bottom: bottomInset),
+        child: SizedBox(height: AppTokens.tabBarHeight, child: items),
       ),
     );
   }

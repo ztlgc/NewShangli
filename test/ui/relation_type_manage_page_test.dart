@@ -1,18 +1,15 @@
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:newshangli/data/local/drift/app_database.dart';
 import 'package:newshangli/ui/app_database_scope.dart';
 import 'package:newshangli/ui/pages/relation_type_manage_page.dart';
 
 void main() {
-  testWidgets('关系类型管理页展示统一命名并使用明确删除确认', (tester) async {
+  testWidgets('编辑关系类型保存后正常关闭，不触发框架断言', (tester) async {
     final db = AppDatabase.forTesting(NativeDatabase.memory());
-    addTearDown(() async {
-      await db.close();
-    });
-
-    await db.relationTypesDao.create(name: '亲友');
+    await db.relationTypesDao.create(name: '朋友');
 
     await tester.pumpWidget(
       AppDatabaseScope(
@@ -22,17 +19,26 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('关系类型管理'), findsOneWidget);
-    expect(find.text('联系人关系管理'), findsNothing);
+    expect(find.text('朋友'), findsOneWidget);
 
-    // 长按列表项会打开删除确认弹窗，这里顺带校验确认文案是否补全了实体名称。
-    await tester.longPress(find.text('亲友'));
+    await tester.tap(find.byIcon(FontAwesomeIcons.penToSquare));
+    await tester.pumpAndSettle();
+    expect(find.text('编辑类型'), findsOneWidget);
+
+    await tester.tap(find.text('保存'));
     await tester.pumpAndSettle();
 
-    expect(find.text('删除关系类型'), findsOneWidget);
-    expect(find.text('确认删除关系类型「亲友」？'), findsOneWidget);
+    expect(find.text('已保存'), findsOneWidget);
+    final updated = await db.relationTypesDao.findById(
+      (await db.relationTypesDao.listAll()).single.typeId,
+    );
+    expect(updated, isNotNull);
 
+    // 清理计时器并卸载组件树，避免测试收尾出现遗留 Timer。
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pumpAndSettle();
     await tester.pumpWidget(const SizedBox.shrink());
-    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 50));
+    await db.close();
   });
 }

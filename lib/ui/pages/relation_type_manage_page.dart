@@ -302,179 +302,12 @@ class _CanvasState extends State<_Canvas> {
     AppDatabase db,
     RelationType? type,
   ) async {
-    final nameCtrl = TextEditingController(text: type?.name ?? '');
     final ok = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) {
-        final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
-        var saving = false;
-        return Padding(
-          padding: EdgeInsets.fromLTRB(12, 0, 12, 12 + bottomInset),
-          child: Container(
-            decoration: BoxDecoration(
-              color: context.appColors.surfaceCard,
-              borderRadius: AppRadii.br2xl,
-              boxShadow: AppShadows.lg,
-            ),
-            clipBehavior: Clip.antiAlias,
-            child: StatefulBuilder(
-              builder: (context, setState) {
-                return Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
-                      ),
-                      decoration: BoxDecoration(
-                        color: context.appColors.surfaceCard,
-                        border: Border(
-                          bottom: BorderSide(
-                            color: context.appColors.surfaceSubtle,
-                            width: 1,
-                          ),
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              type == null ? '新增类型' : '编辑类型',
-                              style: AppTypography.base(
-                                fontSize: 14,
-                                fontWeight: AppTypography.bold,
-                                color: AppColors.textPrimary,
-                              ),
-                            ),
-                          ),
-                          PrototypeIconButton(
-                            icon: const FaIcon(
-                              FontAwesomeIcons.xmark,
-                              size: 14,
-                            ),
-                            backgroundColor: context.appColors.surfaceSubtle,
-                            foregroundColor: AppColors.textSecondary,
-                            onPressed: saving
-                                ? null
-                                : () => Navigator.of(context).pop(false),
-                            radius: 12,
-                          ),
-                        ],
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '类型名称',
-                            style: AppTypography.base(
-                              fontSize: 12,
-                              fontWeight: AppTypography.regular,
-                              color: AppColors.textTertiary,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          TextField(
-                            controller: nameCtrl,
-                            autofocus: true,
-                            style: AppTypography.base(
-                              fontSize: 14,
-                              fontWeight: AppTypography.medium,
-                              color: AppColors.textPrimary,
-                            ),
-                            decoration: InputDecoration(
-                              isDense: true,
-                              filled: true,
-                              fillColor: context.appColors.surfaceSubtle,
-                              hintText: '如：家人、同事、朋友',
-                              hintStyle: AppTypography.base(
-                                fontSize: 14,
-                                fontWeight: AppTypography.regular,
-                                color: AppColors.textMuted,
-                              ),
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 12,
-                              ),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: const BorderSide(
-                                  color: AppColors.borderSubtle,
-                                  width: 1,
-                                ),
-                              ),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: const BorderSide(
-                                  color: AppColors.borderSubtle,
-                                  width: 1,
-                                ),
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: const BorderSide(
-                                  color: AppColors.borderFocus,
-                                  width: 1,
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          PrototypePrimaryButton(
-                            label: saving ? '保存中' : '保存',
-                            onTap: saving
-                                ? null
-                                : () async {
-                                    final text = nameCtrl.text.trim();
-                                    if (text.isEmpty) {
-                                      AppNotifier.warning(
-                                        context,
-                                        '类型名称不能为空',
-                                      );
-                                      return;
-                                    }
-                                    setState(() => saving = true);
-                                    try {
-                                      if (type == null) {
-                                        await db.relationTypesDao.create(
-                                          name: text,
-                                        );
-                                      } else {
-                                        await db.relationTypesDao.updateType(
-                                          id: type.typeId,
-                                          name: text,
-                                        );
-                                      }
-                                      if (!context.mounted) return;
-                                      Navigator.of(context).pop(true);
-                                    } catch (e) {
-                                      if (!context.mounted) return;
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        SnackBar(content: Text('保存失败：$e')),
-                                      );
-                                      setState(() => saving = false);
-                                    }
-                                  },
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                );
-              },
-            ),
-          ),
-        );
-      },
+      builder: (context) => _RelationTypeEditorSheet(db: db, type: type),
     );
-    nameCtrl.dispose();
     if (ok != true || !context.mounted) return;
     ScaffoldMessenger.of(
       context,
@@ -488,10 +321,7 @@ class _CanvasState extends State<_Canvas> {
     int contactCount,
   ) async {
     if (contactCount > 0) {
-      AppNotifier.warning(
-        context,
-        '该类型已被 $contactCount 个联系人使用，无法删除',
-      );
+      AppNotifier.warning(context, '该类型已被 $contactCount 个联系人使用，无法删除');
       return;
     }
     final ok = await AppDialog.confirm(
@@ -516,6 +346,186 @@ class _CanvasState extends State<_Canvas> {
       if (!context.mounted) return;
       AppNotifier.error(context, '删除失败：$e');
     }
+  }
+}
+
+class _RelationTypeEditorSheet extends StatefulWidget {
+  const _RelationTypeEditorSheet({required this.db, this.type});
+
+  final AppDatabase db;
+  final RelationType? type;
+
+  @override
+  State<_RelationTypeEditorSheet> createState() =>
+      _RelationTypeEditorSheetState();
+}
+
+class _RelationTypeEditorSheetState extends State<_RelationTypeEditorSheet> {
+  late final TextEditingController _nameCtrl;
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameCtrl = TextEditingController(text: widget.type?.name ?? '');
+  }
+
+  @override
+  void dispose() {
+    // 由弹层自身持有并释放，避免路由退出动画期间被外部提前 dispose。
+    _nameCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    final text = _nameCtrl.text.trim();
+    if (text.isEmpty) {
+      AppNotifier.warning(context, '类型名称不能为空');
+      return;
+    }
+    setState(() => _saving = true);
+    try {
+      if (widget.type == null) {
+        await widget.db.relationTypesDao.create(name: text);
+      } else {
+        await widget.db.relationTypesDao.updateType(
+          id: widget.type!.typeId,
+          name: text,
+        );
+      }
+      if (!mounted) return;
+      Navigator.of(context).pop(true);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('保存失败：$e')));
+      setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
+    final type = widget.type;
+    return Padding(
+      padding: EdgeInsets.fromLTRB(12, 0, 12, 12 + bottomInset),
+      child: Container(
+        decoration: BoxDecoration(
+          color: context.appColors.surfaceCard,
+          borderRadius: AppRadii.br2xl,
+          boxShadow: AppShadows.lg,
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: context.appColors.surfaceCard,
+                border: Border(
+                  bottom: BorderSide(
+                    color: context.appColors.surfaceSubtle,
+                    width: 1,
+                  ),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      type == null ? '新增类型' : '编辑类型',
+                      style: AppTypography.base(
+                        fontSize: 14,
+                        fontWeight: AppTypography.bold,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                  ),
+                  PrototypeIconButton(
+                    icon: const FaIcon(FontAwesomeIcons.xmark, size: 14),
+                    backgroundColor: context.appColors.surfaceSubtle,
+                    foregroundColor: AppColors.textSecondary,
+                    onPressed: _saving
+                        ? null
+                        : () => Navigator.of(context).pop(false),
+                    radius: 12,
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '类型名称',
+                    style: AppTypography.base(
+                      fontSize: 12,
+                      fontWeight: AppTypography.regular,
+                      color: AppColors.textTertiary,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: _nameCtrl,
+                    autofocus: true,
+                    style: AppTypography.base(
+                      fontSize: 14,
+                      fontWeight: AppTypography.medium,
+                      color: AppColors.textPrimary,
+                    ),
+                    decoration: InputDecoration(
+                      isDense: true,
+                      filled: true,
+                      fillColor: context.appColors.surfaceSubtle,
+                      hintText: '如：家人、同事、朋友',
+                      hintStyle: AppTypography.base(
+                        fontSize: 14,
+                        fontWeight: AppTypography.regular,
+                        color: AppColors.textMuted,
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 12,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(
+                          color: AppColors.borderSubtle,
+                          width: 1,
+                        ),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(
+                          color: AppColors.borderSubtle,
+                          width: 1,
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(
+                          color: AppColors.borderFocus,
+                          width: 1,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  PrototypePrimaryButton(
+                    label: _saving ? '保存中' : '保存',
+                    onTap: _saving ? null : _save,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

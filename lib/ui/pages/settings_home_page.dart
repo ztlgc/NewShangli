@@ -196,14 +196,14 @@ class _CanvasState extends State<_Canvas> {
                 iconFg: AppColors.textTertiary,
                 icon: FontAwesomeIcons.circleInfo,
                 title: '关于尚礼',
-                trailingText: 'v1.0.0',
+                trailingText: 'v1.2.0',
                 onTap: () {
                   showDialog<void>(
                     context: context,
                     builder: (context) {
                       return AlertDialog(
                         title: const Text('关于尚礼'),
-                        content: const Text('版本 v1.0.0'),
+                        content: const Text('版本 v1.2.0'),
                         actions: [
                           TextButton(
                             onPressed: () => Navigator.of(context).pop(),

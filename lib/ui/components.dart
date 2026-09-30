@@ -469,13 +469,9 @@ class _PressedBackgroundState extends State<_PressedBackground> {
     return GestureDetector(
       onTap: widget.onTap,
       onLongPress: widget.onLongPress,
-      onTapDown: feedbackEnabled
-          ? (_) => setState(() => _pressed = true)
-          : null,
-      onTapCancel: feedbackEnabled
-          ? () => setState(() => _pressed = false)
-          : null,
-      onTapUp: feedbackEnabled ? (_) => setState(() => _pressed = false) : null,
+      onTapDown: feedbackEnabled ? (_) => _handleTapDown() : null,
+      onTapCancel: feedbackEnabled ? _clearPressed : null,
+      onTapUp: feedbackEnabled ? (_) => _clearPressed() : null,
       behavior: HitTestBehavior.opaque,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
@@ -486,5 +482,16 @@ class _PressedBackgroundState extends State<_PressedBackground> {
         child: widget.child,
       ),
     );
+  }
+
+  void _handleTapDown() {
+    // 支持长按的行不显示按下高亮：长按进入多选/删除前避免“先闪一下”。
+    if (widget.onLongPress != null) return;
+    setState(() => _pressed = true);
+  }
+
+  void _clearPressed() {
+    if (!_pressed) return;
+    setState(() => _pressed = false);
   }
 }

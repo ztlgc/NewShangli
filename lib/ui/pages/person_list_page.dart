@@ -652,20 +652,6 @@ class _PersonRow extends StatefulWidget {
 }
 
 class _PersonRowState extends State<_PersonRow> {
-  bool _pressed = false;
-
-  void _onTapDown(TapDownDetails _) {
-    setState(() => _pressed = true);
-  }
-
-  void _onTapUp(TapUpDetails _) {
-    setState(() => _pressed = false);
-  }
-
-  void _onTapCancel() {
-    setState(() => _pressed = false);
-  }
-
   void _handleTap() {
     if (widget.id.startsWith('p_')) {
       AppNotifier.info(context, '这是演示数据，添加真实联系人后将自动消失');
@@ -701,35 +687,27 @@ class _PersonRowState extends State<_PersonRow> {
     return GestureDetector(
       onTap: _handleTap,
       onLongPress: _handleLongPress,
-      onTapDown: _onTapDown,
-      onTapUp: _onTapUp,
-      onTapCancel: _onTapCancel,
       behavior: HitTestBehavior.opaque,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        curve: Curves.easeInOut,
-        color: _pressed ? colors.surfacePressed : Colors.transparent,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: BoxDecoration(
-            border: widget.borderBottom
-                ? Border(
-                    bottom: BorderSide(color: colors.borderDivider, width: 1),
-                  )
-                : null,
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: PersonDisplayRow(
-                  name: widget.name,
-                  subtitle: widget.subtitle,
-                  avatarUrl: widget.avatarUrl,
-                  avatarOverlay: avatarOverlay,
-                ),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          border: widget.borderBottom
+              ? Border(
+                  bottom: BorderSide(color: colors.borderDivider, width: 1),
+                )
+              : null,
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: PersonDisplayRow(
+                name: widget.name,
+                subtitle: widget.subtitle,
+                avatarUrl: widget.avatarUrl,
+                avatarOverlay: avatarOverlay,
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
