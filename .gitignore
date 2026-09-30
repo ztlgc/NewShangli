@@ -1,51 +1,96 @@
-# Miscellaneous
-*.class
+# Operating-system and editor caches
+.DS_Store
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.swp
+*.swo
+*.tmp
+*.temp
 *.log
 *.pyc
-*.swp
-.DS_Store
+__pycache__/
 .atom/
-.build/
-output/
-.stitch/
-.claude/
-.codex/
-.buildlog/
-.history
-.svn/
-.swiftpm/
-migrate_working_dir/
-
-# IntelliJ related
+.idea/
+.trae/
 *.iml
 *.ipr
 *.iws
-.idea/
-.trae/
+.history/
+.svn/
 
-# The .vscode folder contains launch configuration and tasks you configure in
-# VS Code which you may wish to be included in version control, so this line
-# is commented out by default.
-#.vscode/
+# Local assistant state and downloaded design caches.
+# Keep the project's reusable skills in version control.
+/.claude/
+/.stitch/
+/.codex/*
+!/.codex/skills/
+# Keep shared VS Code tasks and launch settings; ignore machine-local state only.
+/.vscode/*.local.json
 
-# Flutter/Dart/Pub related
-**/doc/api/
-**/ios/Flutter/.last_build_id
+# Flutter / Dart build outputs and dependency caches
 .dart_tool/
+.flutter-plugins
 .flutter-plugins-dependencies
 .pub-cache/
 .pub/
-/build/
-/coverage/
-/supabase.local.json
-
-# Symbolication related
+.build/
+.buildlog/
+.swiftpm/
+build/
+coverage/
+**/doc/api/
+**/ios/Flutter/.last_build_id
+/migrate_working_dir/
 app.*.symbols
-
-# Obfuscation related
 app.*.map.json
+# pubspec.lock, .metadata and generated Drift source (*.g.dart) are intentional.
 
-# Android Studio will place build artifacts here
-/android/app/debug
-/android/app/profile
-/android/app/release
+# Android build outputs and local SDK/signing configuration
+.gradle/
+.cxx/
+.externalNativeBuild/
+*.class
+/android/captures/
+/android/local.properties
+/android/key.properties
+/android/app/debug/
+/android/app/profile/
+/android/app/release/
+*.jks
+*.keystore
+*.apk
+*.aab
+
+# Local reports, exports, temporary work and runtime data
+/output/
+/artifacts/
+/tmp/
+/temp/
+/backups/
+/build_size_report.txt
+*.db
+*.db-wal
+*.db-shm
+*.db-journal
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+*.sqlite-journal
+*.sqlite3
+*.sqlite3-wal
+*.sqlite3-shm
+*.sqlite3-journal
+# Deliberate test fixtures can be checked in here.
+!test/fixtures/**
+!integration_test/fixtures/**
+
+# Local credentials and environment overrides; keep example templates
+.env
+.env.*
+!.env.example
+!.env.sample
+!.env.template
+/supabase.local.json
+/supabase/.temp/
+/supabase/.branches/
