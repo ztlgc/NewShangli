@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:forui/forui.dart';
 
 import 'app_tokens.dart';
+import 'app_forui_theme.dart';
 
 class AppScaffold extends StatelessWidget {
   const AppScaffold({
@@ -19,13 +21,16 @@ class AppScaffold extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
-    return Scaffold(
-      backgroundColor: backgroundColor == null
-          ? colors.surfaceApp
-          : colors.pageBackgroundFor(backgroundColor!),
-      extendBody: extendBody,
-      body: SafeArea(child: body),
-      bottomNavigationBar: bottomNavigationBar,
+    return FTheme(
+      data: AppForuiTheme.of(Theme.of(context).brightness),
+      child: Scaffold(
+        backgroundColor: backgroundColor == null
+            ? colors.surfaceApp
+            : colors.pageBackgroundFor(backgroundColor!),
+        extendBody: extendBody,
+        body: SafeArea(child: body),
+        bottomNavigationBar: bottomNavigationBar,
+      ),
     );
   }
 }

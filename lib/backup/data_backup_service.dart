@@ -3,26 +3,28 @@ import 'dart:io';
 
 import 'package:archive/archive.dart';
 import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
 import 'package:sqlite3/sqlite3.dart' as sqlite;
 
 import 'backup_config.dart';
 import '../data/local/drift/app_database.dart';
+
 import 'package:crypto/crypto.dart';
+
 import 'webdav_client.dart';
 
-typedef BackupSnapshotExecutor =
-    Future<void> Function({
-      required String sourceDbPath,
-      required String outputDbPath,
-    });
+import '../platform/app_platform.dart';
+
+typedef BackupSnapshotExecutor = Future<void> Function({
+  required String sourceDbPath,
+  required String outputDbPath,
+});
 
 class DataBackupService {
   DataBackupService({
     Future<Directory> Function()? documentsDirectoryProvider,
     BackupSnapshotExecutor? snapshotExecutor,
   }) : _documentsDirectoryProvider =
-           documentsDirectoryProvider ?? getApplicationDocumentsDirectory,
+           documentsDirectoryProvider ?? AppPlatform.documentsDirectory,
        _snapshotExecutor = snapshotExecutor ?? _defaultSnapshotExecutor;
 
   final Future<Directory> Function() _documentsDirectoryProvider;

@@ -10,7 +10,7 @@ import 'app_tokens.dart';
 /// - 动效时长、缓动曲线
 /// - 状态色映射
 ///
-/// 所有数值与 DESIGN_SPEC.md 第 3.5 章节一一对应；调整时需同步更新文档。
+/// 所有数值与 DESIGN_SPEC.md “反馈尺寸与时长”章节一一对应；调整时需同步更新文档。
 class AppNotificationTokens {
   // 通用 ----------------------------------------------------------------------
 
@@ -62,13 +62,13 @@ class AppNotificationTokens {
   /// Toast 左侧图标头尺寸。
   static const double toastIconSize = 24;
 
-  /// Toast 内部 FA 图标实际渲染尺寸。
+  /// Toast 内部图标实际渲染尺寸。
   static const double toastIconGlyphSize = 14;
 
   /// Dialog 图标头容器尺寸。
   static const double dialogIconSize = 40;
 
-  /// Dialog 图标头内部 FA 图标尺寸。
+  /// Dialog 图标头内部图标尺寸。
   static const double dialogIconGlyphSize = 16;
 
   /// SnackBar 前置图标尺寸。

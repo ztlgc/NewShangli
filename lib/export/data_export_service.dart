@@ -5,10 +5,11 @@ import 'package:archive/archive.dart';
 import 'package:excel/excel.dart';
 import 'package:drift/drift.dart' show BooleanExpressionOperators;
 import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
 
 import '../data/local/drift/app_database.dart';
 import '../ui/app_data.dart';
+
+import '../platform/app_platform.dart';
 
 enum DataExportFormat { excel, zip }
 
@@ -38,14 +39,10 @@ class DataExportRequest {
 
 class DataExportService {
   Future<File> exportFromDrift({
-    required bool loggedIn,
     required AppDatabase db,
     required DataExportRequest request,
     Directory? outputDir,
   }) async {
-    if (!loggedIn) {
-      throw const DataExportException('未登录，无法导出');
-    }
     if (!request.includeRecords && !request.includePersons) {
       throw const DataExportException('请至少选择一种导出内容');
     }
@@ -120,7 +117,6 @@ class DataExportService {
         '所属账簿名称',
         '关系人ID',
         '关系人姓名',
-        '支付方式',
         '发生时间',
         '备注',
         '所属账簿ID',
@@ -143,13 +139,12 @@ class DataExportService {
           bookById[r.bookId]?.name ?? '默认账簿',
           r.personId,
           person?.name ?? '',
-          r.paymentMethod ?? '',
           _formatDateTime(DateTime.fromMillisecondsSinceEpoch(r.occurredAt)),
           r.note ?? '',
           r.bookId,
-          DateTime.fromMillisecondsSinceEpoch(
-            bookById[r.bookId]!.bookTime,
-          ).toUtc().toIso8601String(),
+          DateTime.fromMillisecondsSinceEpoch(bookById[r.bookId]!.bookTime)
+              .toUtc()
+              .toIso8601String(),
           bookById[r.bookId]!.reasonType,
           bookById[r.bookId]!.isDefault.toString(),
         ];
@@ -223,7 +218,7 @@ class DataExportService {
     }
 
     final dir =
-        outputDir ?? Directory((await getApplicationDocumentsDirectory()).path);
+        outputDir ?? Directory((await AppPlatform.documentsDirectory()).path);
     final exportDir = Directory(p.join(dir.path, 'exports'));
     await exportDir.create(recursive: true);
 
@@ -262,14 +257,10 @@ class DataExportService {
   }
 
   Future<File> export({
-    required bool loggedIn,
     required AppData data,
     required DataExportRequest request,
     Directory? outputDir,
   }) async {
-    if (!loggedIn) {
-      throw const DataExportException('未登录，无法导出');
-    }
     if (!request.includeRecords && !request.includePersons) {
       throw const DataExportException('请至少选择一种导出内容');
     }
@@ -292,7 +283,6 @@ class DataExportService {
         '所属账簿名称',
         '关系人ID',
         '关系人姓名',
-        '支付方式',
         '发生时间',
         '备注',
       ]);
@@ -316,7 +306,6 @@ class DataExportService {
           bookName,
           r.personId,
           r.personName,
-          r.paymentMethod,
           _formatDateTime(r.occurredAt),
           r.note ?? '',
         ]);
@@ -356,7 +345,7 @@ class DataExportService {
     }
 
     final dir =
-        outputDir ?? Directory((await getApplicationDocumentsDirectory()).path);
+        outputDir ?? Directory((await AppPlatform.documentsDirectory()).path);
     final exportDir = Directory(p.join(dir.path, 'exports'));
     await exportDir.create(recursive: true);
 
@@ -470,7 +459,6 @@ class DataExportService {
                 '关系人姓名',
                 '关系人关系',
                 '手机号',
-                '支付方式',
                 '发生时间',
                 '备注',
                 '联系人头像',

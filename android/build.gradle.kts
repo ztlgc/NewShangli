@@ -1,5 +1,11 @@
+val flutterStorageBase =
+    System.getenv("FLUTTER_STORAGE_BASE_URL")?.trimEnd('/') ?: "https://storage.googleapis.com"
+
 allprojects {
     repositories {
+        maven(url = "$flutterStorageBase/download.flutter.io") {
+            content { includeGroup("io.flutter") }
+        }
         maven(url = "https://maven.aliyun.com/repository/google")
         maven(url = "https://maven.aliyun.com/repository/central")
         google()
@@ -19,6 +25,20 @@ subprojects {
 }
 subprojects {
     project.evaluationDependsOn(":app")
+}
+
+// AGP 9 validates compileSdk across library dependencies. Older plugins such as
+// file_picker use API 34 while flutter_plugin_android_lifecycle requires API 36.
+subprojects {
+    plugins.withId("com.android.library") {
+        extensions.configure<com.android.build.api.variant.LibraryAndroidComponentsExtension> {
+            finalizeDsl {
+                if ((it.compileSdk ?: 0) < 36) {
+                    it.compileSdk = 36
+                }
+            }
+        }
+    }
 }
 
 subprojects {

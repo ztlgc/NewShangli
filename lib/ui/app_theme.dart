@@ -43,12 +43,27 @@ class AppTheme {
         iconColor: AppColors.textSecondary,
       ),
       inputDecorationTheme: const InputDecorationThemeData(
+        filled: true,
+        fillColor: AppColors.surfaceCard,
         hintStyle: TextStyle(color: AppColors.textMuted),
+        contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.all(Radius.circular(12)),
+          borderSide: BorderSide(color: AppColors.borderDefault),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.all(Radius.circular(12)),
+          borderSide: BorderSide(color: AppColors.borderDefault),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.all(Radius.circular(12)),
+          borderSide: BorderSide(color: AppColors.borderFocus),
+        ),
       ),
       textSelectionTheme: const TextSelectionThemeData(
-        cursorColor: AppColors.brandSecondary,
-        selectionColor: AppColors.indigo100,
-        selectionHandleColor: AppColors.brandSecondary,
+        cursorColor: AppColors.brandPrimary,
+        selectionColor: AppColors.gray200,
+        selectionHandleColor: AppColors.brandPrimary,
       ),
       snackBarTheme: const SnackBarThemeData(
         backgroundColor: AppColors.gray900,
@@ -77,12 +92,12 @@ class AppTheme {
       useMaterial3: true,
       brightness: Brightness.dark,
       colorScheme: const ColorScheme.dark(
-        primary: AppColors.indigo500,
-        secondary: Color(0xFF818CF8),
+        primary: Color(0xFFF5F5F5),
+        secondary: Color(0xFFD4D4D8),
         surface: Color(0xFF171B22),
         error: AppColors.stateDanger,
-        onPrimary: AppColors.textInverse,
-        onSecondary: AppColors.textInverse,
+        onPrimary: Color(0xFF171717),
+        onSecondary: Color(0xFF171717),
         onSurface: Color(0xFFF9FAFB),
         onError: AppColors.textInverse,
       ),
@@ -113,12 +128,30 @@ class AppTheme {
         iconColor: AppThemeColors.dark.textSecondary,
       ),
       inputDecorationTheme: InputDecorationThemeData(
+        filled: true,
+        fillColor: AppThemeColors.dark.surfaceCard,
         hintStyle: TextStyle(color: AppThemeColors.dark.textMuted),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 14,
+          vertical: 14,
+        ),
+        border: OutlineInputBorder(
+          borderRadius: const BorderRadius.all(Radius.circular(12)),
+          borderSide: BorderSide(color: AppThemeColors.dark.borderDefault),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: const BorderRadius.all(Radius.circular(12)),
+          borderSide: BorderSide(color: AppThemeColors.dark.borderDefault),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: const BorderRadius.all(Radius.circular(12)),
+          borderSide: BorderSide(color: AppThemeColors.dark.borderFocus),
+        ),
       ),
       textSelectionTheme: TextSelectionThemeData(
-        cursorColor: AppThemeColors.dark.brandSecondary,
-        selectionColor: AppThemeColors.dark.brandSoft,
-        selectionHandleColor: AppThemeColors.dark.brandSecondary,
+        cursorColor: AppThemeColors.dark.borderFocus,
+        selectionColor: AppThemeColors.dark.surfacePressed,
+        selectionHandleColor: AppThemeColors.dark.borderFocus,
       ),
       snackBarTheme: SnackBarThemeData(
         backgroundColor: AppThemeColors.dark.surfaceSubtle,

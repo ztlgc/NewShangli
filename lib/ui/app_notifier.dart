@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:forui/forui.dart';
 
 import 'app_notification_tokens.dart';
+import 'app_forui_theme.dart';
 import 'app_toast.dart';
 import 'app_tokens.dart';
+
+import 'app_icons.dart';
 
 /// 通知系统统一入口
 ///
@@ -87,7 +90,8 @@ class AppNotifier {
     messenger.hideCurrentSnackBar();
 
     final effectiveIcon = icon ?? _defaultIconFor(tone);
-    final effectiveDuration = duration ??
+    final effectiveDuration =
+        duration ??
         (actionLabel != null
             ? AppNotificationTokens.snackWithActionDuration
             : AppNotificationTokens.snackDefaultDuration);
@@ -114,15 +118,15 @@ class AppNotifier {
   static IconData _defaultIconFor(AppNotificationTone tone) {
     switch (tone) {
       case AppNotificationTone.success:
-        return FontAwesomeIcons.check;
+        return AppIcons.check;
       case AppNotificationTone.warning:
-        return FontAwesomeIcons.triangleExclamation;
+        return AppIcons.triangleAlert;
       case AppNotificationTone.error:
-        return FontAwesomeIcons.circleXmark;
+        return AppIcons.circleX;
       case AppNotificationTone.info:
-        return FontAwesomeIcons.circleInfo;
+        return AppIcons.info;
       case AppNotificationTone.neutral:
-        return FontAwesomeIcons.bell;
+        return AppIcons.bell;
     }
   }
 }
@@ -164,7 +168,7 @@ class _AppSnackBarContent extends StatelessWidget {
       ),
       child: Row(
         children: [
-          FaIcon(icon, size: AppNotificationTokens.snackIconSize, color: toneFg),
+          Icon(icon, size: AppNotificationTokens.snackIconSize, color: toneFg),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
@@ -178,23 +182,22 @@ class _AppSnackBarContent extends StatelessWidget {
           ),
           if (actionLabel != null && onAction != null) ...[
             const SizedBox(width: 8),
-            TextButton(
-              onPressed: () {
-                ScaffoldMessenger.of(context).hideCurrentSnackBar();
-                onAction!();
-              },
-              style: TextButton.styleFrom(
-                foregroundColor: AppColors.indigo200,
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                minimumSize: const Size(0, 36),
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              ),
-              child: Text(
-                actionLabel!,
-                style: AppTypography.base(
-                  fontSize: AppTypography.fs14,
-                  fontWeight: AppTypography.semibold,
-                  color: AppColors.indigo200,
+            AppForuiBoundary(
+              child: FButton(
+                variant: .ghost,
+                size: .sm,
+                mainAxisSize: MainAxisSize.min,
+                onPress: () {
+                  ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                  onAction!();
+                },
+                child: Text(
+                  actionLabel!,
+                  style: AppTypography.base(
+                    fontSize: AppTypography.fs14,
+                    fontWeight: AppTypography.semibold,
+                    color: AppColors.white,
+                  ),
                 ),
               ),
             ),

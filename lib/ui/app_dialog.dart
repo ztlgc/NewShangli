@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:forui/forui.dart';
 
 import 'app_notification_tokens.dart';
+import 'app_forui_theme.dart';
 import 'app_tokens.dart';
-import 'prototype_kit.dart';
+
+import 'app_icons.dart';
 
 /// 标准化的弹窗容器与工厂方法
 ///
@@ -179,24 +181,26 @@ class AppDialog {
       isDismissible: actions.dismissible,
       backgroundColor: Colors.transparent,
       builder: (sheetContext) {
-        return SafeArea(
-          child: Container(
-            margin: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Theme.of(sheetContext).cardColor,
-              borderRadius: BorderRadius.circular(
-                AppNotificationTokens.dialogRadius,
+        return AppForuiBoundary(
+          child: SafeArea(
+            child: Container(
+              margin: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Theme.of(sheetContext).cardColor,
+                borderRadius: BorderRadius.circular(
+                  AppNotificationTokens.dialogRadius,
+                ),
+                boxShadow: AppShadows.lg,
               ),
-              boxShadow: AppShadows.lg,
-            ),
-            child: _AppDialogShell(
-              tone: tone,
-              icon: icon ?? _defaultIconFor(tone),
-              title: title,
-              message: message,
-              content: content,
-              actions: actions,
-              skipOuterDialog: true,
+              child: _AppDialogShell(
+                tone: tone,
+                icon: icon ?? _defaultIconFor(tone),
+                title: title,
+                message: message,
+                content: content,
+                actions: actions,
+                skipOuterDialog: true,
+              ),
             ),
           ),
         );
@@ -207,15 +211,15 @@ class AppDialog {
   static IconData _defaultIconFor(AppNotificationTone tone) {
     switch (tone) {
       case AppNotificationTone.success:
-        return FontAwesomeIcons.check;
+        return AppIcons.check;
       case AppNotificationTone.warning:
-        return FontAwesomeIcons.triangleExclamation;
+        return AppIcons.triangleAlert;
       case AppNotificationTone.error:
-        return FontAwesomeIcons.circleXmark;
+        return AppIcons.circleX;
       case AppNotificationTone.info:
-        return FontAwesomeIcons.circleInfo;
+        return AppIcons.info;
       case AppNotificationTone.neutral:
-        return FontAwesomeIcons.bell;
+        return AppIcons.bell;
     }
   }
 }
@@ -322,74 +326,66 @@ class _AppDialogShell extends StatelessWidget {
     final toneSoft = tone.resolveSoft(colors);
     final toneOnSoft = tone.resolveOnSoft(colors);
 
-    final body = ConstrainedBox(
-      constraints: const BoxConstraints(
-        maxWidth: AppNotificationTokens.dialogMaxWidth,
+    final body = Padding(
+      padding: const EdgeInsets.all(
+        AppNotificationTokens.dialogContentVerticalPadding,
       ),
-      child: Container(
-        padding: const EdgeInsets.all(
-          AppNotificationTokens.dialogContentVerticalPadding,
-        ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // 图标头 + 标题
+          _DialogHeader(
+            tone: tone,
+            icon: icon,
+            toneSoft: toneSoft,
+            toneOnSoft: toneOnSoft,
+            title: title,
+          ),
+          if (message != null && message!.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: Text(
+                message!,
+                style: AppTypography.base(
+                  fontSize: AppTypography.fs14,
+                  fontWeight: AppTypography.regular,
+                  color: colors.textSecondary,
+                  height: 1.45,
+                ),
+              ),
+            ),
+          ],
+          if (content != null) ...[const SizedBox(height: 16), content!],
+          const SizedBox(height: 20),
+          // 按钮区
+          _DialogActionRow(actions: actions, toneFg: toneFg),
+        ],
+      ),
+    );
+
+    if (skipOuterDialog) {
+      return DecoratedBox(
         decoration: BoxDecoration(
           color: colors.surfaceCard,
           borderRadius: BorderRadius.circular(
             AppNotificationTokens.dialogRadius,
           ),
           border: Border.all(color: colors.borderSubtle),
-          boxShadow: AppShadows.lg,
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // 图标头 + 标题
-            _DialogHeader(
-              tone: tone,
-              icon: icon,
-              toneSoft: toneSoft,
-              toneOnSoft: toneOnSoft,
-              title: title,
-            ),
-            if (message != null && message!.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4),
-                child: Text(
-                  message!,
-                  style: AppTypography.base(
-                    fontSize: AppTypography.fs14,
-                    fontWeight: AppTypography.regular,
-                    color: colors.textSecondary,
-                    height: 1.45,
-                  ),
-                ),
-              ),
-            ],
-            if (content != null) ...[
-              const SizedBox(height: 16),
-              content!,
-            ],
-            const SizedBox(height: 20),
-            // 按钮区
-            _DialogActionRow(
-              actions: actions,
-              toneFg: toneFg,
-            ),
-          ],
-        ),
-      ),
-    );
-
-    if (skipOuterDialog) {
-      return body;
+        child: body,
+      );
     }
-    return Dialog(
-      backgroundColor: Colors.transparent,
-      elevation: 0,
-      insetPadding: const EdgeInsets.symmetric(
-        horizontal: AppNotificationTokens.dialogHorizontalPadding,
+    return AppForuiBoundary(
+      child: FDialog(
+        semanticsLabel: title,
+        constraints: const BoxConstraints(
+          minWidth: 280,
+          maxWidth: AppNotificationTokens.dialogMaxWidth,
+        ),
+        builder: (context, style) => body,
       ),
-      child: body,
     );
   }
 }
@@ -425,7 +421,7 @@ class _DialogHeader extends StatelessWidget {
               borderRadius: BorderRadius.circular(12),
             ),
             alignment: Alignment.center,
-            child: FaIcon(
+            child: Icon(
               icon,
               size: AppNotificationTokens.dialogIconGlyphSize,
               color: toneOnSoft,
@@ -485,7 +481,9 @@ class _DialogActionRow extends StatelessWidget {
         Expanded(
           child: _DialogButton(
             label: actions.confirmLabel!,
-            background: actions.danger ? colors.stateDanger : colors.brandPrimary,
+            background: actions.danger
+                ? colors.stateDanger
+                : colors.brandPrimary,
             foreground: colors.textInverse,
             autofocus: true,
             onTap: () => Navigator.of(context).pop(true),
@@ -513,26 +511,21 @@ class _DialogButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      label: label,
-      child: PressableScale(
-        onTap: onTap,
-        child: Container(
-          height: AppNotificationTokens.dialogButtonHeight,
-          decoration: BoxDecoration(
-            color: background,
-            borderRadius: AppRadii.brXl,
-          ),
-          alignment: Alignment.center,
-          child: Text(
-            label,
-            style: AppTypography.base(
-              fontSize: AppTypography.fs14,
-              fontWeight: AppTypography.semibold,
-              color: foreground,
-            ),
-          ),
+    final colors = context.appColors;
+    return AppForuiBoundary(
+      child: SizedBox(
+        height: AppNotificationTokens.dialogButtonHeight,
+        width: double.infinity,
+        child: FButton(
+          variant: background == colors.stateDanger
+              ? .destructive
+              : background == colors.surfaceSubtle
+              ? .outline
+              : .primary,
+          onPress: onTap,
+          autofocus: autofocus,
+          semanticsLabel: label,
+          child: Text(label),
         ),
       ),
     );
@@ -548,50 +541,23 @@ class _InputForm extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = context.appColors;
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         for (var i = 0; i < fields.length; i++) ...[
           if (i > 0) const SizedBox(height: 12),
-          TextField(
-            controller: controllers[fields[i].id],
+          FTextField(
+            control: FTextFieldControl.managed(
+              controller: controllers[fields[i].id],
+            ),
+            label: Text(fields[i].label),
+            hint: fields[i].hint,
             autofocus: i == 0,
             obscureText: fields[i].obscureText,
             maxLines: fields[i].maxLines,
             minLines: fields[i].minLines,
             textInputAction: fields[i].textInputAction,
-            style: AppTypography.base(
-              fontSize: AppTypography.fs16,
-              fontWeight: AppTypography.medium,
-              color: colors.textPrimary,
-            ),
-            decoration: InputDecoration(
-              hintText: fields[i].hint,
-              hintStyle: AppTypography.base(
-                fontSize: AppTypography.fs14,
-                fontWeight: AppTypography.regular,
-                color: colors.textMuted,
-              ),
-              filled: true,
-              fillColor: colors.surfaceSubtle,
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 14,
-                vertical: 14,
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: AppRadii.brXl,
-                borderSide: BorderSide(color: colors.borderDefault),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: AppRadii.brXl,
-                borderSide: BorderSide(
-                  color: colors.borderFocus,
-                  width: 1.4,
-                ),
-              ),
-            ),
           ),
         ],
       ],

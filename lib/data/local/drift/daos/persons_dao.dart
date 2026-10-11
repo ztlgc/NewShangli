@@ -5,6 +5,13 @@ part of '../app_database.dart';
 class PersonsDao extends DatabaseAccessor<AppDatabase> with _$PersonsDaoMixin {
   PersonsDao(super.db);
 
+  Future<List<Person>> listAll() {
+    return (select(persons)
+          ..where((t) => t.deletedAt.isNull())
+          ..orderBy([(t) => OrderingTerm.asc(t.name)]))
+        .get();
+  }
+
   Stream<List<Person>> watchAllInAllBooks() {
     return (select(persons)
           ..where((t) => t.deletedAt.isNull())

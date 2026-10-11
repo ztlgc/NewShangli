@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+
 import 'package:archive/archive.dart';
 import 'package:path/path.dart' as p;
 import 'package:sqlite3/sqlite3.dart' as sqlite;
@@ -110,7 +111,6 @@ class RestoreSafety {
           'currency',
           'event_name',
           'occurred_at',
-          'payment_method',
           'note',
           'attachments',
           'created_at',
@@ -231,15 +231,12 @@ class RestoreSafety {
         )) {
           final values = jsonDecode(row['attachments'] as String);
           if (values is! List) throw const FormatException('备份附件字段不合法');
-          db.execute(
-            'UPDATE $table SET attachments=? WHERE $key=?',
-            [
-              includeMedia
-                  ? jsonEncode(values.map((v) => remap(v as String)).toList())
-                  : null,
-              row[key],
-            ],
-          );
+          db.execute('UPDATE $table SET attachments=? WHERE $key=?', [
+            includeMedia
+                ? jsonEncode(values.map((v) => remap(v as String)).toList())
+                : null,
+            row[key],
+          ]);
         }
       }
       for (final row in db.select(
@@ -269,9 +266,8 @@ class RestoreSafety {
   static Future<void> begin(Directory docs, Directory guard) async {
     final data = {
       'guard': p.relative(guard.path, from: docs.path),
-      'hadDb': await File(
-        p.join(docs.path, 'newshangli_drift.sqlite'),
-      ).exists(),
+      'hadDb': await File(p.join(docs.path, 'newshangli_drift.sqlite'))
+          .exists(),
       'hadMedia': await Directory(p.join(docs.path, 'media')).exists(),
     };
     await journal(docs).parent.create(recursive: true);

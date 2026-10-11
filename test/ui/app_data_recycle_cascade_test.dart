@@ -19,7 +19,6 @@ void main() {
       direction: RecordDirection.income,
       amountCent: 1200,
       eventName: 'Gift',
-      paymentMethod: 'Cash',
       occurredAt: DateTime(2026),
     );
     final recordId = data.records.firstWhere((e) => e.personId == personId).id;
@@ -46,7 +45,6 @@ void main() {
       direction: RecordDirection.income,
       amountCent: 1200,
       eventName: 'Gift',
-      paymentMethod: 'Cash',
       occurredAt: DateTime(2026),
     );
     final recordId = data.records.firstWhere((e) => e.personId == personId).id;

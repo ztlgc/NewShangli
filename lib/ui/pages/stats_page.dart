@@ -12,7 +12,7 @@ import 'dart:async';
 
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:forui/forui.dart';
 import 'package:provider/provider.dart';
 
 import '../app_database_scope.dart';
@@ -20,13 +20,17 @@ import '../app_scaffold.dart';
 import '../app_tokens.dart';
 import '../components.dart';
 import '../lunar_date_picker.dart';
-import '../prototype_kit.dart';
+import '../ui_kit.dart';
 import '../stats/stats_view_model.dart';
 
 import '../../stats/stats_db.dart';
 import '../../stats/stats_models.dart';
 import '../../stats/stats_repository.dart';
 import '../../stats/stats_time_range.dart';
+
+import '../app_icons.dart';
+
+import '../app_layout.dart';
 
 /// 统计页专用色板：
 /// 收入：teal 色系（与品牌 indigo 互补，且与「入账」语义一致）
@@ -222,7 +226,7 @@ class _StatsPageBodyState extends State<_StatsPageBody> {
                   builder: (context, constraints) {
                     final wide = constraints.maxWidth >= 760;
                     return ListView(
-                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
+                      padding: AppLayout.tabContentPadding,
                       children: [
                         _KpiHeroCard(
                           range: range,
@@ -541,50 +545,19 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = context.appColors;
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-      decoration: BoxDecoration(
-        color: colors.surfaceCard,
-        border: Border(
-          bottom: BorderSide(color: colors.borderDivider, width: 1),
+    return Column(
+      children: [
+        FHeader(
+          title: const Text('统计'),
+          suffixes: [
+            FBadge(variant: .outline, child: Text(_formatRange(range))),
+          ],
         ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Text(
-                '统计',
-                style: AppTypography.base(
-                  fontSize: 22,
-                  fontWeight: AppTypography.bold,
-                  color: colors.textPrimary,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: colors.brandSoft,
-                  borderRadius: BorderRadius.circular(9999),
-                ),
-                child: Text(
-                  _formatRange(range),
-                  style: AppTypography.base(
-                    fontSize: 11,
-                    fontWeight: AppTypography.medium,
-                    color: colors.brandOnSoft,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          _SegmentedControl(active: tab, onSelect: onSelectTab),
-        ],
-      ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+          child: _SegmentedControl(active: tab, onSelect: onSelectTab),
+        ),
+      ],
     );
   }
 
@@ -613,58 +586,26 @@ class _SegmentedControl extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = context.appColors;
-    Widget item(_StatsUiTab t, String label, IconData icon) {
+    Widget item(_StatsUiTab t, String label) {
       final selected = active == t;
       return Expanded(
-        child: PressableScale(
-          onTap: () => onSelect(t),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 180),
-            curve: Curves.easeOut,
-            padding: const EdgeInsets.symmetric(vertical: 9),
-            decoration: BoxDecoration(
-              color: selected ? _statsPrimary : Colors.transparent,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            alignment: Alignment.center,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                FaIcon(
-                  icon,
-                  size: 13,
-                  color: selected ? colors.textInverse : colors.textSecondary,
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  label,
-                  style: AppTypography.base(
-                    fontSize: 14,
-                    fontWeight: AppTypography.semibold,
-                    color: selected ? colors.textInverse : colors.textSecondary,
-                  ),
-                ),
-              ],
-            ),
-          ),
+        child: FButton(
+          variant: selected ? .primary : .outline,
+          size: .sm,
+          onPress: () => onSelect(t),
+          child: Text(label),
         ),
       );
     }
 
-    return Container(
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: colors.surfaceSubtle,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          item(_StatsUiTab.month, '月统计', FontAwesomeIcons.calendarDay),
-          item(_StatsUiTab.year, '年统计', FontAwesomeIcons.calendar),
-          item(_StatsUiTab.custom, '自定义', FontAwesomeIcons.sliders),
-        ],
-      ),
+    return Row(
+      children: [
+        item(_StatsUiTab.month, '月统计'),
+        const SizedBox(width: 8),
+        item(_StatsUiTab.year, '年统计'),
+        const SizedBox(width: 8),
+        item(_StatsUiTab.custom, '自定义'),
+      ],
     );
   }
 }
@@ -744,30 +685,14 @@ class _MonthSelector extends StatelessWidget {
           DateTime(now.year, now.month - 1, 1).year == m.year &&
           DateTime(now.year, now.month - 1, 1).month == m.month;
       final label = isThisMonth ? '本月' : (isPrevMonth ? '上月' : '${m.month}月');
-      return PressableScale(
-        onTap: () => onSelectMonth(m),
-        child: Padding(
-          padding: const EdgeInsets.only(right: 8),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 160),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            decoration: BoxDecoration(
-              color: selected ? _statsPrimary : colors.surfaceCard,
-              borderRadius: BorderRadius.circular(9999),
-              border: Border.all(
-                color: selected ? _statsPrimary : colors.borderDefault,
-                width: 1,
-              ),
-            ),
-            child: Text(
-              label,
-              style: AppTypography.base(
-                fontSize: 13,
-                fontWeight: AppTypography.semibold,
-                color: selected ? colors.textInverse : colors.textSecondary,
-              ),
-            ),
-          ),
+      return Padding(
+        padding: const EdgeInsets.only(right: 8),
+        child: FButton(
+          variant: selected ? .primary : .outline,
+          size: .sm,
+          mainAxisSize: MainAxisSize.min,
+          onPress: () => onSelectMonth(m),
+          child: Text(label),
         ),
       );
     }
@@ -815,30 +740,14 @@ class _YearSelector extends StatelessWidget {
       required bool selected,
       required VoidCallback onTap,
     }) {
-      return PressableScale(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.only(right: 8),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 160),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            decoration: BoxDecoration(
-              color: selected ? _statsPrimary : colors.surfaceCard,
-              borderRadius: BorderRadius.circular(9999),
-              border: Border.all(
-                color: selected ? _statsPrimary : colors.borderDefault,
-                width: 1,
-              ),
-            ),
-            child: Text(
-              label,
-              style: AppTypography.base(
-                fontSize: 13,
-                fontWeight: AppTypography.semibold,
-                color: selected ? colors.textInverse : colors.textSecondary,
-              ),
-            ),
-          ),
+      return Padding(
+        padding: const EdgeInsets.only(right: 8),
+        child: FButton(
+          variant: selected ? .primary : .outline,
+          size: .sm,
+          mainAxisSize: MainAxisSize.min,
+          onPress: onTap,
+          child: Text(label),
         ),
       );
     }
@@ -904,7 +813,7 @@ class _CustomRangeSelector extends StatelessWidget {
         children: [
           Expanded(
             child: _DateCell(
-              icon: FontAwesomeIcons.play,
+              icon: AppIcons.play,
               label: '起始',
               value: startText,
               onTap: onPickStart,
@@ -913,16 +822,12 @@ class _CustomRangeSelector extends StatelessWidget {
           const SizedBox(width: 10),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 2),
-            child: FaIcon(
-              FontAwesomeIcons.arrowRight,
-              size: 12,
-              color: colors.textMuted,
-            ),
+            child: Icon(AppIcons.arrowRight, size: 12, color: colors.textMuted),
           ),
           const SizedBox(width: 10),
           Expanded(
             child: _DateCell(
-              icon: FontAwesomeIcons.stop,
+              icon: AppIcons.square,
               label: '截止',
               value: endText,
               onTap: onPickEnd,
@@ -969,7 +874,7 @@ class _DateCell extends StatelessWidget {
                 borderRadius: BorderRadius.circular(8),
               ),
               alignment: Alignment.center,
-              child: FaIcon(icon, size: 12, color: colors.brandOnSoft),
+              child: Icon(icon, size: 12, color: colors.brandOnSoft),
             ),
             const SizedBox(width: 10),
             Expanded(
@@ -1036,13 +941,8 @@ class _KpiHeroCard extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF312E81), Color(0xFF1E1B4B)],
-        ),
-        borderRadius: AppRadii.br2xl,
-        boxShadow: AppShadows.lg,
+        color: const Color(0xFF171717),
+        borderRadius: BorderRadius.circular(16),
       ),
       padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
       child: Column(
@@ -1060,10 +960,8 @@ class _KpiHeroCard extends StatelessWidget {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    FaIcon(
-                      net >= 0
-                          ? FontAwesomeIcons.arrowTrendUp
-                          : FontAwesomeIcons.arrowTrendDown,
+                    Icon(
+                      net >= 0 ? AppIcons.trendingUp : AppIcons.trendingDown,
                       size: 11,
                       color: Colors.white.withValues(alpha: 0.85),
                     ),
@@ -1080,8 +978,8 @@ class _KpiHeroCard extends StatelessWidget {
                 ),
               ),
               const Spacer(),
-              FaIcon(
-                FontAwesomeIcons.chartPie,
+              Icon(
+                AppIcons.chartPie,
                 size: 14,
                 color: Colors.white.withValues(alpha: 0.55),
               ),
@@ -1121,7 +1019,7 @@ class _KpiHeroCard extends StatelessWidget {
             children: [
               Expanded(
                 child: _MetricColumn(
-                  icon: FontAwesomeIcons.arrowUp,
+                  icon: AppIcons.arrowUp,
                   iconColor: _statsExpenseColor,
                   label: '总支出',
                   value: formatCentToYuan(data.expenseTotalCent),
@@ -1134,7 +1032,7 @@ class _KpiHeroCard extends StatelessWidget {
               ),
               Expanded(
                 child: _MetricColumn(
-                  icon: FontAwesomeIcons.arrowDown,
+                  icon: AppIcons.arrowDown,
                   iconColor: _statsIncomeColor,
                   label: '总收入',
                   value: formatCentToYuan(data.incomeTotalCent),
@@ -1163,7 +1061,7 @@ class _KpiHeroCard extends StatelessWidget {
                 invertColor: true,
               ),
               _CountChip(
-                icon: FontAwesomeIcons.list,
+                icon: AppIcons.list,
                 label: '有金额活动',
                 value: '$totalCount 个时段',
               ),
@@ -1212,7 +1110,7 @@ class _MetricColumn extends StatelessWidget {
                 borderRadius: BorderRadius.circular(5),
               ),
               alignment: Alignment.center,
-              child: FaIcon(icon, size: 10, color: iconColor),
+              child: Icon(icon, size: 10, color: iconColor),
             ),
             const SizedBox(width: 6),
             Text(
@@ -1264,23 +1162,23 @@ class _DeltaChip extends StatelessWidget {
     final v = delta;
     Color bg = Colors.white.withValues(alpha: 0.1);
     Color fg = Colors.white.withValues(alpha: 0.85);
-    IconData icon = FontAwesomeIcons.minus;
+    IconData icon = AppIcons.minus;
     String text = '—';
     if (v == null) {
       text = '无对比';
-      icon = FontAwesomeIcons.minus;
+      icon = AppIcons.minus;
       fg = Colors.white.withValues(alpha: 0.5);
     } else if (v == 0) {
       text = '持平';
-      icon = FontAwesomeIcons.equals;
+      icon = AppIcons.equal;
     } else if (v.isInfinite) {
       text = '新增';
-      icon = FontAwesomeIcons.burst;
+      icon = AppIcons.sparkles;
     } else {
       final pct = (v * 100).toStringAsFixed(0);
       final up = v > 0;
       text = '${up ? '+' : ''}$pct%';
-      icon = up ? FontAwesomeIcons.caretUp : FontAwesomeIcons.caretDown;
+      icon = up ? AppIcons.chevronUp : AppIcons.chevronDown;
       // 默认：上涨=好；invertColor：上涨=坏
       final positive = invertColor ? !up : up;
       if (positive) {
@@ -1301,7 +1199,7 @@ class _DeltaChip extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          FaIcon(icon, size: 10, color: fg),
+          Icon(icon, size: 10, color: fg),
           const SizedBox(width: 4),
           Text(
             label,
@@ -1348,7 +1246,7 @@ class _CountChip extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          FaIcon(icon, size: 10, color: Colors.white.withValues(alpha: 0.6)),
+          Icon(icon, size: 10, color: Colors.white.withValues(alpha: 0.6)),
           const SizedBox(width: 4),
           Text(
             label,
@@ -1417,26 +1315,33 @@ class _TrendCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
+          Wrap(
+            spacing: 8,
+            runSpacing: 10,
+            alignment: WrapAlignment.spaceBetween,
             children: [
-              Text(
-                '收支趋势',
-                style: AppTypography.base(
-                  fontSize: 16,
-                  fontWeight: AppTypography.bold,
-                  color: colors.textPrimary,
-                ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    '收支趋势',
+                    style: AppTypography.base(
+                      fontSize: 16,
+                      fontWeight: AppTypography.bold,
+                      color: colors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    '共 ${buckets.length} 个时段',
+                    style: AppTypography.base(
+                      fontSize: 11,
+                      fontWeight: AppTypography.regular,
+                      color: colors.textMuted,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 8),
-              Text(
-                '共 ${buckets.length} 个时段',
-                style: AppTypography.base(
-                  fontSize: 11,
-                  fontWeight: AppTypography.regular,
-                  color: colors.textMuted,
-                ),
-              ),
-              const Spacer(),
               _TrendMetricSegment(value: metric, onChange: onChangeMetric),
             ],
           ),
@@ -1751,7 +1656,7 @@ class _CategoryCard extends StatelessWidget {
         boxShadow: AppShadows.sm,
         border: Border.all(color: colors.borderSubtle, width: 1),
       ),
-      padding: const EdgeInsets.all(16),
+      padding: AppLayout.pagePadding,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1973,7 +1878,7 @@ class _TopContactsCard extends StatelessWidget {
         boxShadow: AppShadows.sm,
         border: Border.all(color: colors.borderSubtle, width: 1),
       ),
-      padding: const EdgeInsets.all(16),
+      padding: AppLayout.pagePadding,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -2189,17 +2094,17 @@ class _RankBadge extends StatelessWidget {
       case 1:
         bg = const Color(0xFFFEF3C7);
         fg = const Color(0xFFB45309);
-        icon = FontAwesomeIcons.crown;
+        icon = AppIcons.crown;
         break;
       case 2:
         bg = const Color(0xFFF1F5F9);
         fg = const Color(0xFF475569);
-        icon = FontAwesomeIcons.medal;
+        icon = AppIcons.medal;
         break;
       case 3:
         bg = const Color(0xFFFFE4E6);
         fg = const Color(0xFFB45309);
-        icon = FontAwesomeIcons.award;
+        icon = AppIcons.award;
         break;
       default:
         bg = colors.surfaceSubtle;
@@ -2215,7 +2120,7 @@ class _RankBadge extends StatelessWidget {
       ),
       alignment: Alignment.center,
       child: icon != null
-          ? FaIcon(icon, size: 12, color: fg)
+          ? Icon(icon, size: 12, color: fg)
           : Text(
               '$rank',
               style: AppTypography.base(
@@ -2255,8 +2160,8 @@ class _ErrorPane extends StatelessWidget {
                 borderRadius: BorderRadius.circular(16),
               ),
               alignment: Alignment.center,
-              child: FaIcon(
-                FontAwesomeIcons.triangleExclamation,
+              child: Icon(
+                AppIcons.triangleAlert,
                 size: 22,
                 color: colors.stateDangerStrong,
               ),
@@ -2281,7 +2186,7 @@ class _ErrorPane extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 14),
-            PrototypePrimaryButton(label: '重试', onTap: onRetry),
+            AppPrimaryButton(label: '重试', onTap: onRetry),
           ],
         ),
       ),

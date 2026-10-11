@@ -1,9 +1,7 @@
 import 'dart:io';
 
 import 'package:drift/drift.dart' show Value;
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import '../../data/local/drift/app_database.dart';
 import '../../media/media_storage_service.dart';
@@ -15,11 +13,17 @@ import '../app_notification_tokens.dart';
 import '../app_scaffold.dart';
 import '../app_tokens.dart';
 import '../navigation.dart';
-import '../prototype_kit.dart';
+import '../ui_kit.dart';
 import '../../utils/date_util.dart';
 import '../widgets/record_list_row.dart';
 import 'account_book_data_import_page.dart';
 import 'record_detail_page.dart';
+
+import '../app_icons.dart';
+
+import '../../platform/app_platform.dart';
+
+import '../app_layout.dart';
 
 class AccountBookDetailPage extends StatelessWidget {
   const AccountBookDetailPage({super.key, required this.bookId});
@@ -42,8 +46,7 @@ class _Canvas extends StatelessWidget {
 
   Future<void> _addAttachments(BuildContext context, AccountBook book) async {
     final db = AppDatabaseScope.of(context);
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
+    final result = await AppPlatform.instance.pickFiles(
       allowedExtensions: const <String>['jpg', 'jpeg', 'png', 'webp'],
       allowMultiple: true,
       withData: false,
@@ -121,53 +124,27 @@ class _Canvas extends StatelessWidget {
 
         return Column(
           children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: BoxDecoration(
-                color: context.appColors.surfaceCard,
-                border: Border(
-                  bottom: BorderSide(
-                    color: context.appColors.surfaceSubtle,
-                    width: 1,
+            AppTopBar(
+              title: book.name,
+              left: AppIconButton(
+                icon: const Icon(AppIcons.arrowLeft, size: 18),
+                backgroundColor: Colors.transparent,
+                foregroundColor: AppColors.textPrimary,
+                onPressed: () => AppNav.pop(context),
+                semanticLabel: '返回上一页',
+              ),
+              right: AppIconButton(
+                icon: const Icon(AppIcons.fileInput, size: 16),
+                backgroundColor: AppColors.indigo50,
+                foregroundColor: AppColors.indigo700,
+                onPressed: () => AppNav.push(
+                  context,
+                  AccountBookDataImportPage(
+                    bookId: bookId,
+                    bookName: book.name,
                   ),
                 ),
-              ),
-              child: Row(
-                children: [
-                  PrototypeIconButton(
-                    icon: const FaIcon(FontAwesomeIcons.arrowLeft, size: 18),
-                    backgroundColor: Colors.transparent,
-                    foregroundColor: AppColors.textPrimary,
-                    onPressed: () => AppNav.pop(context),
-                    semanticLabel: '返回上一页',
-                  ),
-                  Expanded(
-                    child: Center(
-                      child: Text(
-                        book.name,
-                        style: AppTypography.base(
-                          fontSize: 18,
-                          fontWeight: AppTypography.bold,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                    ),
-                  ),
-                  PrototypeIconButton(
-                    icon: const FaIcon(FontAwesomeIcons.fileImport, size: 16),
-                    backgroundColor: AppColors.indigo50,
-                    foregroundColor: AppColors.indigo700,
-                    onPressed: () => AppNav.push(
-                      context,
-                      AccountBookDataImportPage(
-                        bookId: bookId,
-                        bookName: book.name,
-                      ),
-                      requiresLogin: true,
-                    ),
-                    semanticLabel: '导入账簿数据',
-                  ),
-                ],
+                semanticLabel: '导入账簿数据',
               ),
             ),
             Expanded(
@@ -185,7 +162,7 @@ class _Canvas extends StatelessWidget {
                   final count = rows.length;
 
                   return ListView(
-                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
+                    padding: AppLayout.tabContentPadding,
                     children: [
                       _OverviewCard(
                         incomeCent: income,
@@ -239,7 +216,7 @@ class _OverviewCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.appColors;
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: AppLayout.pagePadding,
       decoration: BoxDecoration(
         color: context.appColors.surfaceCard,
         borderRadius: AppRadii.br2xl,
@@ -269,18 +246,18 @@ class _OverviewCard extends StatelessWidget {
           const SizedBox(height: 12),
           Container(height: 1, color: colors.borderDivider),
           const SizedBox(height: 12),
-          Row(
-            children: [
-              Text(
-                '账簿时间：${DateUtil.format(DateTime.fromMillisecondsSinceEpoch(bookTime))}',
-                style: AppTypography.base(
-                  fontSize: 12,
-                  fontWeight: AppTypography.regular,
-                  color: AppColors.textSecondary,
-                ),
-                overflow: TextOverflow.ellipsis,
+          SizedBox(
+            width: double.infinity,
+            child: Text(
+              '账簿时间：${DateUtil.format(DateTime.fromMillisecondsSinceEpoch(bookTime))}',
+              style: AppTypography.base(
+                fontSize: 12,
+                fontWeight: AppTypography.regular,
+                color: AppColors.textSecondary,
               ),
-            ],
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
         ],
       ),
@@ -382,12 +359,7 @@ class _RecordsSection extends StatelessWidget {
                       ? RecordDirection.income
                       : RecordDirection.expense,
                   amountCent: rows[i].record.amountCent,
-                  subtitle:
-                      (rows[i].record.paymentMethod == null ||
-                          rows[i].record.paymentMethod!.isEmpty ||
-                          rows[i].record.paymentMethod == '未设置')
-                      ? (rows[i].record.eventName ?? '未设置事由')
-                      : '${rows[i].record.eventName ?? '未设置事由'} - ${rows[i].record.paymentMethod}',
+                  subtitle: rows[i].record.eventName ?? '未设置事由',
                   occurredAt: DateTime.fromMillisecondsSinceEpoch(
                     rows[i].record.occurredAt,
                   ),
@@ -395,7 +367,6 @@ class _RecordsSection extends StatelessWidget {
                   onTap: () => AppNav.push(
                     context,
                     RecordDetailPage(recordId: rows[i].record.recordId),
-                    requiresLogin: true,
                   ),
                 ),
             ],
@@ -439,7 +410,7 @@ class _AttachmentRow extends StatelessWidget {
                   border: Border.all(color: context.appColors.borderDefault),
                 ),
                 alignment: Alignment.center,
-                child: const FaIcon(FontAwesomeIcons.plus, size: 18),
+                child: const Icon(AppIcons.plus, size: 18),
               ),
             ),
           ),
@@ -465,10 +436,7 @@ class _AttachmentRow extends StatelessWidget {
                         return Container(
                           color: context.appColors.surfaceSubtle,
                           alignment: Alignment.center,
-                          child: const FaIcon(
-                            FontAwesomeIcons.triangleExclamation,
-                            size: 14,
-                          ),
+                          child: const Icon(AppIcons.triangleAlert, size: 14),
                         );
                       },
                     ),
@@ -492,8 +460,8 @@ class _AttachmentRow extends StatelessWidget {
                             borderRadius: BorderRadius.circular(999),
                           ),
                           alignment: Alignment.center,
-                          child: const FaIcon(
-                            FontAwesomeIcons.xmark,
+                          child: const Icon(
+                            AppIcons.x,
                             size: 13,
                             color: AppColors.white,
                           ),

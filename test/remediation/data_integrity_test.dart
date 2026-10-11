@@ -1,4 +1,5 @@
 import 'dart:io';
+
 import 'package:archive/archive.dart';
 import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:drift/native.dart';
@@ -12,7 +13,6 @@ import 'package:newshangli/export/data_export_service.dart';
 import 'package:newshangli/backup/data_backup_service.dart';
 import 'package:newshangli/backup/data_restore_service.dart';
 import 'package:newshangli/backup/restore_safety.dart';
-import 'package:newshangli/backup/supabase_sync_service.dart';
 
 const date = 1767225600123;
 Future<void> seed(AppDatabase db) async {
@@ -59,7 +59,6 @@ GiftRecordsCompanion record(
   occurredAt: date,
   direction: const Value('支出'),
   note: const Value('=SUM(A1:A2)\n中文,"引号"'),
-  paymentMethod: const Value('现金'),
   createdAt: 1,
   updatedAt: 1,
 );
@@ -167,8 +166,7 @@ void main() {
   Future<String> importJob({String? content}) async {
     final file = File(temp.path + '/input.csv');
     await file.writeAsString(
-      content ??
-          '数据类型,关系人ID,关系人姓名,金额(元),收支方向,发生时间,事由,备注\n礼金收支记录,p,张三,1.01,支出,2026-01-01T00:00:00.123Z,婚礼,"多行\n备注"',
+      content ?? '数据类型,关系人ID,关系人姓名,金额(元),收支方向,发生时间,事由,备注\n礼金收支记录,p,张三,1.01,支出,2026-01-01T00:00:00.123Z,婚礼,"多行\n备注"',
     );
     return DataImportService(
       db: db,
@@ -263,7 +261,6 @@ void main() {
     await db.into(db.giftRecords).insert(record('ra', book: 'a'));
     await db.into(db.giftRecords).insert(record('rb'));
     final file = await DataExportService().exportFromDrift(
-      loggedIn: true,
       db: db,
       request: DataExportRequest(
         format: DataExportFormat.excel,
@@ -317,54 +314,6 @@ void main() {
     } finally {
       await target.close();
     }
-  });
-
-  test('云恢复按ID更新不级联删除本地记录；非法后续表使前面修改回滚', () async {
-    await db.into(db.giftRecords).insert(record('local'));
-    await SupabaseSyncService.restoreTablesForTesting(
-      db: db,
-      booksData: [],
-      personsData: [
-        {
-          'person_id': 'p',
-          'book_id': 'a',
-          'name': '改名',
-          'created_at': 1,
-          'updated_at': 2,
-        },
-      ],
-    );
-    expect((await db.select(db.giftRecords).get()).single.recordId, 'local');
-    expect((await db.personsDao.findById('p'))!.name, '改名');
-    await expectLater(
-      SupabaseSyncService.restoreTablesForTesting(
-        db: db,
-        booksData: [],
-        personsData: [
-          {
-            'person_id': 'p',
-            'book_id': 'a',
-            'name': '不应保留',
-            'created_at': 1,
-            'updated_at': 3,
-          },
-        ],
-        recordsData: [
-          {
-            'record_id': 'bad',
-            'book_id': 'b',
-            'person_id': 'missing',
-            'amount_cent': 0,
-            'direction': '收入',
-            'occurred_at': date,
-            'created_at': 1,
-            'updated_at': 3,
-          },
-        ],
-      ),
-      throwsA(anything),
-    );
-    expect((await db.personsDao.findById('p'))!.name, '改名');
   });
 
   test('真实WAL快照跨目录恢复，两次恢复字段关系和附件一致', () async {
@@ -428,9 +377,8 @@ void main() {
     final zip = File(temp.path + '/unsafe.zip');
     await zip.writeAsBytes(ZipEncoder().encode(archive)!);
     await expectLater(
-      DataRestoreService(
-        documentsDirectoryProvider: () async => temp,
-      ).restoreFromLocalZip(zipFile: zip, onProgress: (_) {}),
+      DataRestoreService(documentsDirectoryProvider: () async => temp)
+          .restoreFromLocalZip(zipFile: zip, onProgress: (_) {}),
       throwsA(anything),
     );
     expect(await original.readAsBytes(), [4, 5, 6]);
@@ -450,50 +398,107 @@ void main() {
   });
 
   test('ZIP 导出导入完整保留超过20个附件及实际媒体目录', () async {
-    final media=File(temp.path+'/media/attachments/a.png');
-    await media.parent.create(recursive:true);await media.writeAsBytes([1,2,3]);
-    await db.into(db.giftRecords).insert(record('media').copyWith(attachments:Value(List.filled(22,media.path))));
-    final zip=await DataExportService().exportFromDrift(loggedIn:true,db:db,request:DataExportRequest(format:DataExportFormat.zip,start:DateTime(2025),end:DateTime(2027),includeRecords:true,includePersons:true,includeImages:true),outputDir:temp);
-    final archive=RestoreSafety.decodeZip(await zip.readAsBytes());
-    final sheet=archive.files.singleWhere((file)=>file.name.endsWith('.xlsx'));
-    final xlsx=File(temp.path+'/roundtrip.xlsx');await xlsx.writeAsBytes(sheet.content as List<int>);
-    final target=AppDatabase.forTesting(NativeDatabase.memory());
-    final docs=Directory(temp.path+'/imported')..createSync();
+    final media = File(temp.path + '/media/attachments/a.png');
+    await media.parent.create(recursive: true);
+    await media.writeAsBytes([1, 2, 3]);
+    await db
+        .into(db.giftRecords)
+        .insert(
+          record('media')
+              .copyWith(attachments: Value(List.filled(22, media.path))),
+        );
+    final zip = await DataExportService().exportFromDrift(
+      db: db,
+      request: DataExportRequest(
+        format: DataExportFormat.zip,
+        start: DateTime(2025),
+        end: DateTime(2027),
+        includeRecords: true,
+        includePersons: true,
+        includeImages: true,
+      ),
+      outputDir: temp,
+    );
+    final archive = RestoreSafety.decodeZip(await zip.readAsBytes());
+    final sheet = archive.files.singleWhere(
+      (file) => file.name.endsWith('.xlsx'),
+    );
+    final xlsx = File(temp.path + '/roundtrip.xlsx');
+    await xlsx.writeAsBytes(sheet.content as List<int>);
+    final target = AppDatabase.forTesting(NativeDatabase.memory());
+    final docs = Directory(temp.path + '/imported')..createSync();
     try {
       await seed(target);
-      final importer=DataImportService(db:target,documentsDirectoryProvider:()async=>docs);
-      final id=await importer.createJob(bookId:'b',sourceFilePath:xlsx.path,kind:DataImportKind.recordsAndPersons,mediaZipPath:zip.path);
-      final handle=await importer.start(id);
-      expect((await handle.progress.last).status,DataImportStatus.completed);
-      final row=(await target.select(target.giftRecords).get()).single;
-      expect(row.attachments!.length,22);
-      for(final path in row.attachments!) {
-        expect(path.replaceAll(r'\','/'),contains('/imported/media/'));
-        expect(await File(path).readAsBytes(),[1,2,3]);
+      final importer = DataImportService(
+        db: target,
+        documentsDirectoryProvider: () async => docs,
+      );
+      final id = await importer.createJob(
+        bookId: 'b',
+        sourceFilePath: xlsx.path,
+        kind: DataImportKind.recordsAndPersons,
+        mediaZipPath: zip.path,
+      );
+      final handle = await importer.start(id);
+      expect((await handle.progress.last).status, DataImportStatus.completed);
+      final row = (await target.select(target.giftRecords).get()).single;
+      expect(row.attachments!.length, 22);
+      for (final path in row.attachments!) {
+        expect(path.replaceAll(r'\', '/'), contains('/imported/media/'));
+        expect(await File(path).readAsBytes(), [1, 2, 3]);
       }
-    } finally {await target.close();}
+    } finally {
+      await target.close();
+    }
   });
 
   test('恢复在替换数据库后失败时回退原记录和附件', () async {
-    final source=Directory(temp.path+'/source')..createSync();
-    final target=Directory(temp.path+'/target')..createSync();
-    final sourceDb=AppDatabase.forTesting(NativeDatabase(File(source.path+'/newshangli_drift.sqlite')));
-    await seed(sourceDb);await sourceDb.into(sourceDb.giftRecords).insert(record('new'));
-    final backup=await DataBackupService(documentsDirectoryProvider:()async=>source).buildLocalBackupZip(onProgress:(_){});
+    final source = Directory(temp.path + '/source')..createSync();
+    final target = Directory(temp.path + '/target')..createSync();
+    final sourceDb = AppDatabase.forTesting(
+      NativeDatabase(File(source.path + '/newshangli_drift.sqlite')),
+    );
+    await seed(sourceDb);
+    await sourceDb.into(sourceDb.giftRecords).insert(record('new'));
+    final backup = await DataBackupService(
+      documentsDirectoryProvider: () async => source,
+    ).buildLocalBackupZip(onProgress: (_) {});
     await sourceDb.close();
-    final original=AppDatabase.forTesting(NativeDatabase(File(target.path+'/newshangli_drift.sqlite')));
-    await seed(original);await original.into(original.giftRecords).insert(record('old',amount:999));
+    final original = AppDatabase.forTesting(
+      NativeDatabase(File(target.path + '/newshangli_drift.sqlite')),
+    );
+    await seed(original);
+    await original
+        .into(original.giftRecords)
+        .insert(record('old', amount: 999));
     await original.close();
-    final media=File(target.path+'/media/a.png');await media.parent.create(recursive:true);await media.writeAsBytes([7]);
-    await expectLater(DataRestoreService(documentsDirectoryProvider:()async=>target).restoreFromLocalZip(zipFile:backup,onProgress:(message){
-      if(message=='正在恢复媒体文件…') throw StateError('injected interruption');
-    }),throwsA(isA<DataRestoreException>()));
-    final restored=AppDatabase.forTesting(NativeDatabase(File(target.path+'/newshangli_drift.sqlite')));
+    final media = File(target.path + '/media/a.png');
+    await media.parent.create(recursive: true);
+    await media.writeAsBytes([7]);
+    await expectLater(
+      DataRestoreService(
+        documentsDirectoryProvider: () async => target,
+      ).restoreFromLocalZip(
+        zipFile: backup,
+        onProgress: (message) {
+          if (message == '正在恢复媒体文件…') throw StateError('injected interruption');
+        },
+      ),
+      throwsA(isA<DataRestoreException>()),
+    );
+    final restored = AppDatabase.forTesting(
+      NativeDatabase(File(target.path + '/newshangli_drift.sqlite')),
+    );
     try {
-      final row=(await restored.select(restored.giftRecords).get()).single;
-      expect([row.recordId,row.amountCent,row.personId,row.bookId],['old',999,'p','b']);
-      expect(await media.readAsBytes(),[7]);
-      expect(await RestoreSafety.journal(target).exists(),false);
-    } finally {await restored.close();}
+      final row = (await restored.select(restored.giftRecords).get()).single;
+      expect(
+        [row.recordId, row.amountCent, row.personId, row.bookId],
+        ['old', 999, 'p', 'b'],
+      );
+      expect(await media.readAsBytes(), [7]);
+      expect(await RestoreSafety.journal(target).exists(), false);
+    } finally {
+      await restored.close();
+    }
   });
 }

@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:azlistview/azlistview.dart';
 import 'package:flutter/material.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:forui/forui.dart';
 import 'package:flutter/services.dart';
 import 'package:lpinyin/lpinyin.dart';
 
@@ -15,14 +15,16 @@ import '../app_database_scope.dart';
 import '../app_tokens.dart';
 import '../app_scaffold.dart';
 import '../contact_avatar.dart';
-import '../components.dart';
 import '../edit_protection_guard.dart';
+import '../forui_search_field.dart';
 import '../navigation.dart';
-import '../prototype_kit.dart';
+import '../ui_kit.dart';
 import '../tab_shell.dart';
 import '../widgets/person_display_row.dart';
 import 'person_detail_page.dart';
 import 'person_edit_page.dart';
+
+import '../app_icons.dart';
 
 /// 悬浮导航栏下方的列表底部留白，避免最后一项被悬浮栏遮挡。
 const double _personListBottomClearance =
@@ -134,7 +136,7 @@ class _CanvasState extends State<_Canvas> {
       _togglePersonSelection(id);
       return;
     }
-    AppNav.push(context, PersonDetailPage(personId: id), requiresLogin: true);
+    AppNav.push(context, PersonDetailPage(personId: id));
   }
 
   void _enterMultiSelectMode(String id) {
@@ -249,7 +251,6 @@ class _CanvasBody extends StatelessWidget {
   Widget build(BuildContext context) {
     final trimmed = keyword.trim();
     final isSearching = trimmed.isNotEmpty;
-    final colors = context.appColors;
 
     // 构建 AzListView 所需的数据
     final contactItems = _buildContactItems(personDataList);
@@ -265,56 +266,30 @@ class _CanvasBody extends StatelessWidget {
     return Column(
       children: [
         // 顶部标题栏
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: BoxDecoration(
-            color: colors.surfaceCard,
-            border: Border(
-              bottom: BorderSide(color: colors.borderDivider, width: 1),
-            ),
-          ),
-          child: Row(
-            children: [
-              Text(
-                '关系人',
-                style: AppTypography.h2().copyWith(
-                  fontSize: 20,
-                  color: colors.textPrimary,
-                ),
+        FHeader(
+          title: const Text('关系人'),
+          suffixes: [
+            if (multiSelectMode)
+              FButton(
+                variant: .ghost,
+                mainAxisSize: MainAxisSize.min,
+                onPress: onExitMultiSelect,
+                child: const Text('取消'),
+              )
+            else
+              FHeaderAction(
+                icon: const Icon(AppIcons.userRoundPlus),
+                semanticsLabel: '添加联系人',
+                onPress: () => AppNav.push(context, const PersonEditPage()),
               ),
-              const Spacer(),
-              if (multiSelectMode)
-                PressableScale(
-                  onTap: onExitMultiSelect,
-                  child: Text(
-                    '取消',
-                    style: AppTypography.base(
-                      fontSize: 14,
-                      fontWeight: AppTypography.medium,
-                      color: colors.textSecondary,
-                    ),
-                  ),
-                )
-              else
-                PrototypeIconButton(
-                  icon: const FaIcon(FontAwesomeIcons.userPlus, size: 16),
-                  backgroundColor: context.appColors.surfaceSubtle,
-                  foregroundColor: AppColors.textSecondary,
-                  onPressed: () => AppNav.push(
-                    context,
-                    const PersonEditPage(),
-                    requiresLogin: true,
-                  ),
-                ),
-            ],
-          ),
+          ],
         ),
         // 搜索框
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: PrototypeSearchField(
+          child: ForuiSearchField(
             controller: searchController,
-            hintText: '搜索姓名、手机号',
+            hint: '搜索姓名、手机号',
             onChanged: onKeywordChanged,
           ),
         ),
@@ -752,7 +727,7 @@ class _AvatarSelectionCheckbox extends StatelessWidget {
             duration: const Duration(milliseconds: 180),
             child: selected
                 ? const Icon(
-                    Icons.check,
+                    AppIcons.check,
                     key: ValueKey('selected'),
                     size: 16,
                     color: AppColors.white,

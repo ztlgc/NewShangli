@@ -1,16 +1,17 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:forui/forui.dart';
 import 'package:path/path.dart' as p;
 
 import '../../backup/backup_config.dart';
 import '../../backup/data_backup_service.dart';
 import '../../backup/data_restore_service.dart';
 import '../../backup/webdav_client.dart';
+import '../app_bottom_sheet.dart';
 import '../app_database_scope.dart';
+import '../app_forui_theme.dart';
 import '../app_dialog.dart';
 import '../app_notifier.dart';
 import '../app_notification_tokens.dart';
@@ -19,8 +20,14 @@ import '../app_scaffold.dart';
 import '../app_session.dart';
 import '../components.dart';
 import '../navigation.dart';
-import '../prototype_kit.dart';
+import '../ui_kit.dart';
 import '../../utils/date_util.dart';
+
+import '../app_icons.dart';
+
+import '../../platform/app_platform.dart';
+
+import '../app_layout.dart';
 
 /// 页面：系统设置 - 数据备份
 /// 对照原型：prototype/index.html -> "数据备份"
@@ -97,45 +104,19 @@ class _CanvasState extends State<_Canvas> {
     final progressText = _progress == null ? null : _formatProgress(_progress!);
     return Column(
       children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: BoxDecoration(
-            color: context.appColors.surfaceCard,
-            border: Border(
-              bottom: BorderSide(
-                color: context.appColors.surfaceSubtle,
-                width: 1,
-              ),
-            ),
-          ),
-          child: Row(
-            children: [
-              PrototypeIconButton(
-                icon: const FaIcon(FontAwesomeIcons.arrowLeft, size: 18),
-                backgroundColor: Colors.transparent,
-                foregroundColor: AppColors.textPrimary,
-                onPressed: _busy ? null : () => AppNav.pop(context),
-                semanticLabel: '返回上一页',
-              ),
-              Expanded(
-                child: Center(
-                  child: Text(
-                    '数据备份',
-                    style: AppTypography.base(
-                      fontSize: 18,
-                      fontWeight: AppTypography.bold,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 36, height: 36),
-            ],
+        AppTopBar(
+          title: '数据备份',
+          left: AppIconButton(
+            icon: const Icon(AppIcons.arrowLeft, size: 18),
+            backgroundColor: Colors.transparent,
+            foregroundColor: AppColors.textPrimary,
+            onPressed: _busy ? null : () => AppNav.pop(context),
+            semanticLabel: '返回上一页',
           ),
         ),
         Expanded(
           child: ListView(
-            padding: const EdgeInsets.all(16),
+            padding: AppLayout.pagePadding,
             children: [
               const _Overline(title: '状态摘要'),
               const SizedBox(height: 12),
@@ -149,8 +130,8 @@ class _CanvasState extends State<_Canvas> {
                 localRunning: _localBackingUp || _localRestoring,
                 localRunningText: _localRunningText,
               ),
-              const SizedBox(height: 24),
-              const _Overline(title: 'WebDAV云端备份'),
+              const SizedBox(height: AppLayout.sectionGap),
+              const _Overline(title: 'WebDAV备份'),
               const SizedBox(height: 12),
               _DriveExtraConfigCard(
                 loading: _loading,
@@ -165,7 +146,7 @@ class _CanvasState extends State<_Canvas> {
                 webDavConfigured: _webDavReady,
                 onOpenWebDavConfig: _busy ? null : _openWebDavConfigDialog,
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: AppLayout.sectionGap),
               const _Overline(title: '本地备份'),
               const SizedBox(height: 12),
               _LocalBackupSectionCard(
@@ -183,7 +164,7 @@ class _CanvasState extends State<_Canvas> {
                 onExport: _busy ? null : _exportLocalBackup,
                 onImport: _busy ? null : _pickLocalBackupZip,
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: AppLayout.sectionGap),
               const _Overline(title: '历史记录'),
               const SizedBox(height: 12),
               _BackupHistoryCard(
@@ -300,10 +281,10 @@ class _CanvasState extends State<_Canvas> {
     final previous = _config;
     final next = _config.copyWith(autoBackupEnabled: enabled);
     setState(() => _config = next);
-    await _saveCloudSettings(next, fallback: previous);
+    await _saveWebDavSettings(next, fallback: previous);
   }
 
-  Future<void> _saveCloudSettings(
+  Future<void> _saveWebDavSettings(
     BackupConfig next, {
     BackupConfig? fallback,
   }) async {
@@ -393,18 +374,11 @@ class _CanvasState extends State<_Canvas> {
         });
       }
       if (!mounted) return;
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('备份失败'),
-          content: Text(e.message),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('确定'),
-            ),
-          ],
-        ),
+      AppDialog.showAlert(
+        context,
+        title: '备份失败',
+        message: e.message,
+        closeLabel: '确定',
       );
     } catch (e) {
       await BackupStateStore.setLastFailure(
@@ -445,9 +419,7 @@ class _CanvasState extends State<_Canvas> {
     }
     if (_config.webDavUsername.trim().isEmpty ||
         _config.webDavPassword.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('请先填写用户名与密码')));
+      AppNotifier.warning(context, '请先填写用户名与密码');
       return;
     }
 
@@ -487,18 +459,11 @@ class _CanvasState extends State<_Canvas> {
             message: r.message,
           );
         });
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('连接失败'),
-            content: Text(r.message),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('确定'),
-              ),
-            ],
-          ),
+        AppDialog.showAlert(
+          context,
+          title: '连接失败',
+          message: r.message,
+          closeLabel: '确定',
         );
       }
     } finally {
@@ -522,47 +487,23 @@ class _CanvasState extends State<_Canvas> {
 
   Future<void> _pickBackupFrequency() async {
     if (_saving) return;
-    final picked = await showModalBottomSheet<BackupFrequency>(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        return Container(
-          decoration: BoxDecoration(
-            color: context.appColors.surfaceCard,
-            borderRadius: AppRadii.br2xl,
-            boxShadow: AppShadows.lg,
+    final picked = await AppBottomSheet.showPicker<BackupFrequency>(
+      context,
+      title: '备份频率',
+      options: [
+        for (final frequency in BackupFrequency.values)
+          AppSheetOption(
+            label: backupFrequencyLabel(frequency),
+            value: frequency,
+            selected: _config.backupFrequency == frequency,
           ),
-          margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _FrequencyOption(
-                label: backupFrequencyLabel(BackupFrequency.daily),
-                selected: _config.backupFrequency == BackupFrequency.daily,
-                onTap: () => Navigator.of(context).pop(BackupFrequency.daily),
-              ),
-              const PrototypeDivider(color: AppColors.borderDivider),
-              _FrequencyOption(
-                label: backupFrequencyLabel(BackupFrequency.weekly),
-                selected: _config.backupFrequency == BackupFrequency.weekly,
-                onTap: () => Navigator.of(context).pop(BackupFrequency.weekly),
-              ),
-              const PrototypeDivider(color: AppColors.borderDivider),
-              _FrequencyOption(
-                label: backupFrequencyLabel(BackupFrequency.monthly),
-                selected: _config.backupFrequency == BackupFrequency.monthly,
-                onTap: () => Navigator.of(context).pop(BackupFrequency.monthly),
-              ),
-            ],
-          ),
-        );
-      },
+      ],
     );
     if (picked == null) return;
     final previous = _config;
     final next = _config.copyWith(backupFrequency: picked);
     setState(() => _config = next);
-    await _saveCloudSettings(next, fallback: previous);
+    await _saveWebDavSettings(next, fallback: previous);
   }
 
   Future<void> _restoreBackup(BackupHistoryEntry entry) async {
@@ -630,9 +571,7 @@ class _CanvasState extends State<_Canvas> {
           message: e.toString(),
         );
       });
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('恢复失败：$e')));
+      AppNotifier.error(context, '恢复失败：$e');
     } finally {
       if (mounted) {
         setState(() {
@@ -686,7 +625,7 @@ class _CanvasState extends State<_Canvas> {
 
   Future<void> _pickLocalBackupDirectory() async {
     try {
-      final pickedDir = await FilePicker.platform.getDirectoryPath(
+      final pickedDir = await AppPlatform.instance.pickDirectory(
         dialogTitle: '选择本地备份目录',
       );
       if (pickedDir == null || pickedDir.trim().isEmpty) return;
@@ -732,9 +671,7 @@ class _CanvasState extends State<_Canvas> {
       if (!directoryInfo.writable) {
         await _setLocalFailure('备份目录不可写：${directoryInfo.directory.path}');
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('备份目录不可写：${directoryInfo.directory.path}')),
-        );
+        AppNotifier.error(context, '备份目录不可写：${directoryInfo.directory.path}');
         return;
       }
       final file = await service.exportLocalBackupZip(
@@ -781,15 +718,11 @@ class _CanvasState extends State<_Canvas> {
         preferredOutputDir: _preferredLocalBackupDir,
       );
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('本地备份已导出到：${file.path}')));
+      AppNotifier.success(context, '本地备份已导出到：${file.path}');
     } catch (e) {
       await _setLocalFailure(e.toString());
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('本地备份失败：$e')));
+      AppNotifier.error(context, '本地备份失败：$e');
     } finally {
       if (mounted) {
         setState(() {
@@ -801,8 +734,7 @@ class _CanvasState extends State<_Canvas> {
   }
 
   Future<void> _pickLocalBackupZip() async {
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
+    final result = await AppPlatform.instance.pickFiles(
       allowedExtensions: const <String>['zip'],
       withData: false,
     );
@@ -830,9 +762,7 @@ class _CanvasState extends State<_Canvas> {
     if (!await File(localPath).exists()) {
       await _setLocalFailure('本地备份文件不存在：$localPath');
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('本地备份文件不存在')));
+      AppNotifier.error(context, '本地备份文件不存在');
       return;
     }
     await _restoreLocalZipFile(
@@ -846,24 +776,12 @@ class _CanvasState extends State<_Canvas> {
     required String displayName,
   }) async {
     if (_localRestoring) return;
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('确认导入恢复'),
-          content: Text('恢复将覆盖当前本地数据：$displayName'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('取消'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('继续恢复'),
-            ),
-          ],
-        );
-      },
+    final confirmed = await AppDialog.confirm(
+      context,
+      title: '确认导入恢复',
+      message: '恢复将覆盖当前本地数据：$displayName',
+      confirmLabel: '继续恢复',
+      danger: true,
     );
     if (confirmed != true || !mounted) return;
 
@@ -999,8 +917,8 @@ class _DriveExtraConfigCard extends StatelessWidget {
                         borderRadius: BorderRadius.circular(12),
                       ),
                       alignment: Alignment.center,
-                      child: FaIcon(
-                        FontAwesomeIcons.cloudArrowUp,
+                      child: Icon(
+                        AppIcons.cloudUpload,
                         size: 16,
                         color: config.webDavEnabled
                             ? context.appColors.stateSuccess
@@ -1035,14 +953,14 @@ class _DriveExtraConfigCard extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 16),
-                PrototypePrimaryButton(
+                AppPrimaryButton(
                   label: running ? '备份中' : '立即备份',
                   onTap: onBackup,
                 ),
               ],
             ),
           ),
-          const PrototypeDivider(color: AppColors.borderDivider),
+          const AppDivider(color: AppColors.borderDivider),
           _OptionRow(
             title: '自动备份',
             subtitle: '尚未提供后台定时备份，请使用立即备份',
@@ -1052,12 +970,12 @@ class _DriveExtraConfigCard extends StatelessWidget {
               semanticLabel: '自动备份',
             ),
           ),
-          const PrototypeDivider(color: AppColors.borderDivider),
+          const AppDivider(color: AppColors.borderDivider),
           _OptionRow(
             title: '备份频率',
             subtitle: backupFrequencyLabel(config.backupFrequency),
-            trailing: const FaIcon(
-              FontAwesomeIcons.chevronRight,
+            trailing: const Icon(
+              AppIcons.chevronRight,
               size: 10,
               color: AppColors.gray300,
             ),
@@ -1066,12 +984,12 @@ class _DriveExtraConfigCard extends StatelessWidget {
             semanticValue: backupFrequencyLabel(config.backupFrequency),
             semanticHint: '打开备份频率选择',
           ),
-          const PrototypeDivider(color: AppColors.borderDivider),
+          const AppDivider(color: AppColors.borderDivider),
           _OptionRow(
             title: 'WebDAV 配置',
             subtitle: webDavConfigured ? '已配置' : '未设置',
-            trailing: const FaIcon(
-              FontAwesomeIcons.chevronRight,
+            trailing: const Icon(
+              AppIcons.chevronRight,
               size: 10,
               color: AppColors.gray300,
             ),
@@ -1122,8 +1040,8 @@ class _LocalBackupSectionCard extends StatelessWidget {
     final pathStatusText = pathWritable == null
         ? '目录状态读取中…'
         : (pathWritable! ? (usingDefault ? '默认目录，可写' : '自定义目录，可写') : '目录不可写');
-    return PrototypeCard(
-      padding: const EdgeInsets.all(16),
+    return AppCard(
+      padding: AppLayout.pagePadding,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1137,8 +1055,8 @@ class _LocalBackupSectionCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 alignment: Alignment.center,
-                child: FaIcon(
-                  FontAwesomeIcons.hardDrive,
+                child: Icon(
+                  AppIcons.hardDrive,
                   size: 16,
                   color: context.appColors.textSecondary,
                 ),
@@ -1177,7 +1095,7 @@ class _LocalBackupSectionCard extends StatelessWidget {
           const SizedBox(height: 8),
           _BackupInfoLine(label: '状态', value: failureText),
           const SizedBox(height: 16),
-          PrototypeSecondaryButton(
+          AppSecondaryButton(
             label: '更改位置',
             onTap: onPickDirectory,
             semanticLabel: '更改本地备份保存位置',
@@ -1186,14 +1104,14 @@ class _LocalBackupSectionCard extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: PrototypeSecondaryButton(
+                child: AppSecondaryButton(
                   label: running && onExport == null ? '处理中' : '导出备份',
                   onTap: onExport,
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: PrototypeSecondaryButton(label: '导入恢复', onTap: onImport),
+                child: AppSecondaryButton(label: '导入恢复', onTap: onImport),
               ),
             ],
           ),
@@ -1226,13 +1144,13 @@ class _BackupStatusSummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return PrototypeCard(
-      padding: const EdgeInsets.all(16),
+    return AppCard(
+      padding: AppLayout.pagePadding,
       child: Column(
         children: [
           _BackupStatusTile(
-            icon: FontAwesomeIcons.cloudArrowUp,
-            title: 'WebDAV云端备份',
+            icon: AppIcons.cloudUpload,
+            title: 'WebDAV备份',
             statusText: cloudRunning
                 ? (runningText ?? '处理中…')
                 : (cloudLast == null
@@ -1243,10 +1161,10 @@ class _BackupStatusSummaryCard extends StatelessWidget {
                 : '最近失败：${_formatBackupTime(cloudFailure!.at)} • ${cloudFailure!.message}',
           ),
           const SizedBox(height: 12),
-          const PrototypeDivider(color: AppColors.borderDivider),
+          const AppDivider(color: AppColors.borderDivider),
           const SizedBox(height: 12),
           _BackupStatusTile(
-            icon: FontAwesomeIcons.hardDrive,
+            icon: AppIcons.hardDrive,
             title: '本地备份',
             statusText: localRunning
                 ? (localRunningText ?? '处理中…')
@@ -1289,7 +1207,7 @@ class _BackupStatusTile extends StatelessWidget {
             borderRadius: BorderRadius.circular(10),
           ),
           alignment: Alignment.center,
-          child: FaIcon(icon, size: 14, color: context.appColors.textSecondary),
+          child: Icon(icon, size: 14, color: context.appColors.textSecondary),
         ),
         const SizedBox(width: 12),
         Expanded(
@@ -1338,8 +1256,8 @@ class _BackupHistoryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return PrototypeCard(
-      padding: const EdgeInsets.all(16),
+    return AppCard(
+      padding: AppLayout.pagePadding,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1485,7 +1403,7 @@ class _WebDavConfigDialogState extends State<_WebDavConfigDialog> {
               enabled: !saving,
               onChanged: widget.onChangedBaseUrl,
             ),
-            const PrototypeDivider(color: AppColors.borderDivider),
+            const AppDivider(color: AppColors.borderDivider),
             _InputRow(
               title: '用户名',
               hintText: '请输入用户名',
@@ -1493,7 +1411,7 @@ class _WebDavConfigDialogState extends State<_WebDavConfigDialog> {
               enabled: !saving,
               onChanged: widget.onChangedUsername,
             ),
-            const PrototypeDivider(color: AppColors.borderDivider),
+            const AppDivider(color: AppColors.borderDivider),
             _InputRow(
               title: '密码',
               hintText: '请输入密码',
@@ -1506,7 +1424,7 @@ class _WebDavConfigDialogState extends State<_WebDavConfigDialog> {
               },
               onChanged: widget.onChangedPassword,
             ),
-            const PrototypeDivider(color: AppColors.borderDivider),
+            const AppDivider(color: AppColors.borderDivider),
             _InputRow(
               title: '远程目录',
               hintText: '（可选）例如：backup/newshangli',
@@ -1533,7 +1451,7 @@ class _WebDavConfigDialogState extends State<_WebDavConfigDialog> {
                   Row(
                     children: [
                       Expanded(
-                        child: PrototypeSecondaryButton(
+                        child: AppSecondaryButton(
                           label: saving ? '测试中' : '测试连接',
                           onTap: widget.onTest,
                           semanticLabel: '测试 WebDAV 连接',
@@ -1541,7 +1459,7 @@ class _WebDavConfigDialogState extends State<_WebDavConfigDialog> {
                       ),
                       const SizedBox(width: 12),
                       Expanded(
-                        child: PrototypePrimaryButton(
+                        child: AppPrimaryButton(
                           label: saving ? '保存中' : '保存配置',
                           onTap: widget.onSave,
                           semanticLabel: '保存 WebDAV 配置',
@@ -1580,7 +1498,6 @@ class _InputRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = context.appColors;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Column(
@@ -1595,54 +1512,28 @@ class _InputRow extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 8),
-          TextField(
-            controller: controller,
-            enabled: enabled,
-            obscureText: obscureText,
-            style: AppTypography.base(
-              fontSize: 13,
-              fontWeight: AppTypography.regular,
-              color: AppColors.textPrimary,
-            ),
-            decoration: InputDecoration(
-              hintText: hintText,
-              hintStyle: AppTypography.base(
-                fontSize: 13,
-                fontWeight: AppTypography.regular,
-                color: AppColors.textMuted,
+          AppForuiBoundary(
+            child: FTextField(
+              control: FTextFieldControl.managed(
+                controller: controller,
+                onChange: (value) => onChanged(value.text),
               ),
-              isDense: true,
-              filled: true,
-              fillColor: context.appColors.surfaceSubtle,
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 10,
-              ),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: colors.borderSubtle),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: colors.borderSubtle),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: colors.borderFocus),
-              ),
-              suffixIcon: onToggleObscure == null
+              enabled: enabled,
+              obscureText: obscureText,
+              hint: hintText,
+              suffixBuilder: onToggleObscure == null
                   ? null
-                  : IconButton(
-                      onPressed: enabled ? onToggleObscure : null,
-                      tooltip: obscureText ? '显示密码' : '隐藏密码',
-                      icon: Icon(
-                        obscureText ? Icons.visibility_off : Icons.visibility,
+                  : (context, style, variants) => FButton.icon(
+                      variant: .ghost,
+                      size: .sm,
+                      semanticsLabel: obscureText ? '显示密码' : '隐藏密码',
+                      onPress: enabled ? onToggleObscure : null,
+                      child: Icon(
+                        obscureText ? AppIcons.eyeOff : AppIcons.eye,
                         size: 18,
-                        color: colors.textSecondary,
                       ),
                     ),
             ),
-            onChanged: onChanged,
           ),
         ],
       ),
@@ -1681,8 +1572,8 @@ class _BackupHistoryItem extends StatelessWidget {
               borderRadius: BorderRadius.circular(10),
             ),
             alignment: Alignment.center,
-            child: FaIcon(
-              FontAwesomeIcons.fileLines,
+            child: Icon(
+              AppIcons.fileText,
               size: 16,
               color: context.appColors.textTertiary,
             ),
@@ -1702,7 +1593,7 @@ class _BackupHistoryItem extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  entry.target == BackupTarget.local ? '本地备份' : 'WebDAV云端备份',
+                  entry.target == BackupTarget.local ? '本地备份' : 'WebDAV备份',
                   style: AppTypography.base(
                     fontSize: 12,
                     fontWeight: AppTypography.regular,
@@ -1761,53 +1652,6 @@ class _BackupHistoryItem extends StatelessWidget {
   }
 }
 
-class _FrequencyOption extends StatelessWidget {
-  const _FrequencyOption({
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      selected: selected,
-      label: label,
-      child: ExcludeSemantics(
-        child: PrototypePressableRow(
-          onTap: onTap,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  label,
-                  style: AppTypography.base(
-                    fontSize: 14,
-                    fontWeight: AppTypography.medium,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-              ),
-              if (selected)
-                const FaIcon(
-                  FontAwesomeIcons.check,
-                  size: 14,
-                  color: AppColors.green500,
-                ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class _OptionRow extends StatelessWidget {
   const _OptionRow({
     required this.title,
@@ -1829,10 +1673,10 @@ class _OptionRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final row = PrototypePressableRow(
+    final row = AppPressableRow(
       onTap: onTap,
       borderBottom: true,
-      padding: const EdgeInsets.all(16),
+      padding: AppLayout.pagePadding,
       child: Row(
         children: [
           Expanded(

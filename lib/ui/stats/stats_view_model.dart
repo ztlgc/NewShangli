@@ -226,9 +226,6 @@ class StatsViewModel extends ChangeNotifier {
                 : row.record.eventName!.trim(),
             personName: row.person.name,
             personId: row.person.personId,
-            paymentMethod: (row.record.paymentMethod ?? '').trim().isEmpty
-                ? ''
-                : row.record.paymentMethod!.trim(),
             occurredAt: DateTime.fromMillisecondsSinceEpoch(
               row.record.occurredAt,
             ),

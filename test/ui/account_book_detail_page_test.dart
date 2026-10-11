@@ -40,7 +40,6 @@ void main() {
           amountCent: 88800,
           direction: const Value('收入'),
           eventName: const Value('结婚礼金'),
-          paymentMethod: const Value('微信'),
           occurredAt: now,
           createdAt: now,
           updatedAt: now,

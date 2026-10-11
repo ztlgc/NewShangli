@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import '../../data/local/drift/app_database.dart';
 import '../app_database_scope.dart';
@@ -7,9 +6,11 @@ import '../app_scaffold.dart';
 import '../app_tokens.dart';
 import '../components.dart';
 import '../navigation.dart';
-import '../prototype_kit.dart';
+import '../ui_kit.dart';
 import '../widgets/person_display_row.dart';
 import 'person_detail_page.dart';
+
+import '../app_icons.dart';
 
 class RelationTypeDetailPage extends StatelessWidget {
   const RelationTypeDetailPage({super.key, required this.type});
@@ -23,10 +24,10 @@ class RelationTypeDetailPage extends StatelessWidget {
       backgroundColor: AppColors.surfaceApp,
       body: Column(
         children: [
-          PrototypeTopBar(
+          AppTopBar(
             title: type.name,
-            left: PrototypeIconButton(
-              icon: const FaIcon(FontAwesomeIcons.chevronLeft, size: 14),
+            left: AppIconButton(
+              icon: const Icon(AppIcons.chevronLeft, size: 14),
               backgroundColor: AppColors.gray100,
               foregroundColor: AppColors.textSecondary,
               onPressed: () => AppNav.pop(context),
@@ -100,7 +101,7 @@ class _EmptyTypeContacts extends StatelessWidget {
       physics: const BouncingScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
       children: [
-        PrototypeCard(
+        AppCard(
           child: Center(
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 18),
@@ -145,7 +146,6 @@ class _TypeContactRowState extends State<_TypeContactRow> {
       onTap: () => AppNav.push(
         context,
         PersonDetailPage(personId: widget.person.personId),
-        requiresLogin: true,
       ),
       onTapDown: (_) => _setPressed(true),
       onTapUp: (_) => _setPressed(false),

@@ -15,7 +15,6 @@ class LedgerPrintRow {
     required this.amountCent,
     required this.personName,
     this.eventName = '',
-    this.paymentMethod = '',
     this.note = '',
   }) : assert(direction == '收入' || direction == '支出');
 
@@ -28,7 +27,6 @@ class LedgerPrintRow {
   final int amountCent;
   final String personName;
   final String eventName;
-  final String paymentMethod;
   final String note;
 
   bool get isIncome => direction == '收入';
@@ -404,11 +402,10 @@ class LedgerPdfService {
         1: pw.FixedColumnWidth(56),
         2: pw.FixedColumnWidth(86),
         3: pw.FixedColumnWidth(52),
-        4: pw.FixedColumnWidth(38),
+        4: pw.FixedColumnWidth(48),
         5: pw.FixedColumnWidth(48),
-        6: pw.FixedColumnWidth(48),
-        7: pw.FixedColumnWidth(52),
-        8: pw.FlexColumnWidth(),
+        6: pw.FixedColumnWidth(52),
+        7: pw.FlexColumnWidth(),
       },
       border: pw.TableBorder(
         left: const pw.BorderSide(color: _rule, width: 0.6),
@@ -449,10 +446,6 @@ class LedgerPdfService {
         ),
         _cell(
           child: pw.Text('关系人', style: style, textAlign: pw.TextAlign.center),
-          alignment: pw.Alignment.center,
-        ),
-        _cell(
-          child: pw.Text('支付方式', style: style, textAlign: pw.TextAlign.center),
           alignment: pw.Alignment.center,
         ),
         _cell(
@@ -515,14 +508,6 @@ class LedgerPdfService {
         _cell(child: pw.Text(row.personName, style: style, maxLines: 1)),
         _cell(
           child: pw.Text(
-            row.paymentMethod.isEmpty ? '—' : row.paymentMethod,
-            style: muted,
-            textAlign: pw.TextAlign.center,
-          ),
-          alignment: pw.Alignment.center,
-        ),
-        _cell(
-          child: pw.Text(
             row.isIncome ? _formatYuan(row.amountCent) : '',
             style: moneyStyle,
             textAlign: pw.TextAlign.right,
@@ -573,7 +558,6 @@ class LedgerPdfService {
         _cell(child: pw.SizedBox()),
         _cell(child: pw.Text('本页小计', style: style)),
         _cell(child: pw.SizedBox()),
-        _cell(child: pw.SizedBox()),
         _cell(
           child: pw.Text(
             incomeCent == 0 ? '' : _formatYuan(incomeCent),
@@ -620,7 +604,6 @@ class LedgerPdfService {
         _cell(child: pw.SizedBox()),
         _cell(child: pw.Text('本期合计（$recordCount 笔）', style: style)),
         _cell(child: pw.SizedBox()),
-        _cell(child: pw.SizedBox()),
         _cell(
           child: pw.Text(
             incomeCent == 0 ? '' : _formatYuan(incomeCent),
@@ -663,7 +646,6 @@ class LedgerPdfService {
         _cell(child: pw.SizedBox()),
         _cell(child: pw.SizedBox()),
         _cell(child: pw.Text(label, style: style)),
-        _cell(child: pw.SizedBox()),
         _cell(child: pw.SizedBox()),
         _cell(child: pw.SizedBox(), amountLeftRule: true),
         _cell(child: pw.SizedBox()),

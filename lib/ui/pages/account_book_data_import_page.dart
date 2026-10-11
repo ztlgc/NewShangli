@@ -1,9 +1,10 @@
 import 'dart:io';
-import 'package:path_provider/path_provider.dart';
+
 import '../../import/data_import_service.dart';
 import '../../import/import_value_codec.dart';
+
 import 'package:flutter/material.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:forui/forui.dart';
 
 import '../app_database_scope.dart';
 import '../app_dialog.dart';
@@ -12,7 +13,13 @@ import '../app_scaffold.dart';
 import '../app_tokens.dart';
 import '../components.dart';
 import '../navigation.dart';
-import '../prototype_kit.dart';
+import '../ui_kit.dart';
+
+import '../app_icons.dart';
+
+import '../../platform/app_platform.dart';
+
+import '../app_layout.dart';
 
 class AccountBookDataImportPage extends StatefulWidget {
   const AccountBookDataImportPage({
@@ -45,37 +52,13 @@ class _AccountBookDataImportPageState extends State<AccountBookDataImportPage> {
       backgroundColor: AppColors.surfaceApp,
       body: Column(
         children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: context.appColors.surfaceCard,
-              border: Border(
-                bottom: BorderSide(
-                  color: context.appColors.surfaceSubtle,
-                  width: 1,
-                ),
-              ),
-            ),
-            child: Row(
-              children: [
-                PrototypeIconButton(
-                  icon: const FaIcon(FontAwesomeIcons.arrowLeft, size: 16),
-                  backgroundColor: AppColors.indigo50,
-                  foregroundColor: AppColors.indigo700,
-                  onPressed: () => AppNav.pop(context),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    '账簿数据导入',
-                    style: AppTypography.base(
-                      fontSize: 18,
-                      fontWeight: AppTypography.bold,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                ),
-              ],
+          AppTopBar(
+            title: '账簿数据导入',
+            left: AppIconButton(
+              icon: const Icon(AppIcons.arrowLeft, size: 16),
+              backgroundColor: AppColors.indigo50,
+              foregroundColor: AppColors.indigo700,
+              onPressed: () => AppNav.pop(context),
             ),
           ),
           Expanded(
@@ -83,7 +66,7 @@ class _AccountBookDataImportPageState extends State<AccountBookDataImportPage> {
               padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
               children: [
                 Container(
-                  padding: const EdgeInsets.all(16),
+                  padding: AppLayout.pagePadding,
                   decoration: BoxDecoration(
                     color: context.appColors.surfaceCard,
                     borderRadius: AppRadii.br2xl,
@@ -104,8 +87,8 @@ class _AccountBookDataImportPageState extends State<AccountBookDataImportPage> {
                               ),
                             ),
                             alignment: Alignment.center,
-                            child: const FaIcon(
-                              FontAwesomeIcons.paste,
+                            child: const Icon(
+                              AppIcons.clipboardPaste,
                               size: 20,
                               color: AppColors.orange600,
                             ),
@@ -142,42 +125,13 @@ class _AccountBookDataImportPageState extends State<AccountBookDataImportPage> {
                         ),
                       ),
                       const SizedBox(height: 8),
-                      TextField(
-                        controller: _textCtrl,
+                      FTextField(
+                        control: FTextFieldControl.managed(
+                          controller: _textCtrl,
+                        ),
                         minLines: 12,
                         maxLines: 16,
-                        decoration: InputDecoration(
-                          hintText: '例如：\n王小明 500元\n李华, 800 (同事)\n赵大宝 1000',
-                          hintStyle: AppTypography.base(
-                            fontSize: 14,
-                            fontWeight: AppTypography.regular,
-                            color: AppColors.textMuted,
-                          ),
-                          filled: true,
-                          fillColor: context.appColors.surfaceCard,
-                          contentPadding: const EdgeInsets.all(14),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(14),
-                            borderSide: const BorderSide(
-                              color: AppColors.orange100,
-                              width: 1.5,
-                            ),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(14),
-                            borderSide: const BorderSide(
-                              color: AppColors.orange100,
-                              width: 1.5,
-                            ),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(14),
-                            borderSide: const BorderSide(
-                              color: AppColors.orange500,
-                              width: 1.5,
-                            ),
-                          ),
-                        ),
+                        hint: '例如：\n王小明 500元\n李华, 800 (同事)\n赵大宝 1000',
                       ),
                       const SizedBox(height: 12),
                       Container(
@@ -190,8 +144,8 @@ class _AccountBookDataImportPageState extends State<AccountBookDataImportPage> {
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const FaIcon(
-                              FontAwesomeIcons.circleInfo,
+                            const Icon(
+                              AppIcons.info,
                               size: 14,
                               color: AppColors.orange600,
                             ),
@@ -212,7 +166,7 @@ class _AccountBookDataImportPageState extends State<AccountBookDataImportPage> {
                       const SizedBox(height: 16),
                       SizedBox(
                         width: double.infinity,
-                        child: PrototypePrimaryButton(
+                        child: AppPrimaryButton(
                           label: _submitting ? '导入中...' : '立即解析并导入',
                           onTap: _submitting ? null : _handleImport,
                         ),
@@ -220,7 +174,7 @@ class _AccountBookDataImportPageState extends State<AccountBookDataImportPage> {
                       const SizedBox(height: 8),
                       SizedBox(
                         width: double.infinity,
-                        child: PrototypeSecondaryButton(
+                        child: AppSecondaryButton(
                           label: '查看支持的格式范例',
                           onTap: _showExamples,
                         ),
@@ -268,7 +222,7 @@ class _AccountBookDataImportPageState extends State<AccountBookDataImportPage> {
           ? DateTime.fromMillisecondsSinceEpoch(book.bookTime)
           : DateTime(today.year, today.month, today.day);
       final rows = <List<String>>[
-        ['数据类型', '关系人姓名', '金额(元)', '收支方向', '事由', '发生时间', '支付方式', '备注'],
+        ['数据类型', '关系人姓名', '金额(元)', '收支方向', '事由', '发生时间', '备注'],
       ];
       final invalidLines = <int>[];
       final lines = text.split(RegExp(r'\r?\n'));
@@ -286,7 +240,6 @@ class _AccountBookDataImportPageState extends State<AccountBookDataImportPage> {
           '收入',
           book.reasonType.isEmpty ? '粘贴导入' : book.reasonType,
           date.toIso8601String(),
-          '未设置',
           parsed.note ?? '',
         ]);
       }
@@ -295,7 +248,7 @@ class _AccountBookDataImportPageState extends State<AccountBookDataImportPage> {
       }
       if (rows.length == 1) throw const FormatException('未识别到有效行');
       String cell(String value) => '"${value.replaceAll('"', '""')}"';
-      final directory = await getTemporaryDirectory();
+      final directory = await AppPlatform.temporaryDirectory();
       temporary = File(
         '${directory.path}${Platform.pathSeparator}shangli_paste_${db.newId()}.csv',
       );

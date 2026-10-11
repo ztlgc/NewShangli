@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forui/forui.dart';
 
 import '../../security/edit_protection.dart';
 import '../app_dialog.dart';
@@ -7,7 +8,11 @@ import '../app_scaffold.dart';
 import '../app_tokens.dart';
 import '../components.dart';
 import '../navigation.dart';
-import '../prototype_kit.dart';
+import '../ui_kit.dart';
+
+import '../app_icons.dart';
+
+import '../app_layout.dart';
 
 class EditProtectionPage extends StatelessWidget {
   const EditProtectionPage({super.key});
@@ -74,10 +79,7 @@ class _CanvasState extends State<_Canvas> {
       if (!mounted) return;
       setState(() => _config = c);
       if (mounted) {
-        AppNotifier.success(
-          context,
-          value ? '编辑保护已开启' : '编辑保护已关闭',
-        );
+        AppNotifier.success(context, value ? '编辑保护已开启' : '编辑保护已关闭');
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -175,49 +177,23 @@ class _CanvasState extends State<_Canvas> {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: BoxDecoration(
-            color: context.appColors.surfaceCard,
-            border: Border(
-              bottom: BorderSide(
-                color: context.appColors.surfaceSubtle,
-                width: 1,
-              ),
-            ),
-          ),
-          child: Row(
-            children: [
-              PrototypeIconButton(
-                icon: const Icon(Icons.arrow_back, size: 18),
-                backgroundColor: Colors.transparent,
-                foregroundColor: AppColors.textPrimary,
-                onPressed: _busy ? null : () => AppNav.pop(context),
-              ),
-              Expanded(
-                child: Center(
-                  child: Text(
-                    '编辑保护',
-                    style: AppTypography.base(
-                      fontSize: 18,
-                      fontWeight: AppTypography.bold,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 36, height: 36),
-            ],
+        AppTopBar(
+          title: '编辑保护',
+          left: AppIconButton(
+            icon: const Icon(AppIcons.arrowLeft, size: 18),
+            backgroundColor: Colors.transparent,
+            foregroundColor: AppColors.textPrimary,
+            onPressed: _busy ? null : () => AppNav.pop(context),
           ),
         ),
         Expanded(
           child: _loading
               ? const Center(child: CircularProgressIndicator())
               : ListView(
-                  padding: const EdgeInsets.all(16),
+                  padding: AppLayout.pagePadding,
                   children: [
-                    PrototypeCard(
-                      padding: const EdgeInsets.all(16),
+                    AppCard(
+                      padding: AppLayout.pagePadding,
                       child: Row(
                         children: [
                           Expanded(
@@ -230,19 +206,19 @@ class _CanvasState extends State<_Canvas> {
                               ),
                             ),
                           ),
-                          Switch.adaptive(
+                          FSwitch(
                             value: _config.enabled,
-                            onChanged: _busy ? null : _toggleEnabled,
+                            onChange: _busy ? null : _toggleEnabled,
                           ),
                         ],
                       ),
                     ),
                     const SizedBox(height: 16),
-                    PrototypeCard(
+                    AppCard(
                       padding: EdgeInsets.zero,
                       child: Column(
                         children: [
-                          PrototypePressableRow(
+                          AppPressableRow(
                             onTap: _busy ? null : _changePassword,
                             child: Row(
                               children: [
@@ -257,17 +233,15 @@ class _CanvasState extends State<_Canvas> {
                                   ),
                                 ),
                                 const Icon(
-                                  Icons.chevron_right,
+                                  AppIcons.chevronRight,
                                   size: 18,
                                   color: AppColors.gray300,
                                 ),
                               ],
                             ),
                           ),
-                          const PrototypeDivider(
-                            color: AppColors.borderDivider,
-                          ),
-                          PrototypePressableRow(
+                          const AppDivider(color: AppColors.borderDivider),
+                          AppPressableRow(
                             onTap: _busy ? null : () => _toggleEnabled(false),
                             borderBottom: false,
                             child: Row(
@@ -283,7 +257,7 @@ class _CanvasState extends State<_Canvas> {
                                   ),
                                 ),
                                 const Icon(
-                                  Icons.chevron_right,
+                                  AppIcons.chevronRight,
                                   size: 18,
                                   color: AppColors.gray300,
                                 ),

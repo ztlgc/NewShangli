@@ -1,10 +1,13 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:forui/forui.dart';
 
 import 'app_notification_tokens.dart';
+import 'app_forui_theme.dart';
 import 'app_tokens.dart';
+
+import 'app_icons.dart';
 
 /// 统一 Toast 通知
 ///
@@ -59,7 +62,8 @@ class AppToast {
     _currentEntry = null;
 
     // 2. 解析显示时长
-    final effectiveDuration = duration ?? _defaultDurationFor(tone, actionLabel);
+    final effectiveDuration =
+        duration ?? _defaultDurationFor(tone, actionLabel);
 
     // 3. 解析图标
     final effectiveIcon = icon ?? _defaultIconFor(tone);
@@ -107,7 +111,9 @@ class AppToast {
       // 防御性 stop：避免测试中 ticker 已经被释放
       try {
         controller.stop();
-      } catch (_) {/* ticker 已释放 */}
+      } catch (_) {
+        /* ticker 已释放 */
+      }
     }
     _enterController = null;
     _currentEntry?.remove();
@@ -138,15 +144,15 @@ class AppToast {
   static IconData _defaultIconFor(AppNotificationTone tone) {
     switch (tone) {
       case AppNotificationTone.success:
-        return FontAwesomeIcons.check;
+        return AppIcons.check;
       case AppNotificationTone.warning:
-        return FontAwesomeIcons.triangleExclamation;
+        return AppIcons.triangleAlert;
       case AppNotificationTone.error:
-        return FontAwesomeIcons.circleXmark;
+        return AppIcons.circleX;
       case AppNotificationTone.info:
-        return FontAwesomeIcons.circleInfo;
+        return AppIcons.info;
       case AppNotificationTone.neutral:
-        return FontAwesomeIcons.bell;
+        return AppIcons.bell;
     }
   }
 }
@@ -244,95 +250,90 @@ class _AppToastHostState extends State<_AppToastHost>
                     child: Semantics(
                       liveRegion: true,
                       label: _semanticsLabel(),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: colors.surfaceCard,
-                          borderRadius: BorderRadius.circular(
-                            AppNotificationTokens.containerRadius,
-                          ),
-                          boxShadow: AppShadows.lg,
-                          border: Border.all(color: colors.borderSubtle),
-                        ),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            // 左侧状态色竖条（4px）
-                            Container(
-                              width: 4,
-                              height: 56,
-                              decoration: BoxDecoration(
-                                color: toneFg,
-                                borderRadius: const BorderRadius.only(
-                                  topLeft: Radius.circular(
-                                    AppNotificationTokens.containerRadius,
-                                  ),
-                                  bottomLeft: Radius.circular(
-                                    AppNotificationTokens.containerRadius,
+                      child: AppForuiBoundary(
+                        child: FCard(
+                          clipBehavior: Clip.antiAlias,
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              // 左侧状态色竖条（4px）
+                              Container(
+                                width: 4,
+                                height: 56,
+                                decoration: BoxDecoration(
+                                  color: toneFg,
+                                  borderRadius: const BorderRadius.only(
+                                    topLeft: Radius.circular(
+                                      AppNotificationTokens.containerRadius,
+                                    ),
+                                    bottomLeft: Radius.circular(
+                                      AppNotificationTokens.containerRadius,
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
-                            const SizedBox(width: 10),
-                            // 圆形软色图标头
-                            _ToastIconWell(
-                              background: toneSoft,
-                              foreground: toneOnSoft,
-                              icon: widget.icon,
-                            ),
-                            const SizedBox(width: 10),
-                            // 文案（标题可选）
-                            Expanded(
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 10,
-                                ),
-                                child: Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.start,
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    if (widget.title != null &&
-                                        widget.title!.isNotEmpty) ...[
+                              const SizedBox(width: 10),
+                              // 圆形软色图标头
+                              _ToastIconWell(
+                                background: toneSoft,
+                                foreground: toneOnSoft,
+                                icon: widget.icon,
+                              ),
+                              const SizedBox(width: 10),
+                              // 文案（标题可选）
+                              Expanded(
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 10,
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      if (widget.title != null &&
+                                          widget.title!.isNotEmpty) ...[
+                                        Text(
+                                          widget.title!,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: AppTypography.base(
+                                            fontSize: AppTypography.fs16,
+                                            fontWeight: AppTypography.bold,
+                                            color: colors.textPrimary,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 2),
+                                      ],
                                       Text(
-                                        widget.title!,
-                                        maxLines: 1,
+                                        widget.message,
+                                        maxLines: 2,
                                         overflow: TextOverflow.ellipsis,
                                         style: AppTypography.base(
-                                          fontSize: AppTypography.fs16,
-                                          fontWeight: AppTypography.bold,
-                                          color: colors.textPrimary,
+                                          fontSize: AppTypography.fs14,
+                                          fontWeight: AppTypography.regular,
+                                          color: widget.title != null
+                                              ? colors.textSecondary
+                                              : colors.textPrimary,
                                         ),
                                       ),
-                                      const SizedBox(height: 2),
                                     ],
-                                    Text(
-                                      widget.message,
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: AppTypography.base(
-                                        fontSize: AppTypography.fs14,
-                                        fontWeight: AppTypography.regular,
-                                        color: widget.title != null
-                                            ? colors.textSecondary
-                                            : colors.textPrimary,
-                                      ),
-                                    ),
-                                  ],
+                                  ),
                                 ),
                               ),
-                            ),
-                            // 主操作（可选）
-                            if (widget.actionLabel != null &&
-                                widget.onAction != null) ...[
-                              const SizedBox(width: 4),
-                              _ToastActionButton(
-                                label: widget.actionLabel!,
-                                onTap: widget.onAction!,
-                                foreground: toneFg,
-                              ),
+                              // 主操作（可选）
+                              if (widget.actionLabel != null &&
+                                  widget.onAction != null) ...[
+                                const SizedBox(width: 4),
+                                _ToastActionButton(
+                                  label: widget.actionLabel!,
+                                  onTap: widget.onAction!,
+                                  foreground: toneFg,
+                                ),
+                              ],
+                              const SizedBox(width: 8),
                             ],
-                            const SizedBox(width: 8),
-                          ],
+                          ),
                         ),
                       ),
                     ),
@@ -371,12 +372,13 @@ class _ToastIconWell extends StatelessWidget {
     return Container(
       width: AppNotificationTokens.toastIconSize,
       height: AppNotificationTokens.toastIconSize,
-      decoration: BoxDecoration(
-        color: background,
-        shape: BoxShape.circle,
-      ),
+      decoration: BoxDecoration(color: background, shape: BoxShape.circle),
       alignment: Alignment.center,
-      child: FaIcon(icon, size: AppNotificationTokens.toastIconGlyphSize, color: foreground),
+      child: Icon(
+        icon,
+        size: AppNotificationTokens.toastIconGlyphSize,
+        color: foreground,
+      ),
     );
   }
 }
@@ -395,24 +397,13 @@ class _ToastActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      label: label,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-          child: Text(
-            label,
-            style: AppTypography.base(
-              fontSize: AppTypography.fs14,
-              fontWeight: AppTypography.semibold,
-              color: foreground,
-            ),
-          ),
-        ),
-      ),
+    return FButton(
+      variant: .ghost,
+      size: .sm,
+      mainAxisSize: MainAxisSize.min,
+      onPress: onTap,
+      semanticsLabel: label,
+      child: Text(label, style: TextStyle(color: foreground)),
     );
   }
 }

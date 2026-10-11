@@ -2,16 +2,15 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:forui/forui.dart';
 import 'package:dotted_border/dotted_border.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'package:file_picker/file_picker.dart';
-import 'package:share_plus/share_plus.dart';
 
 import '../../data/local/drift/app_database.dart';
 import '../../import/data_import_service.dart';
 import '../../import/data_import_template_service.dart';
 import '../../import/default_book_service.dart';
 import '../../import/import_file_reader.dart';
+import '../app_bottom_sheet.dart';
 import '../app_database_scope.dart';
 import '../app_notifier.dart';
 import '../app_dialog.dart';
@@ -19,7 +18,13 @@ import '../app_tokens.dart';
 import '../app_scaffold.dart';
 import '../components.dart';
 import '../navigation.dart';
-import '../prototype_kit.dart';
+import '../ui_kit.dart';
+
+import '../app_icons.dart';
+
+import '../../platform/app_platform.dart';
+
+import '../app_layout.dart';
 
 class DataImportPage extends StatelessWidget {
   const DataImportPage({super.key, this.initialBookId});
@@ -53,8 +58,8 @@ class _CanvasState extends State<_Canvas> {
   late Future<String> _bookIdFuture;
   bool _dbInitialized = false;
 
-  PlatformFile? _picked;
-  PlatformFile? _mediaZip;
+  AppPickedFile? _picked;
+  AppPickedFile? _mediaZip;
   ImportPreview? _preview;
   bool _loadingPreview = false;
   bool _startingImport = false;
@@ -79,7 +84,6 @@ class _CanvasState extends State<_Canvas> {
     '关系人姓名',
     '关系人关系',
     '手机号',
-    '支付方式',
     '发生时间',
     '备注',
     '头像文件名',
@@ -115,8 +119,7 @@ class _CanvasState extends State<_Canvas> {
   }
 
   Future<void> _pickFile() async {
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
+    final result = await AppPlatform.instance.pickFiles(
       allowedExtensions: const <String>['xlsx', 'csv'],
       withData: false,
     );
@@ -124,9 +127,7 @@ class _CanvasState extends State<_Canvas> {
     if (result == null || result.files.isEmpty) return;
     final f = result.files.first;
     if (f.path == null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('无法读取文件路径，请重试')));
+      AppNotifier.warning(context, '无法读取文件路径，请重试');
       return;
     }
 
@@ -160,8 +161,7 @@ class _CanvasState extends State<_Canvas> {
   }
 
   Future<void> _pickMediaZip() async {
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
+    final result = await AppPlatform.instance.pickFiles(
       allowedExtensions: const <String>['zip'],
       withData: false,
     );
@@ -185,39 +185,28 @@ class _CanvasState extends State<_Canvas> {
   }
 
   Future<void> _downloadTemplate() async {
-    final choice = await showModalBottomSheet<DataImportTemplateFormat>(
-      context: context,
-      showDragHandle: true,
-      builder: (context) {
-        return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                leading: const FaIcon(FontAwesomeIcons.fileExcel, size: 18),
-                title: const Text('Excel 模板 (.xlsx)'),
-                onTap: () =>
-                    Navigator.of(context).pop(DataImportTemplateFormat.xlsx),
-              ),
-              ListTile(
-                leading: const FaIcon(FontAwesomeIcons.fileCsv, size: 18),
-                title: const Text('CSV 模板 (.csv)'),
-                onTap: () =>
-                    Navigator.of(context).pop(DataImportTemplateFormat.csv),
-              ),
-            ],
-          ),
-        );
-      },
+    final choice = await AppBottomSheet.showPicker<DataImportTemplateFormat>(
+      context,
+      title: '下载导入模板',
+      options: const [
+        AppSheetOption(
+          label: 'Excel 模板 (.xlsx)',
+          value: DataImportTemplateFormat.xlsx,
+          icon: AppIcons.fileSpreadsheet,
+        ),
+        AppSheetOption(
+          label: 'CSV 模板 (.csv)',
+          value: DataImportTemplateFormat.csv,
+          icon: AppIcons.fileSpreadsheet,
+        ),
+      ],
     );
     if (!mounted || choice == null) return;
 
     try {
       final file = await _templateService.generateTemplate(format: choice);
       if (!mounted) return;
-      await SharePlus.instance.share(
-        ShareParams(files: [XFile(file.path)], text: '尚礼导入模板'),
-      );
+      await AppPlatform.instance.shareFile(file.path, text: '尚礼导入模板');
     } catch (e) {
       if (!mounted) return;
       AppNotifier.error(context, '模板生成失败：$e');
@@ -227,53 +216,47 @@ class _CanvasState extends State<_Canvas> {
   Future<void> _showHistorySheet() async {
     final bookId = await _bookIdFuture;
     if (!mounted) return;
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      builder: (context) {
-        return SafeArea(
-          child: SizedBox(
-            height: MediaQuery.sizeOf(context).height * 0.7,
-            child: StreamBuilder<List<DataImportJob>>(
-              stream: _db.dataImportJobsDao.watchRecentInBook(
-                bookId,
-                limit: 50,
-              ),
-              builder: (context, snapshot) {
-                final list = snapshot.data ?? const <DataImportJob>[];
-                if (list.isEmpty) {
-                  return const Center(child: Text('暂无导入历史'));
-                }
-                return ListView.separated(
-                  itemCount: list.length,
-                  separatorBuilder: (context, index) =>
-                      const Divider(height: 1),
-                  itemBuilder: (context, i) {
-                    final job = list[i];
-                    return ListTile(
-                      title: Text(job.fileName),
-                      subtitle: Text(
-                        '状态：${job.status}  成功：${job.successRows}  跳过：${job.skippedRows}  失败：${job.failedRows}',
-                      ),
-                      trailing:
-                          (job.status == DataImportStatus.paused.name ||
-                              job.status == DataImportStatus.failed.name)
-                          ? TextButton(
-                              onPressed: () async {
-                                Navigator.of(context).pop();
-                                await _startJob(job.jobId);
-                              },
-                              child: const Text('继续'),
-                            )
-                          : null,
-                    );
-                  },
+    await AppBottomSheet.show<void>(
+      context,
+      title: '导入历史',
+      child: SizedBox(
+        height: MediaQuery.sizeOf(context).height * 0.7,
+        child: StreamBuilder<List<DataImportJob>>(
+          stream: _db.dataImportJobsDao.watchRecentInBook(bookId, limit: 50),
+          builder: (context, snapshot) {
+            final list = snapshot.data ?? const <DataImportJob>[];
+            if (list.isEmpty) {
+              return const Center(child: Text('暂无导入历史'));
+            }
+            return ListView.separated(
+              itemCount: list.length,
+              separatorBuilder: (context, index) => const Divider(height: 1),
+              itemBuilder: (context, i) {
+                final job = list[i];
+                return FTile(
+                  title: Text(job.fileName),
+                  subtitle: Text(
+                    '状态：${job.status}  成功：${job.successRows}  跳过：${job.skippedRows}  失败：${job.failedRows}',
+                  ),
+                  suffix:
+                      (job.status == DataImportStatus.paused.name ||
+                          job.status == DataImportStatus.failed.name)
+                      ? FButton(
+                          variant: .ghost,
+                          size: .sm,
+                          onPress: () async {
+                            Navigator.of(context).pop();
+                            await _startJob(job.jobId);
+                          },
+                          child: const Text('继续'),
+                        )
+                      : null,
                 );
               },
-            ),
-          ),
-        );
-      },
+            );
+          },
+        ),
+      ),
     );
   }
 
@@ -429,46 +412,20 @@ class _CanvasState extends State<_Canvas> {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: BoxDecoration(
-            color: context.appColors.surfaceCard,
-            border: Border(
-              bottom: BorderSide(
-                color: context.appColors.surfaceSubtle,
-                width: 1,
-              ),
-            ),
-          ),
-          child: Row(
-            children: [
-              PrototypeIconButton(
-                icon: const FaIcon(FontAwesomeIcons.arrowLeft, size: 18),
-                backgroundColor: Colors.transparent,
-                foregroundColor: AppColors.textPrimary,
-                onPressed: () => AppNav.pop(context),
-              ),
-              Expanded(
-                child: Center(
-                  child: Text(
-                    '导入数据',
-                    style: AppTypography.base(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 40),
-            ],
+        AppTopBar(
+          title: '导入数据',
+          left: AppIconButton(
+            icon: const Icon(AppIcons.arrowLeft, size: 18),
+            backgroundColor: Colors.transparent,
+            foregroundColor: AppColors.textPrimary,
+            onPressed: () => AppNav.pop(context),
           ),
         ),
         Expanded(
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
+            padding: AppLayout.tabContentPadding,
             children: [
-              PrototypeCard(
+              AppCard(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -485,14 +442,14 @@ class _CanvasState extends State<_Canvas> {
                     Row(
                       children: [
                         Expanded(
-                          child: PrototypeSecondaryButton(
+                          child: AppSecondaryButton(
                             label: '下载模板',
                             onTap: _downloadTemplate,
                           ),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
-                          child: PrototypeSecondaryButton(
+                          child: AppSecondaryButton(
                             label: '导入历史',
                             onTap: _showHistorySheet,
                           ),
@@ -503,7 +460,7 @@ class _CanvasState extends State<_Canvas> {
                 ),
               ),
               const SizedBox(height: 16),
-              PrototypeCard(
+              AppCard(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -531,7 +488,7 @@ class _CanvasState extends State<_Canvas> {
                 ),
               ),
               const SizedBox(height: 16),
-              PrototypeCard(
+              AppCard(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -555,7 +512,7 @@ class _CanvasState extends State<_Canvas> {
                 ),
               ),
               const SizedBox(height: 16),
-              PrototypeCard(
+              AppCard(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -607,11 +564,11 @@ class _CanvasState extends State<_Canvas> {
                     Row(
                       children: [
                         Expanded(
-                          child: PrototypePrimaryButton(
+                          child: AppPrimaryButton(
                             label: _progress?.status == DataImportStatus.paused
                                 ? '已暂停'
                                 : (_isImportBusy ? '导入中...' : '开始导入'),
-                            icon: FontAwesomeIcons.play,
+                            icon: AppIcons.play,
                             onTap:
                                 (_preview == null ||
                                     _picked?.path == null ||
@@ -622,7 +579,7 @@ class _CanvasState extends State<_Canvas> {
                         ),
                         const SizedBox(width: 12),
                         Expanded(
-                          child: PrototypeSecondaryButton(
+                          child: AppSecondaryButton(
                             label: _progress?.status == DataImportStatus.running
                                 ? '暂停'
                                 : '取消',
@@ -653,7 +610,7 @@ class _CanvasState extends State<_Canvas> {
               ),
               if ((_logTail ?? '').trim().isNotEmpty) ...[
                 const SizedBox(height: 16),
-                PrototypeCard(
+                AppCard(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -673,7 +630,7 @@ class _CanvasState extends State<_Canvas> {
               ],
               if (_errors.isNotEmpty) ...[
                 const SizedBox(height: 16),
-                PrototypeCard(
+                AppCard(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -732,7 +689,7 @@ class _UploadArea extends StatelessWidget {
         ),
         child: Container(
           width: double.infinity,
-          padding: const EdgeInsets.all(16),
+          padding: AppLayout.pagePadding,
           decoration: BoxDecoration(
             color: context.appColors.surfaceSubtle,
             borderRadius: BorderRadius.circular(16),
@@ -753,8 +710,8 @@ class _UploadArea extends StatelessWidget {
                         height: 18,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : FaIcon(
-                        FontAwesomeIcons.fileArrowUp,
+                    : Icon(
+                        AppIcons.fileUp,
                         size: 18,
                         color: context.appColors.brandOnSoft,
                       ),
@@ -787,8 +744,8 @@ class _UploadArea extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              const FaIcon(
-                FontAwesomeIcons.chevronRight,
+              const Icon(
+                AppIcons.chevronRight,
                 size: 14,
                 color: AppColors.textTertiary,
               ),
@@ -815,25 +772,7 @@ class _MappingPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final items = <DropdownMenuItem<String?>>[
-      DropdownMenuItem<String?>(
-        value: null,
-        child: Text(
-          '不导入',
-          style: AppTypography.base(
-            fontSize: AppTypography.fs14,
-            fontWeight: AppTypography.regular,
-            color: AppColors.textSecondary,
-          ),
-        ),
-      ),
-      ...headers.map(
-        (h) => DropdownMenuItem<String?>(
-          value: h,
-          child: Text(h, overflow: TextOverflow.ellipsis),
-        ),
-      ),
-    ];
+    final items = <String, String>{'不导入': '', for (final h in headers) h: h};
 
     return Column(
       children: [
@@ -855,18 +794,14 @@ class _MappingPanel extends StatelessWidget {
                 const SizedBox(width: 12),
                 SizedBox(
                   width: 180,
-                  child: DropdownButtonFormField<String?>(
-                    isExpanded: true,
-                    initialValue: mapping[f],
+                  child: FSelect<String>(
                     items: items,
-                    onChanged: (v) => onChanged(f, v),
-                    decoration: const InputDecoration(
-                      isDense: true,
-                      contentPadding: EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 10,
+                    control: FSelectControl.lifted(
+                      value: mapping[f] ?? '',
+                      onChange: (value) => onChanged(
+                        f,
+                        value == null || value.isEmpty ? null : value,
                       ),
-                      border: OutlineInputBorder(),
                     ),
                   ),
                 ),

@@ -93,9 +93,9 @@ class AppColors {
   static const white10 = Color(0x1AFFFFFF);
   static const white20 = Color(0x33FFFFFF);
 
-  static const brandPrimary = indigo900;
-  static const brandSecondary = indigo600;
-  static const brandSoft = indigo50;
+  static const brandPrimary = gray900;
+  static const brandSecondary = gray700;
+  static const brandSoft = gray100;
 
   static const surfaceApp = gray50;
   static const surfaceCard = white;
@@ -106,12 +106,12 @@ class AppColors {
   static const textTertiary = gray500;
   static const textMuted = gray400;
   static const textInverse = white;
-  static const textBrand = indigo900;
+  static const textBrand = gray900;
 
   static const borderDefault = gray200;
   static const borderSubtle = gray100;
   static const borderDivider = gray50;
-  static const borderFocus = indigo600;
+  static const borderFocus = gray900;
 
   static const stateSuccess = green600;
   static const stateSuccessSoft = green100;
@@ -213,7 +213,7 @@ class AppThemeColors extends ThemeExtension<AppThemeColors> {
     brandPrimary: AppColors.brandPrimary,
     brandSecondary: AppColors.brandSecondary,
     brandSoft: AppColors.brandSoft,
-    brandOnSoft: AppColors.indigo700,
+    brandOnSoft: AppColors.gray900,
     borderDefault: AppColors.borderDefault,
     borderSubtle: AppColors.borderSubtle,
     borderDivider: AppColors.borderDivider,
@@ -247,15 +247,15 @@ class AppThemeColors extends ThemeExtension<AppThemeColors> {
     textTertiary: Color(0xFF9CA3AF),
     textMuted: Color(0xFF6B7280),
     textInverse: AppColors.white,
-    textBrand: Color(0xFFC7D2FE),
-    brandPrimary: AppColors.indigo500,
-    brandSecondary: Color(0xFF818CF8),
-    brandSoft: Color(0xFF252146),
-    brandOnSoft: Color(0xFFC7D2FE),
+    textBrand: Color(0xFFF5F5F5),
+    brandPrimary: Color(0xFF3F3F46),
+    brandSecondary: Color(0xFF52525B),
+    brandSoft: Color(0xFF27272A),
+    brandOnSoft: Color(0xFFF5F5F5),
     borderDefault: Color(0xFF3B4358),
     borderSubtle: Color(0xFF2A3140),
     borderDivider: Color(0xFF222832),
-    borderFocus: Color(0xFF818CF8),
+    borderFocus: Color(0xFFE5E7EB),
     stateSuccess: Color(0xFF4ADE80),
     stateSuccessSoft: Color(0xFF052E16),
     stateDanger: Color(0xFFF87171),

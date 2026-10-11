@@ -1544,17 +1544,6 @@ class $GiftRecordsTable extends GiftRecords
     requiredDuringInsert: true,
     $customConstraints: 'NOT NULL',
   );
-  static const VerificationMeta _paymentMethodMeta = const VerificationMeta(
-    'paymentMethod',
-  );
-  @override
-  late final GeneratedColumn<String> paymentMethod = GeneratedColumn<String>(
-    'payment_method',
-    aliasedName,
-    true,
-    type: DriftSqlType.string,
-    requiredDuringInsert: false,
-  );
   static const VerificationMeta _noteMeta = const VerificationMeta('note');
   @override
   late final GeneratedColumn<String> note = GeneratedColumn<String>(
@@ -1618,7 +1607,6 @@ class $GiftRecordsTable extends GiftRecords
     currency,
     eventName,
     occurredAt,
-    paymentMethod,
     note,
     attachments,
     createdAt,
@@ -1693,15 +1681,6 @@ class $GiftRecordsTable extends GiftRecords
     } else if (isInserting) {
       context.missing(_occurredAtMeta);
     }
-    if (data.containsKey('payment_method')) {
-      context.handle(
-        _paymentMethodMeta,
-        paymentMethod.isAcceptableOrUnknown(
-          data['payment_method']!,
-          _paymentMethodMeta,
-        ),
-      );
-    }
     if (data.containsKey('note')) {
       context.handle(
         _noteMeta,
@@ -1771,10 +1750,6 @@ class $GiftRecordsTable extends GiftRecords
         DriftSqlType.int,
         data['${effectivePrefix}occurred_at'],
       )!,
-      paymentMethod: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}payment_method'],
-      ),
       note: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}note'],
@@ -1820,7 +1795,6 @@ class GiftRecord extends DataClass implements Insertable<GiftRecord> {
   final String currency;
   final String? eventName;
   final int occurredAt;
-  final String? paymentMethod;
   final String? note;
   final List<String>? attachments;
   final int createdAt;
@@ -1835,7 +1809,6 @@ class GiftRecord extends DataClass implements Insertable<GiftRecord> {
     required this.currency,
     this.eventName,
     required this.occurredAt,
-    this.paymentMethod,
     this.note,
     this.attachments,
     required this.createdAt,
@@ -1855,9 +1828,6 @@ class GiftRecord extends DataClass implements Insertable<GiftRecord> {
       map['event_name'] = Variable<String>(eventName);
     }
     map['occurred_at'] = Variable<int>(occurredAt);
-    if (!nullToAbsent || paymentMethod != null) {
-      map['payment_method'] = Variable<String>(paymentMethod);
-    }
     if (!nullToAbsent || note != null) {
       map['note'] = Variable<String>(note);
     }
@@ -1886,9 +1856,6 @@ class GiftRecord extends DataClass implements Insertable<GiftRecord> {
           ? const Value.absent()
           : Value(eventName),
       occurredAt: Value(occurredAt),
-      paymentMethod: paymentMethod == null && nullToAbsent
-          ? const Value.absent()
-          : Value(paymentMethod),
       note: note == null && nullToAbsent ? const Value.absent() : Value(note),
       attachments: attachments == null && nullToAbsent
           ? const Value.absent()
@@ -1915,7 +1882,6 @@ class GiftRecord extends DataClass implements Insertable<GiftRecord> {
       currency: serializer.fromJson<String>(json['currency']),
       eventName: serializer.fromJson<String?>(json['eventName']),
       occurredAt: serializer.fromJson<int>(json['occurredAt']),
-      paymentMethod: serializer.fromJson<String?>(json['paymentMethod']),
       note: serializer.fromJson<String?>(json['note']),
       attachments: serializer.fromJson<List<String>?>(json['attachments']),
       createdAt: serializer.fromJson<int>(json['createdAt']),
@@ -1935,7 +1901,6 @@ class GiftRecord extends DataClass implements Insertable<GiftRecord> {
       'currency': serializer.toJson<String>(currency),
       'eventName': serializer.toJson<String?>(eventName),
       'occurredAt': serializer.toJson<int>(occurredAt),
-      'paymentMethod': serializer.toJson<String?>(paymentMethod),
       'note': serializer.toJson<String?>(note),
       'attachments': serializer.toJson<List<String>?>(attachments),
       'createdAt': serializer.toJson<int>(createdAt),
@@ -1953,7 +1918,6 @@ class GiftRecord extends DataClass implements Insertable<GiftRecord> {
     String? currency,
     Value<String?> eventName = const Value.absent(),
     int? occurredAt,
-    Value<String?> paymentMethod = const Value.absent(),
     Value<String?> note = const Value.absent(),
     Value<List<String>?> attachments = const Value.absent(),
     int? createdAt,
@@ -1968,9 +1932,6 @@ class GiftRecord extends DataClass implements Insertable<GiftRecord> {
     currency: currency ?? this.currency,
     eventName: eventName.present ? eventName.value : this.eventName,
     occurredAt: occurredAt ?? this.occurredAt,
-    paymentMethod: paymentMethod.present
-        ? paymentMethod.value
-        : this.paymentMethod,
     note: note.present ? note.value : this.note,
     attachments: attachments.present ? attachments.value : this.attachments,
     createdAt: createdAt ?? this.createdAt,
@@ -1991,9 +1952,6 @@ class GiftRecord extends DataClass implements Insertable<GiftRecord> {
       occurredAt: data.occurredAt.present
           ? data.occurredAt.value
           : this.occurredAt,
-      paymentMethod: data.paymentMethod.present
-          ? data.paymentMethod.value
-          : this.paymentMethod,
       note: data.note.present ? data.note.value : this.note,
       attachments: data.attachments.present
           ? data.attachments.value
@@ -2015,7 +1973,6 @@ class GiftRecord extends DataClass implements Insertable<GiftRecord> {
           ..write('currency: $currency, ')
           ..write('eventName: $eventName, ')
           ..write('occurredAt: $occurredAt, ')
-          ..write('paymentMethod: $paymentMethod, ')
           ..write('note: $note, ')
           ..write('attachments: $attachments, ')
           ..write('createdAt: $createdAt, ')
@@ -2035,7 +1992,6 @@ class GiftRecord extends DataClass implements Insertable<GiftRecord> {
     currency,
     eventName,
     occurredAt,
-    paymentMethod,
     note,
     attachments,
     createdAt,
@@ -2054,7 +2010,6 @@ class GiftRecord extends DataClass implements Insertable<GiftRecord> {
           other.currency == this.currency &&
           other.eventName == this.eventName &&
           other.occurredAt == this.occurredAt &&
-          other.paymentMethod == this.paymentMethod &&
           other.note == this.note &&
           other.attachments == this.attachments &&
           other.createdAt == this.createdAt &&
@@ -2071,7 +2026,6 @@ class GiftRecordsCompanion extends UpdateCompanion<GiftRecord> {
   final Value<String> currency;
   final Value<String?> eventName;
   final Value<int> occurredAt;
-  final Value<String?> paymentMethod;
   final Value<String?> note;
   final Value<List<String>?> attachments;
   final Value<int> createdAt;
@@ -2087,7 +2041,6 @@ class GiftRecordsCompanion extends UpdateCompanion<GiftRecord> {
     this.currency = const Value.absent(),
     this.eventName = const Value.absent(),
     this.occurredAt = const Value.absent(),
-    this.paymentMethod = const Value.absent(),
     this.note = const Value.absent(),
     this.attachments = const Value.absent(),
     this.createdAt = const Value.absent(),
@@ -2104,7 +2057,6 @@ class GiftRecordsCompanion extends UpdateCompanion<GiftRecord> {
     this.currency = const Value.absent(),
     this.eventName = const Value.absent(),
     required int occurredAt,
-    this.paymentMethod = const Value.absent(),
     this.note = const Value.absent(),
     this.attachments = const Value.absent(),
     required int createdAt,
@@ -2126,7 +2078,6 @@ class GiftRecordsCompanion extends UpdateCompanion<GiftRecord> {
     Expression<String>? currency,
     Expression<String>? eventName,
     Expression<int>? occurredAt,
-    Expression<String>? paymentMethod,
     Expression<String>? note,
     Expression<String>? attachments,
     Expression<int>? createdAt,
@@ -2143,7 +2094,6 @@ class GiftRecordsCompanion extends UpdateCompanion<GiftRecord> {
       if (currency != null) 'currency': currency,
       if (eventName != null) 'event_name': eventName,
       if (occurredAt != null) 'occurred_at': occurredAt,
-      if (paymentMethod != null) 'payment_method': paymentMethod,
       if (note != null) 'note': note,
       if (attachments != null) 'attachments': attachments,
       if (createdAt != null) 'created_at': createdAt,
@@ -2162,7 +2112,6 @@ class GiftRecordsCompanion extends UpdateCompanion<GiftRecord> {
     Value<String>? currency,
     Value<String?>? eventName,
     Value<int>? occurredAt,
-    Value<String?>? paymentMethod,
     Value<String?>? note,
     Value<List<String>?>? attachments,
     Value<int>? createdAt,
@@ -2179,7 +2128,6 @@ class GiftRecordsCompanion extends UpdateCompanion<GiftRecord> {
       currency: currency ?? this.currency,
       eventName: eventName ?? this.eventName,
       occurredAt: occurredAt ?? this.occurredAt,
-      paymentMethod: paymentMethod ?? this.paymentMethod,
       note: note ?? this.note,
       attachments: attachments ?? this.attachments,
       createdAt: createdAt ?? this.createdAt,
@@ -2216,9 +2164,6 @@ class GiftRecordsCompanion extends UpdateCompanion<GiftRecord> {
     if (occurredAt.present) {
       map['occurred_at'] = Variable<int>(occurredAt.value);
     }
-    if (paymentMethod.present) {
-      map['payment_method'] = Variable<String>(paymentMethod.value);
-    }
     if (note.present) {
       map['note'] = Variable<String>(note.value);
     }
@@ -2253,7 +2198,6 @@ class GiftRecordsCompanion extends UpdateCompanion<GiftRecord> {
           ..write('currency: $currency, ')
           ..write('eventName: $eventName, ')
           ..write('occurredAt: $occurredAt, ')
-          ..write('paymentMethod: $paymentMethod, ')
           ..write('note: $note, ')
           ..write('attachments: $attachments, ')
           ..write('createdAt: $createdAt, ')
@@ -5858,7 +5802,6 @@ typedef $$GiftRecordsTableCreateCompanionBuilder =
       Value<String> currency,
       Value<String?> eventName,
       required int occurredAt,
-      Value<String?> paymentMethod,
       Value<String?> note,
       Value<List<String>?> attachments,
       required int createdAt,
@@ -5876,7 +5819,6 @@ typedef $$GiftRecordsTableUpdateCompanionBuilder =
       Value<String> currency,
       Value<String?> eventName,
       Value<int> occurredAt,
-      Value<String?> paymentMethod,
       Value<String?> note,
       Value<List<String>?> attachments,
       Value<int> createdAt,
@@ -5964,11 +5906,6 @@ class $$GiftRecordsTableFilterComposer
 
   ColumnFilters<int> get occurredAt => $composableBuilder(
     column: $table.occurredAt,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get paymentMethod => $composableBuilder(
-    column: $table.paymentMethod,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -6084,11 +6021,6 @@ class $$GiftRecordsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get paymentMethod => $composableBuilder(
-    column: $table.paymentMethod,
-    builder: (column) => ColumnOrderings(column),
-  );
-
   ColumnOrderings<String> get note => $composableBuilder(
     column: $table.note,
     builder: (column) => ColumnOrderings(column),
@@ -6189,11 +6121,6 @@ class $$GiftRecordsTableAnnotationComposer
 
   GeneratedColumn<int> get occurredAt => $composableBuilder(
     column: $table.occurredAt,
-    builder: (column) => column,
-  );
-
-  GeneratedColumn<String> get paymentMethod => $composableBuilder(
-    column: $table.paymentMethod,
     builder: (column) => column,
   );
 
@@ -6298,7 +6225,6 @@ class $$GiftRecordsTableTableManager
                 Value<String> currency = const Value.absent(),
                 Value<String?> eventName = const Value.absent(),
                 Value<int> occurredAt = const Value.absent(),
-                Value<String?> paymentMethod = const Value.absent(),
                 Value<String?> note = const Value.absent(),
                 Value<List<String>?> attachments = const Value.absent(),
                 Value<int> createdAt = const Value.absent(),
@@ -6314,7 +6240,6 @@ class $$GiftRecordsTableTableManager
                 currency: currency,
                 eventName: eventName,
                 occurredAt: occurredAt,
-                paymentMethod: paymentMethod,
                 note: note,
                 attachments: attachments,
                 createdAt: createdAt,
@@ -6332,7 +6257,6 @@ class $$GiftRecordsTableTableManager
                 Value<String> currency = const Value.absent(),
                 Value<String?> eventName = const Value.absent(),
                 required int occurredAt,
-                Value<String?> paymentMethod = const Value.absent(),
                 Value<String?> note = const Value.absent(),
                 Value<List<String>?> attachments = const Value.absent(),
                 required int createdAt,
@@ -6348,7 +6272,6 @@ class $$GiftRecordsTableTableManager
                 currency: currency,
                 eventName: eventName,
                 occurredAt: occurredAt,
-                paymentMethod: paymentMethod,
                 note: note,
                 attachments: attachments,
                 createdAt: createdAt,

@@ -1,19 +1,11 @@
 import 'package:flutter/widgets.dart';
 
 class AppSession extends ChangeNotifier {
-  bool _loggedIn = true;
   bool _networkAvailable = true;
   bool _contactModuleEnabled = true;
 
-  bool get loggedIn => _loggedIn;
   bool get networkAvailable => _networkAvailable;
   bool get contactModuleEnabled => _contactModuleEnabled;
-
-  void setLoggedIn(bool value) {
-    if (_loggedIn == value) return;
-    _loggedIn = value;
-    notifyListeners();
-  }
 
   void setNetworkAvailable(bool value) {
     if (_networkAvailable == value) return;
@@ -41,4 +33,3 @@ class AppSessionScope extends InheritedNotifier<AppSession> {
     return scope!.notifier!;
   }
 }
-

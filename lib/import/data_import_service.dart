@@ -7,13 +7,14 @@ import 'package:crypto/crypto.dart';
 import 'package:drift/drift.dart';
 import 'package:excel/excel.dart';
 import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
 
 import '../data/local/drift/app_database.dart';
 import '../media/media_storage_service.dart';
 import '../backup/restore_safety.dart';
 import 'csv_document.dart';
 import 'import_value_codec.dart';
+
+import '../platform/app_platform.dart';
 
 enum DataImportFormat { csv, xlsx }
 
@@ -76,8 +77,9 @@ class ImportDuplicate {
   final String direction;
 }
 
-typedef ImportDuplicateDecision =
-    Future<bool> Function(ImportDuplicate duplicate);
+typedef ImportDuplicateDecision = Future<bool> Function(
+  ImportDuplicate duplicate,
+);
 
 class DataImportService {
   DataImportService({
@@ -85,7 +87,7 @@ class DataImportService {
     Future<Directory> Function()? documentsDirectoryProvider,
   }) : _db = db,
        _documentsDirectoryProvider =
-           documentsDirectoryProvider ?? getApplicationDocumentsDirectory;
+           documentsDirectoryProvider ?? AppPlatform.documentsDirectory;
 
   final AppDatabase _db;
   final Future<Directory> Function() _documentsDirectoryProvider;
@@ -426,7 +428,6 @@ class _ImportRunner {
   static const _kDirection = '收支方向';
   static const _kAmountYuan = '金额(元)';
   static const _kEvent = '事由';
-  static const _kPayment = '支付方式';
   static const _kOccurred = '发生时间';
   static const _kNote = '备注';
   static const _kRecordId = '记录ID';
@@ -1049,7 +1050,6 @@ class _ImportRunner {
     _seenRecordKeys.add(recordKey);
     _existingRecordIds.add(id);
 
-    final paymentMethod = _read(row, _kPayment).trim();
     final note = _read(row, _kNote).trim();
     final attachments = await _resolveAttachmentsFromRow(row);
     final now = DateTime.now().millisecondsSinceEpoch;
@@ -1062,9 +1062,6 @@ class _ImportRunner {
       currency: const Value('CNY'),
       eventName: eventName.isEmpty ? const Value.absent() : Value(eventName),
       occurredAt: effectiveOccurredAt,
-      paymentMethod: paymentMethod.isEmpty
-          ? const Value.absent()
-          : Value(paymentMethod),
       note: note.isEmpty ? const Value.absent() : Value(note),
       attachments: attachments.isEmpty
           ? const Value.absent()

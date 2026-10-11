@@ -2,8 +2,6 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:drift/drift.dart' show Value;
-import 'package:file_picker/file_picker.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import '../../data/local/drift/app_database.dart';
 import '../../media/media_storage_service.dart';
@@ -16,10 +14,16 @@ import '../app_scaffold.dart';
 import '../components.dart';
 import '../edit_protection_guard.dart';
 import '../navigation.dart';
-import '../prototype_kit.dart';
+import '../ui_kit.dart';
 import '../../utils/date_util.dart';
 import 'person_detail_page.dart';
 import 'record_add_page.dart';
+
+import '../app_icons.dart';
+
+import '../../platform/app_platform.dart';
+
+import '../app_layout.dart';
 
 /// 页面：收支记录 - 收支详情
 /// 对照原型：prototype/index.html -> "收支详情"
@@ -109,7 +113,6 @@ class _CanvasState extends State<_Canvas> {
         isIncome: record.direction != '支出',
         amountCent: record.amountCent,
         eventName: record.eventName ?? '未设置事由',
-        paymentMethod: record.paymentMethod ?? '未设置',
         occurredAt: DateTime.fromMillisecondsSinceEpoch(record.occurredAt),
         note: record.note,
         bookName: book?.name ?? '未知账簿',
@@ -123,39 +126,13 @@ class _CanvasState extends State<_Canvas> {
   Widget _buildLoaded(BuildContext context, _RecordView record) {
     return Column(
       children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: BoxDecoration(
-            color: context.appColors.surfaceCard,
-            border: Border(
-              bottom: BorderSide(
-                color: context.appColors.surfaceSubtle,
-                width: 1,
-              ),
-            ),
-          ),
-          child: Row(
-            children: [
-              PrototypeIconButton(
-                icon: const FaIcon(FontAwesomeIcons.arrowLeft, size: 18),
-                backgroundColor: Colors.transparent,
-                foregroundColor: AppColors.textPrimary,
-                onPressed: () => AppNav.pop(context),
-              ),
-              Expanded(
-                child: Center(
-                  child: Text(
-                    '记录详情',
-                    style: AppTypography.base(
-                      fontSize: 18,
-                      fontWeight: AppTypography.bold,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 40),
-            ],
+        AppTopBar(
+          title: '记录详情',
+          left: AppIconButton(
+            icon: const Icon(AppIcons.arrowLeft, size: 18),
+            backgroundColor: Colors.transparent,
+            foregroundColor: AppColors.textPrimary,
+            onPressed: () => AppNav.pop(context),
           ),
         ),
         Expanded(
@@ -168,13 +145,13 @@ class _CanvasState extends State<_Canvas> {
                     isIncome: record.isIncome,
                     amountText: _formatCurrency(record.amountCent),
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: AppLayout.sectionGap),
                   _DetailInfoCard(record: record),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: AppLayout.sectionGap),
                   const _SectionTitle(title: '备注'),
                   const SizedBox(height: 12),
                   _NoteCard(note: record.note),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: AppLayout.sectionGap),
                   const _SectionTitle(title: '附件'),
                   const SizedBox(height: 12),
                   _AttachmentRow(
@@ -202,28 +179,13 @@ class _CanvasState extends State<_Canvas> {
   Widget _buildNotFound(BuildContext context) {
     return Column(
       children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: BoxDecoration(
-            color: context.appColors.surfaceCard,
-            border: Border(
-              bottom: BorderSide(
-                color: context.appColors.surfaceSubtle,
-                width: 1,
-              ),
-            ),
-          ),
-          child: Row(
-            children: [
-              PrototypeIconButton(
-                icon: const FaIcon(FontAwesomeIcons.arrowLeft, size: 18),
-                backgroundColor: Colors.transparent,
-                foregroundColor: AppColors.textPrimary,
-                onPressed: () => AppNav.pop(context),
-              ),
-              const Expanded(child: Center(child: Text('记录详情'))),
-              const SizedBox(width: 36, height: 36),
-            ],
+        AppTopBar(
+          title: '记录详情',
+          left: AppIconButton(
+            icon: const Icon(AppIcons.arrowLeft, size: 18),
+            backgroundColor: Colors.transparent,
+            foregroundColor: AppColors.textPrimary,
+            onPressed: () => AppNav.pop(context),
           ),
         ),
         const Expanded(child: Center(child: Text('记录不存在'))),
@@ -239,8 +201,7 @@ class _CanvasState extends State<_Canvas> {
       AppNotifier.warning(context, '记录不存在');
       return;
     }
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
+    final result = await AppPlatform.instance.pickFiles(
       allowedExtensions: const <String>['jpg', 'jpeg', 'png', 'webp'],
       allowMultiple: true,
       withData: false,
@@ -275,7 +236,6 @@ class _RecordView {
     required this.isIncome,
     required this.amountCent,
     required this.eventName,
-    required this.paymentMethod,
     required this.occurredAt,
     required this.note,
     required this.bookName,
@@ -287,7 +247,6 @@ class _RecordView {
   final bool isIncome;
   final int amountCent;
   final String eventName;
-  final String paymentMethod;
   final DateTime occurredAt;
   final String? note;
   final String bookName;
@@ -305,9 +264,7 @@ class _AmountSummaryCard extends StatelessWidget {
     final Color accent = isIncome ? AppColors.green500 : AppColors.red500;
     final Color pillBg = isIncome ? AppColors.green50 : AppColors.red100;
     final Color pillFg = isIncome ? AppColors.green600 : AppColors.red600;
-    final IconData pillIcon = isIncome
-        ? FontAwesomeIcons.arrowDown
-        : FontAwesomeIcons.arrowUp;
+    final IconData pillIcon = isIncome ? AppIcons.arrowDown : AppIcons.arrowUp;
     final String title = isIncome ? '收礼金额' : '送礼金额';
     final String pillLabel = isIncome ? '收入' : '支出';
 
@@ -371,7 +328,7 @@ class _AmountSummaryCard extends StatelessWidget {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          FaIcon(pillIcon, size: 12, color: pillFg),
+                          Icon(pillIcon, size: 12, color: pillFg),
                           const SizedBox(width: 6),
                           Text(
                             pillLabel,
@@ -412,37 +369,26 @@ class _DetailInfoCard extends StatelessWidget {
       child: Column(
         children: [
           _InfoRow(
-            icon: FontAwesomeIcons.user,
+            icon: AppIcons.userRound,
             title: '关系人',
             value: record.personName,
             chevron: true,
             onTap: () => AppNav.push(
               context,
               PersonDetailPage(personId: record.personId),
-              requiresLogin: true,
             ),
           ),
-          const PrototypeDivider(color: AppColors.borderDivider),
+          const AppDivider(color: AppColors.borderDivider),
+          _InfoRow(icon: AppIcons.gift, title: '事由', value: record.eventName),
+          const AppDivider(color: AppColors.borderDivider),
           _InfoRow(
-            icon: FontAwesomeIcons.gift,
-            title: '事由',
-            value: record.eventName,
-          ),
-          const PrototypeDivider(color: AppColors.borderDivider),
-          _InfoRow(
-            icon: FontAwesomeIcons.calendarDays,
+            icon: AppIcons.calendarDays,
             title: '时间',
             value: _formatDateTime(record.occurredAt),
           ),
-          const PrototypeDivider(color: AppColors.borderDivider),
+          const AppDivider(color: AppColors.borderDivider),
           _InfoRow(
-            icon: FontAwesomeIcons.wallet,
-            title: '支付方式',
-            value: record.paymentMethod,
-          ),
-          const PrototypeDivider(color: AppColors.borderDivider),
-          _InfoRow(
-            icon: FontAwesomeIcons.book,
+            icon: AppIcons.bookOpen,
             title: '所属礼簿',
             value: record.bookName,
             borderBottom: false,
@@ -472,7 +418,7 @@ class _InfoRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return PrototypePressableRow(
+    return AppPressableRow(
       onTap: onTap,
       borderBottom: borderBottom,
       child: Row(
@@ -485,7 +431,7 @@ class _InfoRow extends StatelessWidget {
               shape: BoxShape.circle,
             ),
             alignment: Alignment.center,
-            child: FaIcon(icon, size: 16, color: AppColors.textTertiary),
+            child: Icon(icon, size: 16, color: AppColors.textTertiary),
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -513,8 +459,8 @@ class _InfoRow extends StatelessWidget {
             ),
           ),
           if (chevron)
-            const FaIcon(
-              FontAwesomeIcons.chevronRight,
+            const Icon(
+              AppIcons.chevronRight,
               size: 10,
               color: AppColors.gray300,
             ),
@@ -553,8 +499,8 @@ class _NoteCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return PrototypeCard(
-      padding: const EdgeInsets.all(16),
+    return AppCard(
+      padding: AppLayout.pagePadding,
       child: Text(
         (note == null || note!.trim().isEmpty) ? '暂无备注' : note!,
         style: AppTypography.base(
@@ -591,7 +537,7 @@ class _AttachmentRow extends StatelessWidget {
               border: Border.all(color: context.appColors.borderDefault),
             ),
             alignment: Alignment.center,
-            child: const FaIcon(FontAwesomeIcons.plus, size: 18),
+            child: const Icon(AppIcons.plus, size: 18),
           ),
         ),
         for (final path in attachments)
@@ -610,10 +556,7 @@ class _AttachmentRow extends StatelessWidget {
                 return Container(
                   color: context.appColors.surfaceSubtle,
                   alignment: Alignment.center,
-                  child: const FaIcon(
-                    FontAwesomeIcons.triangleExclamation,
-                    size: 14,
-                  ),
+                  child: const Icon(AppIcons.triangleAlert, size: 14),
                 );
               },
             ),
@@ -633,11 +576,7 @@ class _BottomActions extends StatelessWidget {
     final ok = await requireEditProtectionPassword(context, title: '编辑记录');
     if (!ok) return;
     if (!context.mounted) return;
-    await AppNav.push(
-      context,
-      RecordAddPage(recordId: recordId),
-      requiresLogin: true,
-    );
+    await AppNav.push(context, RecordAddPage(recordId: recordId));
     if (!context.mounted) return;
     onEditFinished();
   }
@@ -665,7 +604,7 @@ class _BottomActions extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: AppLayout.pagePadding,
       decoration: BoxDecoration(
         color: context.appColors.surfaceCard,
         border: Border(
@@ -687,8 +626,8 @@ class _BottomActions extends StatelessWidget {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const FaIcon(
-                      FontAwesomeIcons.trashCan,
+                    const Icon(
+                      AppIcons.trash2,
                       size: 16,
                       color: AppColors.red500,
                     ),
@@ -721,11 +660,7 @@ class _BottomActions extends StatelessWidget {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const FaIcon(
-                      FontAwesomeIcons.pen,
-                      size: 16,
-                      color: AppColors.white,
-                    ),
+                    const Icon(AppIcons.pen, size: 16, color: AppColors.white),
                     const SizedBox(width: 8),
                     Text(
                       '编辑',

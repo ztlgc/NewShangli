@@ -1,19 +1,26 @@
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:forui/forui.dart';
 
 import '../../data/local/drift/app_database.dart';
 import '../../utils/date_util.dart';
 import '../app_database_scope.dart';
+import '../app_bottom_sheet.dart';
+import '../app_dialog.dart';
 import '../app_notifier.dart';
+import '../app_notification_tokens.dart';
 import '../app_tokens.dart';
 import '../app_scaffold.dart';
 import '../components.dart';
 import '../edit_protection_guard.dart';
 import '../lunar_date_picker.dart';
 import '../navigation.dart';
-import '../prototype_kit.dart';
+import '../ui_kit.dart';
 import 'reason_manage_page.dart';
+
+import '../app_icons.dart';
+
+import '../app_layout.dart';
 
 class AccountBookEditPage extends StatelessWidget {
   const AccountBookEditPage({super.key, this.bookId});
@@ -205,98 +212,14 @@ class _CanvasState extends State<_Canvas> {
     final okAuth = await requireEditProtectionPassword(context, title: '删除账簿');
     if (!okAuth) return;
     if (!mounted) return;
-    final ok = await showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-          child: Container(
-            decoration: BoxDecoration(
-              color: context.appColors.surfaceCard,
-              borderRadius: AppRadii.br2xl,
-              boxShadow: AppShadows.lg,
-            ),
-            clipBehavior: Clip.antiAlias,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
-                  decoration: BoxDecoration(
-                    color: context.appColors.surfaceCard,
-                    border: Border(
-                      bottom: BorderSide(
-                        color: context.appColors.surfaceSubtle,
-                        width: 1,
-                      ),
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          '确认删除账簿',
-                          style: AppTypography.base(
-                            fontSize: 14,
-                            fontWeight: AppTypography.bold,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                      ),
-                      PrototypeIconButton(
-                        icon: const FaIcon(FontAwesomeIcons.xmark, size: 14),
-                        backgroundColor: context.appColors.surfaceSubtle,
-                        foregroundColor: AppColors.textSecondary,
-                        onPressed: () => Navigator.of(context).pop(false),
-                        radius: 12,
-                      ),
-                    ],
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '删除账簿将同时删除其中的所有记录，且无法恢复。',
-                        style: AppTypography.base(
-                          fontSize: 13,
-                          fontWeight: AppTypography.regular,
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: PrototypeSecondaryButton(
-                              label: '取消',
-                              onTap: () => Navigator.of(context).pop(false),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: PrototypePrimaryButton(
-                              label: '确认删除',
-                              onTap: () => Navigator.of(context).pop(true),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
+    final ok = await AppDialog.confirm(
+      context,
+      title: '确认删除账簿',
+      message: '删除账簿将同时删除其中的所有记录，且无法恢复。',
+      confirmLabel: '确认删除',
+      cancelLabel: '取消',
+      danger: true,
+      tone: AppNotificationTone.error,
     );
     if (!mounted || ok != true) return;
     setState(() => _deleting = true);
@@ -317,10 +240,8 @@ class _CanvasState extends State<_Canvas> {
     if (!mounted) return;
     final enabled = reasons.where((e) => e.enabled).toList()
       ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
-    final picked = await showModalBottomSheet<String>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
+    final picked = await AppBottomSheet.showCustom<String>(
+      context,
       builder: (context) => _ReasonTypePickerSheet(
         reasons: enabled,
         selectedReasonType: _reasonType,
@@ -351,72 +272,27 @@ class _CanvasState extends State<_Canvas> {
 
     return Column(
       children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: BoxDecoration(
-            color: context.appColors.surfaceCard,
-            border: Border(
-              bottom: BorderSide(
-                color: context.appColors.surfaceSubtle,
-                width: 1,
+        FHeader.nested(
+          title: Text(title),
+          prefixes: [
+            FButton(
+              variant: .ghost,
+              size: .sm,
+              mainAxisSize: MainAxisSize.min,
+              onPress: _saving ? null : () => AppNav.pop(context),
+              child: const Text('取消'),
+            ),
+          ],
+          suffixes: [
+            FButton(
+              size: .sm,
+              mainAxisSize: MainAxisSize.min,
+              onPress: (_saving || isReadonlyDefault) ? null : _save,
+              child: Text(
+                isReadonlyDefault ? '不可修改' : (_saving ? '保存中' : '保存'),
               ),
             ),
-          ),
-          child: Row(
-            children: [
-              GestureDetector(
-                onTap: _saving ? null : () => AppNav.pop(context),
-                behavior: HitTestBehavior.opaque,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  child: Text(
-                    '取消',
-                    style: AppTypography.base(
-                      fontSize: 14,
-                      fontWeight: AppTypography.medium,
-                      color: AppColors.textTertiary,
-                    ),
-                  ),
-                ),
-              ),
-              Expanded(
-                child: Center(
-                  child: Text(
-                    title,
-                    style: AppTypography.base(
-                      fontSize: 18,
-                      fontWeight: AppTypography.bold,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                ),
-              ),
-              PressableScale(
-                onTap: (_saving || isReadonlyDefault) ? null : _save,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: isReadonlyDefault
-                        ? AppColors.gray300
-                        : AppColors.brandPrimary,
-                    borderRadius: BorderRadius.circular(9999),
-                    boxShadow: isReadonlyDefault ? null : AppShadows.sm,
-                  ),
-                  child: Text(
-                    isReadonlyDefault ? '不可修改' : (_saving ? '保存中' : '保存'),
-                    style: AppTypography.base(
-                      fontSize: 14,
-                      fontWeight: AppTypography.medium,
-                      color: AppColors.white,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
+          ],
         ),
         Expanded(
           child: _loading
@@ -425,7 +301,7 @@ class _CanvasState extends State<_Canvas> {
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
                   children: [
                     _IconPreview(color: themeColor, icon: icon),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: AppLayout.sectionGap),
                     _BasicCard(
                       nameCtrl: _nameCtrl,
                       reasonTypeLabel: reasonTypeLabel,
@@ -434,7 +310,7 @@ class _CanvasState extends State<_Canvas> {
                       onPickReasonType: _pickReasonType,
                       onPickBookTime: _pickBookTime,
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: AppLayout.sectionGap),
                     const _Overline(title: '主题颜色'),
                     const SizedBox(height: 12),
                     _ColorPickerCard(
@@ -444,19 +320,19 @@ class _CanvasState extends State<_Canvas> {
                           ? null
                           : (hex) => setState(() => _themeColor = hex),
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: AppLayout.sectionGap),
                     _NoteCard(
                       noteCtrl: _noteCtrl,
                       editable: !isReadonlyDefault,
                     ),
                     if (_book != null && !isReadonlyDefault) ...[
-                      const SizedBox(height: 24),
+                      const SizedBox(height: AppLayout.sectionGap),
                       _DeleteButton(disabled: _deleting, onTap: _delete),
                       const SizedBox(height: 8),
                       const _DeleteHint(),
                     ],
                     if (_book != null && isReadonlyDefault) ...[
-                      const SizedBox(height: 24),
+                      const SizedBox(height: AppLayout.sectionGap),
                       const _ReadonlyHint(text: '默认账簿为系统保留账簿，不支持编辑或删除。'),
                     ],
                   ],
@@ -486,7 +362,7 @@ class _IconPreview extends StatelessWidget {
             boxShadow: AppShadows.sm,
           ),
           alignment: Alignment.center,
-          child: FaIcon(icon, size: 30, color: color),
+          child: Icon(icon, size: 30, color: color),
         ),
         const SizedBox(height: 8),
         Text(
@@ -537,13 +413,13 @@ class _BasicCard extends StatelessWidget {
             multiline: false,
             editable: editable,
           ),
-          const PrototypeDivider(color: AppColors.borderDivider),
+          const AppDivider(color: AppColors.borderDivider),
           _SelectRow(
             label: '事由类型',
             value: reasonTypeLabel,
             onTap: editable ? onPickReasonType : null,
           ),
-          const PrototypeDivider(color: AppColors.borderDivider),
+          const AppDivider(color: AppColors.borderDivider),
           _SelectRow(
             label: '账簿时间',
             value: bookTimeLabel,
@@ -598,52 +474,12 @@ class _TextFieldRow extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 8),
-          TextField(
-            controller: controller,
+          FTextField(
+            control: FTextFieldControl.managed(controller: controller),
             readOnly: !editable,
             maxLines: multiline ? 4 : 1,
             minLines: multiline ? 3 : 1,
-            style: AppTypography.base(
-              fontSize: 16,
-              fontWeight: AppTypography.medium,
-              color: editable ? AppColors.textPrimary : AppColors.textMuted,
-            ),
-            decoration: InputDecoration(
-              isDense: true,
-              filled: true,
-              fillColor: context.appColors.surfaceSubtle,
-              hintText: hintText,
-              hintStyle: AppTypography.base(
-                fontSize: 14,
-                fontWeight: AppTypography.regular,
-                color: AppColors.textMuted,
-              ),
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 12,
-              ),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(
-                  color: AppColors.borderSubtle,
-                  width: 1,
-                ),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(
-                  color: AppColors.borderSubtle,
-                  width: 1,
-                ),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(
-                  color: AppColors.borderFocus,
-                  width: 1,
-                ),
-              ),
-            ),
+            hint: hintText,
           ),
         ],
       ),
@@ -666,7 +502,7 @@ class _SelectRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return PrototypePressableRow(
+    return AppPressableRow(
       onTap: onTap,
       borderBottom: borderBottom,
       child: Row(
@@ -696,8 +532,8 @@ class _SelectRow extends StatelessWidget {
             ),
           ),
           if (onTap != null)
-            const FaIcon(
-              FontAwesomeIcons.chevronRight,
+            const Icon(
+              AppIcons.chevronRight,
               size: 10,
               color: AppColors.gray300,
             ),
@@ -806,8 +642,8 @@ class _ReasonTypePickerSheetState extends State<_ReasonTypePickerSheet> {
                         ),
                       ),
                     ),
-                    PrototypeIconButton(
-                      icon: const FaIcon(FontAwesomeIcons.xmark, size: 14),
+                    AppIconButton(
+                      icon: const Icon(AppIcons.x, size: 14),
                       backgroundColor: context.appColors.surfaceSubtle,
                       foregroundColor: AppColors.textSecondary,
                       onPressed: () => Navigator.of(context).pop(),
@@ -818,7 +654,7 @@ class _ReasonTypePickerSheetState extends State<_ReasonTypePickerSheet> {
               ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-                child: PrototypeSearchField(
+                child: AppSearchField(
                   controller: _searchController,
                   hintText: '搜索事由',
                   onChanged: (v) => setState(() => _keyword = v),
@@ -841,7 +677,7 @@ class _ReasonTypePickerSheetState extends State<_ReasonTypePickerSheet> {
                         itemCount: filtered.length,
                         itemBuilder: (context, index) {
                           final reason = filtered[index];
-                          return PrototypePressableRow(
+                          return AppPressableRow(
                             borderBottom: index != filtered.length - 1,
                             onTap: () => Navigator.of(context).pop(reason.name),
                             child: Row(
@@ -857,8 +693,8 @@ class _ReasonTypePickerSheetState extends State<_ReasonTypePickerSheet> {
                                   ),
                                 ),
                                 if (reason.name == widget.selectedReasonType)
-                                  const FaIcon(
-                                    FontAwesomeIcons.check,
+                                  const Icon(
+                                    AppIcons.check,
                                     size: 14,
                                     color: AppColors.indigo600,
                                   ),
@@ -870,11 +706,11 @@ class _ReasonTypePickerSheetState extends State<_ReasonTypePickerSheet> {
               ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                child: PrototypeSecondaryButton(
+                child: AppSecondaryButton(
                   label: '管理事由',
-                  onTap: () => Navigator.of(
-                    context,
-                  ).pop(_ReasonTypePickerSheet.manageAction),
+                  onTap: () =>
+                      Navigator.of(context)
+                          .pop(_ReasonTypePickerSheet.manageAction),
                 ),
               ),
             ],
@@ -917,8 +753,8 @@ class _ColorPickerCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return PrototypeCard(
-      padding: const EdgeInsets.all(16),
+    return AppCard(
+      padding: AppLayout.pagePadding,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -996,8 +832,8 @@ class _NoteCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return PrototypeCard(
-      padding: const EdgeInsets.all(16),
+    return AppCard(
+      padding: AppLayout.pagePadding,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1010,52 +846,12 @@ class _NoteCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 8),
-          TextField(
-            controller: noteCtrl,
+          FTextField(
+            control: FTextFieldControl.managed(controller: noteCtrl),
             readOnly: !editable,
             maxLines: 5,
             minLines: 3,
-            style: AppTypography.base(
-              fontSize: 14,
-              fontWeight: AppTypography.regular,
-              color: editable ? AppColors.textPrimary : AppColors.textMuted,
-            ),
-            decoration: InputDecoration(
-              isDense: true,
-              filled: true,
-              fillColor: context.appColors.surfaceSubtle,
-              hintText: '补充说明（可选）',
-              hintStyle: AppTypography.base(
-                fontSize: 14,
-                fontWeight: AppTypography.regular,
-                color: AppColors.textMuted,
-              ),
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 12,
-              ),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(
-                  color: AppColors.borderSubtle,
-                  width: 1,
-                ),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(
-                  color: AppColors.borderSubtle,
-                  width: 1,
-                ),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(
-                  color: AppColors.borderFocus,
-                  width: 1,
-                ),
-              ),
-            ),
+            hint: '补充说明（可选）',
           ),
         ],
       ),
@@ -1128,12 +924,12 @@ String _labelByReasonType(String reasonType) {
 IconData _iconByReasonType(String reasonType) {
   final v = reasonType.trim();
   if (v.contains('婚') || v.contains('宴') || v.contains('喜')) {
-    return FontAwesomeIcons.heart;
+    return AppIcons.heart;
   }
   if (v.contains('商务') || v.contains('公司') || v.contains('企业')) {
-    return FontAwesomeIcons.briefcase;
+    return AppIcons.briefcaseBusiness;
   }
-  return FontAwesomeIcons.book;
+  return AppIcons.bookOpen;
 }
 
 Color _parseHexColor(String hex) {

@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:forui/forui.dart';
 
-import 'app_tokens.dart';
 import 'pages/person_list_page.dart';
 import 'pages/record_home_page.dart';
 import 'pages/settings_home_page.dart';
 import 'pages/stats_page.dart';
-import 'prototype_kit.dart';
+
+import 'app_icons.dart';
+
+import 'app_layout.dart';
 
 /// 主界面外壳。
 ///
@@ -13,14 +16,17 @@ import 'prototype_kit.dart';
 /// 底部导航栏。点击导航栏时只切换 [IndexedStack] 的当前页，导航栏本身保持
 /// 挂载，不会像原先 `replaceRoot` 那样整页重建刷新；页面状态也能保留。
 class MainTabShell extends StatefulWidget {
-  const MainTabShell({super.key});
+  const MainTabShell({super.key, this.initialIndex = 0})
+    : assert(initialIndex >= 0 && initialIndex < 4);
+
+  final int initialIndex;
 
   @override
   State<MainTabShell> createState() => _MainTabShellState();
 }
 
 class _MainTabShellState extends State<MainTabShell> {
-  int _activeIndex = 0;
+  late int _activeIndex;
   final ValueNotifier<bool> _navHidden = ValueNotifier<bool>(false);
 
   late final List<Widget> _pages = const <Widget>[
@@ -29,6 +35,12 @@ class _MainTabShellState extends State<MainTabShell> {
     StatsPage(),
     SettingsHomePage(),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _activeIndex = widget.initialIndex;
+  }
 
   @override
   void dispose() {
@@ -43,7 +55,6 @@ class _MainTabShellState extends State<MainTabShell> {
 
   @override
   Widget build(BuildContext context) {
-    final bottomInset = MediaQuery.paddingOf(context).bottom;
     return TabShellScope(
       navHidden: _navHidden,
       child: Stack(
@@ -52,22 +63,44 @@ class _MainTabShellState extends State<MainTabShell> {
             child: IndexedStack(index: _activeIndex, children: _pages),
           ),
           Positioned(
-            left: AppTokens.floatingNavSideInset,
-            right: AppTokens.floatingNavSideInset,
-            bottom: bottomInset + AppTokens.floatingNavBottomInset,
+            left: 0,
+            right: 0,
+            bottom:
+                MediaQuery.viewPaddingOf(context).bottom +
+                AppLayout.floatingNavigationInset,
             child: ValueListenableBuilder<bool>(
               valueListenable: _navHidden,
               builder: (context, hidden, _) {
                 return AnimatedOpacity(
-                  opacity: hidden ? 0 : 1,
+                  opacity: hidden || MediaQuery.viewInsetsOf(context).bottom > 0
+                      ? 0
+                      : 1,
                   duration: const Duration(milliseconds: 150),
                   curve: Curves.easeInOut,
                   child: IgnorePointer(
-                    ignoring: hidden,
-                    child: PrototypeBottomNav(
-                      floating: true,
-                      activeIndex: _activeIndex,
-                      onTap: _switchTo,
+                    ignoring:
+                        hidden || MediaQuery.viewInsetsOf(context).bottom > 0,
+                    child: FBottomNavigationBar(
+                      index: _activeIndex,
+                      onChange: _switchTo,
+                      children: const [
+                        FBottomNavigationBarItem(
+                          icon: Icon(AppIcons.bookOpen),
+                          label: Text('记录'),
+                        ),
+                        FBottomNavigationBarItem(
+                          icon: Icon(AppIcons.users),
+                          label: Text('关系'),
+                        ),
+                        FBottomNavigationBarItem(
+                          icon: Icon(AppIcons.chartNoAxesCombined),
+                          label: Text('统计'),
+                        ),
+                        FBottomNavigationBarItem(
+                          icon: Icon(AppIcons.settings2),
+                          label: Text('设置'),
+                        ),
+                      ],
                     ),
                   ),
                 );

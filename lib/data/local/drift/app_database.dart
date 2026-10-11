@@ -3,12 +3,13 @@ import 'dart:io';
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
 
 import 'converters.dart';
 import 'tables.dart';
 import '../../../backup/restore_safety.dart';
+
+import '../../../platform/app_platform.dart';
 
 part 'app_database.g.dart';
 part 'daos/account_books_dao.dart';
@@ -22,7 +23,7 @@ part 'daos/contact_relations_dao.dart';
 /// 应用主数据库（Drift）。
 ///
 /// 设计规范要点：
-/// - 账簿是一级上下文：person / gift_record 都必须归属 book_id
+/// - 礼金记录归属账簿，联系人为全局实体
 /// - 外键约束必须生效：在 SQLite 中需要显式开启 `PRAGMA foreign_keys = ON`
 @DriftDatabase(
   tables: [
@@ -45,21 +46,20 @@ part 'daos/contact_relations_dao.dart';
   ],
 )
 class AppDatabase extends _$AppDatabase {
-  AppDatabase() : super(_openConnection());
+  AppDatabase() : seedDefaults = true, super(_openConnection());
 
   /// 用于测试时注入内存数据库或自定义执行器。
-  AppDatabase.forTesting(super.executor);
+  AppDatabase.forTesting(super.executor, {this.seedDefaults = false});
+
+  final bool seedDefaults;
 
   /// 当前 schema 版本。
-  ///
-  /// 版本升级时在 [migration] 中补齐迁移逻辑，并同步单元测试。
-  static const currentSchemaVersion = 14;
+  static const currentSchemaVersion = 15;
   @override
   int get schemaVersion => currentSchemaVersion;
 
-  /// 统一注入迁移策略：
+  /// 初始化当前结构，不提供历史版本升级。
   /// - onCreate：创建所有表与索引
-  /// - onUpgrade：按版本增量迁移
   /// - beforeOpen：开启外键约束
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -75,17 +75,7 @@ class AppDatabase extends _$AppDatabase {
         );
       ''');
       await _ensureIndexes();
-    },
-    onUpgrade: (m, from, to) async {
-      // 未发布版本不静默清库。13 仅解除联系人来源账本的生命周期约束。
-      if (from != 13) {
-        throw StateError('此开发数据库版本不受支持，请使用新建数据库；原数据未修改');
-      }
-      // ignore: experimental_member_use
-      await m.alterTable(TableMigration(persons));
-      // ignore: experimental_member_use
-      await m.alterTable(TableMigration(giftRecords));
-      await _ensureIndexes();
+      if (seedDefaults) await _createDefaults();
     },
     beforeOpen: (details) async {
       await customStatement('PRAGMA foreign_keys = ON;');
@@ -93,6 +83,13 @@ class AppDatabase extends _$AppDatabase {
       await customStatement('PRAGMA synchronous = NORMAL;');
     },
   );
+
+  Future<void> _createDefaults() async {
+    await reasonsDao.create(name: '结婚礼金');
+    for (final name in const ['家人', '亲戚', '同事', '朋友', '同学', '邻居']) {
+      await relationTypesDao.create(name: name);
+    }
+  }
 
   /// 统一生成 UUID（TEXT 主键）。
   String newId() => const Uuid().v4();
@@ -152,7 +149,7 @@ class AppDatabase extends _$AppDatabase {
 
 LazyDatabase _openConnection() {
   return LazyDatabase(() async {
-    final Directory dir = await getApplicationDocumentsDirectory();
+    final Directory dir = await AppPlatform.documentsDirectory();
     await RestoreSafety.recoverIfNeeded(dir);
     final File file = File(p.join(dir.path, 'newshangli_drift.sqlite'));
 

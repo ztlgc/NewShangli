@@ -5,6 +5,8 @@ import '../app_tokens.dart';
 import '../components.dart';
 import '../contact_avatar.dart';
 
+import '../app_icons.dart';
+
 class RecordListRow extends StatelessWidget {
   const RecordListRow({
     super.key,
@@ -47,7 +49,7 @@ class RecordListRow extends StatelessWidget {
     final dateText =
         '${occurredAt.month.toString().padLeft(2, '0')}-${occurredAt.day.toString().padLeft(2, '0')}';
 
-    return PrototypePressableRow(
+    return AppPressableRow(
       onTap: onTap,
       onLongPress: onLongPress,
       borderBottom: borderBottom,
@@ -195,7 +197,7 @@ class _AvatarSelectionCheckbox extends StatelessWidget {
             duration: const Duration(milliseconds: 180),
             child: selected
                 ? const Icon(
-                    Icons.check,
+                    AppIcons.check,
                     key: ValueKey('selected'),
                     size: 16,
                     color: AppColors.white,

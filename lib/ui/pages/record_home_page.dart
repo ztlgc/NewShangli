@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:forui/forui.dart';
 
 import '../../data/local/drift/app_database.dart';
 import '../app_data.dart';
@@ -10,13 +10,15 @@ import '../app_notifier.dart';
 import '../app_notification_tokens.dart';
 import '../app_tokens.dart';
 import '../app_scaffold.dart';
-import '../components.dart';
+import '../forui_search_field.dart';
 import '../navigation.dart';
-import '../prototype_kit.dart';
+import '../ui_kit.dart';
 import '../tab_shell.dart';
 import '../widgets/record_list_row.dart';
 import 'record_add_page.dart';
 import 'record_detail_page.dart';
+
+import '../app_icons.dart';
 
 /// 页面：收支记录 - 首页
 /// 对照原型：prototype/index.html -> "Row 1: Record" -> "首页"
@@ -112,54 +114,28 @@ class _CanvasState extends State<_Canvas> {
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.paddingOf(context).bottom;
     final db = AppDatabaseScope.of(context);
-    final colors = context.appColors;
 
     return Stack(
       children: [
         Column(
           children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: BoxDecoration(
-                color: colors.surfaceCard,
-                border: Border(
-                  bottom: BorderSide(color: colors.borderDivider, width: 1),
-                ),
-                boxShadow: AppShadows.sm,
-              ),
-              child: Row(
-                children: [
-                  Text(
-                    '尚礼',
-                    style: AppTypography.h2().copyWith(
-                      fontSize: 20,
-                      color: colors.textPrimary,
-                    ),
+            FHeader(
+              title: const Text('尚礼'),
+              suffixes: [
+                if (_selectionMode)
+                  FButton(
+                    variant: .ghost,
+                    mainAxisSize: MainAxisSize.min,
+                    onPress: _exitSelection,
+                    child: const Text('取消'),
                   ),
-                  const Spacer(),
-                  if (_selectionMode)
-                    PressableScale(
-                      onTap: _exitSelection,
-                      child: Text(
-                        '取消',
-                        style: AppTypography.base(
-                          fontSize: 14,
-                          fontWeight: AppTypography.medium,
-                          color: colors.textSecondary,
-                        ),
-                      ),
-                    )
-                  else
-                    const SizedBox.shrink(),
-                ],
-              ),
+              ],
             ),
-            Container(
-              color: colors.surfaceCard,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: PrototypeSearchField(
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+              child: ForuiSearchField(
                 controller: _searchController,
-                hintText: '搜索姓名、事由、备注',
+                hint: '搜索姓名、事由、备注',
                 onChanged: (v) => setState(() => _keyword = v),
               ),
             ),
@@ -212,24 +188,12 @@ class _CanvasState extends State<_Canvas> {
                 AppTokens.floatingNavBottomInset +
                 13 +
                 bottomInset,
-            child: PressableScale(
-              onTap: () => AppNav.push(context, const RecordAddPage()),
-              pressedScale: 0.95,
-              child: Container(
-                width: 56,
-                height: 56,
-                decoration: BoxDecoration(
-                  color: colors.brandPrimary,
-                  shape: BoxShape.circle,
-                  boxShadow: AppShadows.brandFab,
-                ),
-                alignment: Alignment.center,
-                child: const FaIcon(
-                  FontAwesomeIcons.plus,
-                  color: AppColors.white,
-                  size: 24,
-                ),
-              ),
+            child: FButton(
+              size: .lg,
+              mainAxisSize: MainAxisSize.min,
+              onPress: () => AppNav.push(context, const RecordAddPage()),
+              prefix: const Icon(AppIcons.plus),
+              child: const Text('记一笔'),
             ),
           ),
       ],
@@ -252,9 +216,6 @@ class _CanvasState extends State<_Canvas> {
             eventName: (row.record.eventName ?? '').trim().isEmpty
                 ? '未设置'
                 : row.record.eventName!.trim(),
-            paymentMethod: (row.record.paymentMethod ?? '').trim().isEmpty
-                ? '未设置'
-                : row.record.paymentMethod!.trim(),
             occurredAt: DateTime.fromMillisecondsSinceEpoch(
               row.record.occurredAt,
             ),
@@ -265,7 +226,6 @@ class _CanvasState extends State<_Canvas> {
   }
 
   List<Widget> _buildRecordSlivers(List<RecordData> sourceRecords) {
-    final colors = context.appColors;
     final trimmed = _keyword.trim();
     final records = trimmed.isEmpty
         ? sourceRecords
@@ -273,7 +233,6 @@ class _CanvasState extends State<_Canvas> {
             final kw = trimmed.toLowerCase();
             return r.personName.toLowerCase().contains(kw) ||
                 r.eventName.toLowerCase().contains(kw) ||
-                r.paymentMethod.toLowerCase().contains(kw) ||
                 (r.note ?? '').toLowerCase().contains(kw);
           }).toList();
     if (records.isEmpty) {
@@ -309,8 +268,8 @@ class _CanvasState extends State<_Canvas> {
         ..sort((a, b) => b.occurredAt.compareTo(a.occurredAt));
       slivers.add(
         SliverToBoxAdapter(
-          child: Container(
-            color: colors.surfaceCard,
+          child: FCard(
+            clipBehavior: Clip.antiAlias,
             child: Column(
               children: [
                 for (var j = 0; j < monthRecords.length; j++)
@@ -319,11 +278,7 @@ class _CanvasState extends State<_Canvas> {
                     name: monthRecords[j].personName,
                     direction: monthRecords[j].direction,
                     amountCent: monthRecords[j].amountCent,
-                    subtitle:
-                        monthRecords[j].paymentMethod == '未设置' ||
-                            monthRecords[j].paymentMethod.isEmpty
-                        ? monthRecords[j].eventName
-                        : '${monthRecords[j].eventName} - ${monthRecords[j].paymentMethod}',
+                    subtitle: monthRecords[j].eventName,
                     occurredAt: monthRecords[j].occurredAt,
                     selectionMode: _selectionMode,
                     selected: _selectedRecordIds.contains(monthRecords[j].id),

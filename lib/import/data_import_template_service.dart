@@ -2,7 +2,8 @@ import 'dart:io';
 
 import 'package:excel/excel.dart';
 import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
+
+import '../platform/app_platform.dart';
 
 enum DataImportTemplateFormat { csv, xlsx }
 
@@ -23,7 +24,6 @@ class DataImportTemplateService {
         '关系人姓名',
         '关系人关系',
         '手机号',
-        '支付方式',
         '发生时间',
         '备注',
       ],
@@ -38,7 +38,6 @@ class DataImportTemplateService {
         '张三',
         '朋友',
         '13800000000',
-        '',
         '2026-01-01 10:00',
         '',
       ],
@@ -53,13 +52,12 @@ class DataImportTemplateService {
         '张三',
         '',
         '',
-        '现金',
         '2026-01-01 10:00',
         '示例备注',
       ],
     ];
 
-    final dir = outputDir ?? await getApplicationDocumentsDirectory();
+    final dir = outputDir ?? await AppPlatform.documentsDirectory();
     final outDir = Directory(p.join(dir.path, 'imports', 'templates'));
     await outDir.create(recursive: true);
 

@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import '../../data/local/drift/app_database.dart';
 import '../app_database_scope.dart';
 import '../app_scaffold.dart';
 import '../app_tokens.dart';
 import '../navigation.dart';
-import '../prototype_kit.dart';
+import '../ui_kit.dart';
 import '../../utils/date_util.dart';
+
+import '../app_icons.dart';
+
+import '../app_layout.dart';
 
 /// 页面：账簿记录
 ///
@@ -116,37 +119,13 @@ class _TopBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: context.appColors.surfaceCard,
-        border: Border(
-          bottom: BorderSide(color: context.appColors.borderDivider, width: 1),
-        ),
-      ),
-      child: Row(
-        children: [
-          PrototypeIconButton(
-            icon: const FaIcon(FontAwesomeIcons.arrowLeft, size: 18),
-            backgroundColor: Colors.transparent,
-            foregroundColor: AppColors.textPrimary,
-            onPressed: onBack,
-          ),
-          Expanded(
-            child: Center(
-              child: Text(
-                title,
-                style: AppTypography.base(
-                  fontSize: 18,
-                  fontWeight: AppTypography.bold,
-                  color: AppColors.textPrimary,
-                ),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ),
-          const SizedBox(width: 40),
-        ],
+    return AppTopBar(
+      title: title,
+      left: AppIconButton(
+        icon: const Icon(AppIcons.arrowLeft, size: 18),
+        backgroundColor: Colors.transparent,
+        foregroundColor: AppColors.textPrimary,
+        onPressed: onBack,
       ),
     );
   }
@@ -173,7 +152,7 @@ class _RecordCard extends StatelessWidget {
         : person.relationshipType.trim();
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: AppLayout.pagePadding,
       decoration: BoxDecoration(
         color: context.appColors.surfaceCard,
         borderRadius: BorderRadius.circular(16),
@@ -193,10 +172,8 @@ class _RecordCard extends StatelessWidget {
                   shape: BoxShape.circle,
                 ),
                 alignment: Alignment.center,
-                child: FaIcon(
-                  isIncome
-                      ? FontAwesomeIcons.arrowDown
-                      : FontAwesomeIcons.arrowUp,
+                child: Icon(
+                  isIncome ? AppIcons.arrowDown : AppIcons.arrowUp,
                   size: 16,
                   color: isIncome ? AppColors.indigo700 : AppColors.orange600,
                 ),

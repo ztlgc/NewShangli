@@ -99,7 +99,6 @@ class RecordData {
     required this.direction,
     required this.amountCent,
     required this.eventName,
-    required this.paymentMethod,
     required this.occurredAt,
     this.note,
   });
@@ -112,7 +111,6 @@ class RecordData {
   final RecordDirection direction;
   final int amountCent;
   final String eventName;
-  final String paymentMethod;
   final DateTime occurredAt;
   final String? note;
 
@@ -125,7 +123,6 @@ class RecordData {
     'direction': direction.name,
     'amountCent': amountCent,
     'eventName': eventName,
-    'paymentMethod': paymentMethod,
     'occurredAt': occurredAt.toIso8601String(),
     'note': note,
   };
@@ -147,7 +144,6 @@ class RecordData {
       direction: direction,
       amountCent: amount,
       eventName: (map['eventName'] as String?) ?? '',
-      paymentMethod: (map['paymentMethod'] as String?) ?? '',
       occurredAt:
           DateTime.tryParse((map['occurredAt'] as String?) ?? '') ??
           DateTime.fromMillisecondsSinceEpoch(0),
@@ -492,7 +488,6 @@ class AppData extends ChangeNotifier {
         direction: r.direction,
         amountCent: r.amountCent,
         eventName: r.eventName,
-        paymentMethod: r.paymentMethod,
         occurredAt: r.occurredAt,
         note: r.note,
       );
@@ -509,7 +504,6 @@ class AppData extends ChangeNotifier {
         direction: r.direction,
         amountCent: r.amountCent,
         eventName: r.eventName,
-        paymentMethod: r.paymentMethod,
         occurredAt: r.occurredAt,
         note: r.note,
       );
@@ -580,7 +574,6 @@ class AppData extends ChangeNotifier {
     required RecordDirection direction,
     required int amountCent,
     required String eventName,
-    required String paymentMethod,
     required DateTime occurredAt,
     String? note,
   }) {
@@ -590,10 +583,6 @@ class AppData extends ChangeNotifier {
     final trimmedEvent = eventName.trim();
     if (trimmedEvent.isEmpty) {
       throw ArgumentError.value(eventName, 'eventName', '不能为空');
-    }
-    final trimmedPay = paymentMethod.trim();
-    if (trimmedPay.isEmpty) {
-      throw ArgumentError.value(paymentMethod, 'paymentMethod', '不能为空');
     }
     final person = findPerson(personId);
     if (person == null) {
@@ -609,7 +598,6 @@ class AppData extends ChangeNotifier {
         direction: direction,
         amountCent: amountCent,
         eventName: trimmedEvent,
-        paymentMethod: trimmedPay,
         occurredAt: occurredAt,
         note: note?.trim().isEmpty == true ? null : note?.trim(),
       ),
@@ -626,7 +614,6 @@ class AppData extends ChangeNotifier {
     required RecordDirection direction,
     required int amountCent,
     required String eventName,
-    required String paymentMethod,
     required DateTime occurredAt,
     String? note,
   }) {
@@ -638,10 +625,6 @@ class AppData extends ChangeNotifier {
     final trimmedEvent = eventName.trim();
     if (trimmedEvent.isEmpty) {
       throw ArgumentError.value(eventName, 'eventName', '不能为空');
-    }
-    final trimmedPay = paymentMethod.trim();
-    if (trimmedPay.isEmpty) {
-      throw ArgumentError.value(paymentMethod, 'paymentMethod', '不能为空');
     }
     final person = findPerson(personId);
     if (person == null) {
@@ -656,7 +639,6 @@ class AppData extends ChangeNotifier {
       direction: direction,
       amountCent: amountCent,
       eventName: trimmedEvent,
-      paymentMethod: trimmedPay,
       occurredAt: occurredAt,
       note: note?.trim().isEmpty == true ? null : note?.trim(),
     );
@@ -1439,8 +1421,7 @@ class AppData extends ChangeNotifier {
         relationship: '朋友',
         phone: '13800000001',
         note: '大学室友，喜欢喝茶',
-        avatarUrl:
-            'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop',
+        avatarUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop',
         createdAt: now.subtract(const Duration(days: 320)),
       ),
       PersonData(
@@ -1449,8 +1430,7 @@ class AppData extends ChangeNotifier {
         relationship: '亲戚 - 表妹',
         phone: '13800000002',
         note: null,
-        avatarUrl:
-            'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop',
+        avatarUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop',
         createdAt: now.subtract(const Duration(days: 280)),
       ),
       PersonData(
@@ -1459,8 +1439,7 @@ class AppData extends ChangeNotifier {
         relationship: '同学',
         phone: '13800000003',
         note: null,
-        avatarUrl:
-            'https://images.unsplash.com/photo-1599566150163-29194dcaad36?w=100&h=100&fit=crop',
+        avatarUrl: 'https://images.unsplash.com/photo-1599566150163-29194dcaad36?w=100&h=100&fit=crop',
         createdAt: now.subtract(const Duration(days: 210)),
       ),
       PersonData(
@@ -1507,7 +1486,6 @@ class AppData extends ChangeNotifier {
         direction: RecordDirection.income,
         amountCent: 200000,
         eventName: '结婚礼金',
-        paymentMethod: '微信支付',
         occurredAt: DateTime(now.year, 2, 10, 12, 30),
         note: '现场收礼',
       ),
@@ -1520,7 +1498,6 @@ class AppData extends ChangeNotifier {
         direction: RecordDirection.expense,
         amountCent: 80000,
         eventName: '孩子满月',
-        paymentMethod: '现金',
         occurredAt: DateTime(now.year, 2, 8, 19, 10),
       ),
       RecordData(
@@ -1532,7 +1509,6 @@ class AppData extends ChangeNotifier {
         direction: RecordDirection.expense,
         amountCent: 120000,
         eventName: '乔迁之喜',
-        paymentMethod: '支付宝',
         occurredAt: DateTime(now.year, 2, 5, 18, 45),
       ),
       RecordData(
@@ -1544,7 +1520,6 @@ class AppData extends ChangeNotifier {
         direction: RecordDirection.income,
         amountCent: 50000,
         eventName: '春节红包',
-        paymentMethod: '微信',
         occurredAt: DateTime(now.year, 1, 24, 10, 0),
       ),
       RecordData(
@@ -1556,7 +1531,6 @@ class AppData extends ChangeNotifier {
         direction: RecordDirection.income,
         amountCent: 100000,
         eventName: '公司年会',
-        paymentMethod: '现金',
         occurredAt: DateTime(now.year, 1, 15, 21, 5),
       ),
       RecordData(
@@ -1568,7 +1542,6 @@ class AppData extends ChangeNotifier {
         direction: RecordDirection.expense,
         amountCent: 30000,
         eventName: '探望',
-        paymentMethod: '微信',
         occurredAt: DateTime(now.year - 1, 12, 12, 14, 20),
         note: '顺路带点心意',
       ),

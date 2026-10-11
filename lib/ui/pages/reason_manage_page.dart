@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:forui/forui.dart';
 
 import '../../data/local/drift/app_database.dart';
 import '../app_database_scope.dart';
@@ -10,8 +10,12 @@ import '../app_tokens.dart';
 import '../app_scaffold.dart';
 import '../components.dart';
 import '../navigation.dart';
-import '../prototype_kit.dart';
+import '../ui_kit.dart';
 import 'reason_detail_page.dart';
+
+import '../app_icons.dart';
+
+import '../app_layout.dart';
 
 class ReasonManagePage extends StatelessWidget {
   const ReasonManagePage({super.key});
@@ -65,42 +69,22 @@ class _CanvasState extends State<_Canvas> {
 
     return Column(
       children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: BoxDecoration(
-            color: context.appColors.surfaceCard,
-            border: Border(
-              bottom: BorderSide(
-                color: context.appColors.surfaceSubtle,
-                width: 1,
-              ),
-            ),
+        AppTopBar(
+          title: '事由管理',
+          left: AppIconButton(
+            icon: const Icon(AppIcons.chevronLeft, size: 14),
+            backgroundColor: context.appColors.surfaceSubtle,
+            foregroundColor: AppColors.textSecondary,
+            onPressed: () => AppNav.pop(context),
+            radius: 12,
           ),
-          child: Row(
-            children: [
-              PrototypeIconButton(
-                icon: const FaIcon(FontAwesomeIcons.chevronLeft, size: 14),
-                backgroundColor: context.appColors.surfaceSubtle,
-                foregroundColor: AppColors.textSecondary,
-                onPressed: () => AppNav.pop(context),
-                radius: 12,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  '事由管理',
-                  style: AppTypography.h2().copyWith(fontSize: 20),
-                ),
-              ),
-              PrototypeIconButton(
-                icon: const FaIcon(FontAwesomeIcons.plus, size: 16),
-                backgroundColor: context.appColors.surfaceSubtle,
-                foregroundColor: AppColors.textSecondary,
-                onPressed: () =>
-                    AppNav.push(context, const ReasonDetailPage.create()),
-                radius: 12,
-              ),
-            ],
+          right: AppIconButton(
+            icon: const Icon(AppIcons.plus, size: 16),
+            backgroundColor: context.appColors.surfaceSubtle,
+            foregroundColor: AppColors.textSecondary,
+            onPressed: () =>
+                AppNav.push(context, const ReasonDetailPage.create()),
+            radius: 12,
           ),
         ),
         Expanded(
@@ -114,9 +98,9 @@ class _CanvasState extends State<_Canvas> {
               return ListView(
                 controller: _controller,
                 physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
+                padding: AppLayout.tabContentPadding,
                 children: [
-                  PrototypeCard(
+                  AppCard(
                     padding: EdgeInsets.zero,
                     child: Column(
                       children: [
@@ -217,7 +201,7 @@ class _ReasonRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
-    return PrototypePressableRow(
+    return AppPressableRow(
       onTap: onTap,
       onLongPress: onLongPress,
       borderBottom: borderBottom,
@@ -231,8 +215,8 @@ class _ReasonRow extends StatelessWidget {
               borderRadius: BorderRadius.circular(8),
             ),
             alignment: Alignment.center,
-            child: FaIcon(
-              FontAwesomeIcons.tag,
+            child: Icon(
+              AppIcons.tag,
               size: 14,
               color: reason.enabled ? colors.brandOnSoft : colors.textMuted,
             ),
@@ -269,7 +253,7 @@ class _ReasonRow extends StatelessWidget {
               ],
             ),
           ),
-          Switch(value: reason.enabled, onChanged: onToggleEnabled),
+          FSwitch(value: reason.enabled, onChange: onToggleEnabled),
         ],
       ),
     );

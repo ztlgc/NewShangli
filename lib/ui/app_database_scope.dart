@@ -2,7 +2,6 @@ import 'package:flutter/widgets.dart';
 
 import '../data/local/drift/app_database.dart';
 import '../import/data_import_service.dart';
-import '../data/local/drift/reason_relation_migrator.dart';
 
 class AppDatabaseProvider extends StatefulWidget {
   const AppDatabaseProvider({
@@ -41,7 +40,6 @@ class _AppDatabaseProviderState extends State<AppDatabaseProvider> {
       return;
     }
     _db = AppDatabase();
-    ReasonRelationMigrator.migrateIfNeeded(_db);
   }
 
   Future<void> restartDatabase() async {

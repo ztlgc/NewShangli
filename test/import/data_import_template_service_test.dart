@@ -28,6 +28,11 @@ void main() {
       final text = await file.readAsString();
       expect(text, contains('数据类型'));
       expect(text, contains('礼金收支记录'));
+      expect(text, isNot(contains('支付方式')));
+      expect(
+        text.trim().split(RegExp(r'\r?\n')).map((row) => row.split(',').length),
+        everyElement(12),
+      );
     });
 
     test('生成 XLSX 模板文件', () async {
@@ -44,4 +49,3 @@ void main() {
     });
   });
 }
-

@@ -3,18 +3,21 @@ import 'dart:io';
 
 import 'package:archive/archive.dart';
 import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
 
 import 'backup_config.dart';
 import 'restore_safety.dart';
 import '../data/local/drift/app_database.dart';
+
 import 'package:crypto/crypto.dart';
+
 import 'webdav_client.dart';
+
+import '../platform/app_platform.dart';
 
 class DataRestoreService {
   DataRestoreService({Future<Directory> Function()? documentsDirectoryProvider})
     : _documentsDirectoryProvider =
-          documentsDirectoryProvider ?? getApplicationDocumentsDirectory;
+          documentsDirectoryProvider ?? AppPlatform.documentsDirectory;
 
   final Future<Directory> Function() _documentsDirectoryProvider;
 

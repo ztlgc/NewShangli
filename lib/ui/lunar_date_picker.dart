@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:lunar/lunar.dart';
 
 import 'app_tokens.dart';
-import 'prototype_kit.dart';
+import 'ui_kit.dart';
 
 typedef AppSelectableDayPredicate = bool Function(DateTime day);
 

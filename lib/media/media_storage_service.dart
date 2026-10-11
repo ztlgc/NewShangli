@@ -1,13 +1,14 @@
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
+
+import '../platform/app_platform.dart';
 
 class MediaStorageService {
   MediaStorageService({
     Future<Directory> Function()? documentsDirectoryProvider,
   }) : _documentsDirectoryProvider =
-           documentsDirectoryProvider ?? getApplicationDocumentsDirectory;
+           documentsDirectoryProvider ?? AppPlatform.documentsDirectory;
 
   final Future<Directory> Function() _documentsDirectoryProvider;
 

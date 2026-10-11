@@ -41,7 +41,6 @@ Future<AppDatabase> _buildDbWithRecord() async {
       amountCent: 5200,
       direction: const Value('收入'),
       eventName: const Value('乔迁'),
-      paymentMethod: const Value('微信'),
       occurredAt: now,
       createdAt: now,
       updatedAt: now,
@@ -55,10 +54,7 @@ Widget _buildTestApp(AppDatabase db) {
     session: AppSession(),
     child: AppDatabaseScope(
       db: db,
-      child: MaterialApp(
-        theme: AppTheme.light(),
-        home: const RecordHomePage(),
-      ),
+      child: MaterialApp(theme: AppTheme.light(), home: const RecordHomePage()),
     ),
   );
 }

@@ -137,8 +137,6 @@ class GiftRecords extends Table {
   IntColumn get occurredAt =>
       integer().named('occurred_at').customConstraint('NOT NULL')();
 
-  TextColumn get paymentMethod => text().named('payment_method').nullable()();
-
   TextColumn get note => text().nullable()();
 
   TextColumn get attachments =>

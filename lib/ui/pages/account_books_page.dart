@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import '../../data/local/drift/app_database.dart';
 import '../../import/default_book_service.dart';
@@ -7,11 +6,16 @@ import '../../utils/date_util.dart';
 import '../app_database_scope.dart';
 import '../app_tokens.dart';
 import '../app_scaffold.dart';
+import '../components.dart';
 import '../edit_protection_guard.dart';
 import '../navigation.dart';
-import '../prototype_kit.dart';
+import '../ui_kit.dart';
 import 'account_book_detail_page.dart';
 import 'account_book_edit_page.dart';
+
+import '../app_icons.dart';
+
+import '../app_layout.dart';
 
 /// 页面：系统设置 - 账簿管理
 /// 对照原型：prototype/index.html -> "账簿管理"
@@ -42,11 +46,7 @@ class _CanvasState extends State<_Canvas> {
 
   Future<void> _openBook(AccountBook book) async {
     // 账簿列表点击后统一进入详情页，再由详情页承接后续操作入口。
-    AppNav.push(
-      context,
-      AccountBookDetailPage(bookId: book.bookId),
-      requiresLogin: true,
-    );
+    AppNav.push(context, AccountBookDetailPage(bookId: book.bookId));
   }
 
   @override
@@ -54,49 +54,23 @@ class _CanvasState extends State<_Canvas> {
     final colors = context.appColors;
     return Column(
       children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: BoxDecoration(
-            color: context.appColors.surfaceCard,
-            border: Border(
-              bottom: BorderSide(color: colors.borderDivider, width: 1),
-            ),
+        AppTopBar(
+          title: '账簿管理',
+          left: AppIconButton(
+            icon: const Icon(AppIcons.arrowLeft, size: 18),
+            backgroundColor: Colors.transparent,
+            foregroundColor: AppColors.textPrimary,
+            onPressed: () => AppNav.pop(context),
           ),
-          child: Row(
-            children: [
-              PrototypeIconButton(
-                icon: const FaIcon(FontAwesomeIcons.arrowLeft, size: 18),
-                backgroundColor: Colors.transparent,
-                foregroundColor: AppColors.textPrimary,
-                onPressed: () => AppNav.pop(context),
-              ),
-              Expanded(
-                child: Center(
-                  child: Text(
-                    '账簿管理',
-                    style: AppTypography.base(
-                      fontSize: 18,
-                      fontWeight: AppTypography.bold,
-                      color: colors.textPrimary,
-                    ),
-                  ),
-                ),
-              ),
-              PrototypeIconButton(
-                icon: const FaIcon(FontAwesomeIcons.plus, size: 16),
-                backgroundColor: Colors.transparent,
-                foregroundColor: AppColors.textPrimary,
-                onPressed: () async {
-                  await AppNav.push<bool>(
-                    context,
-                    const AccountBookEditPage(),
-                    requiresLogin: true,
-                  );
-                  if (!context.mounted) return;
-                  setState(() {});
-                },
-              ),
-            ],
+          right: AppIconButton(
+            icon: const Icon(AppIcons.plus, size: 16),
+            backgroundColor: Colors.transparent,
+            foregroundColor: AppColors.textPrimary,
+            onPressed: () async {
+              await AppNav.push<bool>(context, const AccountBookEditPage());
+              if (!context.mounted) return;
+              setState(() {});
+            },
           ),
         ),
         Expanded(
@@ -123,7 +97,7 @@ class _CanvasState extends State<_Canvas> {
                   }
 
                   return ListView.separated(
-                    padding: const EdgeInsets.all(16),
+                    padding: AppLayout.pagePadding,
                     itemCount: books.length,
                     separatorBuilder: (context, index) =>
                         const SizedBox(height: 16),
@@ -143,7 +117,6 @@ class _CanvasState extends State<_Canvas> {
                           await AppNav.push<bool>(
                             context,
                             AccountBookEditPage(bookId: b.bookId),
-                            requiresLogin: true,
                           );
                           if (!context.mounted) return;
                           setState(() {});
@@ -179,7 +152,8 @@ class _BookCardDb extends StatelessWidget {
     final colors = context.appColors;
     final isDefault = book.isDefault == 1;
 
-    final theme = _parseHexColorOrNull(book.themeColor) ?? AppColors.indigo900;
+    final theme =
+        _parseHexColorOrNull(book.themeColor) ?? AppColors.brandPrimary;
     final themeForeground = colors.foregroundFor(theme);
     final themeSoft = theme.withValues(
       alpha: Theme.of(context).brightness == Brightness.dark ? 0.28 : 0.14,
@@ -194,46 +168,29 @@ class _BookCardDb extends StatelessWidget {
       onTap: onOpen,
       child: Container(
         key: ValueKey<String>('book_card_${book.bookId}'),
-        padding: const EdgeInsets.all(16),
+        padding: AppLayout.pagePadding,
         decoration: BoxDecoration(
           color: context.appColors.surfaceCard,
           borderRadius: BorderRadius.circular(16),
           boxShadow: AppShadows.sm,
-          border: Border.all(
-            color: isDefault ? themeForeground : colors.borderSubtle,
-            width: isDefault ? 2 : 1,
-          ),
+          border: Border.all(color: colors.borderSubtle),
         ),
         child: Stack(
           children: [
-            if (isDefault)
-              Positioned(
-                top: -16,
-                right: -16,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: colors.brandPrimary,
-                    borderRadius: BorderRadius.only(
-                      bottomLeft: Radius.circular(8),
-                    ),
-                  ),
-                  child: Text(
-                    '当前使用',
-                    style: AppTypography.base(
-                      fontSize: 10,
-                      fontWeight: AppTypography.regular,
-                      color: colors.textInverse,
-                    ),
-                  ),
-                ),
-              ),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                if (isDefault) ...[
+                  const Align(
+                    alignment: Alignment.centerRight,
+                    child: AppPill(
+                      label: '当前使用',
+                      background: AppColors.gray100,
+                      foreground: AppColors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                ],
                 Row(
                   children: [
                     Container(
@@ -244,7 +201,7 @@ class _BookCardDb extends StatelessWidget {
                         borderRadius: BorderRadius.circular(12),
                       ),
                       alignment: Alignment.center,
-                      child: FaIcon(icon, size: 20, color: themeForeground),
+                      child: Icon(icon, size: 20, color: themeForeground),
                     ),
                     const SizedBox(width: 16),
                     Expanded(
@@ -349,12 +306,12 @@ class _BookCardDb extends StatelessWidget {
 IconData _iconByReasonType(String reasonType) {
   final v = reasonType.trim();
   if (v.contains('婚') || v.contains('宴') || v.contains('喜')) {
-    return FontAwesomeIcons.heart;
+    return AppIcons.heart;
   }
   if (v.contains('商务') || v.contains('公司') || v.contains('企业')) {
-    return FontAwesomeIcons.briefcase;
+    return AppIcons.briefcaseBusiness;
   }
-  return FontAwesomeIcons.book;
+  return AppIcons.bookOpen;
 }
 
 Color? _parseHexColorOrNull(String hex) {

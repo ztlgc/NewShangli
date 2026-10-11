@@ -58,7 +58,7 @@ void main() {
 
       expect(find.bySemanticsLabel('返回上一页'), findsOneWidget);
       expect(find.text('状态摘要'), findsOneWidget);
-      expect(find.text('WebDAV云端备份'), findsWidgets);
+      expect(find.text('WebDAV备份'), findsWidgets);
       expect(find.text('本地备份'), findsOneWidget);
 
       // 页面主体是可滚动列表，测试环境下首屏高度可能不足以直接渲染到“云端设置”区域。

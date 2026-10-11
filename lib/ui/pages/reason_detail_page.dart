@@ -1,14 +1,20 @@
 import 'package:flutter/material.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:forui/forui.dart';
 
 import '../../data/local/drift/app_database.dart';
 import '../app_database_scope.dart';
+import '../app_dialog.dart';
+import '../app_notifier.dart';
 import '../app_tokens.dart';
 import '../app_scaffold.dart';
 import '../components.dart';
 import '../navigation.dart';
-import '../prototype_kit.dart';
+import '../ui_kit.dart';
 import '../../utils/date_util.dart';
+
+import '../app_icons.dart';
+
+import '../app_layout.dart';
 
 class ReasonDetailPage extends StatefulWidget {
   const ReasonDetailPage({
@@ -68,75 +74,39 @@ class _ReasonDetailPageState extends State<ReasonDetailPage> {
       backgroundColor: AppColors.surfaceApp,
       body: Column(
         children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: context.appColors.surfaceCard,
-              border: Border(
-                bottom: BorderSide(
-                  color: context.appColors.surfaceSubtle,
-                  width: 1,
-                ),
+          FHeader.nested(
+            title: Text(widget.id == null ? '新增事由' : '事由详情'),
+            prefixes: [
+              FButton.icon(
+                variant: .ghost,
+                semanticsLabel: '返回',
+                onPress: _saving ? null : () => AppNav.pop(context),
+                child: const Icon(AppIcons.chevronLeft),
               ),
-            ),
-            child: Row(
-              children: [
-                PrototypeIconButton(
-                  icon: const FaIcon(FontAwesomeIcons.chevronLeft, size: 14),
-                  backgroundColor: context.appColors.surfaceSubtle,
-                  foregroundColor: AppColors.textSecondary,
-                  onPressed: _saving ? null : () => AppNav.pop(context),
-                  radius: 12,
+            ],
+            suffixes: [
+              if (!_editing)
+                FButton.icon(
+                  variant: .ghost,
+                  semanticsLabel: '编辑',
+                  onPress: () => setState(() => _editing = true),
+                  child: const Icon(AppIcons.pencil),
+                )
+              else
+                FButton(
+                  size: .sm,
+                  mainAxisSize: MainAxisSize.min,
+                  onPress: _saving ? null : _onSave,
+                  child: Text(_saving ? '保存中' : '保存'),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    widget.id == null ? '新增事由' : '事由详情',
-                    style: AppTypography.h2().copyWith(fontSize: 20),
-                  ),
-                ),
-                if (!_editing)
-                  PrototypeIconButton(
-                    icon: const FaIcon(FontAwesomeIcons.pen, size: 14),
-                    backgroundColor: context.appColors.surfaceSubtle,
-                    foregroundColor: AppColors.textSecondary,
-                    onPressed: () => setState(() => _editing = true),
-                    radius: 12,
-                  )
-                else
-                  PressableScale(
-                    onTap: _saving ? null : _onSave,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: _saving
-                            ? AppColors.gray300
-                            : AppColors.brandPrimary,
-                        borderRadius: BorderRadius.circular(9999),
-                        boxShadow: AppShadows.sm,
-                      ),
-                      child: Text(
-                        _saving ? '保存中' : '保存',
-                        style: AppTypography.base(
-                          fontSize: 14,
-                          fontWeight: AppTypography.medium,
-                          color: AppColors.white,
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
-            ),
+            ],
           ),
           Expanded(
             child: ListView(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
+              padding: AppLayout.tabContentPadding,
               children: [
-                PrototypeCard(
-                  padding: const EdgeInsets.all(16),
+                AppCard(
+                  padding: AppLayout.pagePadding,
                   child: Form(
                     key: _formKey,
                     child: Column(
@@ -184,8 +154,8 @@ class _ReasonDetailPageState extends State<ReasonDetailPage> {
                 ),
                 const SizedBox(height: 16),
                 if (reason != null)
-                  PrototypeCard(
-                    padding: const EdgeInsets.all(16),
+                  AppCard(
+                    padding: AppLayout.pagePadding,
                     child: Row(
                       children: [
                         Expanded(
@@ -198,9 +168,9 @@ class _ReasonDetailPageState extends State<ReasonDetailPage> {
                             ),
                           ),
                         ),
-                        Switch(
+                        FSwitch(
                           value: reason.enabled,
-                          onChanged: _saving
+                          onChange: _saving
                               ? null
                               : (v) async {
                                   await db.reasonsDao.setEnabled(
@@ -215,8 +185,8 @@ class _ReasonDetailPageState extends State<ReasonDetailPage> {
                   ),
                 if (reason != null) const SizedBox(height: 16),
                 if (!_editing && widget.id != null && reason != null)
-                  PrototypeCard(
-                    padding: const EdgeInsets.all(16),
+                  AppCard(
+                    padding: AppLayout.pagePadding,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -313,9 +283,7 @@ class _ReasonDetailPageState extends State<ReasonDetailPage> {
       if (widget.id == null) {
         await db.reasonsDao.create(name: name, description: description);
         if (!mounted) return;
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('已创建')));
+        AppNotifier.success(context, '已创建');
         AppNav.pop(context);
       } else {
         await db.reasonsDao.updateReason(
@@ -325,54 +293,34 @@ class _ReasonDetailPageState extends State<ReasonDetailPage> {
         );
         await _loadReason();
         if (!mounted) return;
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('已保存')));
+        AppNotifier.success(context, '已保存');
         setState(() => _editing = false);
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('保存失败：$e')));
+      AppNotifier.error(context, '保存失败：$e');
     } finally {
       if (mounted) setState(() => _saving = false);
     }
   }
 
   Future<void> _confirmDelete(BuildContext context, AppDatabase db) async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('删除事由'),
-          content: const Text('确认删除该事由？'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('取消'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('删除'),
-            ),
-          ],
-        );
-      },
+    final ok = await AppDialog.confirm(
+      context,
+      title: '删除事由',
+      message: '确认删除该事由？',
+      confirmLabel: '删除',
+      danger: true,
     );
     if (ok != true) return;
     try {
       await db.reasonsDao.deleteById(widget.id!);
       if (!context.mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('已删除')));
+      AppNotifier.success(context, '已删除');
       AppNav.pop(context);
     } catch (e) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('删除失败：$e')));
+      AppNotifier.error(context, '删除失败：$e');
     }
   }
 
@@ -412,56 +360,12 @@ class _Field extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = context.appColors;
-    return TextFormField(
-      controller: controller,
+    return FTextFormField(
+      control: FTextFieldControl.managed(controller: controller),
       enabled: enabled,
       maxLines: maxLines,
       validator: validator,
-      style: AppTypography.base(
-        fontSize: 14,
-        fontWeight: AppTypography.medium,
-        color: enabled ? AppColors.textPrimary : AppColors.textSecondary,
-      ),
-      decoration: InputDecoration(
-        isDense: true,
-        filled: true,
-        fillColor: enabled ? colors.surfaceSubtle : colors.surfaceDisabled,
-        hintText: hintText,
-        hintStyle: AppTypography.base(
-          fontSize: 14,
-          fontWeight: AppTypography.regular,
-          color: AppColors.textMuted,
-        ),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 12,
-          vertical: 12,
-        ),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: colors.borderSubtle, width: 1),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: colors.borderSubtle, width: 1),
-        ),
-        disabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: colors.borderSubtle, width: 1),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: colors.borderFocus, width: 1),
-        ),
-        errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: colors.stateDanger, width: 1),
-        ),
-        focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: colors.stateDanger, width: 1),
-        ),
-      ),
+      hint: hintText,
     );
   }
 }

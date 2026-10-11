@@ -1,7 +1,7 @@
+import 'package:forui/forui.dart';
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:newshangli/data/local/drift/app_database.dart';
 import 'package:newshangli/ui/app_database_scope.dart';
 import 'package:newshangli/ui/pages/relation_type_manage_page.dart';
@@ -21,7 +21,7 @@ void main() {
 
     expect(find.text('朋友'), findsOneWidget);
 
-    await tester.tap(find.byIcon(FontAwesomeIcons.penToSquare));
+    await tester.tap(find.byIcon(FLucideIcons.squarePen));
     await tester.pumpAndSettle();
     expect(find.text('编辑类型'), findsOneWidget);
 

@@ -1,38 +1,22 @@
-# 图标设计说明
+# 尚礼应用图标
 
-## 设计理念
-基于 "尚礼" (人情往来记录) 的应用定位，图标采用了以下设计元素：
-- **主体**：一个白色的礼物盒，象征着 "礼" 与 "往来"。
-- **装饰**：红色的丝带与心形结，寓意着人情温暖与喜庆。
-- **背景**：深靛蓝 (Indigo-900, #312E81)，符合 Material Design 3 的应用主色调，稳重且大气。
+图标以「礼」字为主标识。米白底与深色字形对应应用当前克制的中性色界面，字形右下角的一枚朱红印记保留了人情往来的温度。字形已经转为矢量轮廓，不依赖设备字体。
 
-## 文件位置
-- **SVG 源文件**: `assets/images/logo.svg`
-- **预览文件**: `icon_preview.html` (用浏览器打开查看)
+## 源文件与预览
 
-## 如何应用图标
-由于 Android 需要不同分辨率的 PNG 图标，建议按以下步骤操作：
+- `assets/images/logo.svg`：标准图标矢量源文件。
+- `assets/images/logo.png`：512 × 512 预览图。
+- `assets/images/logo_foreground.svg`：Android 自适应图标的透明前景。字形控制在系统的安全区域内。
+- `assets/images/logo_monochrome.svg`：Android 主题图标的单色前景。
 
-1. **预览与确认**：
-   用浏览器打开 `icon_preview.html`，确认图标设计是否满意。
+Android 8.0 及更新版本通过 `android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml` 使用分层图标。旧版本通过各 `mipmap-*` 目录下的 `ic_launcher.png` 使用标准图标。项目当前没有 iOS 工程。
 
-2. **生成图标**：
-   推荐使用 [flutter_launcher_icons](https://pub.dev/packages/flutter_launcher_icons) 插件自动生成。
-   
-   在 `pubspec.yaml` 中添加：
-   ```yaml
-   dev_dependencies:
-     flutter_launcher_icons: ^0.13.1
+## 重新生成 PNG
 
-   flutter_launcher_icons:
-     android: "ic_launcher"
-     ios: true
-     image_path: "assets/images/logo.png" # 注意：需要先将 SVG 转为 PNG
-     min_sdk_android: 21 # android min sdk min:16, default 21
-   ```
-   
-   或者使用在线工具 (如 [App Icon Generator](https://appicon.co/)) 将 `assets/images/logo.svg` 转换为 Android/iOS 需要的图标文件，并替换 `android/app/src/main/res/` 下的 `mipmap-*` 文件夹内容。
+字形轮廓来自 SIL Open Font License 1.1 授权的 Noto Sans SC。PNG 资源由 `tool/generate_app_icon.py` 从 SVG 生成。生成环境需要 Python、CairoSVG 与 Pillow；这些工具仅用于设计资源，不属于 Flutter 运行时依赖。
 
-## APP 名字修改
-- Android 应用名称已修改为 "尚礼" (`android/app/src/main/AndroidManifest.xml`)。
-- 项目描述已更新 (`pubspec.yaml`)。
+```powershell
+py -3 tool/generate_app_icon.py
+```
+
+生成后检查 `assets/images/logo.png` 和 `mipmap-mdpi/ic_launcher.png` 的视觉效果，再构建 Android 应用验证资源引用。

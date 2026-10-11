@@ -4,23 +4,24 @@ import 'dart:math' as math;
 
 import 'package:drift/drift.dart' show OrderingTerm, Variable;
 import 'package:flutter/material.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
-import 'package:share_plus/share_plus.dart';
 
 import '../../data/local/drift/app_database.dart';
 import '../../export/data_export_service.dart';
+import '../app_bottom_sheet.dart';
 import '../app_notifier.dart';
 import '../app_tokens.dart';
 import '../app_database_scope.dart';
 import '../app_scaffold.dart';
-import '../app_session.dart';
 import '../components.dart';
 import '../lunar_date_picker.dart';
 import '../navigation.dart';
-import '../prototype_kit.dart';
+import '../ui_kit.dart';
 import '../../utils/date_util.dart';
+
+import '../app_icons.dart';
+
+import '../../platform/app_platform.dart';
 
 /// 页面：系统设置 - 导出数据
 /// 对照原型：prototype/index.html -> "导出数据"
@@ -67,17 +68,16 @@ class _CanvasState extends State<_Canvas> {
 
   @override
   Widget build(BuildContext context) {
-    final session = AppSessionScope.of(context);
     final showExportPath =
         _exportPathVisible || _exporting || _lastExportFile != null;
     final db = AppDatabaseScope.of(context);
     _ensureAllTimeRangeInitialized(db);
     return Column(
       children: [
-        PrototypeTopBar(
+        AppTopBar(
           title: '数据导出',
-          left: PrototypeIconButton(
-            icon: const FaIcon(FontAwesomeIcons.arrowLeft, size: 18),
+          left: AppIconButton(
+            icon: const Icon(AppIcons.arrowLeft, size: 18),
             backgroundColor: Colors.transparent,
             foregroundColor: AppColors.textPrimary,
             onPressed: () => AppNav.pop(context),
@@ -179,7 +179,7 @@ class _CanvasState extends State<_Canvas> {
                     onTap: _exporting
                         ? null
                         : (_lastExportFile == null
-                              ? () => _export(session: session, db: db)
+                              ? () => _export(db: db)
                               : _shareLastFile),
                   ),
                 ],
@@ -198,7 +198,7 @@ class _CanvasState extends State<_Canvas> {
   }
 
   Future<void> _loadExportDir() async {
-    final dir = await getApplicationDocumentsDirectory();
+    final dir = await AppPlatform.documentsDirectory();
     final exportDir = Directory(p.join(dir.path, 'exports'));
     await exportDir.create(recursive: true);
     if (!mounted) return;
@@ -251,41 +251,22 @@ class _CanvasState extends State<_Canvas> {
 
   Future<void> _pickBook(AppDatabase db, List<AccountBook> books) async {
     const allKey = '__all__';
-    final picked = await showModalBottomSheet<String>(
-      context: context,
-      showDragHandle: true,
-      builder: (context) {
-        return SafeArea(
-          child: ListView(
-            shrinkWrap: true,
-            padding: const EdgeInsets.only(bottom: 12),
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                child: Text(
-                  '选择账簿',
-                  style: AppTypography.h2().copyWith(fontSize: 16),
-                ),
-              ),
-              ListTile(
-                title: const Text('所有账簿'),
-                trailing: _selectedBookId == null
-                    ? const Icon(Icons.check)
-                    : null,
-                onTap: () => Navigator.of(context).pop(allKey),
-              ),
-              for (final b in books)
-                ListTile(
-                  title: Text(b.name),
-                  trailing: _selectedBookId == b.bookId
-                      ? const Icon(Icons.check)
-                      : null,
-                  onTap: () => Navigator.of(context).pop(b.bookId),
-                ),
-            ],
+    final picked = await AppBottomSheet.showPicker<String>(
+      context,
+      title: '选择账簿',
+      options: [
+        AppSheetOption(
+          label: '所有账簿',
+          value: allKey,
+          selected: _selectedBookId == null,
+        ),
+        for (final b in books)
+          AppSheetOption(
+            label: b.name,
+            value: b.bookId,
+            selected: _selectedBookId == b.bookId,
           ),
-        );
-      },
+      ],
     );
     if (picked == null) return;
     final nextBookId = picked == allKey ? null : picked;
@@ -304,40 +285,21 @@ class _CanvasState extends State<_Canvas> {
   }
 
   Future<void> _pickFormat() async {
-    final picked = await showModalBottomSheet<DataExportFormat>(
-      context: context,
-      showDragHandle: true,
-      builder: (context) {
-        return SafeArea(
-          child: ListView(
-            shrinkWrap: true,
-            padding: const EdgeInsets.only(bottom: 12),
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                child: Text(
-                  '选择文件格式',
-                  style: AppTypography.h2().copyWith(fontSize: 16),
-                ),
-              ),
-              ListTile(
-                title: const Text('Excel 文件'),
-                trailing: _format == DataExportFormat.excel
-                    ? const Icon(Icons.check)
-                    : null,
-                onTap: () => Navigator.of(context).pop(DataExportFormat.excel),
-              ),
-              ListTile(
-                title: const Text('ZIP 文件'),
-                trailing: _format == DataExportFormat.zip
-                    ? const Icon(Icons.check)
-                    : null,
-                onTap: () => Navigator.of(context).pop(DataExportFormat.zip),
-              ),
-            ],
-          ),
-        );
-      },
+    final picked = await AppBottomSheet.showPicker<DataExportFormat>(
+      context,
+      title: '选择文件格式',
+      options: [
+        AppSheetOption(
+          label: 'Excel 文件',
+          value: DataExportFormat.excel,
+          selected: _format == DataExportFormat.excel,
+        ),
+        AppSheetOption(
+          label: 'ZIP 文件',
+          value: DataExportFormat.zip,
+          selected: _format == DataExportFormat.zip,
+        ),
+      ],
     );
     if (picked == null) return;
     setState(() {
@@ -347,36 +309,13 @@ class _CanvasState extends State<_Canvas> {
   }
 
   Future<void> _pickDateRange(AppDatabase db) async {
-    final picked = await showModalBottomSheet<String>(
-      context: context,
-      showDragHandle: true,
-      builder: (context) {
-        return SafeArea(
-          child: ListView(
-            shrinkWrap: true,
-            padding: const EdgeInsets.only(bottom: 12),
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                child: Text(
-                  '日期范围',
-                  style: AppTypography.h2().copyWith(fontSize: 16),
-                ),
-              ),
-              ListTile(
-                title: const Text('所有时间'),
-                trailing: _allTime ? const Icon(Icons.check) : null,
-                onTap: () => Navigator.of(context).pop('all'),
-              ),
-              ListTile(
-                title: const Text('自定义时间'),
-                trailing: !_allTime ? const Icon(Icons.check) : null,
-                onTap: () => Navigator.of(context).pop('custom'),
-              ),
-            ],
-          ),
-        );
-      },
+    final picked = await AppBottomSheet.showPicker<String>(
+      context,
+      title: '日期范围',
+      options: [
+        AppSheetOption(label: '所有时间', value: 'all', selected: _allTime),
+        AppSheetOption(label: '自定义时间', value: 'custom', selected: !_allTime),
+      ],
     );
     if (picked == null) return;
     if (!mounted) return;
@@ -455,10 +394,7 @@ class _CanvasState extends State<_Canvas> {
     });
   }
 
-  Future<void> _export({
-    required AppSession session,
-    required AppDatabase db,
-  }) async {
+  Future<void> _export({required AppDatabase db}) async {
     if (_exporting) return;
     _progressTimer?.cancel();
     setState(() {
@@ -475,7 +411,6 @@ class _CanvasState extends State<_Canvas> {
     });
     try {
       final file = await _service.exportFromDrift(
-        loggedIn: session.loggedIn,
         db: db,
         request: DataExportRequest(
           format: _format,
@@ -495,9 +430,7 @@ class _CanvasState extends State<_Canvas> {
         });
       }
       try {
-        await SharePlus.instance.share(
-          ShareParams(files: <XFile>[XFile(file.path)], text: '尚礼数据导出'),
-        );
+        await AppPlatform.instance.shareFile(file.path, text: '尚礼数据导出');
       } catch (_) {
         if (!mounted) return;
         AppNotifier.success(context, '已导出到：${file.path}');
@@ -529,9 +462,7 @@ class _CanvasState extends State<_Canvas> {
       return;
     }
     try {
-      await SharePlus.instance.share(
-        ShareParams(files: <XFile>[XFile(file.path)], text: '尚礼数据导出'),
-      );
+      await AppPlatform.instance.shareFile(file.path, text: '尚礼数据导出');
     } catch (_) {
       if (!mounted) return;
       AppNotifier.info(context, '文件路径：${file.path}');
@@ -629,7 +560,7 @@ class _SettingRow extends StatelessWidget {
                 ),
                 const SizedBox(width: 6),
                 Icon(
-                  Icons.chevron_right,
+                  AppIcons.chevronRight,
                   size: 20,
                   color: onTap == null ? AppColors.gray300 : AppColors.gray400,
                 ),
@@ -668,7 +599,7 @@ class _HoverableRowState extends State<_HoverableRow> {
       onEnter: enabled ? (_) => setState(() => _hover = true) : null,
       onExit: enabled ? (_) => setState(() => _hover = false) : null,
       cursor: enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
-      child: PrototypePressableRow(
+      child: AppPressableRow(
         onTap: widget.onTap,
         pressedColor: AppColors.gray50,
         borderBottom: widget.borderBottom,
@@ -704,7 +635,7 @@ class _HintArea extends StatelessWidget {
         ),
         const SizedBox(height: 4),
         Text(
-          '如果要备份或转移数据，请使用云同步或数据备份功能，请勿通过数据导出备份数据',
+          '备份或转移完整数据，请使用数据备份中的本地或 WebDAV 备份；业务导出不能代替完整备份',
           style: AppTypography.base(
             fontSize: 14,
             fontWeight: AppTypography.regular,

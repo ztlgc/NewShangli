@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:drift/drift.dart' show OrderingTerm;
 import 'package:drift/drift.dart' show Value;
-import 'package:file_picker/file_picker.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import '../../data/local/drift/app_database.dart';
 import '../../data/local/entity_remarks_store.dart';
@@ -17,12 +15,18 @@ import '../contact_avatar.dart';
 import '../components.dart';
 import '../edit_protection_guard.dart';
 import '../navigation.dart';
-import '../prototype_kit.dart';
+import '../ui_kit.dart';
 import 'person_edit_page.dart';
 import 'record_add_page.dart';
 import 'record_detail_page.dart';
 import '../../utils/date_util.dart';
 import '../../security/edit_protection.dart';
+
+import '../app_icons.dart';
+
+import '../../platform/app_platform.dart';
+
+import '../app_layout.dart';
 
 /// 页面：关系人管理 - 详情页
 /// 对照原型：prototype/index.html -> "详情页"
@@ -52,8 +56,8 @@ class PersonDetailPage extends StatelessWidget {
             color: AppColors.brandPrimary,
             child: Row(
               children: [
-                PrototypeIconButton(
-                  icon: const FaIcon(FontAwesomeIcons.arrowLeft, size: 18),
+                AppIconButton(
+                  icon: const Icon(AppIcons.arrowLeft, size: 18),
                   backgroundColor: Colors.transparent,
                   foregroundColor: AppColors.white,
                   onPressed: () => AppNav.pop(context),
@@ -155,9 +159,6 @@ class _CanvasState extends State<_Canvas> {
                 : r.eventName!.trim(),
             isIncome: isIncome,
             amountCent: r.amountCent,
-            paymentMethod: (r.paymentMethod ?? '').trim().isEmpty
-                ? '未设置'
-                : r.paymentMethod!.trim(),
             occurredAt: DateTime.fromMillisecondsSinceEpoch(r.occurredAt),
           ),
         );
@@ -187,11 +188,7 @@ class _CanvasState extends State<_Canvas> {
     final ok = await requireEditProtectionPassword(context, title: '编辑联系人');
     if (!ok) return;
     if (!mounted) return;
-    await AppNav.push(
-      context,
-      PersonEditPage(personId: personId),
-      requiresLogin: true,
-    );
+    await AppNav.push(context, PersonEditPage(personId: personId));
     if (!mounted) return;
     _reload();
   }
@@ -211,8 +208,7 @@ class _CanvasState extends State<_Canvas> {
       if (!mounted) return;
     }
 
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
+    final result = await AppPlatform.instance.pickFiles(
       allowedExtensions: const <String>['jpg', 'jpeg', 'png', 'webp'],
       withData: false,
     );
@@ -253,36 +249,19 @@ class _CanvasState extends State<_Canvas> {
         }
         return Column(
           children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              color: AppColors.brandPrimary,
-              child: Row(
-                children: [
-                  PrototypeIconButton(
-                    icon: const FaIcon(FontAwesomeIcons.arrowLeft, size: 18),
-                    backgroundColor: Colors.transparent,
-                    foregroundColor: AppColors.white,
-                    onPressed: () => AppNav.pop(context),
-                  ),
-                  Expanded(
-                    child: Center(
-                      child: Text(
-                        '详情',
-                        style: AppTypography.base(
-                          fontSize: 18,
-                          fontWeight: AppTypography.bold,
-                          color: AppColors.white,
-                        ),
-                      ),
-                    ),
-                  ),
-                  PrototypeIconButton(
-                    icon: const FaIcon(FontAwesomeIcons.pen, size: 14),
-                    backgroundColor: Colors.transparent,
-                    foregroundColor: AppColors.white,
-                    onPressed: () => _editPerson(view.person.id),
-                  ),
-                ],
+            AppTopBar(
+              title: '关系人详情',
+              left: AppIconButton(
+                icon: const Icon(AppIcons.arrowLeft, size: 18),
+                backgroundColor: Colors.transparent,
+                foregroundColor: AppColors.textPrimary,
+                onPressed: () => AppNav.pop(context),
+              ),
+              right: AppIconButton(
+                icon: const Icon(AppIcons.pen, size: 14),
+                backgroundColor: Colors.transparent,
+                foregroundColor: AppColors.textPrimary,
+                onPressed: () => _editPerson(view.person.id),
               ),
             ),
             Expanded(
@@ -317,7 +296,7 @@ class _CanvasState extends State<_Canvas> {
                       const SizedBox(height: 16),
                       const _RecordsHeader(),
                       _RecordsCard(records: view.records),
-                      const SizedBox(height: 24),
+                      const SizedBox(height: AppLayout.sectionGap),
                     ],
                   ),
                   Positioned(
@@ -356,7 +335,6 @@ class _PersonRecordView {
     required this.eventName,
     required this.isIncome,
     required this.amountCent,
-    required this.paymentMethod,
     required this.occurredAt,
   });
 
@@ -364,7 +342,6 @@ class _PersonRecordView {
   final String eventName;
   final bool isIncome;
   final int amountCent;
-  final String paymentMethod;
   final DateTime occurredAt;
 }
 
@@ -473,7 +450,7 @@ class _Hero extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: AppLayout.sectionGap),
             ],
           ),
         ),
@@ -537,9 +514,8 @@ class _EntityRemarksCardState extends State<_EntityRemarksCard> {
 
   Future<List<EntityRemark>> _load() async {
     final db = AppDatabaseScope.of(context);
-    return EntityRemarksStore(
-      db,
-    ).listByEntity(entityType: widget.entityType, entityId: widget.entityId);
+    return EntityRemarksStore(db)
+        .listByEntity(entityType: widget.entityType, entityId: widget.entityId);
   }
 
   void _reload() {
@@ -578,8 +554,8 @@ class _EntityRemarksCardState extends State<_EntityRemarksCard> {
   @override
   Widget build(BuildContext context) {
     final db = AppDatabaseScope.of(context);
-    return PrototypeCard(
-      padding: const EdgeInsets.all(16),
+    return AppCard(
+      padding: AppLayout.pagePadding,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -787,14 +763,14 @@ class _InfoCards extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 48, 16, 24),
-      child: PrototypeCard(
-        padding: const EdgeInsets.all(16),
+      child: AppCard(
+        padding: AppLayout.pagePadding,
         child: Column(
           children: [
             _InfoRow(
               iconBg: AppColors.pink50,
               iconFg: AppColors.pink500,
-              icon: FontAwesomeIcons.cakeCandles,
+              icon: AppIcons.cake,
               label: '生日',
               value: birthdayValue,
               trailing: birthdayTrailing,
@@ -803,7 +779,7 @@ class _InfoCards extends StatelessWidget {
             _InfoRow(
               iconBg: AppColors.gray50,
               iconFg: AppColors.textTertiary,
-              icon: FontAwesomeIcons.noteSticky,
+              icon: AppIcons.stickyNote,
               label: '备注',
               value: note,
             ),
@@ -844,7 +820,7 @@ class _InfoRow extends StatelessWidget {
             shape: BoxShape.circle,
           ),
           alignment: Alignment.center,
-          child: FaIcon(icon, size: 14, color: colors.foregroundFor(iconFg)),
+          child: Icon(icon, size: 14, color: colors.foregroundFor(iconFg)),
         ),
         const SizedBox(width: 12),
         Expanded(
@@ -952,7 +928,7 @@ class _RecordsCard extends StatelessWidget {
           boxShadow: AppShadows.sm,
         ),
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: AppLayout.pagePadding,
           child: Text(
             '暂无往来记录',
             style: AppTypography.base(
@@ -996,22 +972,14 @@ class _RecordRow extends StatelessWidget {
     final isIncome = record.isIncome;
     final iconBg = isIncome ? AppColors.green100 : AppColors.red100;
     final iconFg = isIncome ? AppColors.green600 : AppColors.red600;
-    final icon = isIncome
-        ? FontAwesomeIcons.gift
-        : FontAwesomeIcons.handHoldingHeart;
+    final icon = isIncome ? AppIcons.gift : AppIcons.handHeart;
     final amountColor = isIncome ? AppColors.green600 : AppColors.red500;
     final amount = _formatSignedAmount(record.amountCent, isIncome: isIncome);
-    final subtitleLeft =
-        (record.paymentMethod == '未设置' || record.paymentMethod.isEmpty)
-        ? (isIncome ? '收礼' : '送礼')
-        : '${isIncome ? '收礼' : '送礼'} - ${record.paymentMethod}';
+    final subtitleLeft = isIncome ? '收礼' : '送礼';
     final subtitleRight = DateUtil.format(record.occurredAt);
-    return PrototypePressableRow(
-      onTap: () => AppNav.push(
-        context,
-        RecordDetailPage(recordId: record.recordId),
-        requiresLogin: true,
-      ),
+    return AppPressableRow(
+      onTap: () =>
+          AppNav.push(context, RecordDetailPage(recordId: record.recordId)),
       borderBottom: borderBottom,
       child: Row(
         children: [
@@ -1023,7 +991,7 @@ class _RecordRow extends StatelessWidget {
               shape: BoxShape.circle,
             ),
             alignment: Alignment.center,
-            child: FaIcon(icon, size: 16, color: colors.foregroundFor(iconFg)),
+            child: Icon(icon, size: 16, color: colors.foregroundFor(iconFg)),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -1091,7 +1059,7 @@ class _BottomActions extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: AppLayout.pagePadding,
       decoration: BoxDecoration(
         color: context.appColors.surfaceCard,
         border: Border(
@@ -1104,13 +1072,12 @@ class _BottomActions extends StatelessWidget {
             child: _ActionButton(
               bg: AppColors.brandPrimary,
               fg: AppColors.white,
-              icon: FontAwesomeIcons.plus,
+              icon: AppIcons.plus,
               label: '记一笔',
               shadow: true,
               onTap: () => AppNav.push(
                 context,
                 RecordAddPage(initialPersonId: personId),
-                requiresLogin: true,
               ),
             ),
           ),
@@ -1181,7 +1148,7 @@ class _ActionButton extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            FaIcon(icon, size: 16, color: fg),
+            Icon(icon, size: 16, color: fg),
             const SizedBox(width: 8),
             Text(
               label,

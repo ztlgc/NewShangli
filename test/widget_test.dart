@@ -8,7 +8,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:drift/native.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:newshangli/data/local/drift/app_database.dart';
@@ -19,16 +18,7 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   setUpAll(() async {
     SharedPreferences.setMockInitialValues({});
-    await Supabase.initialize(
-      url: 'https://example.invalid',
-      anonKey: 'test-only',
-      authOptions: const FlutterAuthClientOptions(
-        autoRefreshToken: false,
-        localStorage: EmptyLocalStorage(),
-      ),
-    );
   });
-  tearDownAll(() => Supabase.instance.dispose());
   testWidgets('App opens record home page', (WidgetTester tester) async {
     final oldOnError = FlutterError.onError;
     FlutterError.onError = (details) {

@@ -14,8 +14,8 @@ Before editing UI, read the target page and these local sources:
 - `lib/ui/app_tokens.dart` for colors, spacing, radii, shadows, and typography.
 - `lib/ui/app_theme.dart` for Material 3 theme behavior.
 - `lib/ui/app_scaffold.dart` for page shell behavior.
-- `lib/ui/prototype_kit.dart` and `lib/ui/components.dart` for existing shared UI primitives.
-- `references/design-language.md` for the compact design language reference.
+- `lib/ui/ui_kit.dart` and `lib/ui/components.dart` for existing shared UI primitives.
+- `lib/ui/app_forui_theme.dart` and `docs/FORUI_MIGRATION_PLAN.md` for the current Forui design language.
 
 If the task references a prototype or token mapping, also inspect:
 
@@ -33,18 +33,18 @@ Use a mobile-first single-column structure based on the current 393 x 852 protot
 
 - Use `AppScaffold` as the page shell unless the target page already has a justified custom shell.
 - Use token classes from `app_tokens.dart`: `AppColors`, `AppTypography`, `AppRadii`, `AppShadows`, and `AppTokens`.
-- Use existing primitives before adding new ones: `PrototypeTopBar`, `PrototypeIconButton`, `PrototypeBottomNav`, `PrototypeCard`, `PrototypePrimaryButton`, `PrototypeSecondaryButton`, `PrototypeSearchField`, `PrototypePressableRow`, `PrototypePill`, `PressableScale`, and `ContactAvatar`.
-- Use `font_awesome_flutter` icons for page actions and navigation, matching current pages.
+- Use existing primitives before adding new ones: `AppTopBar`, `AppIconButton`, `AppCard`, `AppPrimaryButton`, `AppSecondaryButton`, `AppSearchField`, `AppPressableRow`, `AppPill`, `PressableScale`, and `ContactAvatar`.
+- Prefer Forui components and `AppIcons` from `lib/ui/app_icons.dart` for page actions and navigation.
 - Keep page backgrounds on `AppColors.surfaceApp` or the current page's established neutral background.
 - Use white cards with `AppRadii.br2xl`, `AppShadows.sm`, and subtle borders/dividers for grouped content.
 - Use `AppTypography.base(...)` or named typography helpers. Do not introduce unrelated font families.
 - Keep minimum tap targets at or above `AppTokens.tapTargetMin` where controls are not already constrained by existing components.
 - Preserve Chinese UI copy style: short nouns for labels, short action verbs for buttons, direct status text for feedback.
-- Keep layout responsive to safe-area and bottom inset behavior already used by `PrototypeBottomNav` and FAB placement.
+- Keep layout responsive to safe-area and bottom inset behavior in `MainTabShell` and `FBottomNavigationBar`.
 
 ## Visual Defaults
 
-- Primary brand: `AppColors.brandPrimary` (`#312E81`) for selected navigation, primary buttons, FABs, and key active states.
+- Primary brand: `AppColors.brandPrimary` (`#111827`) for selected navigation, primary buttons, FABs, and key active states.
 - Secondary brand: `AppColors.brandSecondary` for supporting emphasis, progress, and links.
 - Soft selected backgrounds: `AppColors.brandSoft` / `AppColors.indigo50`.
 - Income/success: `AppColors.stateSuccess` or `AppColors.green600`.
@@ -83,3 +83,11 @@ After UI edits:
 - For larger UI work, run `flutter test` if feasible.
 - Inspect the changed UI path manually or with an available screenshot workflow when the task is visual.
 - Re-scan touched code for hard-coded colors, inconsistent spacing, text overflow risks, and unhandled loading/empty/error states.
+
+## Local-only and migration rules
+
+- Do not reintroduce user accounts or cloud synchronization. Keep local backup/restore and user-configured WebDAV whole-archive backup.
+- Use `app_layout.dart` for shared page geometry and `app_icons.dart` for existing Lucide mappings; preserve the current Forui visual style.
+- Use `AppPlatform` for file selection, sharing and application directories. Keep platform plugin imports inside the adapter.
+- Treat `DESIGN_SPEC.md` as the current canonical contract and the earlier Forui migration record as historical evidence.
+- Do not claim HarmonyOS support until the migration proof of concept and device checks have passed.

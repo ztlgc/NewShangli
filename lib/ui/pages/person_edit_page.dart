@@ -1,15 +1,16 @@
 import 'dart:async';
 
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:forui/forui.dart';
 import 'package:drift/drift.dart' show Value;
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:lunar/lunar.dart';
 
 import '../../data/local/drift/app_database.dart';
 import '../../import/default_book_service.dart';
 import '../../media/media_storage_service.dart';
+import '../app_bottom_sheet.dart';
 import '../app_database_scope.dart';
+import '../app_forui_theme.dart';
 import '../app_dialog.dart';
 import '../app_notifier.dart';
 import '../app_notification_tokens.dart';
@@ -19,8 +20,14 @@ import '../contact_avatar.dart';
 import '../components.dart';
 import '../edit_protection_guard.dart';
 import '../navigation.dart';
-import '../prototype_kit.dart';
+import '../ui_kit.dart';
 import '../lunar_date_picker.dart';
+
+import '../app_icons.dart';
+
+import '../../platform/app_platform.dart';
+
+import '../app_layout.dart';
 
 /// 页面：关系人管理 - 编辑/新增
 /// 对照原型：prototype/index.html -> "编辑/新增"
@@ -128,76 +135,29 @@ class _PersonEditPageState extends State<PersonEditPage> {
       backgroundColor: AppColors.surfaceApp,
       body: Column(
         children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: context.appColors.surfaceCard,
-              border: Border(
-                bottom: BorderSide(
-                  color: context.appColors.surfaceSubtle,
-                  width: 1,
-                ),
+          FHeader.nested(
+            title: Text(widget.personId == null ? '新增关系人' : '编辑关系人'),
+            prefixes: [
+              FButton(
+                variant: .ghost,
+                size: .sm,
+                mainAxisSize: MainAxisSize.min,
+                onPress: _saving ? null : () => AppNav.pop(context),
+                child: const Text('取消'),
               ),
-            ),
-            child: Row(
-              children: [
-                GestureDetector(
-                  onTap: _saving ? null : () => AppNav.pop(context),
-                  behavior: HitTestBehavior.opaque,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    child: Text(
-                      '取消',
-                      style: AppTypography.base(
-                        fontSize: 14,
-                        fontWeight: AppTypography.medium,
-                        color: _saving
-                            ? AppColors.textMuted
-                            : AppColors.textTertiary,
-                      ),
-                    ),
-                  ),
-                ),
-                Expanded(
-                  child: Center(
-                    child: Text(
-                      widget.personId == null ? '新增关系人' : '编辑关系人',
-                      style: AppTypography.base(
-                        fontSize: 18,
-                        fontWeight: AppTypography.bold,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                  ),
-                ),
-                PressableScale(
-                  onTap: _saving ? null : _onSave,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.brandPrimary,
-                      borderRadius: BorderRadius.circular(9999),
-                      boxShadow: AppShadows.sm,
-                    ),
-                    child: Text(
-                      _saving ? '保存中' : '保存',
-                      style: AppTypography.base(
-                        fontSize: 14,
-                        fontWeight: AppTypography.medium,
-                        color: AppColors.white,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
+            ],
+            suffixes: [
+              FButton(
+                size: .sm,
+                mainAxisSize: MainAxisSize.min,
+                onPress: _saving ? null : _onSave,
+                child: Text(_saving ? '保存中' : '保存'),
+              ),
+            ],
           ),
           Expanded(
             child: ListView(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
+              padding: AppLayout.tabContentPadding,
               children: [
                 _AvatarEditor(
                   avatarUrl: _avatarUrl,
@@ -209,7 +169,7 @@ class _PersonEditPageState extends State<PersonEditPage> {
                     _pickAvatar();
                   },
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: AppLayout.sectionGap),
                 _BasicInfoCard(
                   nameCtrl: _nameCtrl,
                   nameFocus: _nameFocus,
@@ -241,7 +201,7 @@ class _PersonEditPageState extends State<PersonEditPage> {
                       ? null
                       : (v) => setState(() => _isLunarBirthday = v),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: AppLayout.sectionGap),
                 const _SectionOverline(title: '其他信息'),
                 const SizedBox(height: 12),
                 _NoteCard(
@@ -256,7 +216,7 @@ class _PersonEditPageState extends State<PersonEditPage> {
                   onNoteSubmitted: _saving ? null : _commitNote,
                   onNoteFocusChange: _saving ? null : _onNoteFocusChange,
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: AppLayout.sectionGap),
                 if (widget.personId != null)
                   _DeleteButton(onTap: _saving ? null : _confirmDelete),
               ],
@@ -355,8 +315,7 @@ class _PersonEditPageState extends State<PersonEditPage> {
   }
 
   Future<void> _pickAvatar() async {
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
+    final result = await AppPlatform.instance.pickFiles(
       allowedExtensions: const <String>['jpg', 'jpeg', 'png', 'webp'],
       withData: false,
     );
@@ -668,120 +627,31 @@ class _PersonEditPageState extends State<PersonEditPage> {
 
   Future<void> _pickRelationship() async {
     final db = AppDatabaseScope.of(context);
-    final types = await db.relationTypesDao.listAll();
+    late final List<RelationType> types;
+    try {
+      types = await db.relationTypesDao.listAll();
+    } catch (_) {
+      if (mounted) AppNotifier.error(context, '关系类型加载失败，请重试');
+      return;
+    }
     if (!mounted) return;
-    final picked = await showModalBottomSheet<String>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
-        return Padding(
-          padding: EdgeInsets.fromLTRB(12, 0, 12, 12 + bottomInset),
-          child: Container(
-            decoration: BoxDecoration(
-              color: context.appColors.surfaceCard,
-              borderRadius: AppRadii.br2xl,
-              boxShadow: AppShadows.lg,
-            ),
-            clipBehavior: Clip.antiAlias,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
-                  decoration: BoxDecoration(
-                    color: context.appColors.surfaceCard,
-                    border: Border(
-                      bottom: BorderSide(
-                        color: context.appColors.surfaceSubtle,
-                        width: 1,
-                      ),
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          '选择关系类型',
-                          style: AppTypography.base(
-                            fontSize: 14,
-                            fontWeight: AppTypography.bold,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                      ),
-                      PrototypeIconButton(
-                        icon: const FaIcon(FontAwesomeIcons.xmark, size: 14),
-                        backgroundColor: context.appColors.surfaceSubtle,
-                        foregroundColor: AppColors.textSecondary,
-                        onPressed: () => Navigator.of(context).pop(),
-                        radius: 12,
-                      ),
-                    ],
-                  ),
-                ),
-                Flexible(
-                  child: ListView(
-                    shrinkWrap: true,
-                    padding: const EdgeInsets.only(bottom: 16),
-                    children: [
-                      for (final t in types)
-                        PrototypePressableRow(
-                          onTap: () => Navigator.of(context).pop(t.name),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  t.name,
-                                  style: AppTypography.base(
-                                    fontSize: 14,
-                                    fontWeight: AppTypography.medium,
-                                    color: AppColors.textPrimary,
-                                  ),
-                                ),
-                              ),
-                              if (t.name == _relationship)
-                                const FaIcon(
-                                  FontAwesomeIcons.check,
-                                  size: 14,
-                                  color: AppColors.indigo600,
-                                ),
-                            ],
-                          ),
-                        ),
-                      PrototypePressableRow(
-                        onTap: () => Navigator.of(context).pop('__custom__'),
-                        child: Row(
-                          children: [
-                            const FaIcon(
-                              FontAwesomeIcons.plus,
-                              size: 14,
-                              color: AppColors.blue600,
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              '自定义...',
-                              style: AppTypography.base(
-                                fontSize: 14,
-                                fontWeight: AppTypography.medium,
-                                color: AppColors.blue600,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+    final picked = await AppBottomSheet.showPicker<String>(
+      context,
+      title: '选择关系类型',
+      options: [
+        for (final type in types)
+          AppSheetOption<String>(
+            label: type.name,
+            value: type.name,
+            icon: AppIcons.users,
+            selected: type.name == _relationship,
           ),
-        );
-      },
+        const AppSheetOption<String>(
+          label: '自定义...',
+          value: '__custom__',
+          icon: AppIcons.plus,
+        ),
+      ],
     );
     if (!mounted || picked == null) return;
     if (picked == '__custom__') {
@@ -795,13 +665,7 @@ class _PersonEditPageState extends State<PersonEditPage> {
     final input = await AppDialog.showInput(
       context,
       title: '自定义关系类型',
-      fields: [
-        AppDialogField(
-          id: 'value',
-          label: '关系名称',
-          hint: '请输入关系名称',
-        ),
-      ],
+      fields: [AppDialogField(id: 'value', label: '关系名称', hint: '请输入关系名称')],
       confirmLabel: '确定',
       cancelLabel: '取消',
     );
@@ -978,7 +842,7 @@ class _BasicInfoCard extends StatelessWidget {
             textInputAction: TextInputAction.done,
             borderBottom: true,
           ),
-          const PrototypeDivider(color: AppColors.borderDivider),
+          const AppDivider(color: AppColors.borderDivider),
           _EditableRow(
             label: '关系类型',
             requiredMark: false,
@@ -986,7 +850,7 @@ class _BasicInfoCard extends StatelessWidget {
             onTap: onPickRelationship,
             borderBottom: true,
           ),
-          const PrototypeDivider(color: AppColors.borderDivider),
+          const AppDivider(color: AppColors.borderDivider),
           _InlineEditableRow(
             label: '手机号',
             requiredMark: false,
@@ -1004,7 +868,7 @@ class _BasicInfoCard extends StatelessWidget {
             textInputAction: TextInputAction.done,
             borderBottom: true,
           ),
-          const PrototypeDivider(color: AppColors.borderDivider),
+          const AppDivider(color: AppColors.borderDivider),
           _BirthdayRow(
             birthday: birthday,
             isLunar: isLunarBirthday,
@@ -1062,9 +926,9 @@ class _NoteCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return PrototypeCard(
+    return AppCard(
       padding: EdgeInsets.zero,
-      child: PrototypePressableRow(
+      child: AppPressableRow(
         onTap: noteEditing ? null : onTap,
         borderBottom: false,
         child: Container(
@@ -1102,32 +966,20 @@ class _NoteCard extends StatelessWidget {
                     else
                       Focus(
                         onFocusChange: onNoteFocusChange,
-                        child: TextField(
-                          controller: noteCtrl,
-                          focusNode: noteFocus,
-                          keyboardType: TextInputType.multiline,
-                          textInputAction: TextInputAction.done,
-                          maxLines: 6,
-                          minLines: 3,
-                          onChanged: onNoteChanged,
-                          onSubmitted: (_) => onNoteSubmitted?.call(),
-                          style: AppTypography.base(
-                            fontSize: 14,
-                            fontWeight: AppTypography.regular,
-                            color: AppColors.textPrimary,
-                          ),
-                          decoration: InputDecoration(
-                            isDense: true,
-                            hintText: '补充说明（可选）',
-                            hintStyle: AppTypography.base(
-                              fontSize: 14,
-                              fontWeight: AppTypography.regular,
-                              color: AppColors.textMuted,
+                        child: AppForuiBoundary(
+                          child: FTextField(
+                            control: FTextFieldControl.managed(
+                              controller: noteCtrl,
+                              onChange: (value) =>
+                                  onNoteChanged?.call(value.text),
                             ),
-                            contentPadding: EdgeInsets.zero,
-                            border: InputBorder.none,
-                            enabledBorder: InputBorder.none,
-                            focusedBorder: InputBorder.none,
+                            focusNode: noteFocus,
+                            keyboardType: TextInputType.multiline,
+                            textInputAction: TextInputAction.done,
+                            maxLines: 6,
+                            minLines: 3,
+                            onSubmit: (_) => onNoteSubmitted?.call(),
+                            hint: '补充说明（可选）',
                           ),
                         ),
                       ),
@@ -1162,8 +1014,8 @@ class _NoteCard extends StatelessWidget {
                   ],
                 ),
               ),
-              const FaIcon(
-                FontAwesomeIcons.chevronRight,
+              const Icon(
+                AppIcons.chevronRight,
                 size: 10,
                 color: AppColors.gray300,
               ),
@@ -1223,7 +1075,7 @@ class _EditableRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return PrototypePressableRow(
+    return AppPressableRow(
       onTap: onTap,
       borderBottom: borderBottom,
       child: Row(
@@ -1267,11 +1119,7 @@ class _EditableRow extends StatelessWidget {
               ],
             ),
           ),
-          const FaIcon(
-            FontAwesomeIcons.chevronRight,
-            size: 10,
-            color: AppColors.gray300,
-          ),
+          const Icon(AppIcons.chevronRight, size: 10, color: AppColors.gray300),
         ],
       ),
     );
@@ -1316,7 +1164,7 @@ class _InlineEditableRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isUnset = displayValue == '未设置';
-    return PrototypePressableRow(
+    return AppPressableRow(
       onTap: editing ? null : onTap,
       borderBottom: borderBottom,
       child: Container(
@@ -1365,33 +1213,18 @@ class _InlineEditableRow extends StatelessWidget {
                   else
                     Focus(
                       onFocusChange: onFocusChange,
-                      child: TextField(
-                        controller: controller,
-                        focusNode: focusNode,
-                        keyboardType: keyboardType,
-                        textInputAction: textInputAction,
-                        maxLines: 1,
-                        onChanged: onChanged,
-                        onSubmitted: (_) => onSubmitted?.call(),
-                        style: AppTypography.base(
-                          fontSize: 16,
-                          fontWeight: requiredMark
-                              ? AppTypography.medium
-                              : AppTypography.regular,
-                          color: AppColors.textPrimary,
-                        ),
-                        decoration: InputDecoration(
-                          isDense: true,
-                          hintText: hintText,
-                          hintStyle: AppTypography.base(
-                            fontSize: 16,
-                            fontWeight: AppTypography.regular,
-                            color: AppColors.textMuted,
+                      child: AppForuiBoundary(
+                        child: FTextField(
+                          control: FTextFieldControl.managed(
+                            controller: controller,
+                            onChange: (value) => onChanged?.call(value.text),
                           ),
-                          contentPadding: EdgeInsets.zero,
-                          border: InputBorder.none,
-                          enabledBorder: InputBorder.none,
-                          focusedBorder: InputBorder.none,
+                          focusNode: focusNode,
+                          keyboardType: keyboardType,
+                          textInputAction: textInputAction,
+                          maxLines: 1,
+                          onSubmit: (_) => onSubmitted?.call(),
+                          hint: hintText,
                         ),
                       ),
                     ),
@@ -1409,8 +1242,8 @@ class _InlineEditableRow extends StatelessWidget {
                 ],
               ),
             ),
-            const FaIcon(
-              FontAwesomeIcons.chevronRight,
+            const Icon(
+              AppIcons.chevronRight,
               size: 10,
               color: AppColors.gray300,
             ),
@@ -1469,7 +1302,7 @@ class _BirthdayRow extends StatelessWidget {
       }
     }
 
-    return PrototypePressableRow(
+    return AppPressableRow(
       onTap: onTap,
       borderBottom: false,
       child: Column(
@@ -1527,8 +1360,8 @@ class _BirthdayRow extends StatelessWidget {
                   ],
                 ),
               ),
-              const FaIcon(
-                FontAwesomeIcons.chevronRight,
+              const Icon(
+                AppIcons.chevronRight,
                 size: 10,
                 color: AppColors.gray300,
               ),

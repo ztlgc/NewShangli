@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:forui/forui.dart';
+import 'package:material_ui/material_ui.dart' as forui_material;
 import 'package:drift/drift.dart' show Value;
 import 'package:dotted_border/dotted_border.dart';
-import 'package:file_picker/file_picker.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import '../../data/local/drift/app_database.dart';
 import '../../import/default_book_service.dart';
 import '../../media/media_storage_service.dart';
+import '../app_bottom_sheet.dart';
 import '../app_database_scope.dart';
+import '../app_forui_theme.dart';
 import '../app_dialog.dart';
 import '../app_notifier.dart';
 import '../app_tokens.dart';
@@ -17,13 +19,19 @@ import '../components.dart';
 import '../edit_protection_guard.dart';
 import '../lunar_date_picker.dart';
 import '../navigation.dart';
-import '../prototype_kit.dart';
+import '../ui_kit.dart';
 import '../widgets/person_display_row.dart';
 import 'person_edit_page.dart';
 import 'person_list_page.dart';
 import 'reason_manage_page.dart';
 
 import '../../utils/date_util.dart';
+
+import '../app_icons.dart';
+
+import '../../platform/app_platform.dart';
+
+import '../app_layout.dart';
 
 /// 页面：收支记录 - 收支录入
 /// 对照原型：prototype/index.html -> "收支录入"
@@ -43,12 +51,13 @@ class _RecordAddPageState extends State<RecordAddPage> {
   String _bookId = _defaultBookSelectionId;
   String? _personId;
   String _eventName = '';
-  String _paymentMethod = '微信支付';
   DateTime _occurredAt = DateTime.now();
   bool _occurredAtLockedByBookTime = false;
   bool _dirty = false;
   bool _saving = false;
   bool _loaded = false;
+  bool _recordLoaded = false;
+  String? _recordLoadError;
   bool _authorized = false;
   bool _authChecked = false;
   bool _suppressDirty = false;
@@ -86,6 +95,7 @@ class _RecordAddPageState extends State<RecordAddPage> {
     if (_loaded) return;
     _loaded = true;
     _authorized = widget.recordId == null;
+    _recordLoaded = widget.recordId == null;
     _suppressDirty = true;
     try {
       if (_amountController.text.trim().isEmpty) {
@@ -126,24 +136,12 @@ class _RecordAddPageState extends State<RecordAddPage> {
   Future<bool> _confirmDiscardIfNeeded() async {
     if (_saving) return false;
     if (!_dirty) return true;
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('放弃编辑？'),
-          content: const Text('当前修改尚未保存，确认放弃？'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('取消'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('放弃'),
-            ),
-          ],
-        );
-      },
+    final ok = await AppDialog.confirm(
+      context,
+      title: '放弃编辑？',
+      message: '当前修改尚未保存，确认放弃？',
+      confirmLabel: '放弃',
+      danger: true,
     );
     return ok == true;
   }
@@ -171,11 +169,6 @@ class _RecordAddPageState extends State<RecordAddPage> {
     final eventName = _eventName.trim();
     if (eventName.isEmpty) {
       AppNotifier.warning(context, '请选择事由');
-      return;
-    }
-    final payment = _paymentMethod.trim();
-    if (payment.isEmpty) {
-      AppNotifier.warning(context, '请选择支付方式');
       return;
     }
 
@@ -207,7 +200,6 @@ class _RecordAddPageState extends State<RecordAddPage> {
               amountCent: amountCent,
               direction: Value(_isIncome ? '收入' : '支出'),
               eventName: Value(savedEventName),
-              paymentMethod: Value(payment),
               occurredAt: occurredAtMs,
               note: Value(
                 _noteController.text.trim().isEmpty
@@ -231,7 +223,6 @@ class _RecordAddPageState extends State<RecordAddPage> {
               amountCent: amountCent,
               direction: _isIncome ? '收入' : '支出',
               eventName: Value(savedEventName),
-              paymentMethod: Value(payment),
               occurredAt: occurredAtMs,
               note: Value(
                 _noteController.text.trim().isEmpty
@@ -250,9 +241,7 @@ class _RecordAddPageState extends State<RecordAddPage> {
       _closeAfterSave();
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('保存失败：$e')));
+      AppNotifier.error(context, '保存失败：$e');
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -261,13 +250,16 @@ class _RecordAddPageState extends State<RecordAddPage> {
   Future<void> _pickPerson() async {
     final db = AppDatabaseScope.of(context);
     while (mounted) {
-      final persons = await db.personsDao.watchAllInAllBooks().first;
-      persons.sort((a, b) => a.name.compareTo(b.name));
+      late final List<Person> persons;
+      try {
+        persons = await db.personsDao.listAll();
+      } catch (_) {
+        if (mounted) AppNotifier.error(context, '关系人加载失败，请重试');
+        return;
+      }
       if (!mounted) return;
-      final result = await showModalBottomSheet<_PersonPickerResult>(
-        context: context,
-        isScrollControlled: true,
-        backgroundColor: Colors.transparent,
+      final result = await AppBottomSheet.showCustom<_PersonPickerResult>(
+        context,
         builder: (context) {
           return _PersonPickerSheet(
             persons: persons,
@@ -277,7 +269,7 @@ class _RecordAddPageState extends State<RecordAddPage> {
       );
       if (!mounted || result == null) return;
       if (result.action == _PersonPickerAction.add) {
-        await AppNav.push(context, const PersonEditPage(), requiresLogin: true);
+        await AppNav.push(context, const PersonEditPage());
         if (!mounted) return;
         continue;
       }
@@ -307,124 +299,32 @@ class _RecordAddPageState extends State<RecordAddPage> {
 
   Future<void> _pickBook() async {
     final db = AppDatabaseScope.of(context);
-    final books = await db.select(db.accountBooks).get();
+    late final List<AccountBook> books;
+    try {
+      books = await db.select(db.accountBooks).get();
+    } catch (_) {
+      if (mounted) AppNotifier.error(context, '账簿加载失败，请重试');
+      return;
+    }
     if (!mounted) return;
     if (books.isEmpty) {
       AppNotifier.warning(context, '暂无账簿，请先创建');
       return;
     }
-    final picked = await showDialog<String>(
-      context: context,
-      builder: (context) {
-        final colors = context.appColors;
-        return Center(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Material(
-              color: Colors.transparent,
-              child: Container(
-                constraints: const BoxConstraints(
-                  maxWidth: 340,
-                  maxHeight: 500,
-                ),
-                decoration: BoxDecoration(
-                  color: colors.surfaceCard,
-                  borderRadius: AppRadii.br2xl,
-                  boxShadow: AppShadows.xl,
-                ),
-                clipBehavior: Clip.antiAlias,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
-                      ),
-                      decoration: BoxDecoration(
-                        color: colors.surfaceCard,
-                        border: Border(
-                          bottom: BorderSide(
-                            color: colors.borderDivider,
-                            width: 1,
-                          ),
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              '选择所属账簿',
-                              style: AppTypography.base(
-                                fontSize: 16,
-                                fontWeight: AppTypography.bold,
-                                color: colors.textPrimary,
-                              ),
-                            ),
-                          ),
-                          PrototypeIconButton(
-                            icon: const FaIcon(
-                              FontAwesomeIcons.xmark,
-                              size: 14,
-                            ),
-                            backgroundColor: context.appColors.surfaceSubtle,
-                            foregroundColor: AppColors.textSecondary,
-                            onPressed: () => Navigator.of(context).pop(),
-                            radius: 12,
-                          ),
-                        ],
-                      ),
-                    ),
-                    Flexible(
-                      child: Material(
-                        color: colors.surfaceCard,
-                        child: ListView(
-                          shrinkWrap: true,
-                          padding: const EdgeInsets.only(bottom: 12),
-                          children: [
-                            for (final b in books)
-                              PrototypePressableRow(
-                                onTap: () {
-                                  final id = (b.isDefault == 1)
-                                      ? _defaultBookSelectionId
-                                      : b.bookId;
-                                  Navigator.of(context).pop(id);
-                                },
-                                child: Row(
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        b.name,
-                                        style: AppTypography.base(
-                                          fontSize: 14,
-                                          fontWeight: AppTypography.medium,
-                                          color: colors.textPrimary,
-                                        ),
-                                      ),
-                                    ),
-                                    if (((b.isDefault == 1)
-                                            ? _defaultBookSelectionId
-                                            : b.bookId) ==
-                                        _bookId)
-                                      FaIcon(
-                                        FontAwesomeIcons.check,
-                                        size: 14,
-                                        color: colors.brandSecondary,
-                                      ),
-                                  ],
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+    final picked = await AppBottomSheet.showPicker<String>(
+      context,
+      title: '选择所属账簿',
+      options: [
+        for (final book in books)
+          AppSheetOption<String>(
+            label: book.name,
+            value: book.isDefault == 1 ? _defaultBookSelectionId : book.bookId,
+            icon: AppIcons.bookOpen,
+            selected:
+                (book.isDefault == 1 ? _defaultBookSelectionId : book.bookId) ==
+                _bookId,
           ),
-        );
-      },
+      ],
     );
     if (picked == null || !mounted) return;
     setState(() {
@@ -470,19 +370,19 @@ class _RecordAddPageState extends State<RecordAddPage> {
 
   IconData _reasonIcon(String name) {
     final n = name.trim();
-    if (n.contains('婚')) return Icons.favorite_rounded;
+    if (n.contains('婚')) return AppIcons.heart;
     if (n.contains('满月') || n.contains('周岁') || n.contains('孩子')) {
-      return Icons.child_care_rounded;
+      return AppIcons.baby;
     }
-    if (n.contains('生日')) return Icons.cake_rounded;
+    if (n.contains('生日')) return AppIcons.cake;
     if (n.contains('乔迁') || n.contains('搬家') || n.contains('新居')) {
-      return Icons.home_rounded;
+      return AppIcons.house;
     }
-    if (n.contains('年') || n.contains('节')) return Icons.celebration_rounded;
+    if (n.contains('年') || n.contains('节')) return AppIcons.partyPopper;
     if (n.contains('白事') || n.contains('丧') || n.contains('祭')) {
-      return Icons.cloud_rounded;
+      return AppIcons.cloud;
     }
-    return Icons.more_horiz_rounded;
+    return AppIcons.ellipsis;
   }
 
   Color _reasonIconBgColor(String name) {
@@ -525,15 +425,21 @@ class _RecordAddPageState extends State<RecordAddPage> {
       return;
     }
     final db = AppDatabaseScope.of(context);
-    final reasons =
-        (await db.reasonsDao.listAll()).where((e) => e.enabled).toList()
-          ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+    late final List<Reason> reasons;
+    try {
+      reasons =
+          (await db.reasonsDao.listAll())
+              .where((reason) => reason.enabled)
+              .toList()
+            ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+    } catch (_) {
+      if (mounted) AppNotifier.error(context, '事由加载失败，请重试');
+      return;
+    }
     if (!mounted) return;
 
-    final picked = await showModalBottomSheet<String>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
+    final picked = await AppBottomSheet.showCustom<String>(
+      context,
       builder: (context) => _ReasonPickerSheet(
         reasons: reasons,
         selectedReasonName: _eventName,
@@ -583,73 +489,18 @@ class _RecordAddPageState extends State<RecordAddPage> {
     });
   }
 
-  Future<void> _pickPaymentMethod() async {
-    const methods = ['微信支付', '支付宝', '现金', '银行卡', '其他'];
-    final picked = await showModalBottomSheet<String>(
-      context: context,
-      showDragHandle: true,
-      builder: (context) {
-        return SafeArea(
-          child: ListView(
-            padding: const EdgeInsets.only(bottom: 12),
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                child: Text(
-                  '选择支付方式',
-                  style: AppTypography.h2().copyWith(fontSize: 16),
-                ),
-              ),
-              for (final m in methods)
-                ListTile(
-                  title: Text(m),
-                  trailing: (_paymentMethod == m)
-                      ? const Icon(Icons.check)
-                      : null,
-                  onTap: () => Navigator.of(context).pop(m),
-                ),
-            ],
-          ),
-        );
-      },
-    );
-    if (picked == null) return;
-    if (picked == '其他') {
-      if (!mounted) return;
-      final input = await AppDialog.showInput(
-        context,
-        title: '自定义支付方式',
-        confirmLabel: '确定',
-        cancelLabel: '取消',
-        fields: [
-          AppDialogField(
-            id: 'value',
-            label: '支付方式',
-            hint: '请输入支付方式',
-            initialValue: _paymentMethod,
-          ),
-        ],
-      );
-      final v = input?['value']?.trim();
-      if (v == null || v.isEmpty) return;
-      setState(() {
-        _paymentMethod = v;
-        _dirty = true;
-      });
-      return;
-    }
-    setState(() {
-      _paymentMethod = picked;
-      _dirty = true;
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
-    if (widget.recordId != null && !_authorized) {
+    if (widget.recordId != null && (!_authorized || !_recordLoaded)) {
       return const AppScaffold(
         backgroundColor: AppColors.surfaceApp,
         body: Center(child: CircularProgressIndicator()),
+      );
+    }
+    if (_recordLoadError != null) {
+      return AppScaffold(
+        backgroundColor: AppColors.surfaceApp,
+        body: Center(child: Text(_recordLoadError!)),
       );
     }
     final displayPersonName = _personName.trim().isNotEmpty
@@ -678,7 +529,9 @@ class _RecordAddPageState extends State<RecordAddPage> {
               child: AbsorbPointer(
                 absorbing: _saving,
                 child: ListView(
-                  padding: const EdgeInsets.all(16),
+                  keyboardDismissBehavior:
+                      ScrollViewKeyboardDismissBehavior.onDrag,
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
                   children: [
                     _Segmented(
                       isIncome: _isIncome,
@@ -689,7 +542,7 @@ class _RecordAddPageState extends State<RecordAddPage> {
                         });
                       },
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: AppLayout.sectionGap),
                     _AmountCard(
                       controller: _amountController,
                       onPresetTap: (yuan) {
@@ -699,11 +552,10 @@ class _RecordAddPageState extends State<RecordAddPage> {
                         _markDirty();
                       },
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: AppLayout.sectionGap),
                     StreamBuilder<List<AccountBook>>(
-                      stream: AppDatabaseScope.of(
-                        context,
-                      ).accountBooksDao.watchAll(),
+                      stream: AppDatabaseScope.of(context).accountBooksDao
+                          .watchAll(),
                       builder: (context, snapshot) {
                         final books = snapshot.data ?? const <AccountBook>[];
                         return _FormCard(
@@ -713,18 +565,14 @@ class _RecordAddPageState extends State<RecordAddPage> {
                               ? '请选择'
                               : _eventName,
                           dateLabel: _formatDate(_occurredAt),
-                          paymentMethod: _paymentMethod.trim().isEmpty
-                              ? '请选择'
-                              : _paymentMethod,
                           onTapBook: _pickBook,
                           onTapPerson: _pickPerson,
                           onTapReason: _pickReason,
                           onTapDate: _pickDate,
-                          onTapPayment: _pickPaymentMethod,
                         );
                       },
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: AppLayout.sectionGap),
                     _NoteCard(
                       controller: _noteController,
                       attachments: _attachments,
@@ -745,7 +593,11 @@ class _RecordAddPageState extends State<RecordAddPage> {
     try {
       final db = AppDatabaseScope.of(context);
       final record = await db.giftRecordsDao.findById(recordId);
-      if (record == null || !mounted) return;
+      if (!mounted) return;
+      if (record == null) {
+        setState(() => _recordLoadError = '记录不存在');
+        return;
+      }
       final person = await db.personsDao.findById(record.personId);
       final book = await db.accountBooksDao.findById(record.bookId);
       if (!mounted) return;
@@ -760,9 +612,6 @@ class _RecordAddPageState extends State<RecordAddPage> {
         _eventName = (record.eventName ?? '').trim().isEmpty
             ? ''
             : record.eventName!.trim();
-        _paymentMethod = (record.paymentMethod ?? '').trim().isEmpty
-            ? '微信支付'
-            : record.paymentMethod!.trim();
         _occurredAt = DateTime.fromMillisecondsSinceEpoch(
           (book != null && book.isDefault != 1)
               ? book.bookTime
@@ -776,14 +625,16 @@ class _RecordAddPageState extends State<RecordAddPage> {
         );
         _dirty = false;
       });
+    } catch (_) {
+      if (mounted) setState(() => _recordLoadError = '记录加载失败，请返回重试');
     } finally {
       _suppressDirty = false;
+      if (mounted) setState(() => _recordLoaded = true);
     }
   }
 
   Future<void> _pickAttachmentImage() async {
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
+    final result = await AppPlatform.instance.pickFiles(
       allowedExtensions: const <String>['jpg', 'jpeg', 'png', 'webp'],
       allowMultiple: true,
       withData: false,
@@ -884,57 +735,24 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = context.appColors;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: colors.surfaceCard,
-        border: Border(
-          bottom: BorderSide(color: colors.borderDivider, width: 1),
+    return FHeader.nested(
+      title: Text(title),
+      prefixes: [
+        FButton.icon(
+          variant: .ghost,
+          semanticsLabel: '关闭',
+          onPress: onClose,
+          child: const Icon(AppIcons.x),
         ),
-      ),
-      child: Row(
-        children: [
-          PrototypeIconButton(
-            icon: const FaIcon(FontAwesomeIcons.xmark, size: 18),
-            backgroundColor: Colors.transparent,
-            foregroundColor: colors.textPrimary,
-            onPressed: onClose,
-            radius: 9999,
-          ),
-          Expanded(
-            child: Center(
-              child: Text(
-                title,
-                style: AppTypography.base(
-                  fontSize: 18,
-                  fontWeight: AppTypography.bold,
-                  color: colors.textPrimary,
-                ),
-              ),
-            ),
-          ),
-          PressableScale(
-            onTap: saving ? null : onSave,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-              decoration: BoxDecoration(
-                color: saving ? colors.surfaceDisabled : colors.brandPrimary,
-                borderRadius: BorderRadius.circular(9999),
-                boxShadow: saving ? null : AppShadows.sm,
-              ),
-              child: Text(
-                saving ? '保存中' : '保存',
-                style: AppTypography.base(
-                  fontSize: 14,
-                  fontWeight: AppTypography.medium,
-                  color: AppColors.white,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
+      ],
+      suffixes: [
+        FButton(
+          size: .sm,
+          mainAxisSize: MainAxisSize.min,
+          onPress: saving ? null : onSave,
+          child: Text(saving ? '保存中' : '保存'),
+        ),
+      ],
     );
   }
 }
@@ -1017,8 +835,8 @@ class _AmountCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
-    return PrototypeCard(
-      padding: const EdgeInsets.all(16),
+    return AppCard(
+      padding: AppLayout.pagePadding,
       radius: AppRadii.br2xl,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1055,23 +873,37 @@ class _AmountCard extends StatelessWidget {
                   ),
                 ),
                 Expanded(
-                  child: TextField(
-                    controller: controller,
+                  child: FTextField(
+                    control: FTextFieldControl.managed(controller: controller),
                     keyboardType: const TextInputType.numberWithOptions(
                       decimal: true,
                     ),
                     inputFormatters: const [_AmountInputFormatter()],
-                    decoration: const InputDecoration(
-                      border: InputBorder.none,
-                      isDense: true,
-                      contentPadding: EdgeInsets.zero,
-                      hintText: '0',
-                    ),
-                    style: AppTypography.base(
-                      fontSize: 36,
-                      fontWeight: AppTypography.bold,
-                      color: colors.textPrimary,
-                      height: 1,
+                    hint: '0',
+                    style: .delta(
+                      color: .delta([.all(Colors.transparent)]),
+                      border: .delta([.all(forui_material.InputBorder.none)]),
+                      contentPadding: .value(EdgeInsets.zero),
+                      contentTextStyle: .delta([
+                        .all(
+                          .delta(
+                            fontSize: 36,
+                            fontWeight: AppTypography.bold,
+                            color: colors.textPrimary,
+                            height: 1,
+                          ),
+                        ),
+                      ]),
+                      hintTextStyle: .delta([
+                        .all(
+                          .delta(
+                            fontSize: 36,
+                            fontWeight: AppTypography.bold,
+                            color: colors.textMuted,
+                            height: 1,
+                          ),
+                        ),
+                      ]),
                     ),
                   ),
                 ),
@@ -1169,24 +1001,20 @@ class _FormCard extends StatelessWidget {
     required this.personName,
     required this.eventName,
     required this.dateLabel,
-    required this.paymentMethod,
     required this.onTapBook,
     required this.onTapPerson,
     required this.onTapReason,
     required this.onTapDate,
-    required this.onTapPayment,
   });
 
   final String bookName;
   final String personName;
   final String eventName;
   final String dateLabel;
-  final String paymentMethod;
   final VoidCallback onTapBook;
   final VoidCallback onTapPerson;
   final VoidCallback onTapReason;
   final VoidCallback onTapDate;
-  final VoidCallback onTapPayment;
 
   @override
   Widget build(BuildContext context) {
@@ -1202,52 +1030,42 @@ class _FormCard extends StatelessWidget {
           _FormRow(
             iconBg: AppColors.gray100,
             iconColor: AppColors.textSecondary,
-            icon: FontAwesomeIcons.book,
+            icon: AppIcons.bookOpen,
             label: '账簿',
             value: bookName,
             chevron: true,
             onTap: onTapBook,
           ),
-          const PrototypeDivider(color: AppColors.borderDivider),
+          const AppDivider(color: AppColors.borderDivider),
           _FormRow(
             iconBg: AppColors.indigo50,
             iconColor: AppColors.indigo600,
-            icon: FontAwesomeIcons.user,
+            icon: AppIcons.userRound,
             label: '关系人',
             value: personName,
             chevron: true,
             onTap: onTapPerson,
           ),
-          const PrototypeDivider(color: AppColors.borderDivider),
+          const AppDivider(color: AppColors.borderDivider),
           _FormRow(
             iconBg: AppColors.orange50,
             iconColor: AppColors.orange500,
-            icon: FontAwesomeIcons.gift,
+            icon: AppIcons.gift,
             label: '事由',
             value: eventName,
             chevron: false,
             onTap: onTapReason,
           ),
-          const PrototypeDivider(color: AppColors.borderDivider),
+          const AppDivider(color: AppColors.borderDivider),
           _FormRow(
             iconBg: AppColors.blue50,
             iconColor: AppColors.blue500,
-            icon: FontAwesomeIcons.calendar,
+            icon: AppIcons.calendar,
             label: '日期',
             value: dateLabel,
             chevron: true,
-            onTap: onTapDate,
-          ),
-          const PrototypeDivider(color: AppColors.borderDivider),
-          _FormRow(
-            iconBg: AppColors.green50,
-            iconColor: AppColors.green500,
-            icon: FontAwesomeIcons.wallet,
-            label: '支付方式',
-            value: paymentMethod,
-            chevron: true,
             borderBottom: false,
-            onTap: onTapPayment,
+            onTap: onTapDate,
           ),
         ],
       ),
@@ -1279,7 +1097,7 @@ class _FormRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
-    return PrototypePressableRow(
+    return AppPressableRow(
       onTap: onTap,
       borderBottom: borderBottom,
       child: Row(
@@ -1292,11 +1110,7 @@ class _FormRow extends StatelessWidget {
               shape: BoxShape.circle,
             ),
             alignment: Alignment.center,
-            child: FaIcon(
-              icon,
-              size: 12,
-              color: colors.foregroundFor(iconColor),
-            ),
+            child: Icon(icon, size: 12, color: colors.foregroundFor(iconColor)),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -1324,11 +1138,7 @@ class _FormRow extends StatelessWidget {
             ),
           ),
           if (chevron)
-            FaIcon(
-              FontAwesomeIcons.chevronRight,
-              size: 10,
-              color: colors.textMuted,
-            ),
+            Icon(AppIcons.chevronRight, size: 10, color: colors.textMuted),
         ],
       ),
     );
@@ -1351,26 +1161,18 @@ class _NoteCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
-    return PrototypeCard(
-      padding: const EdgeInsets.all(16),
+    return AppCard(
+      padding: AppLayout.pagePadding,
       radius: AppRadii.br2xl,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          TextField(
-            controller: controller,
-            maxLines: null,
-            minLines: 2,
-            decoration: const InputDecoration(
-              border: InputBorder.none,
-              hintText: '添加备注...',
-              isDense: true,
-              contentPadding: EdgeInsets.zero,
-            ),
-            style: AppTypography.base(
-              fontSize: 14,
-              fontWeight: AppTypography.regular,
-              color: colors.textPrimary,
+          AppForuiBoundary(
+            child: FTextField(
+              control: FTextFieldControl.managed(controller: controller),
+              maxLines: null,
+              minLines: 2,
+              hint: '添加备注...',
             ),
           ),
           const SizedBox(height: 16),
@@ -1389,7 +1191,7 @@ class _NoteCard extends StatelessWidget {
                         borderRadius: BorderRadius.circular(12),
                       ),
                       clipBehavior: Clip.antiAlias,
-                      child: PrototypeNetworkImage(
+                      child: AppNetworkImage(
                         url: 'file://${attachments[i]}',
                         fit: BoxFit.cover,
                       ),
@@ -1407,8 +1209,8 @@ class _NoteCard extends StatelessWidget {
                             shape: BoxShape.circle,
                           ),
                           child: const Center(
-                            child: FaIcon(
-                              FontAwesomeIcons.xmark,
+                            child: Icon(
+                              AppIcons.x,
                               size: 10,
                               color: AppColors.white,
                             ),
@@ -1438,8 +1240,8 @@ class _NoteCard extends StatelessWidget {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        FaIcon(
-                          FontAwesomeIcons.camera,
+                        Icon(
+                          AppIcons.camera,
                           color: colors.textMuted,
                           size: 16,
                         ),
@@ -1570,8 +1372,8 @@ class _ReasonPickerSheetState extends State<_ReasonPickerSheet> {
                         ),
                       ),
                     ),
-                    PrototypeIconButton(
-                      icon: const FaIcon(FontAwesomeIcons.xmark, size: 14),
+                    AppIconButton(
+                      icon: const Icon(AppIcons.x, size: 14),
                       backgroundColor: context.appColors.surfaceSubtle,
                       foregroundColor: AppColors.textSecondary,
                       onPressed: () => Navigator.of(context).pop(),
@@ -1582,7 +1384,7 @@ class _ReasonPickerSheetState extends State<_ReasonPickerSheet> {
               ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-                child: PrototypeSearchField(
+                child: AppSearchField(
                   controller: _searchController,
                   hintText: '搜索事由',
                   onChanged: (v) => setState(() => _keyword = v),
@@ -1673,11 +1475,11 @@ class _ReasonPickerSheetState extends State<_ReasonPickerSheet> {
               ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                child: PrototypeSecondaryButton(
+                child: AppSecondaryButton(
                   label: '管理事由',
-                  onTap: () => Navigator.of(
-                    context,
-                  ).pop(_ReasonPickerSheet.manageAction),
+                  onTap: () =>
+                      Navigator.of(context)
+                          .pop(_ReasonPickerSheet.manageAction),
                 ),
               ),
             ],
@@ -1762,8 +1564,8 @@ class _PersonPickerSheetState extends State<_PersonPickerSheet> {
                         ),
                       ),
                     ),
-                    PrototypeIconButton(
-                      icon: const FaIcon(FontAwesomeIcons.xmark, size: 14),
+                    AppIconButton(
+                      icon: const Icon(AppIcons.x, size: 14),
                       backgroundColor: context.appColors.surfaceSubtle,
                       foregroundColor: AppColors.textSecondary,
                       onPressed: () => Navigator.of(context).pop(),
@@ -1774,7 +1576,7 @@ class _PersonPickerSheetState extends State<_PersonPickerSheet> {
               ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-                child: PrototypeSearchField(
+                child: AppSearchField(
                   controller: _searchController,
                   hintText: '搜索姓名、关系、手机号',
                   onChanged: (v) => setState(() => _keyword = v),
@@ -1797,19 +1599,18 @@ class _PersonPickerSheetState extends State<_PersonPickerSheet> {
                         itemCount: filtered.length,
                         itemBuilder: (context, index) {
                           final person = filtered[index];
-                          return PrototypePressableRow(
+                          return AppPressableRow(
                             borderBottom: index != filtered.length - 1,
-                            onTap: () => Navigator.of(
-                              context,
-                            ).pop(_PersonPickerResult.pick(person.personId)),
+                            onTap: () => Navigator.of(context)
+                                .pop(_PersonPickerResult.pick(person.personId)),
                             child: PersonDisplayRow(
                               name: person.name,
                               subtitle: person.relationshipType,
                               avatarUrl: person.avatarUri,
                               trailing:
                                   widget.selectedPersonId == person.personId
-                                  ? FaIcon(
-                                      FontAwesomeIcons.check,
+                                  ? Icon(
+                                      AppIcons.check,
                                       size: 14,
                                       color: colors.brandSecondary,
                                     )
@@ -1824,21 +1625,21 @@ class _PersonPickerSheetState extends State<_PersonPickerSheet> {
                 child: Row(
                   children: [
                     Expanded(
-                      child: PrototypeSecondaryButton(
+                      child: AppSecondaryButton(
                         label: '管理关系人',
-                        onTap: () => Navigator.of(
-                          context,
-                        ).pop(_PersonPickerResult.manage()),
+                        onTap: () =>
+                            Navigator.of(context)
+                                .pop(_PersonPickerResult.manage()),
                       ),
                     ),
                     const SizedBox(width: 8),
                     Expanded(
-                      child: PrototypePrimaryButton(
+                      child: AppPrimaryButton(
                         label: '添加关系人',
-                        icon: FontAwesomeIcons.userPlus,
-                        onTap: () => Navigator.of(
-                          context,
-                        ).pop(_PersonPickerResult.add()),
+                        icon: AppIcons.userRoundPlus,
+                        onTap: () =>
+                            Navigator.of(context)
+                                .pop(_PersonPickerResult.add()),
                       ),
                     ),
                   ],

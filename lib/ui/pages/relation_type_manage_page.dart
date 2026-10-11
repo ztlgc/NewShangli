@@ -1,17 +1,24 @@
 import 'package:flutter/material.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:forui/forui.dart';
 
 import '../../data/local/drift/app_database.dart';
+import '../app_bottom_sheet.dart';
 import '../app_database_scope.dart';
+import '../app_forui_theme.dart';
 import '../app_dialog.dart';
 import '../app_notifier.dart';
 import '../app_notification_tokens.dart';
 import '../app_scaffold.dart';
 import '../app_tokens.dart';
 import '../components.dart';
+import '../forui_search_field.dart';
 import '../navigation.dart';
-import '../prototype_kit.dart';
+import '../ui_kit.dart';
 import 'relation_type_detail_page.dart';
+
+import '../app_icons.dart';
+
+import '../app_layout.dart';
 
 class RelationTypeManagePage extends StatelessWidget {
   const RelationTypeManagePage({super.key});
@@ -62,41 +69,21 @@ class _CanvasState extends State<_Canvas> {
 
     return Column(
       children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: BoxDecoration(
-            color: context.appColors.surfaceCard,
-            border: Border(
-              bottom: BorderSide(
-                color: context.appColors.surfaceSubtle,
-                width: 1,
-              ),
-            ),
+        AppTopBar(
+          title: '关系类型管理',
+          left: AppIconButton(
+            icon: const Icon(AppIcons.chevronLeft, size: 14),
+            backgroundColor: context.appColors.surfaceSubtle,
+            foregroundColor: AppColors.textSecondary,
+            onPressed: () => AppNav.pop(context),
+            radius: 12,
           ),
-          child: Row(
-            children: [
-              PrototypeIconButton(
-                icon: const FaIcon(FontAwesomeIcons.chevronLeft, size: 14),
-                backgroundColor: context.appColors.surfaceSubtle,
-                foregroundColor: AppColors.textSecondary,
-                onPressed: () => AppNav.pop(context),
-                radius: 12,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  '关系类型管理',
-                  style: AppTypography.h2().copyWith(fontSize: 20),
-                ),
-              ),
-              PrototypeIconButton(
-                icon: const FaIcon(FontAwesomeIcons.plus, size: 16),
-                backgroundColor: context.appColors.surfaceSubtle,
-                foregroundColor: AppColors.textSecondary,
-                onPressed: () => _openEditor(context, db, null),
-                radius: 12,
-              ),
-            ],
+          right: AppIconButton(
+            icon: const Icon(AppIcons.plus, size: 16),
+            backgroundColor: context.appColors.surfaceSubtle,
+            foregroundColor: AppColors.textSecondary,
+            onPressed: () => _openEditor(context, db, null),
+            radius: 12,
           ),
         ),
         Expanded(
@@ -144,43 +131,12 @@ class _CanvasState extends State<_Canvas> {
                                 .toList();
                       return ListView(
                         physics: const BouncingScrollPhysics(),
-                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
+                        padding: AppLayout.tabContentPadding,
                         children: [
-                          Container(
-                            decoration: BoxDecoration(
-                              color: context.appColors.surfaceCard,
-                              borderRadius: AppRadii.brXl,
-                              border: Border.all(
-                                color: AppColors.borderDefault,
-                                width: 1,
-                              ),
-                            ),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 14,
-                              vertical: 2,
-                            ),
-                            child: TextField(
-                              controller: _searchCtrl,
-                              style: AppTypography.base(
-                                fontSize: 14,
-                                fontWeight: AppTypography.medium,
-                                color: AppColors.textPrimary,
-                              ),
-                              decoration: InputDecoration(
-                                border: InputBorder.none,
-                                hintText: '搜索关系类型...',
-                                hintStyle: AppTypography.base(
-                                  fontSize: 14,
-                                  fontWeight: AppTypography.regular,
-                                  color: AppColors.textMuted,
-                                ),
-                                icon: const FaIcon(
-                                  FontAwesomeIcons.magnifyingGlass,
-                                  size: 14,
-                                  color: AppColors.gray400,
-                                ),
-                              ),
-                            ),
+                          ForuiSearchField(
+                            controller: _searchCtrl,
+                            hint: '搜索关系类型...',
+                            onChanged: (_) {},
                           ),
                           const SizedBox(height: 12),
                           Row(
@@ -215,7 +171,7 @@ class _CanvasState extends State<_Canvas> {
                           ),
                           const SizedBox(height: 8),
                           if (types.isEmpty)
-                            PrototypeCard(
+                            AppCard(
                               child: Center(
                                 child: Padding(
                                   padding: const EdgeInsets.symmetric(
@@ -233,7 +189,7 @@ class _CanvasState extends State<_Canvas> {
                               ),
                             )
                           else if (visibleTypes.isEmpty)
-                            PrototypeCard(
+                            AppCard(
                               child: Center(
                                 child: Padding(
                                   padding: const EdgeInsets.symmetric(
@@ -267,7 +223,6 @@ class _CanvasState extends State<_Canvas> {
                                 onTap: () => AppNav.push(
                                   context,
                                   RelationTypeDetailPage(type: visibleTypes[i]),
-                                  requiresLogin: true,
                                 ),
                                 onEdit: () =>
                                     _openEditor(context, db, visibleTypes[i]),
@@ -302,16 +257,12 @@ class _CanvasState extends State<_Canvas> {
     AppDatabase db,
     RelationType? type,
   ) async {
-    final ok = await showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
+    final ok = await AppBottomSheet.showCustom<bool>(
+      context,
       builder: (context) => _RelationTypeEditorSheet(db: db, type: type),
     );
     if (ok != true || !context.mounted) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('已保存')));
+    AppNotifier.success(context, '已保存');
   }
 
   Future<void> _confirmDelete(
@@ -397,9 +348,7 @@ class _RelationTypeEditorSheetState extends State<_RelationTypeEditorSheet> {
       Navigator.of(context).pop(true);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('保存失败：$e')));
+      AppNotifier.error(context, '保存失败：$e');
       setState(() => _saving = false);
     }
   }
@@ -443,8 +392,8 @@ class _RelationTypeEditorSheetState extends State<_RelationTypeEditorSheet> {
                       ),
                     ),
                   ),
-                  PrototypeIconButton(
-                    icon: const FaIcon(FontAwesomeIcons.xmark, size: 14),
+                  AppIconButton(
+                    icon: const Icon(AppIcons.x, size: 14),
                     backgroundColor: context.appColors.surfaceSubtle,
                     foregroundColor: AppColors.textSecondary,
                     onPressed: _saving
@@ -456,7 +405,7 @@ class _RelationTypeEditorSheetState extends State<_RelationTypeEditorSheet> {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.all(16),
+              padding: AppLayout.pagePadding,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -469,53 +418,15 @@ class _RelationTypeEditorSheetState extends State<_RelationTypeEditorSheet> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  TextField(
-                    controller: _nameCtrl,
-                    autofocus: true,
-                    style: AppTypography.base(
-                      fontSize: 14,
-                      fontWeight: AppTypography.medium,
-                      color: AppColors.textPrimary,
-                    ),
-                    decoration: InputDecoration(
-                      isDense: true,
-                      filled: true,
-                      fillColor: context.appColors.surfaceSubtle,
-                      hintText: '如：家人、同事、朋友',
-                      hintStyle: AppTypography.base(
-                        fontSize: 14,
-                        fontWeight: AppTypography.regular,
-                        color: AppColors.textMuted,
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 12,
-                      ),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(
-                          color: AppColors.borderSubtle,
-                          width: 1,
-                        ),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(
-                          color: AppColors.borderSubtle,
-                          width: 1,
-                        ),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(
-                          color: AppColors.borderFocus,
-                          width: 1,
-                        ),
-                      ),
+                  AppForuiBoundary(
+                    child: FTextField(
+                      control: FTextFieldControl.managed(controller: _nameCtrl),
+                      autofocus: true,
+                      hint: '如：家人、同事、朋友',
                     ),
                   ),
                   const SizedBox(height: 16),
-                  PrototypePrimaryButton(
+                  AppPrimaryButton(
                     label: _saving ? '保存中' : '保存',
                     onTap: _saving ? null : _save,
                   ),
@@ -621,7 +532,7 @@ class _TypeRow extends StatelessWidget {
                     borderRadius: AppRadii.brLg,
                   ),
                   alignment: Alignment.center,
-                  child: FaIcon(icon, size: 18, color: pair.$2),
+                  child: Icon(icon, size: 18, color: pair.$2),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -655,16 +566,16 @@ class _TypeRow extends StatelessWidget {
                   onTap: onEdit,
                   child: const Padding(
                     padding: EdgeInsets.all(6),
-                    child: FaIcon(
-                      FontAwesomeIcons.penToSquare,
+                    child: Icon(
+                      AppIcons.squarePen,
                       size: 14,
                       color: AppColors.gray500,
                     ),
                   ),
                 ),
                 const SizedBox(width: 2),
-                const FaIcon(
-                  FontAwesomeIcons.chevronRight,
+                const Icon(
+                  AppIcons.chevronRight,
                   size: 12,
                   color: AppColors.gray300,
                 ),
@@ -691,12 +602,12 @@ class _TypeRow extends StatelessWidget {
 
   IconData _icon(String seed) {
     final list = <IconData>[
-      FontAwesomeIcons.userGroup,
-      FontAwesomeIcons.briefcase,
-      FontAwesomeIcons.house,
-      FontAwesomeIcons.graduationCap,
-      FontAwesomeIcons.handshake,
-      FontAwesomeIcons.tags,
+      AppIcons.usersRound,
+      AppIcons.briefcaseBusiness,
+      AppIcons.house,
+      AppIcons.graduationCap,
+      AppIcons.handshake,
+      AppIcons.tags,
     ];
     final idx = seed.hashCode.abs() % list.length;
     return list[idx];

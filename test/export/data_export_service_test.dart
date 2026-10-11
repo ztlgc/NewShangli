@@ -28,7 +28,6 @@ void main() {
 
     final service = DataExportService();
     final file = await service.export(
-      loggedIn: true,
       data: data,
       request: DataExportRequest(
         format: DataExportFormat.excel,
@@ -47,6 +46,10 @@ void main() {
     expect(bytes.length, greaterThan(4));
     expect(bytes[0], 0x50);
     expect(bytes[1], 0x4B);
+    final rows = Excel.decodeBytes(bytes).tables['礼金记录']!.rows;
+    final headers = rows.first.map((cell) => cell?.value.toString()).toList();
+    expect(headers, isNot(contains('支付方式')));
+    expect(headers.indexOf('发生时间'), headers.indexOf('关系人姓名') + 1);
   });
 
   test('Export excel splits records and persons into two sheets', () async {
@@ -62,7 +65,6 @@ void main() {
 
     final service = DataExportService();
     final file = await service.export(
-      loggedIn: true,
       data: data,
       request: DataExportRequest(
         format: DataExportFormat.excel,
@@ -96,7 +98,6 @@ void main() {
     final service = DataExportService();
     await expectLater(
       () => service.export(
-        loggedIn: true,
         data: data,
         request: DataExportRequest(
           format: DataExportFormat.excel,
@@ -156,14 +157,12 @@ void main() {
       direction: RecordDirection.expense,
       amountCent: 100,
       eventName: '测试',
-      paymentMethod: '现金',
       occurredAt: DateTime(2026, 1, 2, 12, 0),
       note: null,
     );
 
     final service = DataExportService();
     final file = await service.export(
-      loggedIn: true,
       data: data,
       request: DataExportRequest(
         format: DataExportFormat.zip,
@@ -205,7 +204,6 @@ void main() {
         direction: RecordDirection.income,
         amountCent: 100,
         eventName: '默认账本记录',
-        paymentMethod: '现金',
         occurredAt: DateTime(2030, 1, 2, 12, 0),
         note: null,
       );
@@ -215,14 +213,12 @@ void main() {
         direction: RecordDirection.income,
         amountCent: 200,
         eventName: '其他账本记录',
-        paymentMethod: '现金',
         occurredAt: DateTime(2030, 1, 2, 12, 30),
         note: null,
       );
 
       final service = DataExportService();
       final file = await service.export(
-        loggedIn: true,
         data: data,
         request: DataExportRequest(
           format: DataExportFormat.excel,
@@ -290,7 +286,6 @@ void main() {
         amountCent: 100,
         direction: const Value('收入'),
         eventName: const Value('测试'),
-        paymentMethod: const Value('现金'),
         occurredAt: now,
         attachments: Value(<String>[att.path]),
         createdAt: now,
@@ -300,7 +295,6 @@ void main() {
 
     final service = DataExportService();
     final file = await service.exportFromDrift(
-      loggedIn: true,
       db: db,
       request: DataExportRequest(
         format: DataExportFormat.zip,
@@ -383,7 +377,6 @@ void main() {
         amountCent: 10000,
         direction: const Value('收入'),
         eventName: const Value('测试'),
-        paymentMethod: const Value('现金'),
         occurredAt: now,
         createdAt: now,
         updatedAt: now,
@@ -392,7 +385,6 @@ void main() {
 
     final service = DataExportService();
     final file = await service.exportFromDrift(
-      loggedIn: true,
       db: db,
       request: DataExportRequest(
         format: DataExportFormat.zip,

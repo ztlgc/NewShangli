@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:forui/forui.dart';
 
 import 'app_tokens.dart';
-import 'prototype_kit.dart';
+import 'app_forui_theme.dart';
+import 'forui_search_field.dart';
 
-class PrototypeCard extends StatelessWidget {
-  const PrototypeCard({
+class AppCard extends StatelessWidget {
+  const AppCard({
     super.key,
     required this.child,
     this.padding = const EdgeInsets.all(16),
@@ -25,21 +26,35 @@ class PrototypeCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
-    return Container(
-      padding: padding,
-      decoration: BoxDecoration(
-        color: colors.surfaceFor(color),
-        borderRadius: radius,
-        boxShadow: shadow,
-        border: border,
+    final content = Padding(padding: padding, child: child);
+    if (color == AppColors.white &&
+        radius == AppRadii.br2xl &&
+        shadow == AppShadows.sm &&
+        border == null) {
+      return AppForuiBoundary(child: FCard(child: content));
+    }
+    final base = context.theme.cardStyle;
+    return AppForuiBoundary(
+      child: FCard(
+        style: FCardStyle(
+          decoration: BoxDecoration(
+            color: colors.surfaceFor(color),
+            borderRadius: radius,
+            boxShadow: shadow,
+            border: border,
+          ),
+          titleTextStyle: base.titleTextStyle,
+          subtitleTextStyle: base.subtitleTextStyle,
+          padding: padding,
+        ),
+        child: content,
       ),
-      child: child,
     );
   }
 }
 
-class PrototypePrimaryButton extends StatelessWidget {
-  const PrototypePrimaryButton({
+class AppPrimaryButton extends StatelessWidget {
+  const AppPrimaryButton({
     super.key,
     required this.label,
     this.icon,
@@ -54,49 +69,24 @@ class PrototypePrimaryButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = context.appColors;
-    return Semantics(
-      button: true,
-      enabled: onTap != null,
-      label: semanticLabel ?? label,
-      // 按钮本身已经通过语义标签完整表达，排除内部文本可避免读屏重复播报。
-      child: ExcludeSemantics(
-        child: PressableScale(
-          onTap: onTap,
-          child: Container(
-            height: 48,
-            decoration: BoxDecoration(
-              color: colors.brandPrimary,
-              borderRadius: AppRadii.brXl,
-              boxShadow: AppShadows.brandSoft,
-            ),
-            alignment: Alignment.center,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                if (icon != null) ...[
-                  Icon(icon, color: colors.textInverse, size: 16),
-                  const SizedBox(width: 8),
-                ],
-                Text(
-                  label,
-                  style: AppTypography.base(
-                    fontSize: 14,
-                    fontWeight: AppTypography.medium,
-                    color: colors.textInverse,
-                  ),
-                ),
-              ],
-            ),
-          ),
+    return AppForuiBoundary(
+      child: SizedBox(
+        height: 48,
+        width: double.infinity,
+        child: FButton(
+          size: .lg,
+          semanticsLabel: semanticLabel ?? label,
+          onPress: onTap,
+          prefix: icon == null ? null : Icon(icon, size: 16),
+          child: Text(label),
         ),
       ),
     );
   }
 }
 
-class PrototypeSecondaryButton extends StatelessWidget {
-  const PrototypeSecondaryButton({
+class AppSecondaryButton extends StatelessWidget {
+  const AppSecondaryButton({
     super.key,
     required this.label,
     this.onTap,
@@ -109,38 +99,24 @@ class PrototypeSecondaryButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = context.appColors;
-    return Semantics(
-      button: true,
-      enabled: onTap != null,
-      label: semanticLabel ?? label,
-      child: ExcludeSemantics(
-        child: PressableScale(
-          onTap: onTap,
-          child: Container(
-            height: 48,
-            decoration: BoxDecoration(
-              color: colors.brandSoft,
-              borderRadius: AppRadii.brXl,
-            ),
-            alignment: Alignment.center,
-            child: Text(
-              label,
-              style: AppTypography.base(
-                fontSize: 14,
-                fontWeight: AppTypography.medium,
-                color: colors.brandOnSoft,
-              ),
-            ),
-          ),
+    return AppForuiBoundary(
+      child: SizedBox(
+        height: 48,
+        width: double.infinity,
+        child: FButton(
+          variant: .outline,
+          size: .lg,
+          semanticsLabel: semanticLabel ?? label,
+          onPress: onTap,
+          child: Text(label),
         ),
       ),
     );
   }
 }
 
-class PrototypeButton extends StatelessWidget {
-  const PrototypeButton({
+class AppButton extends StatelessWidget {
+  const AppButton({
     super.key,
     required this.label,
     this.background = AppColors.brandPrimary,
@@ -161,49 +137,23 @@ class PrototypeButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = context.appColors;
-    final enabled = onPressed != null;
-    final resolvedForeground = foreground == AppColors.white
-        ? colors.textInverse
-        : colors.foregroundFor(foreground);
-    return Semantics(
-      button: true,
-      enabled: enabled,
-      label: semanticLabel ?? label,
-      child: ExcludeSemantics(
-        child: Opacity(
-          opacity: enabled ? 1 : 0.48,
-          child: PressableScale(
-            onTap: onPressed,
-            child: Container(
-              constraints: const BoxConstraints(minHeight: 36),
-              padding: padding,
-              decoration: BoxDecoration(
-                color: _buttonBackgroundFor(colors, background),
-                borderRadius: AppRadii.brXl,
-                border: border,
-              ),
-              alignment: Alignment.center,
-              child: Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: AppTypography.base(
-                  fontSize: AppTypography.fs12,
-                  fontWeight: AppTypography.semibold,
-                  color: resolvedForeground,
-                ),
-              ),
-            ),
-          ),
-        ),
+    final isOutline = background == AppColors.white || border != null;
+    return AppForuiBoundary(
+      child: FButton(
+        variant: isOutline ? .outline : .primary,
+        size: .sm,
+        mainAxisSize: MainAxisSize.min,
+        style: .delta(contentStyle: .delta(padding: .value(padding))),
+        semanticsLabel: semanticLabel ?? label,
+        onPress: onPressed,
+        child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
       ),
     );
   }
 }
 
-class PrototypePill extends StatelessWidget {
-  const PrototypePill({
+class AppPill extends StatelessWidget {
+  const AppPill({
     super.key,
     required this.label,
     required this.background,
@@ -225,37 +175,44 @@ class PrototypePill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
-    return Container(
-      padding: padding,
-      decoration: BoxDecoration(
-        color: colors.softFor(background),
-        borderRadius: BorderRadius.circular(radius),
-      ),
-      child: Text(
-        label,
-        style: AppTypography.base(
-          fontSize: fontSize,
-          fontWeight: fontWeight,
-          color: colors.foregroundFor(foreground),
+    return AppForuiBoundary(
+      child: FBadge(
+        style: FBadgeStyle(
+          decoration: BoxDecoration(
+            color: colors.softFor(background),
+            borderRadius: BorderRadius.circular(radius),
+          ),
+          labelTextStyle: AppTypography.base(
+            fontSize: fontSize,
+            fontWeight: fontWeight,
+            color: colors.foregroundFor(foreground),
+          ),
+          padding: padding,
         ),
+        child: Text(label),
       ),
     );
   }
 }
 
-class PrototypeDivider extends StatelessWidget {
-  const PrototypeDivider({super.key, this.color = AppColors.borderDivider});
+class AppDivider extends StatelessWidget {
+  const AppDivider({super.key, this.color = AppColors.borderDivider});
 
   final Color color;
 
   @override
-  Widget build(BuildContext context) {
-    return Container(height: 1, color: context.appColors.borderFor(color));
-  }
+  Widget build(BuildContext context) => AppForuiBoundary(
+    child: FDivider(
+      style: FDividerStyle(
+        color: context.appColors.borderFor(color),
+        padding: EdgeInsets.zero,
+      ),
+    ),
+  );
 }
 
-class PrototypeSearchField extends StatelessWidget {
-  const PrototypeSearchField({
+class AppSearchField extends StatelessWidget {
+  const AppSearchField({
     super.key,
     required this.controller,
     required this.hintText,
@@ -270,67 +227,17 @@ class PrototypeSearchField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = context.appColors;
-    final showClear = showClearButton && controller.text.trim().isNotEmpty;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: colors.surfaceSubtle,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          FaIcon(
-            FontAwesomeIcons.magnifyingGlass,
-            size: 14,
-            color: colors.textTertiary,
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: TextField(
-              controller: controller,
-              onChanged: onChanged,
-              textInputAction: TextInputAction.search,
-              style: AppTypography.base(
-                fontSize: 14,
-                fontWeight: AppTypography.regular,
-                color: colors.textSecondary,
-              ),
-              decoration: InputDecoration(
-                isDense: true,
-                hintText: hintText,
-                hintStyle: AppTypography.base(
-                  fontSize: 14,
-                  fontWeight: AppTypography.regular,
-                  color: colors.textMuted,
-                ),
-                border: InputBorder.none,
-                contentPadding: EdgeInsets.zero,
-              ),
-            ),
-          ),
-          if (showClear) ...[
-            const SizedBox(width: 8),
-            PressableScale(
-              onTap: () {
-                controller.clear();
-                onChanged?.call('');
-              },
-              child: FaIcon(
-                FontAwesomeIcons.circleXmark,
-                size: 16,
-                color: colors.textTertiary,
-              ),
-            ),
-          ],
-        ],
-      ),
+    return ForuiSearchField(
+      controller: controller,
+      hint: hintText,
+      onChanged: (value) => onChanged?.call(value),
+      showClearButton: showClearButton,
     );
   }
 }
 
-class PrototypeNetworkImage extends StatelessWidget {
-  const PrototypeNetworkImage({
+class AppNetworkImage extends StatelessWidget {
+  const AppNetworkImage({
     super.key,
     required this.url,
     this.width,
@@ -372,8 +279,8 @@ class PrototypeNetworkImage extends StatelessWidget {
   }
 }
 
-class PrototypePressableRow extends StatelessWidget {
-  const PrototypePressableRow({
+class AppPressableRow extends StatelessWidget {
+  const AppPressableRow({
     super.key,
     required this.child,
     this.onTap,
@@ -413,31 +320,6 @@ class PrototypePressableRow extends StatelessWidget {
       ),
     );
   }
-}
-
-Color _buttonBackgroundFor(AppThemeColors colors, Color color) {
-  if (color == AppColors.brandPrimary || color == AppColors.indigo900) {
-    return colors.brandPrimary;
-  }
-  if (color == AppColors.brandSecondary || color == AppColors.indigo600) {
-    return colors.brandSecondary;
-  }
-  if (color == AppColors.stateDanger ||
-      color == AppColors.red500 ||
-      color == AppColors.red600) {
-    return colors.stateDanger;
-  }
-  if (color == AppColors.stateSuccess ||
-      color == AppColors.green500 ||
-      color == AppColors.green600) {
-    return colors.stateSuccess;
-  }
-  if (color == AppColors.stateWarning ||
-      color == AppColors.orange500 ||
-      color == AppColors.orange600) {
-    return colors.stateWarning;
-  }
-  return colors.surfaceFor(color);
 }
 
 class _PressedBackground extends StatefulWidget {
@@ -485,7 +367,6 @@ class _PressedBackgroundState extends State<_PressedBackground> {
   }
 
   void _handleTapDown() {
-    // 支持长按的行不显示按下高亮：长按进入多选/删除前避免“先闪一下”。
     if (widget.onLongPress != null) return;
     setState(() => _pressed = true);
   }

@@ -1,17 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:forui/forui.dart';
 
 import '../data/local/drift/app_database.dart';
 import 'app_data.dart';
 import 'app_database_scope.dart';
+import 'app_forui_theme.dart';
+import 'app_localizations.dart';
 import 'app_session.dart';
 import 'app_theme.dart';
 import 'tab_shell.dart';
 
-class NewShangliApp extends StatelessWidget {
-  const NewShangliApp({super.key, this.databaseFactory});
+class NewShangliApp extends StatefulWidget {
+  const NewShangliApp({
+    super.key,
+    this.databaseFactory,
+    this.initialTabIndex = 0,
+  });
 
   final AppDatabase Function()? databaseFactory;
+  final int initialTabIndex;
 
   /// 全局 ScaffoldMessengerKey
   ///
@@ -22,24 +30,39 @@ class NewShangliApp extends StatelessWidget {
       GlobalKey<ScaffoldMessengerState>();
 
   @override
+  State<NewShangliApp> createState() => _NewShangliAppState();
+}
+
+class _NewShangliAppState extends State<NewShangliApp> {
+  final session = AppSession();
+  final data = AppData();
+  @override
+  void dispose() {
+    session.dispose();
+    data.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final session = AppSession();
-    final data = AppData();
     return AppSessionScope(
       session: session,
       child: AppDataScope(
         data: data,
         child: AppDatabaseProvider(
-          databaseFactory: databaseFactory,
+          databaseFactory: widget.databaseFactory,
           child: MaterialApp(
             debugShowCheckedModeBanner: false,
-            scaffoldMessengerKey: appMessengerKey,
+            scaffoldMessengerKey: NewShangliApp.appMessengerKey,
             title: '尚礼',
+            supportedLocales: AppLocalizations.supportedLocales,
+            localizationsDelegates: AppLocalizations.delegates,
             theme: AppTheme.light(),
             darkTheme: AppTheme.dark(),
             themeMode: ThemeMode.system,
             builder: (context, child) {
               final theme = Theme.of(context);
+              final foruiTheme = AppForuiTheme.of(theme.brightness);
               final overlayStyle = theme.brightness == Brightness.dark
                   ? SystemUiOverlayStyle.light
                   : SystemUiOverlayStyle.dark;
@@ -49,13 +72,16 @@ class NewShangliApp extends StatelessWidget {
                   systemNavigationBarColor: theme.scaffoldBackgroundColor,
                   systemNavigationBarDividerColor: Colors.transparent,
                 ),
-                child: DefaultTextStyle.merge(
-                  style: const TextStyle(decoration: TextDecoration.none),
-                  child: child ?? const SizedBox.shrink(),
+                child: FTheme(
+                  data: foruiTheme,
+                  child: DefaultTextStyle.merge(
+                    style: const TextStyle(decoration: TextDecoration.none),
+                    child: child ?? const SizedBox.shrink(),
+                  ),
                 ),
               );
             },
-            home: const MainTabShell(),
+            home: MainTabShell(initialIndex: widget.initialTabIndex),
           ),
         ),
       ),

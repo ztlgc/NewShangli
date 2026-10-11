@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import '../security/edit_protection.dart';
 import 'app_dialog.dart';
 import 'app_notifier.dart';
 import 'app_notification_tokens.dart';
+
+import 'app_icons.dart';
 
 /// 触发编辑保护密码校验流程：
 /// 1. 读取本地配置，未开启则直接放行
@@ -27,7 +28,7 @@ Future<bool> requireEditProtectionPassword(
     confirmLabel: '确认',
     cancelLabel: '取消',
     tone: AppNotificationTone.info,
-    icon: FontAwesomeIcons.lock,
+    icon: AppIcons.lock,
     fields: const [
       AppDialogField(
         id: 'password',

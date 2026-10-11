@@ -1,8 +1,10 @@
 import 'dart:io';
+
 import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:forui/forui.dart';
 // ignore: depend_on_referenced_packages
 import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
 import 'package:newshangli/data/local/drift/app_database.dart';
@@ -96,7 +98,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextField), '李四 500\n王五 600\n李四 500');
+    await tester.enterText(find.byType(FTextField), '李四 500\n王五 600\n李四 500');
     await tester.scrollUntilVisible(
       find.text('立即解析并导入'),
       120,

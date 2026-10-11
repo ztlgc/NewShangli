@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:forui/forui.dart';
 
 import '../../data/local/drift/app_database.dart';
+import '../app_bottom_sheet.dart';
 import '../app_database_scope.dart';
 import '../app_dialog.dart';
 import '../app_notifier.dart';
@@ -11,7 +12,11 @@ import '../app_scaffold.dart';
 import '../contact_avatar.dart';
 import '../components.dart';
 import '../navigation.dart';
-import '../prototype_kit.dart';
+import '../ui_kit.dart';
+
+import '../app_icons.dart';
+
+import '../app_layout.dart';
 
 class ContactRelationEditPage extends StatefulWidget {
   const ContactRelationEditPage({super.key, required this.id})
@@ -78,81 +83,31 @@ class _ContactRelationEditPageState extends State<ContactRelationEditPage> {
               final tName = _resolveTypeName(types, _typeId);
               return Column(
                 children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                    decoration: BoxDecoration(
-                      color: context.appColors.surfaceCard,
-                      border: Border(
-                        bottom: BorderSide(
-                          color: context.appColors.surfaceSubtle,
-                          width: 1,
-                        ),
+                  FHeader.nested(
+                    title: Text(widget.createMode ? '新增关系' : '编辑关系'),
+                    prefixes: [
+                      FButton(
+                        variant: .ghost,
+                        size: .sm,
+                        mainAxisSize: MainAxisSize.min,
+                        onPress: _saving ? null : () => AppNav.pop(context),
+                        child: const Text('取消'),
                       ),
-                    ),
-                    child: Row(
-                      children: [
-                        GestureDetector(
-                          onTap: _saving ? null : () => AppNav.pop(context),
-                          behavior: HitTestBehavior.opaque,
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 8),
-                            child: Text(
-                              '取消',
-                              style: AppTypography.base(
-                                fontSize: 14,
-                                fontWeight: AppTypography.medium,
-                                color: AppColors.textTertiary,
-                              ),
-                            ),
-                          ),
-                        ),
-                        Expanded(
-                          child: Center(
-                            child: Text(
-                              widget.createMode ? '新增关系' : '编辑关系',
-                              style: AppTypography.base(
-                                fontSize: 18,
-                                fontWeight: AppTypography.bold,
-                                color: AppColors.textPrimary,
-                              ),
-                            ),
-                          ),
-                        ),
-                        PressableScale(
-                          onTap: _saving ? null : _onSave,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 6,
-                            ),
-                            decoration: BoxDecoration(
-                              color: _saving
-                                  ? AppColors.gray300
-                                  : AppColors.brandPrimary,
-                              borderRadius: BorderRadius.circular(9999),
-                              boxShadow: AppShadows.sm,
-                            ),
-                            child: Text(
-                              _saving ? '保存中' : '保存',
-                              style: AppTypography.base(
-                                fontSize: 14,
-                                fontWeight: AppTypography.medium,
-                                color: AppColors.white,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+                    ],
+                    suffixes: [
+                      FButton(
+                        size: .sm,
+                        mainAxisSize: MainAxisSize.min,
+                        onPress: _saving ? null : _onSave,
+                        child: Text(_saving ? '保存中' : '保存'),
+                      ),
+                    ],
                   ),
                   Expanded(
                     child: ListView(
-                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
+                      padding: AppLayout.tabContentPadding,
                       children: [
-                        PrototypeCard(
+                        AppCard(
                           padding: EdgeInsets.zero,
                           child: Column(
                             children: [
@@ -168,9 +123,7 @@ class _ContactRelationEditPageState extends State<ContactRelationEditPage> {
                                   setState(() => _personAId = picked.personId);
                                 },
                               ),
-                              const PrototypeDivider(
-                                color: AppColors.borderDivider,
-                              ),
+                              const AppDivider(color: AppColors.borderDivider),
                               _SelectRow(
                                 label: '联系人 B',
                                 value: bName,
@@ -183,9 +136,7 @@ class _ContactRelationEditPageState extends State<ContactRelationEditPage> {
                                   setState(() => _personBId = picked.personId);
                                 },
                               ),
-                              const PrototypeDivider(
-                                color: AppColors.borderDivider,
-                              ),
+                              const AppDivider(color: AppColors.borderDivider),
                               _SelectRow(
                                 label: '关系类型',
                                 value: tName,
@@ -203,7 +154,7 @@ class _ContactRelationEditPageState extends State<ContactRelationEditPage> {
                           ),
                         ),
                         const SizedBox(height: 16),
-                        PrototypeCard(
+                        AppCard(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -216,50 +167,12 @@ class _ContactRelationEditPageState extends State<ContactRelationEditPage> {
                                 ),
                               ),
                               const SizedBox(height: 8),
-                              TextField(
-                                controller: _noteCtrl,
+                              FTextField(
+                                control: FTextFieldControl.managed(
+                                  controller: _noteCtrl,
+                                ),
                                 maxLines: 4,
-                                style: AppTypography.base(
-                                  fontSize: 14,
-                                  fontWeight: AppTypography.medium,
-                                  color: AppColors.textPrimary,
-                                ),
-                                decoration: InputDecoration(
-                                  isDense: true,
-                                  filled: true,
-                                  fillColor: context.appColors.surfaceSubtle,
-                                  hintText: '可填写补充说明',
-                                  hintStyle: AppTypography.base(
-                                    fontSize: 14,
-                                    fontWeight: AppTypography.regular,
-                                    color: AppColors.textMuted,
-                                  ),
-                                  contentPadding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 12,
-                                  ),
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                    borderSide: const BorderSide(
-                                      color: AppColors.borderSubtle,
-                                      width: 1,
-                                    ),
-                                  ),
-                                  enabledBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                    borderSide: const BorderSide(
-                                      color: AppColors.borderSubtle,
-                                      width: 1,
-                                    ),
-                                  ),
-                                  focusedBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                    borderSide: const BorderSide(
-                                      color: AppColors.borderFocus,
-                                      width: 1,
-                                    ),
-                                  ),
-                                ),
+                                hint: '可填写补充说明',
                               ),
                             ],
                           ),
@@ -434,10 +347,8 @@ class _ContactRelationEditPageState extends State<ContactRelationEditPage> {
   }
 
   Future<Person?> _pickPerson(BuildContext context, List<Person> persons) {
-    return showModalBottomSheet<Person>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
+    return AppBottomSheet.showCustom<Person>(
+      context,
       builder: (context) {
         return _Sheet(
           title: '选择联系人',
@@ -446,7 +357,7 @@ class _ContactRelationEditPageState extends State<ContactRelationEditPage> {
             padding: const EdgeInsets.only(bottom: 24),
             children: [
               for (final p in persons)
-                PrototypePressableRow(
+                AppPressableRow(
                   onTap: () => Navigator.of(context).pop(p),
                   child: Row(
                     children: [
@@ -481,10 +392,8 @@ class _ContactRelationEditPageState extends State<ContactRelationEditPage> {
     BuildContext context,
     List<RelationType> types,
   ) {
-    return showModalBottomSheet<RelationType>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
+    return AppBottomSheet.showCustom<RelationType>(
+      context,
       builder: (context) {
         return _Sheet(
           title: '选择关系类型',
@@ -493,12 +402,12 @@ class _ContactRelationEditPageState extends State<ContactRelationEditPage> {
             padding: const EdgeInsets.only(bottom: 24),
             children: [
               for (final t in types)
-                PrototypePressableRow(
+                AppPressableRow(
                   onTap: () => Navigator.of(context).pop(t),
                   child: Row(
                     children: [
-                      const FaIcon(
-                        FontAwesomeIcons.tag,
+                      const Icon(
+                        AppIcons.tag,
                         size: 14,
                         color: AppColors.textTertiary,
                       ),
@@ -539,7 +448,7 @@ class _SelectRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return PrototypePressableRow(
+    return AppPressableRow(
       onTap: onTap,
       borderBottom: borderBottom,
       child: Row(
@@ -568,11 +477,7 @@ class _SelectRow extends StatelessWidget {
               ],
             ),
           ),
-          const FaIcon(
-            FontAwesomeIcons.chevronRight,
-            size: 10,
-            color: AppColors.gray300,
-          ),
+          const Icon(AppIcons.chevronRight, size: 10, color: AppColors.gray300),
         ],
       ),
     );
@@ -623,8 +528,8 @@ class _Sheet extends StatelessWidget {
                       ),
                     ),
                   ),
-                  PrototypeIconButton(
-                    icon: const FaIcon(FontAwesomeIcons.xmark, size: 14),
+                  AppIconButton(
+                    icon: const Icon(AppIcons.x, size: 14),
                     backgroundColor: context.appColors.surfaceSubtle,
                     foregroundColor: AppColors.textSecondary,
                     onPressed: () => Navigator.of(context).pop(),

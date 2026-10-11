@@ -22,7 +22,6 @@ class StatsSourceRecord {
     required this.eventName,
     required this.personName,
     this.personId,
-    required this.paymentMethod,
     required this.occurredAt,
     this.note,
   });
@@ -34,7 +33,6 @@ class StatsSourceRecord {
   final String eventName;
   final String personName;
   final String? personId;
-  final String paymentMethod;
   final DateTime occurredAt;
   final String? note;
 }
@@ -122,7 +120,6 @@ class StatsRepository implements IStatsRepository {
         r.amountCent,
         r.eventName,
         r.personName,
-        r.paymentMethod,
         occurredAtS,
         r.note ?? '',
       );
@@ -140,7 +137,6 @@ class StatsRepository implements IStatsRepository {
         'amount_cent': r.amountCent,
         'event_name': r.eventName,
         'person_name': r.personName,
-        'payment_method': r.paymentMethod,
         'occurred_at_s': r.occurredAt.millisecondsSinceEpoch ~/ 1000,
       });
     }

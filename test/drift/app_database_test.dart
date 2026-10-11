@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -6,6 +8,36 @@ import 'package:newshangli/data/local/drift/app_database.dart';
 import 'package:newshangli/import/default_book_service.dart';
 
 void main() {
+  test('新库仅包含当前记录字段，默认数据只在创建时初始化', () async {
+    final directory = await Directory.systemTemp.createTemp('current_schema_');
+    final file = File('${directory.path}/app.sqlite');
+    var db = AppDatabase.forTesting(NativeDatabase(file), seedDefaults: true);
+    addTearDown(() async {
+      await db.close();
+      await directory.delete(recursive: true);
+    });
+
+    final columns = await db
+        .customSelect('PRAGMA table_info(gift_record)')
+        .get();
+    expect(
+      columns.map((row) => row.data['name']),
+      isNot(contains('payment_method')),
+    );
+    expect((await db.reasonsDao.listAll()).single.name, '结婚礼金');
+    expect(
+      (await db.relationTypesDao.listAll()).map((type) => type.name),
+      unorderedEquals(['家人', '亲戚', '同事', '朋友', '同学', '邻居']),
+    );
+    final version = await db.customSelect('PRAGMA user_version').getSingle();
+    expect(version.data.values.single, AppDatabase.currentSchemaVersion);
+
+    await db.delete(db.reasons).go();
+    await db.close();
+    db = AppDatabase.forTesting(NativeDatabase(file), seedDefaults: true);
+    expect(await db.reasonsDao.listAll(), isEmpty);
+  });
+
   group('Drift AppDatabase', () {
     late AppDatabase db;
 

@@ -1,15 +1,19 @@
 import 'package:flutter/material.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import '../../data/local/drift/app_database.dart';
 import '../app_database_scope.dart';
+import '../app_dialog.dart';
 import '../app_notifier.dart';
 import '../app_scaffold.dart';
 import '../app_tokens.dart';
 import '../components.dart';
 import '../contact_avatar.dart';
 import '../navigation.dart';
-import '../prototype_kit.dart';
+import '../ui_kit.dart';
+
+import '../app_icons.dart';
+
+import '../app_layout.dart';
 
 class RecycleBinPage extends StatelessWidget {
   const RecycleBinPage({super.key});
@@ -33,10 +37,10 @@ class _Canvas extends StatelessWidget {
       length: 2,
       child: Column(
         children: [
-          PrototypeTopBar(
+          AppTopBar(
             title: '回收站',
-            left: PrototypeIconButton(
-              icon: const FaIcon(FontAwesomeIcons.arrowLeft, size: 18),
+            left: AppIconButton(
+              icon: const Icon(AppIcons.arrowLeft, size: 18),
               backgroundColor: Colors.transparent,
               foregroundColor: AppColors.textPrimary,
               onPressed: () => AppNav.pop(context),
@@ -151,8 +155,8 @@ class _RecycleSummaryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final totalCount = recordCount + personCount;
-    return PrototypeCard(
-      padding: const EdgeInsets.all(16),
+    return AppCard(
+      padding: AppLayout.pagePadding,
       border: Border.all(color: AppColors.borderSubtle),
       child: Row(
         children: [
@@ -164,8 +168,8 @@ class _RecycleSummaryCard extends StatelessWidget {
               borderRadius: AppRadii.brXl,
             ),
             alignment: Alignment.center,
-            child: const FaIcon(
-              FontAwesomeIcons.trashCan,
+            child: const Icon(
+              AppIcons.trash2,
               size: 18,
               color: AppColors.red600,
             ),
@@ -342,7 +346,7 @@ class _TrashedRecordsTab extends StatelessWidget {
   Widget build(BuildContext context) {
     if (error != null) {
       return const _StateMessage(
-        icon: FontAwesomeIcons.triangleExclamation,
+        icon: AppIcons.triangleAlert,
         title: '加载失败',
         message: '暂时无法读取已删除记录',
       );
@@ -352,7 +356,7 @@ class _TrashedRecordsTab extends StatelessWidget {
     }
     if (items.isEmpty) {
       return const _StateMessage(
-        icon: FontAwesomeIcons.boxOpen,
+        icon: AppIcons.packageOpen,
         title: '暂无收支记录',
         message: '删除后的收支记录会显示在这里',
       );
@@ -404,7 +408,7 @@ class _TrashedPersonsTab extends StatelessWidget {
   Widget build(BuildContext context) {
     if (error != null) {
       return const _StateMessage(
-        icon: FontAwesomeIcons.triangleExclamation,
+        icon: AppIcons.triangleAlert,
         title: '加载失败',
         message: '暂时无法读取已删除联系人',
       );
@@ -414,7 +418,7 @@ class _TrashedPersonsTab extends StatelessWidget {
     }
     if (items.isEmpty) {
       return const _StateMessage(
-        icon: FontAwesomeIcons.userGroup,
+        icon: AppIcons.usersRound,
         title: '暂无联系人',
         message: '删除后的联系人会显示在这里',
       );
@@ -493,17 +497,12 @@ class _TrashedRecordRow extends StatelessWidget {
     final eventName = (record.eventName ?? '').trim().isEmpty
         ? '未设置事由'
         : record.eventName!.trim();
-    final paymentMethod = (record.paymentMethod ?? '').trim().isEmpty
-        ? '未设置'
-        : record.paymentMethod!.trim();
-    final subtitle = paymentMethod == '未设置'
-        ? eventName
-        : '$eventName · $paymentMethod';
+    final subtitle = eventName;
 
-    return PrototypePressableRow(
+    return AppPressableRow(
       onTap: null,
       borderBottom: borderBottom,
-      padding: const EdgeInsets.all(16),
+      padding: AppLayout.pagePadding,
       child: Column(
         children: [
           Row(
@@ -561,11 +560,11 @@ class _TrashedRecordRow extends StatelessWidget {
                       runSpacing: 4,
                       children: [
                         _MetadataText(
-                          icon: FontAwesomeIcons.clockRotateLeft,
+                          icon: AppIcons.history,
                           text: _formatDeletedAt(record.deletedAt),
                         ),
                         _MetadataText(
-                          icon: FontAwesomeIcons.calendarDay,
+                          icon: AppIcons.calendarDays,
                           text: '发生 ${_formatShortDate(record.occurredAt)}',
                         ),
                       ],
@@ -598,10 +597,10 @@ class _TrashedPersonRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return PrototypePressableRow(
+    return AppPressableRow(
       onTap: null,
       borderBottom: borderBottom,
-      padding: const EdgeInsets.all(16),
+      padding: AppLayout.pagePadding,
       child: Column(
         children: [
           Row(
@@ -640,7 +639,7 @@ class _TrashedPersonRow extends StatelessWidget {
                     ),
                     const SizedBox(height: 6),
                     _MetadataText(
-                      icon: FontAwesomeIcons.clockRotateLeft,
+                      icon: AppIcons.history,
                       text: _formatDeletedAt(person.deletedAt),
                     ),
                   ],
@@ -669,7 +668,7 @@ class _RowActions extends StatelessWidget {
         Expanded(
           child: _InlineActionButton(
             label: '恢复',
-            icon: FontAwesomeIcons.rotateLeft,
+            icon: AppIcons.rotateCcw,
             backgroundColor: AppColors.green600.withValues(alpha: 0.10),
             borderColor: AppColors.green600.withValues(alpha: 0.36),
             foregroundColor: AppColors.green600,
@@ -680,7 +679,7 @@ class _RowActions extends StatelessWidget {
         Expanded(
           child: _InlineActionButton(
             label: '删除',
-            icon: FontAwesomeIcons.trashCan,
+            icon: AppIcons.trash2,
             backgroundColor: AppColors.red600.withValues(alpha: 0.10),
             borderColor: AppColors.red600.withValues(alpha: 0.36),
             foregroundColor: AppColors.red600,
@@ -758,7 +757,7 @@ class _InlineActionButtonState extends State<_InlineActionButton> {
                     key: const ValueKey('idle'),
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      FaIcon(
+                      Icon(
                         widget.icon,
                         size: 13,
                         color: widget.foregroundColor,
@@ -792,7 +791,7 @@ class _MetadataText extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        FaIcon(icon, size: 11, color: AppColors.textMuted),
+        Icon(icon, size: 11, color: AppColors.textMuted),
         const SizedBox(width: 4),
         Text(
           text,
@@ -865,7 +864,7 @@ class _StateMessage extends StatelessWidget {
                 shape: BoxShape.circle,
               ),
               alignment: Alignment.center,
-              child: FaIcon(icon, size: 18, color: AppColors.textTertiary),
+              child: Icon(icon, size: 18, color: AppColors.textTertiary),
             ),
             const SizedBox(height: 12),
             Text(
@@ -894,24 +893,12 @@ class _StateMessage extends StatelessWidget {
 }
 
 Future<bool?> _confirmPurge(BuildContext context, {required String title}) {
-  return showDialog<bool>(
-    context: context,
-    builder: (context) {
-      return AlertDialog(
-        title: Text(title),
-        content: const Text('删除后无法恢复，确认继续？'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('取消'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('删除'),
-          ),
-        ],
-      );
-    },
+  return AppDialog.confirm(
+    context,
+    title: title,
+    message: '删除后无法恢复，确认继续？',
+    confirmLabel: '删除',
+    danger: true,
   );
 }
 
