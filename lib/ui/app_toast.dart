@@ -53,13 +53,7 @@ class AppToast {
     Duration? duration,
   }) {
     // 1. 后入覆盖：先清理旧的 OverlayEntry 与定时器
-    _dismissTimer?.cancel();
-    _dismissTimer = null;
-    _enterController?.stop();
-    _enterController?.dispose();
-    _enterController = null;
-    _currentEntry?.remove();
-    _currentEntry = null;
+    _dismissNow();
 
     // 2. 解析显示时长
     final effectiveDuration =
@@ -214,6 +208,12 @@ class _AppToastHostState extends State<_AppToastHost>
 
   @override
   void dispose() {
+    if (identical(AppToast._enterController, _controller)) {
+      AppToast._enterController = null;
+      AppToast._currentEntry = null;
+      AppToast._dismissTimer?.cancel();
+      AppToast._dismissTimer = null;
+    }
     _controller.dispose();
     super.dispose();
   }

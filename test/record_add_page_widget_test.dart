@@ -66,7 +66,7 @@ Future<void> _resetEditProtection() async {
 }
 
 void main() {
-  testWidgets('编辑记录：加载完成后可查看金额、关系人、事由和备注', (tester) async {
+  testWidgets('编辑记录：加载完成后可查看金额、联系人、事由和备注', (tester) async {
     await _resetEditProtection();
     tester.view.physicalSize = const Size(360, 640);
     tester.view.devicePixelRatio = 1;
@@ -115,7 +115,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 1));
   });
 
-  testWidgets('编辑记录：账簿、关系人、和事由均可打开并选择', (tester) async {
+  testWidgets('编辑记录：账簿、联系人、和事由均可打开并选择', (tester) async {
     await _resetEditProtection();
     tester.view.physicalSize = const Size(430, 900);
     tester.view.devicePixelRatio = 1;
@@ -154,9 +154,9 @@ void main() {
     Navigator.of(tester.element(find.text('选择所属账簿'))).pop();
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('关系人'));
+    await tester.tap(find.text('联系人'));
     await tester.pumpAndSettle();
-    expect(find.text('选择关系人'), findsOneWidget);
+    expect(find.text('选择联系人'), findsOneWidget);
     await tester.tap(find.text('测试联系人').last);
     await tester.pumpAndSettle();
 

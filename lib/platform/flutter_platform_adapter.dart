@@ -19,30 +19,55 @@ class FlutterPlatformAdapter implements AppPlatformAdapter {
     bool allowMultiple = false,
     bool withData = false,
   }) async {
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: allowedExtensions,
-      allowMultiple: allowMultiple,
-      withData: withData,
-    );
-    if (result == null) return null;
-    return AppPickedFiles(
-      List.unmodifiable(
-        result.files.map(
-          (file) => AppPickedFile(
-            name: file.name,
-            size: file.size,
-            path: file.path,
-            bytes: file.bytes,
-          ),
+    final List<PlatformFile> result;
+    if (allowMultiple) {
+      result = await FilePicker.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: allowedExtensions,
+      );
+    } else {
+      final file = await FilePicker.pickFile(
+        type: FileType.custom,
+        allowedExtensions: allowedExtensions,
+      );
+      result = file == null ? [] : [file];
+    }
+    if (result.isEmpty) return null;
+    final files = <AppPickedFile>[];
+    for (final file in result) {
+      var localPath = file.path;
+      final bytes = withData || localPath == null
+          ? await file.readAsBytes()
+          : null;
+      if (localPath == null) {
+        final directory = await (await temporaryDirectory()).createTemp(
+          'picked_',
+        );
+        final safeName = file.name.replaceAll(
+          RegExp(r'[<>:"/\\|?*\x00-\x1f]'),
+          '_',
+        );
+        final local = File(
+          '${directory.path}/${safeName.isEmpty ? 'file' : safeName}',
+        );
+        await local.writeAsBytes(bytes!, flush: true);
+        localPath = local.path;
+      }
+      files.add(
+        AppPickedFile(
+          name: file.name,
+          size: bytes?.length ?? await file.length() ?? 0,
+          path: localPath,
+          bytes: withData ? bytes : null,
         ),
-      ),
-    );
+      );
+    }
+    return AppPickedFiles(List.unmodifiable(files));
   }
 
   @override
   Future<String?> pickDirectory({String? dialogTitle}) =>
-      FilePicker.platform.getDirectoryPath(dialogTitle: dialogTitle);
+      FilePicker.getDirectoryPath(dialogTitle: dialogTitle);
   @override
   Future<void> shareFile(String path, {required String text}) async {
     await SharePlus.instance.share(

@@ -3,11 +3,9 @@ import 'package:drift/drift.dart' show OrderingTerm;
 import 'package:drift/drift.dart' show Value;
 
 import '../../data/local/drift/app_database.dart';
-import '../../data/local/entity_remarks_store.dart';
 import '../../media/media_storage_service.dart';
 import '../app_data.dart';
 import '../app_database_scope.dart';
-import '../app_dialog.dart';
 import '../app_notifier.dart';
 import '../app_tokens.dart';
 import '../app_scaffold.dart';
@@ -28,7 +26,7 @@ import '../../platform/app_platform.dart';
 
 import '../app_layout.dart';
 
-/// 页面：关系人管理 - 详情页
+/// 页面：联系人管理 - 详情页
 /// 对照原型：prototype/index.html -> "详情页"
 class PersonDetailPage extends StatelessWidget {
   const PersonDetailPage({super.key, this.personId});
@@ -250,7 +248,7 @@ class _CanvasState extends State<_Canvas> {
         return Column(
           children: [
             AppTopBar(
-              title: '关系人详情',
+              title: '联系人详情',
               left: AppIconButton(
                 icon: const Icon(AppIcons.arrowLeft, size: 18),
                 backgroundColor: Colors.transparent,
@@ -275,25 +273,6 @@ class _CanvasState extends State<_Canvas> {
                         onAvatarTap: () => _pickAndSaveAvatar(view.person.id),
                       ),
                       _InfoCards(person: view.person),
-                      const Padding(
-                        padding: EdgeInsets.fromLTRB(16, 0, 16, 8),
-                        child: Text(
-                          '追加备注',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: _EntityRemarksCard(
-                          entityType: EntityRemarkType.person,
-                          entityId: view.person.id,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
                       const _RecordsHeader(),
                       _RecordsCard(records: view.records),
                       const SizedBox(height: AppLayout.sectionGap),
@@ -358,9 +337,6 @@ class _Hero extends StatelessWidget {
     final relationship = person.relationship.trim().isEmpty
         ? '未设置'
         : person.relationship.trim();
-    final phone = person.phone?.trim().isNotEmpty == true
-        ? person.phone!.trim()
-        : '未设置';
     final avatarUrl = person.avatarUrl?.trim();
     return Stack(
       clipBehavior: Clip.none,
@@ -374,84 +350,70 @@ class _Hero extends StatelessWidget {
               bottomRight: AppRadii.heroBottom,
             ),
           ),
-          child: Column(
-            children: [
-              const SizedBox(height: 8),
-              PressableScale(
-                onTap: onAvatarTap,
-                child: Container(
-                  width: 96,
-                  height: 96,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: context.appColors.surfaceCard,
-                      width: 4,
-                    ),
-                    boxShadow: AppShadows.lg,
-                  ),
-                  clipBehavior: Clip.antiAlias,
-                  child: ContactAvatar(
-                    name: name,
-                    avatarUrl: avatarUrl,
-                    size: 96,
-                    shape: ContactAvatarShape.circle,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                name,
-                style: AppTypography.base(
-                  fontSize: 24,
-                  fontWeight: AppTypography.bold,
-                  color: AppColors.white,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 2,
-                    ),
+          child: Padding(
+            padding: const EdgeInsets.only(top: 16, bottom: 24),
+            child: Row(
+              children: [
+                PressableScale(
+                  onTap: onAvatarTap,
+                  child: Container(
+                    width: 80,
+                    height: 80,
                     decoration: BoxDecoration(
-                      color: AppColors.white20,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(
-                      relationship,
-                      style: AppTypography.base(
-                        fontSize: 12,
-                        fontWeight: AppTypography.regular,
-                        color: AppColors.indigo100,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: context.appColors.surfaceCard,
+                        width: 4,
                       ),
+                      boxShadow: AppShadows.lg,
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child: ContactAvatar(
+                      name: name,
+                      avatarUrl: avatarUrl,
+                      size: 80,
+                      shape: ContactAvatarShape.circle,
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  Text(
-                    '•',
-                    style: AppTypography.base(
-                      fontSize: 14,
-                      fontWeight: AppTypography.regular,
-                      color: AppColors.indigo100,
-                    ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        name,
+                        style: AppTypography.base(
+                          fontSize: 24,
+                          fontWeight: AppTypography.bold,
+                          color: AppColors.white,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.white20,
+                          borderRadius: AppRadii.brMd,
+                        ),
+                        child: Text(
+                          relationship,
+                          style: AppTypography.base(
+                            fontSize: 12,
+                            fontWeight: AppTypography.regular,
+                            color: AppColors.indigo100,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 8),
-                  Text(
-                    phone,
-                    style: AppTypography.base(
-                      fontSize: 14,
-                      fontWeight: AppTypography.regular,
-                      color: AppColors.indigo100,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: AppLayout.sectionGap),
-            ],
+                ),
+              ],
+            ),
           ),
         ),
         Positioned(
@@ -489,188 +451,6 @@ class _Hero extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-class _EntityRemarksCard extends StatefulWidget {
-  const _EntityRemarksCard({required this.entityType, required this.entityId});
-
-  final String entityType;
-  final String entityId;
-
-  @override
-  State<_EntityRemarksCard> createState() => _EntityRemarksCardState();
-}
-
-class _EntityRemarksCardState extends State<_EntityRemarksCard> {
-  late Future<List<EntityRemark>> _future;
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _future = _load();
-  }
-
-  Future<List<EntityRemark>> _load() async {
-    final db = AppDatabaseScope.of(context);
-    return EntityRemarksStore(db)
-        .listByEntity(entityType: widget.entityType, entityId: widget.entityId);
-  }
-
-  void _reload() {
-    if (!mounted) return;
-    setState(() => _future = _load());
-  }
-
-  Future<void> _addRemark(BuildContext context, AppDatabase db) async {
-    final input = await AppDialog.showInput(
-      context,
-      title: '新增备注',
-      fields: [
-        AppDialogField(
-          id: 'remark',
-          label: '备注',
-          hint: '请输入备注内容',
-          maxLines: 6,
-          minLines: 3,
-        ),
-      ],
-      confirmLabel: '保存',
-      cancelLabel: '取消',
-    );
-    final text = input?['remark']?.trim() ?? '';
-    if (text.isEmpty) return;
-    await EntityRemarksStore(db).addRemark(
-      entityType: widget.entityType,
-      entityId: widget.entityId,
-      content: text,
-    );
-    if (!context.mounted) return;
-    _reload();
-    AppNotifier.success(context, '备注已添加');
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final db = AppDatabaseScope.of(context);
-    return AppCard(
-      padding: AppLayout.pagePadding,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  '备注列表',
-                  style: AppTypography.base(
-                    fontSize: 12,
-                    fontWeight: AppTypography.bold,
-                    color: AppColors.textTertiary,
-                  ),
-                ),
-              ),
-              PressableScale(
-                onTap: () => _addRemark(context, db),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: context.appColors.surfaceSubtle,
-                    borderRadius: BorderRadius.circular(999),
-                    border: Border.all(
-                      color: context.appColors.surfaceDisabled,
-                    ),
-                  ),
-                  child: Text(
-                    '新增',
-                    style: AppTypography.base(
-                      fontSize: 12,
-                      fontWeight: AppTypography.medium,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          FutureBuilder<List<EntityRemark>>(
-            future: _future,
-            builder: (context, snapshot) {
-              final rows = snapshot.data ?? const <EntityRemark>[];
-              if (rows.isEmpty) {
-                return Text(
-                  '暂无追加备注',
-                  style: AppTypography.base(
-                    fontSize: 13,
-                    fontWeight: AppTypography.regular,
-                    color: AppColors.textMuted,
-                  ),
-                );
-              }
-              return Column(
-                children: [
-                  for (final r in rows) ...[
-                    _RemarkRow(content: r.content, createdAt: r.createdAt),
-                    if (r != rows.last) const SizedBox(height: 10),
-                  ],
-                ],
-              );
-            },
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _RemarkRow extends StatelessWidget {
-  const _RemarkRow({required this.content, required this.createdAt});
-
-  final String content;
-  final int createdAt;
-
-  @override
-  Widget build(BuildContext context) {
-    final time = DateTime.fromMillisecondsSinceEpoch(createdAt);
-    final hh = time.hour.toString().padLeft(2, '0');
-    final mm = time.minute.toString().padLeft(2, '0');
-    final label = '${DateUtil.format(time)} $hh:$mm';
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: context.appColors.surfaceSubtle,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: context.appColors.borderSubtle),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: AppTypography.base(
-              fontSize: 11,
-              fontWeight: AppTypography.regular,
-              color: AppColors.textTertiary,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            content,
-            style: AppTypography.base(
-              fontSize: 13,
-              fontWeight: AppTypography.regular,
-              color: AppColors.textPrimary,
-              height: 1.4,
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
@@ -738,44 +518,12 @@ class _InfoCards extends StatelessWidget {
         ? person!.note!.trim()
         : '未设置';
 
-    String birthdayValue = '未设置';
-    Widget? birthdayTrailing;
-
-    if (person?.birthday != null) {
-      final b = person!.birthday!;
-      birthdayValue = DateUtil.format(b);
-
-      final now = DateTime.now();
-      final today = DateTime(now.year, now.month, now.day);
-      DateTime nextBirthday = DateTime(now.year, b.month, b.day);
-      if (nextBirthday.isBefore(today)) {
-        nextBirthday = DateTime(now.year + 1, b.month, b.day);
-      }
-
-      final diffDays = nextBirthday.difference(today).inDays;
-      String badgeText = diffDays == 0 ? '今天' : '$diffDays天后';
-      birthdayTrailing = _Badge(
-        text: badgeText,
-        bg: AppColors.pink100,
-        fg: AppColors.pink600,
-      );
-    }
-
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 48, 16, 24),
       child: AppCard(
         padding: AppLayout.pagePadding,
         child: Column(
           children: [
-            _InfoRow(
-              iconBg: AppColors.pink50,
-              iconFg: AppColors.pink500,
-              icon: AppIcons.cake,
-              label: '生日',
-              value: birthdayValue,
-              trailing: birthdayTrailing,
-            ),
-            const SizedBox(height: 16),
             _InfoRow(
               iconBg: AppColors.gray50,
               iconFg: AppColors.textTertiary,
@@ -797,7 +545,6 @@ class _InfoRow extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.value,
-    this.trailing,
   });
 
   final Color iconBg;
@@ -805,7 +552,6 @@ class _InfoRow extends StatelessWidget {
   final IconData icon;
   final String label;
   final String value;
-  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
@@ -847,35 +593,7 @@ class _InfoRow extends StatelessWidget {
             ],
           ),
         ),
-        ...(trailing == null ? const <Widget>[] : <Widget>[trailing!]),
       ],
-    );
-  }
-}
-
-class _Badge extends StatelessWidget {
-  const _Badge({required this.text, required this.bg, required this.fg});
-
-  final String text;
-  final Color bg;
-  final Color fg;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(9999),
-      ),
-      child: Text(
-        text,
-        style: AppTypography.base(
-          fontSize: 12,
-          fontWeight: AppTypography.regular,
-          color: fg,
-        ),
-      ),
     );
   }
 }

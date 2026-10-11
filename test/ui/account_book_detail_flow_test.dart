@@ -37,7 +37,9 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('总收入'), findsOneWidget);
 
-    await tester.tap(find.bySemanticsLabel('导入账簿数据'));
+    await tester.tap(find.bySemanticsLabel('账簿导入导出'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('导入账簿数据'));
     await tester.pumpAndSettle();
     expect(find.text('账簿数据导入'), findsOneWidget);
 

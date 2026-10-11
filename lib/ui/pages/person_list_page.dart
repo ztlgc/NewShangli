@@ -32,7 +32,7 @@ const double _personListBottomClearance =
     AppTokens.floatingNavBottomInset +
     AppTokens.space3;
 
-/// 页面：关系人管理 - 列表页
+/// 页面：联系人管理 - 列表页
 /// 对照原型：prototype/index.html -> "列表页"
 class PersonListPage extends StatelessWidget {
   const PersonListPage({super.key});
@@ -267,7 +267,7 @@ class _CanvasBody extends StatelessWidget {
       children: [
         // 顶部标题栏
         FHeader(
-          title: const Text('关系人'),
+          title: const Text('联系人'),
           suffixes: [
             if (multiSelectMode)
               FButton(
@@ -289,7 +289,7 @@ class _CanvasBody extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           child: ForuiSearchField(
             controller: searchController,
-            hint: '搜索姓名、手机号',
+            hint: '搜索姓名、关系',
             onChanged: onKeywordChanged,
           ),
         ),
@@ -557,7 +557,6 @@ bool _matchesPersonKeyword(PersonData person, String keyword) {
   final pinyinKeyword = normalized.replaceAll(RegExp(r'\s+'), '').toUpperCase();
   return person.name.toLowerCase().contains(normalized) ||
       person.relationship.toLowerCase().contains(normalized) ||
-      (person.phone ?? '').toLowerCase().contains(normalized) ||
       (person.note ?? '').toLowerCase().contains(normalized) ||
       _namePinyin(person.name).contains(pinyinKeyword);
 }

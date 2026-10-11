@@ -20,15 +20,15 @@ class DataImportTemplateService {
         '金额(元)',
         '事由',
         '所属账簿名称',
-        '关系人ID',
-        '关系人姓名',
-        '关系人关系',
+        '联系人ID',
+        '联系人姓名',
+        '联系人关系',
         '手机号',
         '发生时间',
         '备注',
       ],
       <String>[
-        '关系人列表',
+        '联系人列表',
         '',
         '',
         '',
@@ -64,7 +64,7 @@ class DataImportTemplateService {
     final ts = DateTime.now();
     String two(int n) => n.toString().padLeft(2, '0');
     final nameBase =
-        '尚礼_导入模板_${ts.year}${two(ts.month)}${two(ts.day)}_${two(ts.hour)}${two(ts.minute)}${two(ts.second)}';
+        '礼记_导入模板_${ts.year}${two(ts.month)}${two(ts.day)}_${two(ts.hour)}${two(ts.minute)}${two(ts.second)}';
 
     switch (format) {
       case DataImportTemplateFormat.csv:

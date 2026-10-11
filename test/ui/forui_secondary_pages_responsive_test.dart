@@ -165,9 +165,9 @@ void main() {
         RelationTypeDetailPage(type: relationType),
       ),
       ('新增关系', 'contact-relation-edit', const ContactRelationEditPage.create()),
-      ('新增关系人', 'person-edit', const PersonEditPage()),
+      ('新增联系人', 'person-edit', const PersonEditPage()),
       (
-        '关系人详情',
+        '联系人详情',
         'person-detail',
         const PersonDetailPage(personId: 'responsive-person'),
       ),

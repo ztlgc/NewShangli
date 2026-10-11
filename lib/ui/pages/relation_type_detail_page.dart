@@ -13,12 +13,28 @@ import 'person_detail_page.dart';
 import '../app_icons.dart';
 
 class RelationTypeDetailPage extends StatelessWidget {
-  const RelationTypeDetailPage({super.key, required this.type});
+  const RelationTypeDetailPage({super.key, required this.type, this.onEdit});
 
   final RelationType type;
+  final Future<void> Function(RelationType type)? onEdit;
 
   @override
   Widget build(BuildContext context) {
+    final db = AppDatabaseScope.of(context);
+    return StreamBuilder<List<RelationType>>(
+      stream: db.relationTypesDao.watchAll(),
+      builder: (context, snapshot) {
+        final currentType =
+            (snapshot.data ?? const <RelationType>[])
+                .where((item) => item.typeId == type.typeId)
+                .firstOrNull ??
+            type;
+        return _buildDetail(context, currentType);
+      },
+    );
+  }
+
+  Widget _buildDetail(BuildContext context, RelationType type) {
     final db = AppDatabaseScope.of(context);
     return AppScaffold(
       backgroundColor: AppColors.surfaceApp,
@@ -33,12 +49,24 @@ class RelationTypeDetailPage extends StatelessWidget {
               onPressed: () => AppNav.pop(context),
               radius: 12,
             ),
+            right: onEdit == null
+                ? null
+                : AppIconButton(
+                    icon: const Icon(AppIcons.pen, size: 14),
+                    backgroundColor: context.appColors.surfaceSubtle,
+                    foregroundColor: AppColors.textSecondary,
+                    onPressed: () => onEdit!(type),
+                    radius: 12,
+                  ),
           ),
           Expanded(
             child: StreamBuilder<List<Person>>(
               stream: db.personsDao.watchAllInAllBooks(),
               builder: (context, snapshot) {
-                final contacts = _contactsForType(snapshot.data ?? const []);
+                final contacts = _contactsForType(
+                  snapshot.data ?? const [],
+                  type,
+                );
                 if (snapshot.connectionState == ConnectionState.waiting &&
                     contacts.isEmpty) {
                   return const Center(child: CircularProgressIndicator());
@@ -80,7 +108,7 @@ class RelationTypeDetailPage extends StatelessWidget {
     );
   }
 
-  List<Person> _contactsForType(List<Person> persons) {
+  List<Person> _contactsForType(List<Person> persons, RelationType type) {
     final key = type.name.trim().toLowerCase();
     final contacts = persons
         .where((person) => person.relationshipType.trim().toLowerCase() == key)

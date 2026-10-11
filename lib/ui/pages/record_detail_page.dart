@@ -370,7 +370,7 @@ class _DetailInfoCard extends StatelessWidget {
         children: [
           _InfoRow(
             icon: AppIcons.userRound,
-            title: '关系人',
+            title: '联系人',
             value: record.personName,
             chevron: true,
             onTap: () => AppNav.push(

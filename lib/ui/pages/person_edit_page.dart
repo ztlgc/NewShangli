@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:forui/forui.dart';
 import 'package:drift/drift.dart' show Value;
-import 'package:lunar/lunar.dart';
 
 import '../../data/local/drift/app_database.dart';
 import '../../import/default_book_service.dart';
@@ -21,7 +20,6 @@ import '../components.dart';
 import '../edit_protection_guard.dart';
 import '../navigation.dart';
 import '../ui_kit.dart';
-import '../lunar_date_picker.dart';
 
 import '../app_icons.dart';
 
@@ -29,7 +27,7 @@ import '../../platform/app_platform.dart';
 
 import '../app_layout.dart';
 
-/// 页面：关系人管理 - 编辑/新增
+/// 页面：联系人管理 - 编辑/新增
 /// 对照原型：prototype/index.html -> "编辑/新增"
 class PersonEditPage extends StatefulWidget {
   const PersonEditPage({super.key, this.personId});
@@ -44,11 +42,9 @@ const int _kNoteMaxLen = 500;
 
 class _PersonEditPageState extends State<PersonEditPage> {
   final TextEditingController _nameCtrl = TextEditingController();
-  final TextEditingController _phoneCtrl = TextEditingController();
   final TextEditingController _noteCtrl = TextEditingController();
 
   final FocusNode _nameFocus = FocusNode();
-  final FocusNode _phoneFocus = FocusNode();
   final FocusNode _noteFocus = FocusNode();
 
   bool _inited = false;
@@ -59,19 +55,14 @@ class _PersonEditPageState extends State<PersonEditPage> {
   static const String _defaultBookSelectionId = 'book_default';
   String _personBookId = _defaultBookSelectionId;
   String? _avatarUrl;
-  DateTime? _birthday;
-  bool _isLunarBirthday = false;
 
   bool _nameEditing = false;
-  bool _phoneEditing = false;
   bool _noteEditing = false;
 
   String? _nameError;
-  String? _phoneError;
   String? _noteError;
 
   String _savedName = '';
-  String _savedPhone = '';
   String _savedNote = '';
   final DefaultBookService _defaultBookService = DefaultBookService();
   final MediaStorageService _mediaStorageService = MediaStorageService();
@@ -79,10 +70,8 @@ class _PersonEditPageState extends State<PersonEditPage> {
   @override
   void dispose() {
     _nameCtrl.dispose();
-    _phoneCtrl.dispose();
     _noteCtrl.dispose();
     _nameFocus.dispose();
-    _phoneFocus.dispose();
     _noteFocus.dispose();
     super.dispose();
   }
@@ -94,14 +83,10 @@ class _PersonEditPageState extends State<PersonEditPage> {
     _inited = true;
     _authorized = widget.personId == null;
     _nameCtrl.text = '';
-    _phoneCtrl.text = '';
     _noteCtrl.text = '';
     _savedName = _nameCtrl.text.trim();
-    _savedPhone = _phoneCtrl.text.trim();
     _savedNote = _noteCtrl.text.trim();
     _avatarUrl = null;
-    _birthday = null;
-    _isLunarBirthday = false;
     _relationship = '朋友';
     _loadDefaultRelationshipFromDrift();
     if (widget.personId != null) {
@@ -136,7 +121,7 @@ class _PersonEditPageState extends State<PersonEditPage> {
       body: Column(
         children: [
           FHeader.nested(
-            title: Text(widget.personId == null ? '新增关系人' : '编辑关系人'),
+            title: Text(widget.personId == null ? '新增联系人' : '编辑联系人'),
             prefixes: [
               FButton(
                 variant: .ghost,
@@ -182,24 +167,7 @@ class _PersonEditPageState extends State<PersonEditPage> {
                   onNameSubmitted: _saving ? null : _commitName,
                   onNameFocusChange: _saving ? null : _onNameFocusChange,
                   relationship: _relationship,
-                  phone: _phoneCtrl.text,
                   onPickRelationship: _saving ? null : _pickRelationship,
-                  phoneCtrl: _phoneCtrl,
-                  phoneFocus: _phoneFocus,
-                  phoneEditing: _phoneEditing,
-                  phoneErrorText: _phoneError,
-                  onTapPhone: _saving
-                      ? null
-                      : () => _startEditing(_InlineEditField.phone),
-                  onPhoneChanged: _saving ? null : _onPhoneChanged,
-                  onPhoneSubmitted: _saving ? null : _commitPhone,
-                  onPhoneFocusChange: _saving ? null : _onPhoneFocusChange,
-                  birthday: _birthday,
-                  isLunarBirthday: _isLunarBirthday,
-                  onPickBirthday: _saving ? null : _pickBirthday,
-                  onLunarBirthdayChanged: _saving
-                      ? null
-                      : (v) => setState(() => _isLunarBirthday = v),
                 ),
                 const SizedBox(height: AppLayout.sectionGap),
                 const _SectionOverline(title: '其他信息'),
@@ -236,7 +204,6 @@ class _PersonEditPageState extends State<PersonEditPage> {
     FocusManager.instance.primaryFocus?.unfocus();
     setState(() {
       _nameEditing = false;
-      _phoneEditing = false;
       _noteEditing = false;
     });
 
@@ -247,19 +214,9 @@ class _PersonEditPageState extends State<PersonEditPage> {
 
     final db = AppDatabaseScope.of(context);
     final name = _nameCtrl.text.trim();
-    final phone = _phoneCtrl.text.trim();
     final note = _noteCtrl.text.trim();
     setState(() => _saving = true);
     try {
-      if (phone.isNotEmpty &&
-          await _isPhoneExistsInDrift(db, phone, excludeId: widget.personId)) {
-        if (!mounted) return;
-        setState(() {
-          _phoneError = '该手机号已存在';
-          _saving = false;
-        });
-        return;
-      }
       final dbBookId = await _resolveDbBookId(db, _personBookId);
       final now = DateTime.now().millisecondsSinceEpoch;
       String targetId;
@@ -271,8 +228,6 @@ class _PersonEditPageState extends State<PersonEditPage> {
             relationshipType: Value(
               _relationship.trim().isEmpty ? '朋友' : _relationship.trim(),
             ),
-            phone: Value(phone.isEmpty ? null : phone),
-            birthday: Value(_birthday?.toIso8601String()),
             avatarUri: Value(
               _avatarUrl?.trim().isEmpty == true ? null : _avatarUrl?.trim(),
             ),
@@ -292,8 +247,6 @@ class _PersonEditPageState extends State<PersonEditPage> {
           relationshipType: _relationship.trim().isEmpty
               ? existing.relationshipType
               : _relationship.trim(),
-          phone: Value(phone.isEmpty ? null : phone),
-          birthday: Value(_birthday?.toIso8601String()),
           avatarUri: Value(
             _avatarUrl?.trim().isEmpty == true ? null : _avatarUrl?.trim(),
           ),
@@ -342,12 +295,10 @@ class _PersonEditPageState extends State<PersonEditPage> {
 
   bool _validateAll() {
     final nameErr = _validateName(_nameCtrl.text);
-    final phoneErr = _validatePhone(_phoneCtrl.text);
     final noteErr = _validateNote(_noteCtrl.text);
-    final ok = nameErr == null && phoneErr == null && noteErr == null;
+    final ok = nameErr == null && noteErr == null;
     setState(() {
       _nameError = nameErr;
-      _phoneError = phoneErr;
       _noteError = noteErr;
     });
     return ok;
@@ -359,22 +310,6 @@ class _PersonEditPageState extends State<PersonEditPage> {
     if (trimmed.characters.length < 2 || trimmed.characters.length > 20) {
       return '姓名长度需为2-20个字符';
     }
-    return null;
-  }
-
-  String? _validatePhone(String raw) {
-    final trimmed = raw.trim();
-    if (trimmed.isEmpty) return null;
-
-    var digits = trimmed.replaceAll(RegExp(r'\D'), '');
-    if (digits.startsWith('86') && digits.length == 13) {
-      digits = digits.substring(2);
-    }
-    // 支持 +86 或纯数字，简单的正则校验
-    if (!RegExp(r'^1[3-9]\d{9}$').hasMatch(digits)) {
-      return '手机号格式不正确';
-    }
-
     return null;
   }
 
@@ -390,7 +325,6 @@ class _PersonEditPageState extends State<PersonEditPage> {
   void _startEditing(_InlineEditField field) {
     setState(() {
       _nameEditing = field == _InlineEditField.name;
-      _phoneEditing = field == _InlineEditField.phone;
       _noteEditing = field == _InlineEditField.note;
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -398,9 +332,6 @@ class _PersonEditPageState extends State<PersonEditPage> {
       switch (field) {
         case _InlineEditField.name:
           _nameFocus.requestFocus();
-          break;
-        case _InlineEditField.phone:
-          _phoneFocus.requestFocus();
           break;
         case _InlineEditField.note:
           _noteFocus.requestFocus();
@@ -415,12 +346,6 @@ class _PersonEditPageState extends State<PersonEditPage> {
     });
   }
 
-  void _onPhoneChanged(String v) {
-    setState(() {
-      _phoneError = _validatePhone(v);
-    });
-  }
-
   void _onNoteChanged(String v) {
     setState(() {
       _noteError = _validateNote(v);
@@ -431,12 +356,6 @@ class _PersonEditPageState extends State<PersonEditPage> {
     if (hasFocus) return;
     if (!_nameEditing) return;
     _commitName();
-  }
-
-  void _onPhoneFocusChange(bool hasFocus) {
-    if (hasFocus) return;
-    if (!_phoneEditing) return;
-    _commitPhone();
   }
 
   void _onNoteFocusChange(bool hasFocus) {
@@ -458,19 +377,6 @@ class _PersonEditPageState extends State<PersonEditPage> {
     _saveInlineField(_InlineEditField.name);
   }
 
-  void _commitPhone() {
-    final err = _validatePhone(_phoneCtrl.text);
-    setState(() {
-      _phoneError = err;
-      if (err == null) _phoneEditing = false;
-    });
-    if (err != null) {
-      _phoneFocus.requestFocus();
-      return;
-    }
-    _saveInlineField(_InlineEditField.phone);
-  }
-
   void _commitNote() {
     final err = _validateNote(_noteCtrl.text);
     setState(() {
@@ -490,22 +396,15 @@ class _PersonEditPageState extends State<PersonEditPage> {
 
     final name = (field == _InlineEditField.name ? _nameCtrl.text : _savedName)
         .trim();
-    final phone =
-        (field == _InlineEditField.phone ? _phoneCtrl.text : _savedPhone)
-            .trim();
     final note = (field == _InlineEditField.note ? _noteCtrl.text : _savedNote)
         .trim();
 
     final nameErr = _validateName(name);
-    final phoneErr = field == _InlineEditField.phone
-        ? _validatePhone(phone)
-        : null;
     final noteErr = field == _InlineEditField.note ? _validateNote(note) : null;
 
-    if (nameErr != null || phoneErr != null || noteErr != null) {
+    if (nameErr != null || noteErr != null) {
       setState(() {
         _nameError = nameErr;
-        if (field == _InlineEditField.phone) _phoneError = phoneErr;
         if (field == _InlineEditField.note) _noteError = noteErr;
       });
       return;
@@ -513,19 +412,11 @@ class _PersonEditPageState extends State<PersonEditPage> {
 
     final changed = switch (field) {
       _InlineEditField.name => name != _savedName,
-      _InlineEditField.phone => phone != _savedPhone,
       _InlineEditField.note => note != _savedNote,
     };
     if (!changed) return;
 
     try {
-      if (field == _InlineEditField.phone &&
-          phone.isNotEmpty &&
-          await _isPhoneExistsInDrift(db, phone, excludeId: widget.personId)) {
-        if (!mounted) return;
-        setState(() => _phoneError = '该手机号已存在');
-        return;
-      }
       final existing = await db.personsDao.findById(widget.personId!);
       if (existing == null) return;
       final updated = existing.copyWith(
@@ -533,8 +424,6 @@ class _PersonEditPageState extends State<PersonEditPage> {
         relationshipType: _relationship.trim().isEmpty
             ? existing.relationshipType
             : _relationship.trim(),
-        phone: Value(phone.isEmpty ? null : phone),
-        birthday: Value(_birthday?.toIso8601String()),
         avatarUri: Value(
           _avatarUrl?.trim().isEmpty == true ? null : _avatarUrl?.trim(),
         ),
@@ -542,7 +431,6 @@ class _PersonEditPageState extends State<PersonEditPage> {
       );
       await db.personsDao.updateOne(updated);
       if (field == _InlineEditField.name) _savedName = name;
-      if (field == _InlineEditField.phone) _savedPhone = phone;
       if (field == _InlineEditField.note) _savedNote = note;
     } catch (e) {
       if (!mounted) return;
@@ -581,14 +469,11 @@ class _PersonEditPageState extends State<PersonEditPage> {
       if (person == null || !mounted) return;
       setState(() {
         _nameCtrl.text = person.name;
-        _phoneCtrl.text = person.phone ?? '';
         _noteCtrl.text = person.note ?? '';
         _savedName = _nameCtrl.text.trim();
-        _savedPhone = _phoneCtrl.text.trim();
         _savedNote = _noteCtrl.text.trim();
         _relationship = person.relationshipType;
         _avatarUrl = person.avatarUri;
-        _birthday = DateTime.tryParse(person.birthday ?? '');
         _personBookId = person.bookId;
       });
     } catch (_) {}
@@ -597,32 +482,6 @@ class _PersonEditPageState extends State<PersonEditPage> {
   Future<String> _resolveDbBookId(AppDatabase db, String selectedBookId) async {
     if (selectedBookId != _defaultBookSelectionId) return selectedBookId;
     return _defaultBookService.ensureDefaultBookId(db);
-  }
-
-  Future<bool> _isPhoneExistsInDrift(
-    AppDatabase db,
-    String raw, {
-    String? excludeId,
-  }) async {
-    String clean(String s) {
-      var d = s.replaceAll(RegExp(r'\D'), '');
-      if (d.startsWith('86') && d.length == 13) {
-        d = d.substring(2);
-      }
-      return d;
-    }
-
-    final target = clean(raw);
-    if (target.isEmpty) return false;
-    final all = await db.select(db.persons).get();
-    for (final p in all) {
-      if (p.personId == excludeId) continue;
-      final normalized = clean(p.phone ?? '');
-      if (normalized.isNotEmpty && normalized == target) {
-        return true;
-      }
-    }
-    return false;
   }
 
   Future<void> _pickRelationship() async {
@@ -691,24 +550,12 @@ class _PersonEditPageState extends State<PersonEditPage> {
     } catch (_) {}
   }
 
-  Future<void> _pickBirthday() async {
-    final picked = await showLunarDatePicker(
-      context: context,
-      initialDate: _birthday,
-      firstDate: DateTime(1900),
-      lastDate: DateTime.now(),
-    );
-    if (picked != null) {
-      setState(() => _birthday = picked);
-    }
-  }
-
   void _toast(BuildContext context, String message) {
     AppNotifier.info(context, message);
   }
 }
 
-enum _InlineEditField { name, phone, note }
+enum _InlineEditField { name, note }
 
 class _AvatarEditor extends StatelessWidget {
   const _AvatarEditor({
@@ -773,20 +620,7 @@ class _BasicInfoCard extends StatelessWidget {
     required this.onNameSubmitted,
     required this.onNameFocusChange,
     required this.relationship,
-    required this.phone,
     required this.onPickRelationship,
-    required this.phoneCtrl,
-    required this.phoneFocus,
-    required this.phoneEditing,
-    required this.phoneErrorText,
-    required this.onTapPhone,
-    required this.onPhoneChanged,
-    required this.onPhoneSubmitted,
-    required this.onPhoneFocusChange,
-    required this.birthday,
-    required this.isLunarBirthday,
-    required this.onPickBirthday,
-    required this.onLunarBirthdayChanged,
   });
 
   final TextEditingController nameCtrl;
@@ -798,20 +632,7 @@ class _BasicInfoCard extends StatelessWidget {
   final VoidCallback? onNameSubmitted;
   final ValueChanged<bool>? onNameFocusChange;
   final String relationship;
-  final String phone;
   final VoidCallback? onPickRelationship;
-  final TextEditingController phoneCtrl;
-  final FocusNode phoneFocus;
-  final bool phoneEditing;
-  final String? phoneErrorText;
-  final VoidCallback? onTapPhone;
-  final ValueChanged<String>? onPhoneChanged;
-  final VoidCallback? onPhoneSubmitted;
-  final ValueChanged<bool>? onPhoneFocusChange;
-  final DateTime? birthday;
-  final bool isLunarBirthday;
-  final VoidCallback? onPickBirthday;
-  final ValueChanged<bool>? onLunarBirthdayChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -848,32 +669,7 @@ class _BasicInfoCard extends StatelessWidget {
             requiredMark: false,
             value: relationship.trim().isEmpty ? '未设置' : relationship.trim(),
             onTap: onPickRelationship,
-            borderBottom: true,
-          ),
-          const AppDivider(color: AppColors.borderDivider),
-          _InlineEditableRow(
-            label: '手机号',
-            requiredMark: false,
-            displayValue: _formatPhone(phone.trim()),
-            controller: phoneCtrl,
-            focusNode: phoneFocus,
-            editing: phoneEditing,
-            hintText: '请输入手机号（可选）',
-            errorText: phoneErrorText,
-            onTap: onTapPhone,
-            onChanged: onPhoneChanged,
-            onSubmitted: onPhoneSubmitted,
-            onFocusChange: onPhoneFocusChange,
-            keyboardType: TextInputType.phone,
-            textInputAction: TextInputAction.done,
-            borderBottom: true,
-          ),
-          const AppDivider(color: AppColors.borderDivider),
-          _BirthdayRow(
-            birthday: birthday,
-            isLunar: isLunarBirthday,
-            onTap: onPickBirthday,
-            onLunarChanged: onLunarBirthdayChanged,
+            borderBottom: false,
           ),
         ],
       ),
@@ -1249,203 +1045,6 @@ class _InlineEditableRow extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-String _formatPhone(String raw) {
-  final digits = raw.replaceAll(RegExp(r'\s+'), '');
-  if (digits.isEmpty) return '未设置';
-  if (digits.length == 11) {
-    return '${digits.substring(0, 3)} ${digits.substring(3, 7)} ${digits.substring(7)}';
-  }
-  return raw;
-}
-
-class _BirthdayRow extends StatelessWidget {
-  const _BirthdayRow({
-    required this.birthday,
-    required this.isLunar,
-    required this.onTap,
-    required this.onLunarChanged,
-  });
-
-  final DateTime? birthday;
-  final bool isLunar;
-  final VoidCallback? onTap;
-  final ValueChanged<bool>? onLunarChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    String display = '未设置';
-    String? ageInfo;
-
-    if (birthday != null) {
-      if (isLunar) {
-        final lunar = Lunar.fromDate(birthday!);
-        display = '农历 ${lunar.getMonthInChinese()}月${lunar.getDayInChinese()}';
-      } else {
-        display =
-            '${birthday!.year}-${birthday!.month.toString().padLeft(2, '0')}-${birthday!.day.toString().padLeft(2, '0')}';
-      }
-
-      // Calculate age
-      final now = DateTime.now();
-      var age = now.year - birthday!.year;
-      if (now.month < birthday!.month ||
-          (now.month == birthday!.month && now.day < birthday!.day)) {
-        age--;
-      }
-      if (age >= 0) {
-        ageInfo = '$age岁';
-      }
-    }
-
-    return AppPressableRow(
-      onTap: onTap,
-      borderBottom: false,
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '生日',
-                      style: AppTypography.base(
-                        fontSize: 12,
-                        fontWeight: AppTypography.regular,
-                        color: AppColors.textTertiary,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Text(
-                          display,
-                          style: AppTypography.base(
-                            fontSize: 16,
-                            fontWeight: AppTypography.regular,
-                            color: birthday == null
-                                ? AppColors.textMuted
-                                : AppColors.textPrimary,
-                          ),
-                        ),
-                        if (ageInfo != null) ...[
-                          const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 6,
-                              vertical: 1,
-                            ),
-                            decoration: BoxDecoration(
-                              color: AppColors.indigo50,
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Text(
-                              ageInfo,
-                              style: AppTypography.base(
-                                fontSize: 11,
-                                fontWeight: AppTypography.medium,
-                                color: AppColors.indigo600,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              const Icon(
-                AppIcons.chevronRight,
-                size: 10,
-                color: AppColors.gray300,
-              ),
-            ],
-          ),
-          if (birthday != null) ...[
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                _SwitchItem(
-                  label: '农历',
-                  value: isLunar,
-                  onChanged: onLunarChanged,
-                ),
-              ],
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _SwitchItem extends StatelessWidget {
-  const _SwitchItem({
-    required this.label,
-    required this.value,
-    required this.onChanged,
-  });
-
-  final String label;
-  final bool value;
-  final ValueChanged<bool>? onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.appColors;
-    return GestureDetector(
-      onTap: onChanged == null ? null : () => onChanged!(!value),
-      behavior: HitTestBehavior.opaque,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          SizedBox(
-            width: 36,
-            height: 20,
-            child: Stack(
-              children: [
-                Container(
-                  decoration: BoxDecoration(
-                    color: value ? colors.brandPrimary : colors.surfaceDisabled,
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                ),
-                AnimatedAlign(
-                  duration: const Duration(milliseconds: 200),
-                  curve: Curves.easeInOut,
-                  alignment: value
-                      ? Alignment.centerRight
-                      : Alignment.centerLeft,
-                  child: Container(
-                    width: 16,
-                    height: 16,
-                    margin: const EdgeInsets.all(2),
-                    decoration: BoxDecoration(
-                      color: context.appColors.surfaceCard,
-                      shape: BoxShape.circle,
-                      boxShadow: AppShadows.sm,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            label,
-            style: AppTypography.base(
-              fontSize: 14,
-              fontWeight: AppTypography.regular,
-              color: AppColors.textPrimary,
-            ),
-          ),
-        ],
       ),
     );
   }

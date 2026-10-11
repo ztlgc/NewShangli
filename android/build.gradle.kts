@@ -2,6 +2,13 @@ val flutterStorageBase =
     System.getenv("FLUTTER_STORAGE_BASE_URL")?.trimEnd('/') ?: "https://storage.googleapis.com"
 
 allprojects {
+    // Plugin buildscript dependencies also need the same reachable mirrors.
+    buildscript.repositories {
+        maven(url = "https://maven.aliyun.com/repository/google")
+        maven(url = "https://maven.aliyun.com/repository/central")
+        google()
+        mavenCentral()
+    }
     repositories {
         maven(url = "$flutterStorageBase/download.flutter.io") {
             content { includeGroup("io.flutter") }

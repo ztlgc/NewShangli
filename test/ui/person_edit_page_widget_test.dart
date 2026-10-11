@@ -7,12 +7,13 @@ import 'package:newshangli/data/local/drift/app_database.dart';
 import 'package:newshangli/security/edit_protection.dart';
 import 'package:newshangli/ui/app_database_scope.dart';
 import 'package:newshangli/ui/app_session.dart';
+import 'package:newshangli/ui/contact_avatar.dart';
 import 'package:newshangli/ui/pages/person_detail_page.dart';
 import 'package:newshangli/ui/pages/person_edit_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
-  testWidgets('从关系人详情进入编辑页后，点关系类型标签可选择', (tester) async {
+  testWidgets('从联系人详情进入编辑页后，点关系类型标签可选择', (tester) async {
     SharedPreferences.setMockInitialValues(<String, Object>{});
     await EditProtectionConfig.save(
       const EditProtectionConfig(
@@ -43,6 +44,9 @@ void main() {
         bookId: const Value('book_default'),
         name: const Value('路线测试联系人'),
         relationshipType: const Value('朋友'),
+        phone: const Value('旧手机号'),
+        birthday: const Value('1990-01-01'),
+        note: const Value('普通备注'),
       ),
     );
     await tester.pumpWidget(
@@ -58,9 +62,20 @@ void main() {
     );
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 800));
+    expect(find.text('联系人详情'), findsOneWidget);
+    expect(find.text('生日'), findsNothing);
+    expect(find.text('追加备注'), findsNothing);
+    expect(find.text('旧手机号'), findsNothing);
+    expect(find.text('普通备注'), findsOneWidget);
+    final avatar = tester.getRect(find.byType(ContactAvatar));
+    final name = tester.getRect(find.text('路线测试联系人'));
+    expect(avatar.right, lessThan(name.left));
+    expect(name.center.dy, inInclusiveRange(avatar.top, avatar.bottom));
     await tester.tap(find.byIcon(FLucideIcons.pen));
     await tester.pumpAndSettle();
-    expect(find.text('编辑关系人'), findsOneWidget);
+    expect(find.text('编辑联系人'), findsOneWidget);
+    expect(find.text('手机号'), findsNothing);
+    expect(find.text('生日'), findsNothing);
     await tester.tap(find.text('路线测试联系人').last);
     await tester.pumpAndSettle();
     tester.view.viewInsets = const FakeViewPadding(bottom: 280);
@@ -75,12 +90,21 @@ void main() {
     await tester.tap(find.text('同事').last);
     await tester.pumpAndSettle();
     expect(find.text('同事'), findsOneWidget);
+    tester.view.resetViewInsets();
+    await tester.pump();
+    await tester.tap(find.text('保存'));
+    await tester.pumpAndSettle();
+    final saved = await db.personsDao.findById('person_route_test');
+    expect(saved!.relationshipType, '同事');
+    expect(saved.phone, '旧手机号');
+    expect(saved.birthday, '1990-01-01');
+    expect(saved.note, '普通备注');
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump(const Duration(milliseconds: 100));
   });
 
-  testWidgets('编辑关系人：点击关系类型可打开选择器并更新', (tester) async {
+  testWidgets('编辑联系人：点击关系类型可打开选择器并更新', (tester) async {
     SharedPreferences.setMockInitialValues(<String, Object>{});
     await EditProtectionConfig.save(
       const EditProtectionConfig(
@@ -119,7 +143,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 800));
 
-    expect(find.text('编辑关系人'), findsOneWidget);
+    expect(find.text('编辑联系人'), findsOneWidget);
     await tester.tap(find.text('朋友'));
     await tester.pumpAndSettle();
     expect(find.text('选择关系类型'), findsOneWidget);

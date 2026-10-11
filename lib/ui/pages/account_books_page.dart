@@ -100,7 +100,7 @@ class _CanvasState extends State<_Canvas> {
                     padding: AppLayout.pagePadding,
                     itemCount: books.length,
                     separatorBuilder: (context, index) =>
-                        const SizedBox(height: 16),
+                        const SizedBox(height: AppTokens.space3),
                     itemBuilder: (context, i) {
                       final b = books[i];
                       return _BookCardDb(
@@ -160,15 +160,16 @@ class _BookCardDb extends StatelessWidget {
     );
     final icon = _iconByReasonType(book.reasonType);
 
-    final subtitle = (book.description ?? '').trim().isEmpty
-        ? '点击查看账簿详情'
-        : book.description!.trim();
+    final subtitle = (book.description ?? '').trim();
 
     return PressableScale(
       onTap: onOpen,
       child: Container(
         key: ValueKey<String>('book_card_${book.bookId}'),
-        padding: AppLayout.pagePadding,
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppTokens.space4,
+          vertical: AppTokens.space3,
+        ),
         decoration: BoxDecoration(
           color: context.appColors.surfaceCard,
           borderRadius: BorderRadius.circular(16),
@@ -180,22 +181,11 @@ class _BookCardDb extends StatelessWidget {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (isDefault) ...[
-                  const Align(
-                    alignment: Alignment.centerRight,
-                    child: AppPill(
-                      label: '当前使用',
-                      background: AppColors.gray100,
-                      foreground: AppColors.textSecondary,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                ],
                 Row(
                   children: [
                     Container(
-                      width: 48,
-                      height: 48,
+                      width: 40,
+                      height: 40,
                       decoration: BoxDecoration(
                         color: themeSoft,
                         borderRadius: BorderRadius.circular(12),
@@ -203,30 +193,47 @@ class _BookCardDb extends StatelessWidget {
                       alignment: Alignment.center,
                       child: Icon(icon, size: 20, color: themeForeground),
                     ),
-                    const SizedBox(width: 16),
+                    const SizedBox(width: AppTokens.space3),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            book.name,
-                            style: AppTypography.base(
-                              fontSize: 16,
-                              fontWeight: AppTypography.bold,
-                              color: colors.textPrimary,
-                            ),
-                            overflow: TextOverflow.ellipsis,
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  book.name,
+                                  style: AppTypography.base(
+                                    fontSize: 16,
+                                    fontWeight: AppTypography.bold,
+                                    color: colors.textPrimary,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              if (isDefault) ...[
+                                const SizedBox(width: AppTokens.space2),
+                                const AppPill(
+                                  label: '当前使用',
+                                  background: AppColors.gray100,
+                                  foreground: AppColors.textSecondary,
+                                ),
+                              ],
+                            ],
                           ),
-                          const SizedBox(height: 4),
-                          Text(
-                            subtitle,
-                            style: AppTypography.base(
-                              fontSize: 12,
-                              fontWeight: AppTypography.regular,
-                              color: colors.textMuted,
+                          if (subtitle.isNotEmpty) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              subtitle,
+                              style: AppTypography.base(
+                                fontSize: 12,
+                                fontWeight: AppTypography.regular,
+                                color: colors.textMuted,
+                              ),
+                              overflow: TextOverflow.ellipsis,
                             ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
+                          ],
                           const SizedBox(height: 2),
                           Text(
                             '账簿时间：${_formatBookTime(book.bookTime)}',
@@ -262,9 +269,9 @@ class _BookCardDb extends StatelessWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: AppTokens.space2),
                 Container(height: 1, color: colors.borderDivider),
-                const SizedBox(height: 12),
+                const SizedBox(height: AppTokens.space2),
                 Row(
                   children: [
                     StreamBuilder<int>(

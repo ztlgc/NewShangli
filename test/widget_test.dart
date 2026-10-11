@@ -37,7 +37,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('尚礼'), findsOneWidget);
+    expect(find.text('礼记'), findsOneWidget);
 
     await tester.pumpWidget(const SizedBox());
     await tester.pump(const Duration(seconds: 1));
@@ -72,9 +72,9 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.text('尚礼'), findsOneWidget);
+    expect(find.text('礼记'), findsOneWidget);
 
-    final context = tester.element(find.text('尚礼'));
+    final context = tester.element(find.text('礼记'));
     expect(Theme.of(context).brightness, Brightness.dark);
     expect(
       AppThemeColors.of(context).surfaceApp,

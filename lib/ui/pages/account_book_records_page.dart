@@ -19,7 +19,7 @@ import '../app_layout.dart';
 ///
 /// 职责：
 /// - 按 bookId 加载该账簿下的所有礼金记录
-/// - 以列表方式展示：关系人、收支方向、金额、发生时间等
+/// - 以列表方式展示：联系人、收支方向、金额、发生时间等
 class AccountBookRecordsPage extends StatelessWidget {
   const AccountBookRecordsPage({
     super.key,

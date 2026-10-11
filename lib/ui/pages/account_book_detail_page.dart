@@ -4,10 +4,12 @@ import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 
 import '../../data/local/drift/app_database.dart';
+import '../../export/account_book_pdf_export_service.dart';
 import '../../media/media_storage_service.dart';
 import '../app_data.dart';
 import '../app_database_scope.dart';
 import '../app_dialog.dart';
+import '../edit_protection_guard.dart';
 import '../app_notifier.dart';
 import '../app_notification_tokens.dart';
 import '../app_scaffold.dart';
@@ -24,6 +26,9 @@ import '../app_icons.dart';
 import '../../platform/app_platform.dart';
 
 import '../app_layout.dart';
+import '../components.dart';
+import '../app_bottom_sheet.dart';
+import 'record_add_page.dart';
 
 class AccountBookDetailPage extends StatelessWidget {
   const AccountBookDetailPage({super.key, required this.bookId});
@@ -39,10 +44,111 @@ class AccountBookDetailPage extends StatelessWidget {
   }
 }
 
-class _Canvas extends StatelessWidget {
+class _Canvas extends StatefulWidget {
   const _Canvas({required this.bookId});
 
   final String bookId;
+
+  @override
+  State<_Canvas> createState() => _CanvasState();
+}
+
+class _CanvasState extends State<_Canvas> {
+  String get bookId => widget.bookId;
+  bool _exporting = false;
+  bool _sharing = false;
+  File? _pdf;
+  bool _recordSheetOpen = false;
+
+  Future<void> _addRecord() async {
+    if (_recordSheetOpen) return;
+    _recordSheetOpen = true;
+    try {
+      await AppBottomSheet.showCustom<void>(
+        context,
+        isDismissible: false,
+        enableDrag: false,
+        builder: (_) => FractionallySizedBox(
+          heightFactor: 0.95,
+          child: ClipRRect(
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            child: RecordAddPage(lockedBookId: bookId),
+          ),
+        ),
+      );
+    } finally {
+      _recordSheetOpen = false;
+    }
+  }
+
+  Future<void> _showActions(AccountBook book) async {
+    if (_exporting || _sharing) return;
+    final action = await AppBottomSheet.showPicker<String>(
+      context,
+      title: '导入导出',
+      options: [
+        const AppSheetOption(
+          label: '导入账簿数据',
+          value: 'import',
+          icon: AppIcons.fileInput,
+        ),
+        const AppSheetOption(
+          label: '导出 PDF',
+          value: 'export',
+          icon: AppIcons.fileText,
+        ),
+        if (_pdf != null)
+          const AppSheetOption(
+            label: '分享 PDF',
+            value: 'share',
+            icon: AppIcons.fileText,
+          ),
+      ],
+    );
+    if (!mounted) return;
+    switch (action) {
+      case 'import':
+        await AppNav.push(
+          context,
+          AccountBookDataImportPage(bookId: bookId, bookName: book.name),
+        );
+      case 'export':
+        await _exportPdf();
+      case 'share':
+        await _sharePdf();
+    }
+  }
+
+  Future<void> _exportPdf() async {
+    if (_exporting || _sharing) return;
+    final db = AppDatabaseScope.of(context);
+    setState(() => _exporting = true);
+    try {
+      final file = await AccountBookPdfExportService().export(db, bookId);
+      if (!mounted) return;
+      setState(() => _pdf = file);
+      AppNotifier.success(context, 'PDF 已保存，可分享或另存到其他应用');
+    } catch (e) {
+      if (mounted) AppNotifier.error(context, '导出 PDF 失败：$e');
+      return;
+    } finally {
+      if (mounted) setState(() => _exporting = false);
+    }
+    if (mounted && _pdf != null) await _sharePdf();
+  }
+
+  Future<void> _sharePdf() async {
+    final file = _pdf;
+    if (file == null || _sharing || _exporting) return;
+    setState(() => _sharing = true);
+    try {
+      await AppPlatform.instance.shareFile(file.path, text: '账簿 PDF');
+    } catch (e) {
+      if (mounted) AppNotifier.error(context, '分享失败，PDF 已保存至 ${file.path}：$e');
+    } finally {
+      if (mounted) setState(() => _sharing = false);
+    }
+  }
 
   Future<void> _addAttachments(BuildContext context, AccountBook book) async {
     final db = AppDatabaseScope.of(context);
@@ -79,6 +185,11 @@ class _Canvas extends StatelessWidget {
     AccountBook book,
     String path,
   ) async {
+    final authorized = await requireEditProtectionPassword(
+      context,
+      title: '删除附件',
+    );
+    if (!context.mounted || !authorized) return;
     final ok = await AppDialog.confirm(
       context,
       title: '删除附件',
@@ -134,17 +245,19 @@ class _Canvas extends StatelessWidget {
                 semanticLabel: '返回上一页',
               ),
               right: AppIconButton(
-                icon: const Icon(AppIcons.fileInput, size: 16),
+                icon: _exporting || _sharing
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(AppIcons.ellipsis, size: 16),
                 backgroundColor: AppColors.indigo50,
                 foregroundColor: AppColors.indigo700,
-                onPressed: () => AppNav.push(
-                  context,
-                  AccountBookDataImportPage(
-                    bookId: bookId,
-                    bookName: book.name,
-                  ),
-                ),
-                semanticLabel: '导入账簿数据',
+                onPressed: _exporting || _sharing
+                    ? null
+                    : () => _showActions(book),
+                semanticLabel: _exporting ? '正在导出 PDF' : '账簿导入导出',
               ),
             ),
             Expanded(
@@ -168,6 +281,12 @@ class _Canvas extends StatelessWidget {
                         incomeCent: income,
                         recordCount: count,
                         bookTime: book.bookTime,
+                      ),
+                      const SizedBox(height: 16),
+                      AppPrimaryButton(
+                        label: '新增记录',
+                        icon: AppIcons.plus,
+                        onTap: _addRecord,
                       ),
                       const SizedBox(height: 16),
                       const Padding(

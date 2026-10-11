@@ -11,7 +11,6 @@ import '../app_notification_tokens.dart';
 import '../app_scaffold.dart';
 import '../app_tokens.dart';
 import '../components.dart';
-import '../forui_search_field.dart';
 import '../navigation.dart';
 import '../ui_kit.dart';
 import 'relation_type_detail_page.dart';
@@ -40,29 +39,6 @@ class _Canvas extends StatefulWidget {
 }
 
 class _CanvasState extends State<_Canvas> {
-  final TextEditingController _searchCtrl = TextEditingController();
-  String _keyword = '';
-
-  @override
-  void initState() {
-    super.initState();
-    _searchCtrl.addListener(_onSearchChanged);
-  }
-
-  @override
-  void dispose() {
-    _searchCtrl
-      ..removeListener(_onSearchChanged)
-      ..dispose();
-    super.dispose();
-  }
-
-  void _onSearchChanged() {
-    final next = _searchCtrl.text.trim();
-    if (next == _keyword) return;
-    setState(() => _keyword = next);
-  }
-
   @override
   Widget build(BuildContext context) {
     final db = AppDatabaseScope.of(context);
@@ -91,157 +67,72 @@ class _CanvasState extends State<_Canvas> {
             stream: db.relationTypesDao.watchAll(),
             builder: (context, typeSnapshot) {
               final types = typeSnapshot.data ?? const <RelationType>[];
-              return StreamBuilder<List<ContactRelationWithDetails>>(
-                stream: db.contactRelationsDao.watchAllWithDetails(),
-                builder: (context, relationSnapshot) {
-                  final relationCountByTypeId = <String, int>{};
-                  for (final relation
-                      in relationSnapshot.data ??
-                          const <ContactRelationWithDetails>[]) {
-                    relationCountByTypeId.update(
-                      relation.relation.typeId,
-                      (v) => v + 1,
+              return StreamBuilder<List<Person>>(
+                stream: db.personsDao.watchAllInAllBooks(),
+                builder: (context, personSnapshot) {
+                  final contactCountByName = <String, int>{};
+                  for (final person
+                      in personSnapshot.data ?? const <Person>[]) {
+                    final key = person.relationshipType.trim().toLowerCase();
+                    if (key.isEmpty) continue;
+                    contactCountByName.update(
+                      key,
+                      (count) => count + 1,
                       ifAbsent: () => 1,
                     );
                   }
-                  return StreamBuilder<List<Person>>(
-                    stream: db.personsDao.watchAllInAllBooks(),
-                    builder: (context, personSnapshot) {
-                      final personCountByRelationName = <String, int>{};
-                      var categorizedContacts = 0;
-                      for (final person
-                          in personSnapshot.data ?? const <Person>[]) {
-                        final relation = person.relationshipType.trim();
-                        if (relation.isEmpty) continue;
-                        categorizedContacts += 1;
-                        final key = relation.toLowerCase();
-                        personCountByRelationName.update(
-                          key,
-                          (v) => v + 1,
-                          ifAbsent: () => 1,
-                        );
-                      }
-                      final filter = _keyword.toLowerCase();
-                      final visibleTypes = filter.isEmpty
-                          ? types
-                          : types
-                                .where(
-                                  (e) => e.name.toLowerCase().contains(filter),
-                                )
-                                .toList();
-                      return ListView(
-                        physics: const BouncingScrollPhysics(),
-                        padding: AppLayout.tabContentPadding,
-                        children: [
-                          ForuiSearchField(
-                            controller: _searchCtrl,
-                            hint: '搜索关系类型...',
-                            onChanged: (_) {},
-                          ),
-                          const SizedBox(height: 12),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: _StatCard(
-                                  title: '总类型',
-                                  value: '${types.length}',
-                                ),
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: _StatCard(
-                                  title: '已分类联系人',
-                                  value: '$categorizedContacts',
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 16),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 2),
-                            child: Text(
-                              '所有类别',
-                              style: AppTypography.base(
-                                fontSize: 12,
-                                fontWeight: AppTypography.semibold,
-                                color: AppColors.textTertiary,
-                                letterSpacing: 1.2,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          if (types.isEmpty)
-                            AppCard(
-                              child: Center(
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 18,
-                                  ),
-                                  child: Text(
-                                    '暂无类型，点击右上角添加',
-                                    style: AppTypography.base(
-                                      fontSize: 14,
-                                      fontWeight: AppTypography.medium,
-                                      color: AppColors.textMuted,
-                                    ),
+                  return ListView(
+                    physics: const BouncingScrollPhysics(),
+                    padding: AppLayout.tabContentPadding,
+                    children: [
+                      AppCard(
+                        padding: EdgeInsets.zero,
+                        child: Column(
+                          children: [
+                            if (types.isEmpty)
+                              Padding(
+                                padding: const EdgeInsets.all(24),
+                                child: Text(
+                                  '暂无类型，点击右上角添加',
+                                  style: AppTypography.base(
+                                    fontSize: 14,
+                                    fontWeight: AppTypography.medium,
+                                    color: context.appColors.textMuted,
                                   ),
                                 ),
-                              ),
-                            )
-                          else if (visibleTypes.isEmpty)
-                            AppCard(
-                              child: Center(
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 18,
-                                  ),
-                                  child: Text(
-                                    '没有找到匹配的关系类型',
-                                    style: AppTypography.base(
-                                      fontSize: 14,
-                                      fontWeight: AppTypography.medium,
-                                      color: AppColors.textMuted,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            )
-                          else
-                            for (var i = 0; i < visibleTypes.length; i++) ...[
-                              _TypeRow(
-                                type: visibleTypes[i],
-                                contactCount:
-                                    personCountByRelationName[visibleTypes[i]
-                                        .name
-                                        .trim()
-                                        .toLowerCase()] ??
-                                    0,
-                                relationCount:
-                                    relationCountByTypeId[visibleTypes[i]
-                                        .typeId] ??
-                                    0,
-                                onTap: () => AppNav.push(
-                                  context,
-                                  RelationTypeDetailPage(type: visibleTypes[i]),
-                                ),
-                                onEdit: () =>
-                                    _openEditor(context, db, visibleTypes[i]),
-                                onLongPress: () => _confirmDelete(
-                                  context,
-                                  db,
-                                  visibleTypes[i],
-                                  personCountByRelationName[visibleTypes[i].name
+                              )
+                            else
+                              for (var i = 0; i < types.length; i++)
+                                _TypeRow(
+                                  type: types[i],
+                                  contactCount:
+                                      contactCountByName[types[i].name
                                           .trim()
                                           .toLowerCase()] ??
                                       0,
+                                  borderBottom: i != types.length - 1,
+                                  onTap: () => AppNav.push(
+                                    context,
+                                    RelationTypeDetailPage(
+                                      type: types[i],
+                                      onEdit: (type) =>
+                                          _openEditor(context, db, type),
+                                    ),
+                                  ),
+                                  onLongPress: () => _confirmDelete(
+                                    context,
+                                    db,
+                                    types[i],
+                                    contactCountByName[types[i].name
+                                            .trim()
+                                            .toLowerCase()] ??
+                                        0,
+                                  ),
                                 ),
-                              ),
-                              if (i != visibleTypes.length - 1)
-                                const SizedBox(height: 10),
-                            ],
-                        ],
-                      );
-                    },
+                          ],
+                        ),
+                      ),
+                    ],
                   );
                 },
               );
@@ -440,176 +331,75 @@ class _RelationTypeEditorSheetState extends State<_RelationTypeEditorSheet> {
   }
 }
 
-class _StatCard extends StatelessWidget {
-  const _StatCard({required this.title, required this.value});
-
-  final String title;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: context.appColors.surfaceSubtle,
-        borderRadius: AppRadii.brXl,
-        border: Border.all(color: AppColors.borderDefault, width: 1),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: AppTypography.base(
-              fontSize: 11,
-              fontWeight: AppTypography.semibold,
-              color: AppColors.textTertiary,
-              letterSpacing: 1,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: AppTypography.base(
-              fontSize: 22,
-              fontWeight: AppTypography.bold,
-              color: AppColors.textPrimary,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _TypeRow extends StatelessWidget {
   const _TypeRow({
     required this.type,
     required this.onTap,
-    required this.onEdit,
     required this.onLongPress,
     required this.contactCount,
-    required this.relationCount,
+    required this.borderBottom,
   });
 
   final RelationType type;
   final VoidCallback onTap;
-  final VoidCallback onEdit;
   final VoidCallback onLongPress;
   final int contactCount;
-  final int relationCount;
+  final bool borderBottom;
 
   @override
   Widget build(BuildContext context) {
-    final pair = _palette(type.name);
-    final icon = _icon(type.name);
-    final usageText = contactCount > 0
-        ? '$contactCount 个联系人'
-        : relationCount > 0
-        ? '$relationCount 条联系人关系'
-        : '未使用';
-    return Material(
-      color: context.appColors.surfaceCard,
-      borderRadius: AppRadii.brXl,
-      child: InkWell(
-        onTap: onTap,
-        onLongPress: onLongPress,
-        borderRadius: AppRadii.brXl,
-        child: Ink(
-          decoration: BoxDecoration(
-            borderRadius: AppRadii.brXl,
-            border: Border.all(color: AppColors.borderDefault, width: 1),
+    final colors = context.appColors;
+    return AppPressableRow(
+      onTap: onTap,
+      onLongPress: onLongPress,
+      borderBottom: borderBottom,
+      child: Row(
+        children: [
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: colors.brandSoft,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            alignment: Alignment.center,
+            child: Icon(
+              AppIcons.usersRound,
+              size: 14,
+              color: colors.brandOnSoft,
+            ),
           ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-            child: Row(
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: pair.$1,
-                    borderRadius: AppRadii.brLg,
-                  ),
-                  alignment: Alignment.center,
-                  child: Icon(icon, size: 18, color: pair.$2),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        type.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTypography.base(
-                          fontSize: 16,
-                          fontWeight: AppTypography.bold,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        usageText,
-                        style: AppTypography.base(
-                          fontSize: 12,
-                          fontWeight: AppTypography.regular,
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                    ],
+                Text(
+                  type.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTypography.base(
+                    fontSize: 14,
+                    fontWeight: AppTypography.medium,
+                    color: colors.textPrimary,
                   ),
                 ),
-                InkResponse(
-                  radius: 18,
-                  onTap: onEdit,
-                  child: const Padding(
-                    padding: EdgeInsets.all(6),
-                    child: Icon(
-                      AppIcons.squarePen,
-                      size: 14,
-                      color: AppColors.gray500,
-                    ),
+                const SizedBox(height: 2),
+                Text(
+                  contactCount > 0 ? '$contactCount 位联系人' : '暂无联系人',
+                  style: AppTypography.base(
+                    fontSize: 12,
+                    fontWeight: AppTypography.regular,
+                    color: colors.textMuted,
                   ),
-                ),
-                const SizedBox(width: 2),
-                const Icon(
-                  AppIcons.chevronRight,
-                  size: 12,
-                  color: AppColors.gray300,
                 ),
               ],
             ),
           ),
-        ),
+          const SizedBox(width: 12),
+          Icon(AppIcons.chevronRight, size: 12, color: colors.textMuted),
+        ],
       ),
     );
-  }
-
-  (Color, Color) _palette(String seed) {
-    final list = <(Color, Color)>[
-      (AppColors.blue100, AppColors.blue600),
-      (AppColors.orange100, AppColors.orange600),
-      (AppColors.purple100, AppColors.purple600),
-      (AppColors.green100, AppColors.green600),
-      (AppColors.pink100, AppColors.pink600),
-      (AppColors.indigo100, AppColors.indigo700),
-    ];
-    final idx = seed.hashCode.abs() % list.length;
-    return list[idx];
-  }
-
-  IconData _icon(String seed) {
-    final list = <IconData>[
-      AppIcons.usersRound,
-      AppIcons.briefcaseBusiness,
-      AppIcons.house,
-      AppIcons.graduationCap,
-      AppIcons.handshake,
-      AppIcons.tags,
-    ];
-    final idx = seed.hashCode.abs() % list.length;
-    return list[idx];
   }
 }

@@ -430,7 +430,7 @@ class _CanvasState extends State<_Canvas> {
         });
       }
       try {
-        await AppPlatform.instance.shareFile(file.path, text: '尚礼数据导出');
+        await AppPlatform.instance.shareFile(file.path, text: '礼记数据导出');
       } catch (_) {
         if (!mounted) return;
         AppNotifier.success(context, '已导出到：${file.path}');
@@ -462,7 +462,7 @@ class _CanvasState extends State<_Canvas> {
       return;
     }
     try {
-      await AppPlatform.instance.shareFile(file.path, text: '尚礼数据导出');
+      await AppPlatform.instance.shareFile(file.path, text: '礼记数据导出');
     } catch (_) {
       if (!mounted) return;
       AppNotifier.info(context, '文件路径：${file.path}');

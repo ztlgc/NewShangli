@@ -53,7 +53,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.text('尚礼'), findsOneWidget);
+    expect(find.text('礼记'), findsOneWidget);
     if (_updatePreviews) {
       await _capturePreview(
         tester,
@@ -62,7 +62,7 @@ void main() {
       );
     }
     for (final (index, title, slug) in [
-      (0, '关系人', 'people'),
+      (0, '联系人', 'people'),
       (1, '统计', 'stats'),
       (2, '设置', 'settings'),
     ]) {
@@ -81,7 +81,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
   });
 
-  testWidgets('从应用首页进入记录页后可以打开账簿和关系人选择器', (tester) async {
+  testWidgets('从应用首页进入记录页后可以打开账簿和联系人选择器', (tester) async {
     tester.platformDispatcher.localesTestValue = const [Locale('zh', 'CN')];
     addTearDown(tester.platformDispatcher.clearLocalesTestValue);
     tester.view.physicalSize = const Size(393, 852);
@@ -128,12 +128,12 @@ void main() {
     await tester.pumpAndSettle();
 
     final personTap = await tester.startGesture(
-      tester.getCenter(find.text('关系人')),
+      tester.getCenter(find.text('联系人')),
     );
     await tester.pump(const Duration(milliseconds: 120));
     await personTap.up();
     await tester.pumpAndSettle();
-    expect(find.text('选择关系人'), findsOneWidget);
+    expect(find.text('选择联系人'), findsOneWidget);
     await tester.tap(find.text('导航测试联系人').last);
     await tester.pumpAndSettle();
     expect(find.text('导航测试联系人'), findsOneWidget);

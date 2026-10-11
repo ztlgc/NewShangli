@@ -325,7 +325,7 @@ class DataBackupService {
     String two(int n) => n.toString().padLeft(2, '0');
     final t =
         '${ts.year}${two(ts.month)}${two(ts.day)}_${two(ts.hour)}${two(ts.minute)}${two(ts.second)}';
-    return '尚礼_备份_${t}_${ts.microsecondsSinceEpoch}';
+    return '礼记_备份_${t}_${ts.microsecondsSinceEpoch}';
   }
 
   String _buildRemotePath({

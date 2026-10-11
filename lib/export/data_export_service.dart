@@ -115,8 +115,8 @@ class DataExportService {
         '金额(元)',
         '事由',
         '所属账簿名称',
-        '关系人ID',
-        '关系人姓名',
+        '联系人ID',
+        '联系人姓名',
         '发生时间',
         '备注',
         '所属账簿ID',
@@ -173,7 +173,7 @@ class DataExportService {
     var personCount = 0;
     if (request.includePersons) {
       personRows.add(<String>[
-        '关系人ID',
+        '联系人ID',
         '姓名',
         '关系',
         '手机号',
@@ -214,7 +214,7 @@ class DataExportService {
       throw const DataExportException('所选时间范围内没有收支记录');
     }
     if (!request.includeRecords && request.includePersons && personCount == 0) {
-      throw const DataExportException('当前没有可导出的关系人');
+      throw const DataExportException('当前没有可导出的联系人');
     }
 
     final dir =
@@ -281,8 +281,8 @@ class DataExportService {
         '金额(元)',
         '事由',
         '所属账簿名称',
-        '关系人ID',
-        '关系人姓名',
+        '联系人ID',
+        '联系人姓名',
         '发生时间',
         '备注',
       ]);
@@ -315,7 +315,7 @@ class DataExportService {
     var personCount = 0;
     if (request.includePersons) {
       personRows.add(<String>[
-        '关系人ID',
+        '联系人ID',
         '姓名',
         '关系',
         '手机号',
@@ -341,7 +341,7 @@ class DataExportService {
       throw const DataExportException('所选时间范围内没有收支记录');
     }
     if (!request.includeRecords && request.includePersons && personCount == 0) {
-      throw const DataExportException('当前没有可导出的关系人');
+      throw const DataExportException('当前没有可导出的联系人');
     }
 
     final dir =
@@ -400,7 +400,7 @@ class DataExportService {
     final ts = DateTime.now();
     final t =
         '${ts.year}${two(ts.month)}${two(ts.day)}_${two(ts.hour)}${two(ts.minute)}${two(ts.second)}';
-    return '尚礼_导出_${t}_${ts.microsecondsSinceEpoch}';
+    return '礼记_导出_${t}_${ts.microsecondsSinceEpoch}';
   }
 
   List<int> _encodeXlsx({
@@ -455,9 +455,9 @@ class DataExportService {
                 '金额(元)',
                 '金额(分)',
                 '事由',
-                '关系人ID',
-                '关系人姓名',
-                '关系人关系',
+                '联系人ID',
+                '联系人姓名',
+                '联系人关系',
                 '手机号',
                 '发生时间',
                 '备注',
@@ -467,11 +467,11 @@ class DataExportService {
             ],
     );
     writeSheet(
-      excel['关系人'],
+      excel['联系人'],
       includePersons
           ? personRows
           : const <List<String>>[
-              <String>['关系人ID', '姓名', '关系', '手机号', '创建时间', '备注', '头像文件名'],
+              <String>['联系人ID', '姓名', '关系', '手机号', '创建时间', '备注', '头像文件名'],
             ],
     );
 

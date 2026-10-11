@@ -421,9 +421,9 @@ class _ImportRunner {
   final Set<String> _ambiguousBookNames = {};
 
   static const _kType = '数据类型';
-  static const _kPersonId = '关系人ID';
-  static const _kPersonName = '关系人姓名';
-  static const _kRelationship = '关系人关系';
+  static const _kPersonId = '联系人ID';
+  static const _kPersonName = '联系人姓名';
+  static const _kRelationship = '联系人关系';
   static const _kPhone = '手机号';
   static const _kDirection = '收支方向';
   static const _kAmountYuan = '金额(元)';
@@ -560,7 +560,7 @@ class _ImportRunner {
     RestoreSafety.decodeZip(bytes);
     final excel = Excel.decodeBytes(bytes);
     if (excel.sheets.isEmpty) throw const DataImportException('Excel 内容为空');
-    final personSheet = excel.sheets['关系人'];
+    final personSheet = excel.sheets['联系人'] ?? excel.sheets['关系人'];
     final recordSheet = excel.sheets['礼金记录'] ?? excel.sheets['收支记录'];
     if (personSheet != null || recordSheet != null) {
       return _runXlsxTwoSheets(
@@ -747,15 +747,20 @@ class _ImportRunner {
     }
     if (!_hasHeader(headers, _kPersonName) &&
         !_hasHeader(headers, _kPersonId)) {
-      throw const DataImportException('缺少列：关系人姓名/关系人ID（至少一个）');
+      throw const DataImportException('缺少列：联系人姓名/联系人ID（至少一个）');
     }
   }
 
+  // Accept legacy terminology in previously exported files and saved mappings.
+  String _legacyField(String field) => field.replaceAll('联系人', '关系人');
+
   bool _hasHeader(List<String> headers, String standardField) {
-    if (_fieldMapping.containsKey(standardField)) {
-      return headers.contains(_fieldMapping[standardField]);
-    }
-    return headers.contains(standardField);
+    final source =
+        _fieldMapping[standardField] ??
+        _fieldMapping[_legacyField(standardField)];
+    if (source != null) return headers.contains(source);
+    return headers.contains(standardField) ||
+        headers.contains(_legacyField(standardField));
   }
 
   Future<void> _consumeRow({
@@ -766,7 +771,7 @@ class _ImportRunner {
   }) async {
     final type = _read(row, _kType).trim();
     if (type.isEmpty) return;
-    if (type == '关系人列表') {
+    if (type == '联系人列表' || type == '关系人列表') {
       if (_kind == DataImportKind.recordsOnly) return;
       _processedRows += 1;
       final person = _parsePersonRow(rowIndex: rowIndex, row: row);
@@ -795,7 +800,7 @@ class _ImportRunner {
     final name = _read(row, _kPersonName).trim();
     if (name.isEmpty) {
       _failedRows += 1;
-      _onLog('第$rowIndex行：关系人姓名为空，已跳过');
+      _onLog('第$rowIndex行：联系人姓名为空，已跳过');
       return null;
     }
     final phone = _read(row, _kPhone).trim();
@@ -804,7 +809,7 @@ class _ImportRunner {
     final personId = _read(row, _kPersonId).trim();
     if (personId.isEmpty && _ambiguousPersonKeys.contains(key)) {
       _failedRows++;
-      unawaited(_onLog('第$rowIndex行：存在同名联系人，请填写关系人ID'));
+      unawaited(_onLog('第$rowIndex行：存在同名联系人，请填写联系人ID'));
       return null;
     }
     if (personId.isEmpty && _personIdByKey.containsKey(key)) {
@@ -964,7 +969,7 @@ class _ImportRunner {
     final personName = _read(row, _kPersonName).trim();
     if (personIdRaw.isEmpty && personName.isEmpty) {
       _failedRows += 1;
-      unawaited(_onLog('第$rowIndex行：关系人姓名/ID 为空，已跳过'));
+      unawaited(_onLog('第$rowIndex行：联系人姓名/ID 为空，已跳过'));
       return null;
     }
 
@@ -976,7 +981,7 @@ class _ImportRunner {
     );
     if (personIdRaw.isEmpty && _ambiguousPersonKeys.contains(key)) {
       _failedRows++;
-      await _onLog('第$rowIndex行：存在同名联系人，请填写关系人ID');
+      await _onLog('第$rowIndex行：存在同名联系人，请填写联系人ID');
       return null;
     }
     var personId = personIdRaw.isEmpty
@@ -990,7 +995,7 @@ class _ImportRunner {
     if (!_existingPersonIds.contains(personId)) {
       if (personName.isEmpty) {
         _failedRows += 1;
-        unawaited(_onLog('第$rowIndex行：关系人姓名为空，无法创建关系人，已跳过'));
+        unawaited(_onLog('第$rowIndex行：联系人姓名为空，无法创建联系人，已跳过'));
         return null;
       }
       final now = DateTime.now().millisecondsSinceEpoch;
@@ -1174,11 +1179,10 @@ class _ImportRunner {
   }
 
   String _read(Map<String, String> row, String standardField) {
-    if (_fieldMapping.containsKey(standardField)) {
-      final source = _fieldMapping[standardField]!;
-      return row[source] ?? '';
-    }
-    return row[standardField] ?? '';
+    final legacyField = _legacyField(standardField);
+    final source = _fieldMapping[standardField] ?? _fieldMapping[legacyField];
+    if (source != null) return row[source] ?? '';
+    return row[standardField] ?? row[legacyField] ?? '';
   }
 
   Future<void> _ensureMediaIndexLoaded() async {

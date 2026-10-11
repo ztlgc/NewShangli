@@ -36,10 +36,18 @@ import '../app_layout.dart';
 /// 页面：收支记录 - 收支录入
 /// 对照原型：prototype/index.html -> "收支录入"
 class RecordAddPage extends StatefulWidget {
-  const RecordAddPage({super.key, this.recordId, this.initialPersonId});
+  const RecordAddPage({
+    super.key,
+    this.recordId,
+    this.initialPersonId,
+    this.lockedBookId,
+  }) : assert(recordId == null || lockedBookId == null);
 
   final String? recordId;
   final String? initialPersonId;
+
+  /// 账簿详情入口：账簿、事由、日期均由该账簿决定。
+  final String? lockedBookId;
 
   @override
   State<RecordAddPage> createState() => _RecordAddPageState();
@@ -53,6 +61,8 @@ class _RecordAddPageState extends State<RecordAddPage> {
   String _eventName = '';
   DateTime _occurredAt = DateTime.now();
   bool _occurredAtLockedByBookTime = false;
+  bool get _bookContextLocked => widget.lockedBookId != null;
+  bool _bookDefaultsReady = false;
   bool _dirty = false;
   bool _saving = false;
   bool _loaded = false;
@@ -72,6 +82,7 @@ class _RecordAddPageState extends State<RecordAddPage> {
   @override
   void initState() {
     super.initState();
+    _bookId = widget.lockedBookId ?? _defaultBookSelectionId;
     _amountController = TextEditingController();
     _noteController = TextEditingController();
     _amountController.addListener(_markDirty);
@@ -163,11 +174,11 @@ class _RecordAddPageState extends State<RecordAddPage> {
     }
     final pid = _personId;
     if (pid == null || pid.trim().isEmpty) {
-      AppNotifier.warning(context, '请选择关系人');
+      AppNotifier.warning(context, '请选择联系人');
       return;
     }
     final eventName = _eventName.trim();
-    if (eventName.isEmpty) {
+    if (eventName.isEmpty && !_bookContextLocked) {
       AppNotifier.warning(context, '请选择事由');
       return;
     }
@@ -176,19 +187,22 @@ class _RecordAddPageState extends State<RecordAddPage> {
     setState(() => _saving = true);
     try {
       await db.transaction(() async {
-        final dbBookId = await _resolveDbBookId(db, _bookId);
+        final dbBookId =
+            widget.lockedBookId ?? await _resolveDbBookId(db, _bookId);
         final person = await db.personsDao.findById(pid);
         if (person == null || person.deletedAt != null) {
-          throw StateError('关系人已删除，请重新选择');
+          throw StateError('联系人已删除，请重新选择');
         }
         final book = await db.accountBooksDao.findById(dbBookId);
         if (book == null || book.deletedAt != null) {
           throw StateError('账簿已删除，请重新选择');
         }
-        final savedEventName = book.isDefault != 1
+        final savedEventName = _bookContextLocked
+            ? book.reasonType
+            : book.isDefault != 1
             ? (book.reasonType.isEmpty ? eventName : book.reasonType)
             : eventName;
-        final occurredAtMs = (book.isDefault != 1)
+        final occurredAtMs = (_bookContextLocked || book.isDefault != 1)
             ? book.bookTime
             : _occurredAt.millisecondsSinceEpoch;
         final now = DateTime.now().millisecondsSinceEpoch;
@@ -254,7 +268,7 @@ class _RecordAddPageState extends State<RecordAddPage> {
       try {
         persons = await db.personsDao.listAll();
       } catch (_) {
-        if (mounted) AppNotifier.error(context, '关系人加载失败，请重试');
+        if (mounted) AppNotifier.error(context, '联系人加载失败，请重试');
         return;
       }
       if (!mounted) return;
@@ -298,6 +312,7 @@ class _RecordAddPageState extends State<RecordAddPage> {
   }
 
   Future<void> _pickBook() async {
+    if (_bookContextLocked) return;
     final db = AppDatabaseScope.of(context);
     late final List<AccountBook> books;
     try {
@@ -491,6 +506,11 @@ class _RecordAddPageState extends State<RecordAddPage> {
 
   @override
   Widget build(BuildContext context) {
+    if (_bookContextLocked && !_bookDefaultsReady && _recordLoadError == null) {
+      return const AppScaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
     if (widget.recordId != null && (!_authorized || !_recordLoaded)) {
       return const AppScaffold(
         backgroundColor: AppColors.surfaceApp,
@@ -562,9 +582,11 @@ class _RecordAddPageState extends State<RecordAddPage> {
                           bookName: _resolveBookName(books),
                           personName: displayPersonName,
                           eventName: _eventName.trim().isEmpty
-                              ? '请选择'
+                              ? (_bookContextLocked ? '未设置' : '请选择')
                               : _eventName,
                           dateLabel: _formatDate(_occurredAt),
+                          bookLocked: _bookContextLocked,
+                          metadataLocked: _occurredAtLockedByBookTime,
                           onTapBook: _pickBook,
                           onTapPerson: _pickPerson,
                           onTapReason: _pickReason,
@@ -688,11 +710,15 @@ class _RecordAddPageState extends State<RecordAddPage> {
       _personId = initialPerson.personId;
       _personName = initialPerson.name;
     }
-    final dbBookId = await _resolveDbBookId(db, _bookId);
+    final dbBookId = widget.lockedBookId ?? await _resolveDbBookId(db, _bookId);
     final book = await db.accountBooksDao.findById(dbBookId);
     if (!mounted) return;
+    if (_bookContextLocked && (book == null || book.deletedAt != null)) {
+      setState(() => _recordLoadError = '账簿不存在或已删除');
+      return;
+    }
     if (book != null) {
-      if (book.isDefault == 1) {
+      if (book.isDefault == 1 && !_bookContextLocked) {
         _occurredAtLockedByBookTime = false;
       } else {
         _occurredAt = DateTime.fromMillisecondsSinceEpoch(book.bookTime);
@@ -704,10 +730,12 @@ class _RecordAddPageState extends State<RecordAddPage> {
         .where((reason) => reason.enabled)
         .toList();
     if (!mounted) return;
-    if (_eventName.trim().isEmpty && reasons.isNotEmpty) {
+    if (!_bookContextLocked &&
+        _eventName.trim().isEmpty &&
+        reasons.isNotEmpty) {
       _eventName = reasons.first.name;
     }
-    setState(() {});
+    setState(() => _bookDefaultsReady = true);
   }
 
   void _closeAfterSave() {
@@ -1005,6 +1033,8 @@ class _FormCard extends StatelessWidget {
     required this.onTapPerson,
     required this.onTapReason,
     required this.onTapDate,
+    this.bookLocked = false,
+    this.metadataLocked = false,
   });
 
   final String bookName;
@@ -1015,6 +1045,8 @@ class _FormCard extends StatelessWidget {
   final VoidCallback onTapPerson;
   final VoidCallback onTapReason;
   final VoidCallback onTapDate;
+  final bool bookLocked;
+  final bool metadataLocked;
 
   @override
   Widget build(BuildContext context) {
@@ -1034,14 +1066,15 @@ class _FormCard extends StatelessWidget {
             label: '账簿',
             value: bookName,
             chevron: true,
-            onTap: onTapBook,
+            onTap: bookLocked ? null : onTapBook,
+            locked: bookLocked,
           ),
           const AppDivider(color: AppColors.borderDivider),
           _FormRow(
             iconBg: AppColors.indigo50,
             iconColor: AppColors.indigo600,
             icon: AppIcons.userRound,
-            label: '关系人',
+            label: '联系人',
             value: personName,
             chevron: true,
             onTap: onTapPerson,
@@ -1054,7 +1087,8 @@ class _FormCard extends StatelessWidget {
             label: '事由',
             value: eventName,
             chevron: false,
-            onTap: onTapReason,
+            onTap: metadataLocked ? null : onTapReason,
+            locked: metadataLocked,
           ),
           const AppDivider(color: AppColors.borderDivider),
           _FormRow(
@@ -1065,7 +1099,8 @@ class _FormCard extends StatelessWidget {
             value: dateLabel,
             chevron: true,
             borderBottom: false,
-            onTap: onTapDate,
+            onTap: metadataLocked ? null : onTapDate,
+            locked: metadataLocked,
           ),
         ],
       ),
@@ -1083,6 +1118,7 @@ class _FormRow extends StatelessWidget {
     required this.chevron,
     required this.onTap,
     this.borderBottom = true,
+    this.locked = false,
   });
 
   final Color iconBg;
@@ -1091,55 +1127,65 @@ class _FormRow extends StatelessWidget {
   final String label;
   final String value;
   final bool chevron;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
+  final bool locked;
   final bool borderBottom;
 
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
-    return AppPressableRow(
-      onTap: onTap,
-      borderBottom: borderBottom,
-      child: Row(
-        children: [
-          Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              color: colors.softFor(iconBg),
-              shape: BoxShape.circle,
+    return Semantics(
+      label: locked ? '$label，已锁定' : null,
+      child: AppPressableRow(
+        onTap: onTap,
+        borderBottom: borderBottom,
+        child: Row(
+          children: [
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: colors.softFor(iconBg),
+                shape: BoxShape.circle,
+              ),
+              alignment: Alignment.center,
+              child: Icon(
+                icon,
+                size: 12,
+                color: colors.foregroundFor(iconColor),
+              ),
             ),
-            alignment: Alignment.center,
-            child: Icon(icon, size: 12, color: colors.foregroundFor(iconColor)),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: AppTypography.base(
-                    fontSize: 12,
-                    fontWeight: AppTypography.regular,
-                    color: colors.textTertiary,
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: AppTypography.base(
+                      fontSize: 12,
+                      fontWeight: AppTypography.regular,
+                      color: colors.textTertiary,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  value,
-                  style: AppTypography.base(
-                    fontSize: 14,
-                    fontWeight: AppTypography.medium,
-                    color: colors.textPrimary,
+                  const SizedBox(height: 2),
+                  Text(
+                    value,
+                    style: AppTypography.base(
+                      fontSize: 14,
+                      fontWeight: AppTypography.medium,
+                      color: colors.textPrimary,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-          if (chevron)
-            Icon(AppIcons.chevronRight, size: 10, color: colors.textMuted),
-        ],
+            if (locked)
+              Icon(AppIcons.lock, size: 14, color: colors.textMuted)
+            else if (chevron)
+              Icon(AppIcons.chevronRight, size: 10, color: colors.textMuted),
+          ],
+        ),
       ),
     );
   }
@@ -1520,8 +1566,7 @@ class _PersonPickerSheetState extends State<_PersonPickerSheet> {
       final key = _keyword.trim().toLowerCase();
       if (key.isEmpty) return true;
       return person.name.toLowerCase().contains(key) ||
-          person.relationshipType.toLowerCase().contains(key) ||
-          (person.phone ?? '').toLowerCase().contains(key);
+          person.relationshipType.toLowerCase().contains(key);
     }).toList();
     return Padding(
       padding: EdgeInsets.only(
@@ -1556,7 +1601,7 @@ class _PersonPickerSheetState extends State<_PersonPickerSheet> {
                   children: [
                     Expanded(
                       child: Text(
-                        '选择关系人',
+                        '选择联系人',
                         style: AppTypography.base(
                           fontSize: 18,
                           fontWeight: AppTypography.bold,
@@ -1578,7 +1623,7 @@ class _PersonPickerSheetState extends State<_PersonPickerSheet> {
                 padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
                 child: AppSearchField(
                   controller: _searchController,
-                  hintText: '搜索姓名、关系、手机号',
+                  hintText: '搜索姓名、关系',
                   onChanged: (v) => setState(() => _keyword = v),
                 ),
               ),
@@ -1586,7 +1631,7 @@ class _PersonPickerSheetState extends State<_PersonPickerSheet> {
                 child: filtered.isEmpty
                     ? Center(
                         child: Text(
-                          widget.persons.isEmpty ? '暂无关系人' : '没有匹配结果',
+                          widget.persons.isEmpty ? '暂无联系人' : '没有匹配结果',
                           style: AppTypography.base(
                             fontSize: 13,
                             fontWeight: AppTypography.regular,
@@ -1626,7 +1671,7 @@ class _PersonPickerSheetState extends State<_PersonPickerSheet> {
                   children: [
                     Expanded(
                       child: AppSecondaryButton(
-                        label: '管理关系人',
+                        label: '管理联系人',
                         onTap: () =>
                             Navigator.of(context)
                                 .pop(_PersonPickerResult.manage()),
@@ -1635,7 +1680,7 @@ class _PersonPickerSheetState extends State<_PersonPickerSheet> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: AppPrimaryButton(
-                        label: '添加关系人',
+                        label: '添加联系人',
                         icon: AppIcons.userRoundPlus,
                         onTap: () =>
                             Navigator.of(context)

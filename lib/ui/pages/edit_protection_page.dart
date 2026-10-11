@@ -88,24 +88,20 @@ class _CanvasState extends State<_Canvas> {
 
   Future<void> _changePassword() async {
     if (_busy) return;
-    if (!_config.hasPassword) {
-      final ok = await _setNewPasswordDialog();
-      if (ok) {
-        final c = await _service.load();
-        if (!mounted) return;
-        setState(() => _config = c);
+    setState(() => _busy = true);
+    try {
+      if (_config.hasPassword) {
+        final verified = await _verifyPasswordDialog(title: '修改密码');
+        if (!mounted || !verified) return;
       }
-      return;
-    }
-    final verified = await _verifyPasswordDialog(title: '修改密码');
-    if (!verified) return;
-    final ok = await _setNewPasswordDialog();
-    if (!ok) return;
-    final c = await _service.load();
-    if (!mounted) return;
-    setState(() => _config = c);
-    if (mounted) {
+      final ok = await _setNewPasswordDialog();
+      if (!mounted || !ok) return;
+      final c = await _service.load();
+      if (!mounted) return;
+      setState(() => _config = c);
       AppNotifier.success(context, '密码已更新');
+    } finally {
+      if (mounted) setState(() => _busy = false);
     }
   }
 

@@ -80,9 +80,9 @@ class _CanvasState extends State<_Canvas> {
     '金额(元)',
     '事由',
     '所属账簿名称',
-    '关系人ID',
-    '关系人姓名',
-    '关系人关系',
+    '联系人ID',
+    '联系人姓名',
+    '联系人关系',
     '手机号',
     '发生时间',
     '备注',
@@ -177,6 +177,8 @@ class _CanvasState extends State<_Canvas> {
     for (final field in _recordFields) {
       if (headers.contains(field)) {
         _fieldMapping[field] = field;
+      } else if (headers.contains(field.replaceAll('联系人', '关系人'))) {
+        _fieldMapping[field] = field.replaceAll('联系人', '关系人');
       } else {
         _fieldMapping[field] = null;
       }
@@ -206,7 +208,7 @@ class _CanvasState extends State<_Canvas> {
     try {
       final file = await _templateService.generateTemplate(format: choice);
       if (!mounted) return;
-      await AppPlatform.instance.shareFile(file.path, text: '尚礼导入模板');
+      await AppPlatform.instance.shareFile(file.path, text: '礼记导入模板');
     } catch (e) {
       if (!mounted) return;
       AppNotifier.error(context, '模板生成失败：$e');

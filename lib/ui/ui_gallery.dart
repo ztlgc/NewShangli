@@ -31,7 +31,7 @@ class UiGalleryApp extends StatelessWidget {
       child: UiGalleryDatabaseProvider(
         child: MaterialApp(
           debugShowCheckedModeBanner: false,
-          title: '尚礼界面预览',
+          title: '礼记界面预览',
           theme: AppTheme.light(),
           home: const UiGalleryHome(),
         ),
@@ -52,9 +52,9 @@ class UiGalleryHome extends StatelessWidget {
         '收支记录-收支详情',
         (context) => const RecordDetailPage(recordId: 'r_20260210_zw'),
       ),
-      _GalleryItem('关系人-列表页', (context) => const PersonListPage()),
-      _GalleryItem('关系人-详情页', (context) => const PersonDetailPage()),
-      _GalleryItem('关系人-编辑/新增', (context) => const PersonEditPage()),
+      _GalleryItem('联系人-列表页', (context) => const PersonListPage()),
+      _GalleryItem('联系人-详情页', (context) => const PersonDetailPage()),
+      _GalleryItem('联系人-编辑/新增', (context) => const PersonEditPage()),
       _GalleryItem('统计分析-图表页', (context) => const StatsPage()),
       _GalleryItem('设置-设置首页', (context) => const SettingsHomePage()),
       _GalleryItem('设置-数据备份', (context) => const DataBackupPage()),

@@ -54,7 +54,7 @@ class _NewShangliAppState extends State<NewShangliApp> {
           child: MaterialApp(
             debugShowCheckedModeBanner: false,
             scaffoldMessengerKey: NewShangliApp.appMessengerKey,
-            title: '尚礼',
+            title: '礼记',
             supportedLocales: AppLocalizations.supportedLocales,
             localizationsDelegates: AppLocalizations.delegates,
             theme: AppTheme.light(),

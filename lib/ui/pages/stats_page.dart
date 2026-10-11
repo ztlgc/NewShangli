@@ -5,9 +5,9 @@
 // 2. 时间维度切换采用更紧凑的 Segmented Control + 横向滑动 chip
 // 3. 趋势图采用「收入/支出/净流量」三态切换的柱状图，弱化双线对比的视觉噪声
 // 4. 分类饼图改造为 Donut + 水平进度条列表，信息密度更高
-// 5. Top 5 榜单引入 1/2/3 名奖牌、占比进度条，关系人头像占位增强识别度
+// 5. Top 5 榜单引入 1/2/3 名奖牌、占比进度条，联系人头像占位增强识别度
 // 6. 所有颜色、圆角、字号、阴影均使用 AppColors / AppRadii / AppShadows / AppTypography 设计令牌
-// 7. 整体信息层级：时间选择 → 总览（Hero）→ 趋势 → 构成 → 关系人
+// 7. 整体信息层级：时间选择 → 总览（Hero）→ 趋势 → 构成 → 联系人
 import 'dart:async';
 
 import 'package:fl_chart/fl_chart.dart';
@@ -1860,7 +1860,7 @@ class _CategoryProgressRow extends StatelessWidget {
 }
 
 // ────────────────────────────────────────────────────────────────────────────
-// Top 5 关系人：奖牌 + 姓名 + 占比进度条 + 净收/支
+// Top 5 联系人：奖牌 + 姓名 + 占比进度条 + 净收/支
 // ────────────────────────────────────────────────────────────────────────────
 
 class _TopContactsCard extends StatelessWidget {

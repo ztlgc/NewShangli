@@ -3,6 +3,9 @@ import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:newshangli/data/local/drift/app_database.dart';
+import 'package:newshangli/security/edit_protection.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:newshangli/ui/app_toast.dart';
 import 'package:newshangli/ui/app_database_scope.dart';
 import 'package:newshangli/ui/app_session.dart';
 import 'package:newshangli/ui/app_theme.dart';
@@ -60,6 +63,44 @@ Widget _buildTestApp(AppDatabase db) {
 }
 
 void main() {
+  setUp(() => SharedPreferences.setMockInitialValues({}));
+  for (final password in ['cancel', 'wrong', '1234']) {
+    testWidgets('批量删除校验编辑密码：$password', (tester) async {
+      await EditProtectionService().setPassword(newPassword: '1234');
+      final db = await _buildDbWithRecord();
+      try {
+        await tester.pumpWidget(_buildTestApp(db));
+        await tester.pumpAndSettle();
+        await tester.longPress(find.text('测试联系人'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('删除'));
+        await tester.pumpAndSettle();
+        expect(find.text('编辑密码'), findsOneWidget);
+        if (password == 'cancel') {
+          await tester.tap(find.text('取消').last);
+        } else {
+          await tester.enterText(find.byType(EditableText).last, password);
+          await tester.tap(find.text('确认'));
+        }
+        await tester.pumpAndSettle();
+        expect(await db.giftRecordsDao.findById('record_test'), isNotNull);
+        if (password == '1234') {
+          expect(find.text('确认将 1 条记录移入回收站？'), findsOneWidget);
+          await tester.tap(find.text('移入回收站').last);
+          await tester.pumpAndSettle();
+          expect(await db.giftRecordsDao.findById('record_test'), isNull);
+        } else {
+          expect(find.text('确认将 1 条记录移入回收站？'), findsNothing);
+        }
+        expect(tester.takeException(), isNull);
+      } finally {
+        AppToast.dismiss();
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pumpAndSettle();
+        await db.close();
+      }
+    });
+  }
   testWidgets('记录首页批量删除使用移入回收站文案并展示成功提示', (tester) async {
     final db = await _buildDbWithRecord();
 

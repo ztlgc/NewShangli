@@ -5,33 +5,62 @@ import 'package:newshangli/export/ledger_pdf_service.dart';
 /// 生成账簿打印样例 PDF（纸质账簿样式）。
 ///
 /// 用法：
-///   dart run tool/generate_ledger_sample.dart
+///   dart run tool/generate_ledger_sample.dart regular.ttf bold.ttf
 ///
-/// 样例使用 Windows 自带中文字体：
-/// - 仿宋 simfang.ttf 作为正文；
-/// - 黑体 simhei.ttf 作为标题/加粗。
-Future<void> main() async {
+/// 样例字体通过命令行指定，仅供开发工具使用，不打包到应用。
+Future<void> main(List<String> args) async {
+  if (args.length != 2) throw ArgumentError("Specify regular.ttf and bold.ttf");
   final fonts = await LedgerPdfFonts.fromFiles(
-    basePath: r'C:\Windows\Fonts\simfang.ttf',
-    boldPath: r'C:\Windows\Fonts\simhei.ttf',
+    basePath: args[0],
+    boldPath: args[1],
   );
 
   final request = LedgerPrintRequest(
-    bookName: '亲友礼金账簿',
-    bookKind: '三栏式明细账',
-    start: DateTime(2025, 1, 1),
-    end: DateTime(2025, 12, 31),
-    openingBalanceCent: 880000, // 期初结余 ¥8,800.00
+    bookName: '亲友礼金',
+    reason: '亲友礼金往来',
+    bookDate: DateTime(2025, 1, 1),
     rows: _sampleRows(),
   );
 
-  final service = const LedgerPdfService(rowsPerPage: 32);
+  final service = const LedgerPdfService();
   final bytes = await service.generatePdf(request: request, fonts: fonts);
 
-  final output = File(r'E:\NewShangli\output\pdf\尚礼_礼金账簿_样例.pdf');
+  final output = File('output/pdf/尚礼_礼金账簿_样例.pdf');
   await output.create(recursive: true);
   await output.writeAsBytes(bytes, flush: true);
   stdout.writeln('PDF 已生成：${output.path}（${bytes.length} bytes）');
+  final preview = LedgerPrintRequest(
+    bookName: '结婚礼金',
+    reason: '结婚礼金',
+    bookDate: DateTime(2026, 10, 11),
+    rows: [
+      for (final (name, amount, note) in [
+        ('王建国', 200000, '新婚祝福'),
+        ('李秀英', 100000, ''),
+        ('张伟', 80000, '同事'),
+        ('陈静', 120000, ''),
+        ('刘洋', 60000, '已回礼'),
+        ('赵磊', 100000, ''),
+        ('孙丽', 200000, '亲友'),
+        ('周涛', 120000, ''),
+      ])
+        LedgerPrintRow(
+          occurredAt: DateTime(2026, 10, 11),
+          direction: '收入',
+          amountCent: amount,
+          personName: name,
+          note: note,
+        ),
+    ],
+  );
+  final previewFile = File(
+    'output/pdf/${preview.title}${preview.bookDate.toIso8601String().substring(0, 10)}.pdf',
+  );
+  await previewFile.writeAsBytes(
+    await service.generatePdf(request: preview, fonts: fonts),
+    flush: true,
+  );
+  stdout.writeln('确认版样例：${previewFile.path}');
 }
 
 class _Seed {

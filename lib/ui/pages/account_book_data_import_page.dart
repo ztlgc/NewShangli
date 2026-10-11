@@ -222,7 +222,7 @@ class _AccountBookDataImportPageState extends State<AccountBookDataImportPage> {
           ? DateTime.fromMillisecondsSinceEpoch(book.bookTime)
           : DateTime(today.year, today.month, today.day);
       final rows = <List<String>>[
-        ['数据类型', '关系人姓名', '金额(元)', '收支方向', '事由', '发生时间', '备注'],
+        ['数据类型', '联系人姓名', '金额(元)', '收支方向', '事由', '发生时间', '备注'],
       ];
       final invalidLines = <int>[];
       final lines = text.split(RegExp(r'\r?\n'));

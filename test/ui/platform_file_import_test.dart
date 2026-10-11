@@ -46,7 +46,7 @@ void main() {
       final csv =
           File([temp.path, 'migration.csv'].join(Platform.pathSeparator))
             ..writeAsStringSync(
-              '关系人姓名,金额(元),收支方向,事由,发生时间\n迁移测试联系人,100,收入,婚礼,2026-10-10\n',
+              '联系人姓名,金额(元),收支方向,事由,发生时间\n迁移测试联系人,100,收入,婚礼,2026-10-10\n',
             );
       addTearDown(() => temp.deleteSync(recursive: true));
       final original = AppPlatform.instance;

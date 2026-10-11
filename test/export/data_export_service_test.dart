@@ -49,7 +49,7 @@ void main() {
     final rows = Excel.decodeBytes(bytes).tables['礼金记录']!.rows;
     final headers = rows.first.map((cell) => cell?.value.toString()).toList();
     expect(headers, isNot(contains('支付方式')));
-    expect(headers.indexOf('发生时间'), headers.indexOf('关系人姓名') + 1);
+    expect(headers.indexOf('发生时间'), headers.indexOf('联系人姓名') + 1);
   });
 
   test('Export excel splits records and persons into two sheets', () async {
@@ -81,7 +81,7 @@ void main() {
     final bytes = await file.readAsBytes();
     final excel = Excel.decodeBytes(bytes);
     expect(excel.tables.keys.contains('礼金记录'), isTrue);
-    expect(excel.tables.keys.contains('关系人'), isTrue);
+    expect(excel.tables.keys.contains('联系人'), isTrue);
   });
 
   test('Export records throws when no record in range', () async {
@@ -313,7 +313,7 @@ void main() {
     final xlsxEntry = decoded.files.firstWhere((e) => e.name.endsWith('.xlsx'));
     final excel = Excel.decodeBytes(xlsxEntry.content as List<int>);
     expect(excel.tables.keys.contains('礼金记录'), true);
-    expect(excel.tables.keys.contains('关系人'), true);
+    expect(excel.tables.keys.contains('联系人'), true);
     final header = excel.tables['礼金记录']!.rows.first
         .map((e) => (e?.value?.toString() ?? ''))
         .toList();
@@ -321,7 +321,7 @@ void main() {
     expect(header.contains('附件1名称'), true);
   });
 
-  test('Drift按账本导出时只包含该账本关系人和媒体文件', () async {
+  test('Drift按账本导出时只包含该账本联系人和媒体文件', () async {
     final db = AppDatabase.forTesting(NativeDatabase.memory());
     addTearDown(() async {
       await db.close();
@@ -405,7 +405,7 @@ void main() {
 
     final xlsxEntry = decoded.files.firstWhere((e) => e.name.endsWith('.xlsx'));
     final excel = Excel.decodeBytes(xlsxEntry.content as List<int>);
-    final personCells = excel.tables['关系人']!.rows
+    final personCells = excel.tables['联系人']!.rows
         .expand((row) => row)
         .map((cell) => cell?.value?.toString() ?? '')
         .toList();

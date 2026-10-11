@@ -60,29 +60,24 @@ class AppDialog {
     IconData? icon,
     required List<AppDialogField> fields,
   }) async {
-    final controllers = <String, TextEditingController>{
-      for (final f in fields) f.id: TextEditingController(text: f.initialValue),
-    };
-    try {
-      final result = await _showAdaptive<Map<String, String>>(
-        context,
-        tone: tone,
-        icon: icon,
-        title: title,
-        message: message,
-        content: _InputForm(fields: fields, controllers: controllers),
-        actions: _DialogActionSpec.buttons(
-          confirm: confirmLabel,
-          cancel: cancelLabel,
-          danger: false,
-        ),
-      );
-      return result;
-    } finally {
-      for (final c in controllers.values) {
-        c.dispose();
-      }
-    }
+    final formKey = GlobalKey<_InputFormState>();
+    return _showAdaptive<Map<String, String>>(
+      context,
+      tone: tone,
+      icon: icon,
+      title: title,
+      message: message,
+      content: _InputForm(key: formKey, fields: fields),
+      actions: _DialogActionSpec.buttons(
+        confirm: confirmLabel,
+        cancel: cancelLabel,
+        onConfirm: (dialogContext) =>
+            Navigator.of(dialogContext)
+                .pop<Map<String, String>>(formKey.currentState!.values),
+        onCancel: (dialogContext) =>
+            Navigator.of(dialogContext).pop<Map<String, String>>(),
+      ),
+    );
   }
 
   /// 显示告警型 Dialog（仅一个"知道了"按钮）
@@ -179,27 +174,34 @@ class AppDialog {
     return showModalBottomSheet<T>(
       context: context,
       isDismissible: actions.dismissible,
+      isScrollControlled: true,
+      useSafeArea: true,
       backgroundColor: Colors.transparent,
       builder: (sheetContext) {
         return AppForuiBoundary(
-          child: SafeArea(
-            child: Container(
-              margin: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Theme.of(sheetContext).cardColor,
-                borderRadius: BorderRadius.circular(
-                  AppNotificationTokens.dialogRadius,
+          child: Padding(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.viewInsetsOf(sheetContext).bottom,
+            ),
+            child: SafeArea(
+              child: Container(
+                margin: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Theme.of(sheetContext).cardColor,
+                  borderRadius: BorderRadius.circular(
+                    AppNotificationTokens.dialogRadius,
+                  ),
+                  boxShadow: AppShadows.lg,
                 ),
-                boxShadow: AppShadows.lg,
-              ),
-              child: _AppDialogShell(
-                tone: tone,
-                icon: icon ?? _defaultIconFor(tone),
-                title: title,
-                message: message,
-                content: content,
-                actions: actions,
-                skipOuterDialog: true,
+                child: _AppDialogShell(
+                  tone: tone,
+                  icon: icon ?? _defaultIconFor(tone),
+                  title: title,
+                  message: message,
+                  content: content,
+                  actions: actions,
+                  skipOuterDialog: true,
+                ),
               ),
             ),
           ),
@@ -270,17 +272,23 @@ class _DialogActionSpec {
     this.danger = false,
     this.single = false,
     this.dismissible = true,
+    this.onConfirm,
+    this.onCancel,
   });
 
   factory _DialogActionSpec.buttons({
     required String confirm,
     required String cancel,
     bool danger = false,
+    void Function(BuildContext)? onConfirm,
+    void Function(BuildContext)? onCancel,
   }) {
     return _DialogActionSpec._(
       confirmLabel: confirm,
       cancelLabel: cancel,
       danger: danger,
+      onConfirm: onConfirm,
+      onCancel: onCancel,
     );
   }
 
@@ -297,6 +305,8 @@ class _DialogActionSpec {
   final bool danger;
   final bool single;
   final bool dismissible;
+  final void Function(BuildContext)? onConfirm;
+  final void Function(BuildContext)? onCancel;
 }
 
 /// Dialog 实际渲染的容器
@@ -374,7 +384,7 @@ class _AppDialogShell extends StatelessWidget {
           ),
           border: Border.all(color: colors.borderSubtle),
         ),
-        child: body,
+        child: SingleChildScrollView(child: body),
       );
     }
     return AppForuiBoundary(
@@ -384,7 +394,7 @@ class _AppDialogShell extends StatelessWidget {
           minWidth: 280,
           maxWidth: AppNotificationTokens.dialogMaxWidth,
         ),
-        builder: (context, style) => body,
+        builder: (context, style) => SingleChildScrollView(child: body),
       ),
     );
   }
@@ -474,7 +484,13 @@ class _DialogActionRow extends StatelessWidget {
             label: actions.cancelLabel!,
             background: colors.surfaceSubtle,
             foreground: colors.textSecondary,
-            onTap: () => Navigator.of(context).pop(false),
+            onTap: () {
+              if (actions.onCancel case final onCancel?) {
+                onCancel(context);
+              } else {
+                Navigator.of(context).pop<bool>(false);
+              }
+            },
           ),
         ),
         const SizedBox(width: AppNotificationTokens.dialogButtonSpacing),
@@ -486,7 +502,13 @@ class _DialogActionRow extends StatelessWidget {
                 : colors.brandPrimary,
             foreground: colors.textInverse,
             autofocus: true,
-            onTap: () => Navigator.of(context).pop(true),
+            onTap: () {
+              if (actions.onConfirm case final onConfirm?) {
+                onConfirm(context);
+              } else {
+                Navigator.of(context).pop<bool>(true);
+              }
+            },
           ),
         ),
       ],
@@ -533,11 +555,33 @@ class _DialogButton extends StatelessWidget {
 }
 
 /// Dialog 内嵌的输入表单
-class _InputForm extends StatelessWidget {
-  const _InputForm({required this.fields, required this.controllers});
+class _InputForm extends StatefulWidget {
+  const _InputForm({super.key, required this.fields});
 
   final List<AppDialogField> fields;
-  final Map<String, TextEditingController> controllers;
+
+  @override
+  State<_InputForm> createState() => _InputFormState();
+}
+
+class _InputFormState extends State<_InputForm> {
+  // Keep controllers alive until the modal's exit animation removes the form.
+  late final controllers = <String, TextEditingController>{
+    for (final field in widget.fields)
+      field.id: TextEditingController(text: field.initialValue),
+  };
+
+  Map<String, String> get values => {
+    for (final entry in controllers.entries) entry.key: entry.value.text,
+  };
+
+  @override
+  void dispose() {
+    for (final controller in controllers.values) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -545,19 +589,19 @@ class _InputForm extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        for (var i = 0; i < fields.length; i++) ...[
+        for (var i = 0; i < widget.fields.length; i++) ...[
           if (i > 0) const SizedBox(height: 12),
           FTextField(
             control: FTextFieldControl.managed(
-              controller: controllers[fields[i].id],
+              controller: controllers[widget.fields[i].id],
             ),
-            label: Text(fields[i].label),
-            hint: fields[i].hint,
+            label: Text(widget.fields[i].label),
+            hint: widget.fields[i].hint,
             autofocus: i == 0,
-            obscureText: fields[i].obscureText,
-            maxLines: fields[i].maxLines,
-            minLines: fields[i].minLines,
-            textInputAction: fields[i].textInputAction,
+            obscureText: widget.fields[i].obscureText,
+            maxLines: widget.fields[i].maxLines,
+            minLines: widget.fields[i].minLines,
+            textInputAction: widget.fields[i].textInputAction,
           ),
         ],
       ],

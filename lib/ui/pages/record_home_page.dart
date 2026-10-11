@@ -6,6 +6,7 @@ import '../../data/local/drift/app_database.dart';
 import '../app_data.dart';
 import '../app_database_scope.dart';
 import '../app_dialog.dart';
+import '../edit_protection_guard.dart';
 import '../app_notifier.dart';
 import '../app_notification_tokens.dart';
 import '../app_tokens.dart';
@@ -90,6 +91,11 @@ class _CanvasState extends State<_Canvas> {
 
   Future<void> _confirmBatchDelete(AppDatabase db) async {
     if (_selectedRecordIds.isEmpty) return;
+    final authorized = await requireEditProtectionPassword(
+      context,
+      title: '删除记录',
+    );
+    if (!mounted || !authorized) return;
     // 这里的批量删除实际执行的是软删除，因此弹窗文案需要明确告知
     // 用户"移入回收站"的结果，避免和回收站内的彻底删除混淆。
     final ok = await AppDialog.confirm(
@@ -100,7 +106,7 @@ class _CanvasState extends State<_Canvas> {
       cancelLabel: '取消',
       tone: AppNotificationTone.warning,
     );
-    if (ok != true) return;
+    if (!mounted || ok != true) return;
     final ids = _selectedRecordIds.toList(growable: false);
     for (final id in ids) {
       await db.giftRecordsDao.deleteById(id);
@@ -120,7 +126,7 @@ class _CanvasState extends State<_Canvas> {
         Column(
           children: [
             FHeader(
-              title: const Text('尚礼'),
+              title: const Text('礼记'),
               suffixes: [
                 if (_selectionMode)
                   FButton(
