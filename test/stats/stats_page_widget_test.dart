@@ -39,7 +39,11 @@ class _FakeStatsRepository implements IStatsRepository {
           StatsCategorySlice(category: '婚礼', amountCent: 20000),
         ],
         ranking: [
-          StatsRankItem(personName: '张伟', incomeCent: 10000, expenseCent: 20000),
+          StatsRankItem(
+            personName: '张伟',
+            incomeCent: 10000,
+            expenseCent: 20000,
+          ),
         ],
       );
     }
@@ -60,7 +64,11 @@ class _FakeStatsRepository implements IStatsRepository {
           StatsCategorySlice(category: '其他', amountCent: 40000),
         ],
         ranking: [
-          StatsRankItem(personName: '李娜', incomeCent: 30000, expenseCent: 40000),
+          StatsRankItem(
+            personName: '李娜',
+            incomeCent: 30000,
+            expenseCent: 40000,
+          ),
         ],
       );
     }
@@ -103,10 +111,7 @@ void main() {
         child: AppDataScope(
           data: data,
           child: MaterialApp(
-            home: StatsPage(
-              now: () => DateTime(2026, 3, 1),
-              repository: repo,
-            ),
+            home: StatsPage(now: () => DateTime(2026, 3, 1), repository: repo),
           ),
         ),
       ),
@@ -117,8 +122,8 @@ void main() {
     }
 
     expect(find.text('月统计'), findsOneWidget);
-    expect(find.text('总支出'), findsOneWidget);
-    expect(find.text('总收入'), findsOneWidget);
+    expect(find.text('送礼'), findsWidgets);
+    expect(find.text('收礼'), findsWidgets);
 
     expect(find.byType(BarChart), findsOneWidget);
 
@@ -137,4 +142,3 @@ void main() {
     await db.close();
   });
 }
-

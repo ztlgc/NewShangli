@@ -39,10 +39,12 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('导入数据'), findsOneWidget);
+    expect(find.text('数据导入'), findsOneWidget);
     expect(find.text('点击选择 Excel 或 CSV 文件'), findsOneWidget);
-    expect(find.text('支持 Excel (.xlsx) 或 CSV (.csv) 格式。'), findsOneWidget);
-    expect(find.text('选择媒体 ZIP 文件（可选）'), findsOneWidget);
-    expect(find.text('用于恢复头像和附件，支持 ZIP (.zip) 格式。'), findsOneWidget);
+    expect(find.text('支持 Excel / CSV'), findsOneWidget);
+    expect(find.text('字段匹配'), findsNothing);
+    expect(find.text('开始导入'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump(const Duration(milliseconds: 100));
   });
 }

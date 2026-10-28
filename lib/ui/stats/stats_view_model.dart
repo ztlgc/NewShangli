@@ -34,6 +34,7 @@ class StatsViewModel extends ChangeNotifier {
   String? _error;
   StatsSnapshot? _data;
   StatsSnapshot? _compareData;
+  StatsDateRange? _dataRange;
   List<StatsSourceRecord> _records = const <StatsSourceRecord>[];
   int? _minRecordYear;
   bool _refreshPending = false;
@@ -46,6 +47,7 @@ class StatsViewModel extends ChangeNotifier {
   String? get error => _error;
   StatsSnapshot? get data => _data;
   StatsSnapshot? get compareData => _compareData;
+  StatsDateRange? get dataRange => _dataRange;
   int? get minRecordYear => _minRecordYear;
 
   Future<void> init() async {
@@ -100,7 +102,7 @@ class StatsViewModel extends ChangeNotifier {
   }
 
   Future<void> _runRefreshLoop() async {
-    while (_refreshPending) {
+    while (_refreshPending && !_disposed) {
       _refreshPending = false;
       _loading = true;
       _error = null;
@@ -132,13 +134,22 @@ class StatsViewModel extends ChangeNotifier {
             )
             .then<StatsSnapshot?>((v) => v)
             .catchError((_) => null);
-        _data = await currentFuture;
-        _compareData = await compareFuture;
+        final data = await currentFuture;
+        final compareData = await compareFuture;
+        // A newer period or record update supersedes this response. Publish the
+        // snapshot and its range together so a new header never labels old data.
+        if (!_refreshPending && !_disposed) {
+          _data = data;
+          _compareData = compareData;
+          _dataRange = range;
+        }
       } catch (e) {
-        _error = e.toString();
+        if (!_refreshPending) _error = e.toString();
       } finally {
-        _loading = false;
-        notifyListeners();
+        if (!_refreshPending) {
+          _loading = false;
+          notifyListeners();
+        }
       }
     }
   }

@@ -8,6 +8,8 @@ import 'ui_kit.dart';
 
 typedef AppSelectableDayPredicate = bool Function(DateTime day);
 
+const _calendarRowHeight = 52.0;
+
 Future<DateTime?> showLunarDatePicker({
   required BuildContext context,
   DateTime? initialDate,
@@ -134,29 +136,39 @@ class _LunarDatePickerDialogState extends State<_LunarDatePickerDialog> {
               padding: const EdgeInsets.fromLTRB(24, 0, 24, 18),
               child: _WeekHeader(),
             ),
-            SizedBox(
-              height: 52 * 6,
-              child: PageView.builder(
-                controller: _controller,
-                itemCount: _pageCount,
-                onPageChanged: (index) => setState(
-                  () => _visibleMonth = _addMonths(_baseMonth, index),
+            AnimatedSize(
+              duration: const Duration(milliseconds: 180),
+              curve: Curves.easeInOutCubic,
+              alignment: Alignment.topCenter,
+              child: SizedBox(
+                height: _weekCount(_visibleMonth) * _calendarRowHeight,
+                child: PageView.builder(
+                  controller: _controller,
+                  itemCount: _pageCount,
+                  onPageChanged: (index) => setState(
+                    () => _visibleMonth = _addMonths(_baseMonth, index),
+                  ),
+                  itemBuilder: (context, index) {
+                    final month = _addMonths(_baseMonth, index);
+                    return OverflowBox(
+                      alignment: Alignment.topCenter,
+                      minHeight: 0,
+                      maxHeight: double.infinity,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 24),
+                        child: _MonthGrid(
+                          month: month,
+                          selectedDate: _selectedDate,
+                          firstDate: widget.firstDate,
+                          lastDate: widget.lastDate,
+                          selectableDayPredicate: widget.selectableDayPredicate,
+                          cellInfoFor: _cellInfoFor,
+                          onSelect: (d) => setState(() => _selectedDate = d),
+                        ),
+                      ),
+                    );
+                  },
                 ),
-                itemBuilder: (context, index) {
-                  final month = _addMonths(_baseMonth, index);
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    child: _MonthGrid(
-                      month: month,
-                      selectedDate: _selectedDate,
-                      firstDate: widget.firstDate,
-                      lastDate: widget.lastDate,
-                      selectableDayPredicate: widget.selectableDayPredicate,
-                      cellInfoFor: _cellInfoFor,
-                      onSelect: (d) => setState(() => _selectedDate = d),
-                    ),
-                  );
-                },
               ),
             ),
             const SizedBox(height: 16),
@@ -192,6 +204,7 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.appColors;
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -201,7 +214,7 @@ class _Header extends StatelessWidget {
             style: AppTypography.base(
               fontSize: AppTypography.fs36,
               fontWeight: AppTypography.bold,
-              color: AppColors.textPrimary,
+              color: colors.textPrimary,
               height: 1.05,
             ),
           ),
@@ -213,7 +226,7 @@ class _Header extends StatelessWidget {
             style: AppTypography.base(
               fontSize: AppTypography.fs16,
               fontWeight: AppTypography.medium,
-              color: AppColors.textSecondary,
+              color: colors.textSecondary,
               height: 1.1,
             ),
           ),
@@ -230,6 +243,7 @@ class _WeekHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.appColors;
     return LayoutBuilder(
       builder: (context, c) {
         final w = c.maxWidth / 7;
@@ -245,7 +259,7 @@ class _WeekHeader extends StatelessWidget {
                     style: AppTypography.base(
                       fontSize: AppTypography.fs14,
                       fontWeight: AppTypography.medium,
-                      color: AppColors.textPrimary,
+                      color: colors.textPrimary,
                     ),
                   ),
                 ),
@@ -285,17 +299,17 @@ class _MonthGrid extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, c) {
         final cellW = c.maxWidth / 7;
-        const cellH = 52.0;
 
         return Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            for (var row = 0; row < 6; row++)
+            for (var row = 0; row < _weekCount(month); row++)
               Row(
                 children: [
                   for (var col = 0; col < 7; col++)
                     _DayCell(
                       width: cellW,
-                      height: cellH,
+                      height: _calendarRowHeight,
                       month: month,
                       dayNumber: row * 7 + col - leadingEmpty + 1,
                       daysInMonth: daysInMonth,
@@ -392,15 +406,19 @@ class _DayCell extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text(
-                  '$dayNumber',
-                  style: AppTypography.base(
-                    fontSize: AppTypography.fs16,
-                    fontWeight: selected
-                        ? AppTypography.bold
-                        : AppTypography.semibold,
-                    color: dayColor,
-                    height: 1.0,
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    '$dayNumber',
+                    maxLines: 1,
+                    style: AppTypography.base(
+                      fontSize: AppTypography.fs16,
+                      fontWeight: selected
+                          ? AppTypography.bold
+                          : AppTypography.semibold,
+                      color: dayColor,
+                      height: 1.0,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -439,6 +457,7 @@ class _Actions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.appColors;
     return Row(
       children: [
         Expanded(
@@ -455,7 +474,7 @@ class _Actions extends StatelessWidget {
                   style: AppTypography.base(
                     fontSize: AppTypography.fs18,
                     fontWeight: AppTypography.medium,
-                    color: AppColors.textTertiary,
+                    color: colors.textTertiary,
                   ),
                 ),
               ),
@@ -476,7 +495,7 @@ class _Actions extends StatelessWidget {
                   style: AppTypography.base(
                     fontSize: AppTypography.fs18,
                     fontWeight: AppTypography.medium,
-                    color: AppColors.blue600,
+                    color: colors.foregroundFor(AppColors.blue600),
                   ),
                 ),
               ),
@@ -545,6 +564,12 @@ DateTime _clampDate(
 
 int _monthsBetween(DateTime a, DateTime b) =>
     (b.year - a.year) * 12 + (b.month - a.month);
+
+int _weekCount(DateTime month) {
+  final leadingEmpty = DateTime(month.year, month.month, 1).weekday - 1;
+  final daysInMonth = DateTime(month.year, month.month + 1, 0).day;
+  return (leadingEmpty + daysInMonth + 6) ~/ 7;
+}
 
 DateTime _addMonths(DateTime monthStart, int months) {
   final y = monthStart.year * 12 + (monthStart.month - 1) + months;

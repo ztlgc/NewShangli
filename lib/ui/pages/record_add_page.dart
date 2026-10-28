@@ -282,23 +282,33 @@ class _RecordAddPageState extends State<RecordAddPage> {
         },
       );
       if (!mounted || result == null) return;
+      Person? picked;
       if (result.action == _PersonPickerAction.add) {
-        await AppNav.push(context, const PersonEditPage());
+        final personId = await AppNav.push<String>(
+          context,
+          const PersonEditPage(),
+        );
         if (!mounted) return;
-        continue;
-      }
-      if (result.action == _PersonPickerAction.manage) {
+        if (personId == null) continue;
+        try {
+          picked = await db.personsDao.findById(personId);
+        } catch (_) {
+          if (mounted) AppNotifier.error(context, '联系人加载失败，请重试');
+          return;
+        }
+        if (!mounted) return;
+      } else if (result.action == _PersonPickerAction.manage) {
         await AppNav.push(context, const PersonListPage());
         if (!mounted) return;
         continue;
-      }
-      final personId = result.personId;
-      if (personId == null) continue;
-      Person? picked;
-      for (final p in persons) {
-        if (p.personId == personId) {
-          picked = p;
-          break;
+      } else {
+        final personId = result.personId;
+        if (personId == null) continue;
+        for (final p in persons) {
+          if (p.personId == personId) {
+            picked = p;
+            break;
+          }
         }
       }
       if (picked == null) continue;
@@ -939,42 +949,48 @@ class _AmountCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-          SizedBox(
-            height: 30,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              children: [
-                _PresetChip(
-                  label: '200',
-                  selected: controller.text.trim() == '200',
-                  onTap: () => onPresetTap(200),
+          ValueListenableBuilder<TextEditingValue>(
+            valueListenable: controller,
+            builder: (context, value, _) {
+              final amount = value.text.trim();
+              return SizedBox(
+                height: 30,
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  children: [
+                    _PresetChip(
+                      label: '200',
+                      selected: amount == '200',
+                      onTap: () => onPresetTap(200),
+                    ),
+                    const SizedBox(width: 8),
+                    _PresetChip(
+                      label: '500',
+                      selected: amount == '500',
+                      onTap: () => onPresetTap(500),
+                    ),
+                    const SizedBox(width: 8),
+                    _PresetChip(
+                      label: '1000',
+                      selected: amount == '1000',
+                      onTap: () => onPresetTap(1000),
+                    ),
+                    const SizedBox(width: 8),
+                    _PresetChip(
+                      label: '2000',
+                      selected: amount == '2000',
+                      onTap: () => onPresetTap(2000),
+                    ),
+                    const SizedBox(width: 8),
+                    _PresetChip(
+                      label: '5000',
+                      selected: amount == '5000',
+                      onTap: () => onPresetTap(5000),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 8),
-                _PresetChip(
-                  label: '500',
-                  selected: controller.text.trim() == '500',
-                  onTap: () => onPresetTap(500),
-                ),
-                const SizedBox(width: 8),
-                _PresetChip(
-                  label: '1000',
-                  selected: controller.text.trim() == '1000',
-                  onTap: () => onPresetTap(1000),
-                ),
-                const SizedBox(width: 8),
-                _PresetChip(
-                  label: '2000',
-                  selected: controller.text.trim() == '2000',
-                  onTap: () => onPresetTap(2000),
-                ),
-                const SizedBox(width: 8),
-                _PresetChip(
-                  label: '5000',
-                  selected: controller.text.trim() == '5000',
-                  onTap: () => onPresetTap(5000),
-                ),
-              ],
-            ),
+              );
+            },
           ),
         ],
       ),

@@ -30,7 +30,6 @@ void main() {
     AppPlatform.instance = _ExportTestPlatform(temp);
     addTearDown(() => AppPlatform.instance = previous);
     final db = AppDatabase.forTesting(NativeDatabase.memory());
-    addTearDown(db.close);
 
     await tester.runAsync(() async {
       await tester.pumpWidget(
@@ -44,20 +43,20 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('数据导出'), findsOneWidget);
     expect(find.text('账簿'), findsOneWidget);
-    expect(find.text('所有账簿'), findsOneWidget);
-    expect(find.text('共0条记录'), findsOneWidget);
-    expect(find.textContaining('本地或 WebDAV 备份'), findsOneWidget);
+    expect(find.text('全部账簿'), findsOneWidget);
+    expect(find.text('共 0 条记录'), findsOneWidget);
+    expect(find.textContaining('完整备份请使用'), findsOneWidget);
     expect(find.textContaining('云同步'), findsNothing);
     expect(find.textContaining('登录'), findsNothing);
 
-    await tester.tap(find.text('文件格式'));
+    await tester.tap(find.text('ZIP 压缩包'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('ZIP 文件'));
-    await tester.pumpAndSettle();
-    expect(find.text('ZIP 文件'), findsOneWidget);
-    expect(find.text('Excel 文件'), findsNothing);
+    expect(find.text('ZIP 压缩包'), findsOneWidget);
+    expect(find.text('Excel 表格'), findsOneWidget);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
-    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    await tester.runAsync(db.close);
+    await tester.pump(const Duration(seconds: 1));
   });
 }

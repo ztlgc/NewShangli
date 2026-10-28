@@ -3,190 +3,181 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:forui/forui.dart';
-import 'package:dotted_border/dotted_border.dart';
 
 import '../../data/local/drift/app_database.dart';
 import '../../import/data_import_service.dart';
 import '../../import/data_import_template_service.dart';
 import '../../import/default_book_service.dart';
+import '../../import/import_field_mapping.dart';
 import '../../import/import_file_reader.dart';
+import '../../platform/app_platform.dart';
 import '../app_bottom_sheet.dart';
 import '../app_database_scope.dart';
-import '../app_notifier.dart';
 import '../app_dialog.dart';
-import '../app_tokens.dart';
+import '../app_icons.dart';
+import '../app_notifier.dart';
 import '../app_scaffold.dart';
+import '../app_tokens.dart';
 import '../components.dart';
-import '../navigation.dart';
+import '../data_transfer/import_review_widgets.dart';
+import '../data_transfer/transfer_widgets.dart';
 import '../ui_kit.dart';
 
-import '../app_icons.dart';
-
-import '../../platform/app_platform.dart';
-
-import '../app_layout.dart';
-
-class DataImportPage extends StatelessWidget {
-  const DataImportPage({super.key, this.initialBookId});
-
+class DataImportPage extends StatefulWidget {
+  const DataImportPage({super.key, this.initialBookId, this.serviceFactory});
   final String? initialBookId;
-
+  final DataImportService Function(AppDatabase)? serviceFactory;
   @override
-  Widget build(BuildContext context) {
-    return AppScaffold(
-      backgroundColor: AppColors.surfaceApp,
-      body: _Canvas(initialBookId: initialBookId),
-    );
-  }
+  State<DataImportPage> createState() => _DataImportPageState();
 }
 
-class _Canvas extends StatefulWidget {
-  const _Canvas({this.initialBookId});
-
-  final String? initialBookId;
-
-  @override
-  State<_Canvas> createState() => _CanvasState();
-}
-
-class _CanvasState extends State<_Canvas> {
-  late AppDatabase _db;
-  late DataImportService _importService;
-  final DataImportTemplateService _templateService =
-      DataImportTemplateService();
-  final DefaultBookService _defaultBookService = DefaultBookService();
-  late Future<String> _bookIdFuture;
-  bool _dbInitialized = false;
-
-  AppPickedFile? _picked;
-  AppPickedFile? _mediaZip;
+class _DataImportPageState extends State<DataImportPage> {
+  AppDatabase? _database;
+  late DataImportService _service;
+  late Future<String> _bookId;
+  AppPickedFile? _file;
+  AppPickedFile? _media;
   ImportPreview? _preview;
-  bool _loadingPreview = false;
-  bool _startingImport = false;
-
+  Map<String, String?> _mapping = {};
+  bool _reading = false;
+  bool _picking = false;
+  bool _starting = false;
+  bool _templateBusy = false;
+  bool _leaving = false;
+  String? _controlHint;
+  String? _error;
   String? _jobId;
-  DataImportRunHandle? _runHandle;
+  String? _logPath;
+  String _logTail = '';
+  int _logRequest = 0;
+  DataImportRunHandle? _handle;
+  StreamSubscription<DataImportProgress>? _subscription;
   DataImportProgress? _progress;
-  String? _logTail;
-  StreamSubscription<DataImportProgress>? _progressSub;
+  Completer<void>? _settled;
 
-  final Map<String, String?> _fieldMapping = <String, String?>{};
-  final List<String> _errors = <String>[];
-
-  static const List<String> _recordFields = <String>[
-    '数据类型',
-    '记录ID',
-    '收支方向',
-    '金额(元)',
-    '事由',
-    '所属账簿名称',
-    '联系人ID',
-    '联系人姓名',
-    '联系人关系',
-    '手机号',
-    '发生时间',
-    '备注',
-    '头像文件名',
-    '附件1名称',
-    '附件2名称',
-    '附件3名称',
-    '附件4名称',
-    '附件5名称',
-  ];
-
-  @override
-  void dispose() {
-    _runHandle?.cancel();
-    _progressSub?.cancel();
-    super.dispose();
-  }
+  bool get _busy => _starting || _handle != null;
+  bool get _canResume =>
+      !_busy &&
+      _jobId != null &&
+      [
+        DataImportStatus.paused,
+        DataImportStatus.failed,
+        DataImportStatus.pending,
+      ].contains(_progress?.status);
+  String? get _mappingProblem =>
+      _preview == null ? null : importMappingProblem(_preview!, _mapping);
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final scopedDb = AppDatabaseScope.of(context);
-    if (_dbInitialized && identical(_db, scopedDb)) return;
-    if (_dbInitialized) {
-      unawaited(_runHandle?.cancel());
-      unawaited(_progressSub?.cancel());
-    }
-    _db = scopedDb;
-    _importService = DataImportService(db: _db);
-    _bookIdFuture = widget.initialBookId == null
-        ? _defaultBookService.ensureDefaultBookId(_db)
-        : Future<String>.value(widget.initialBookId!);
-    _dbInitialized = true;
+    final db = AppDatabaseScope.of(context);
+    if (identical(db, _database)) return;
+    unawaited(_handle?.pause());
+    unawaited(_subscription?.cancel());
+    _database = db;
+    _service = widget.serviceFactory?.call(db) ?? DataImportService(db: db);
+    _bookId = widget.initialBookId == null
+        ? DefaultBookService().ensureDefaultBookId(db)
+        : Future.value(widget.initialBookId!);
+  }
+
+  @override
+  void dispose() {
+    unawaited(_handle?.pause());
+    unawaited(_subscription?.cancel());
+    super.dispose();
   }
 
   Future<void> _pickFile() async {
-    final result = await AppPlatform.instance.pickFiles(
-      allowedExtensions: const <String>['xlsx', 'csv'],
-      withData: false,
-    );
-    if (!mounted) return;
-    if (result == null || result.files.isEmpty) return;
-    final f = result.files.first;
-    if (f.path == null) {
-      AppNotifier.warning(context, '无法读取文件路径，请重试');
-      return;
-    }
-
-    setState(() {
-      _picked = f;
-      _preview = null;
-      _loadingPreview = true;
-      _errors.clear();
-      _fieldMapping.clear();
-      _mediaZip = null;
-    });
-
+    if (_busy || _reading || _picking) return;
+    setState(() => _picking = true);
     try {
-      final p = await ImportFileReader.preview(
-        filePath: f.path!,
+      final files = await AppPlatform.instance.pickFiles(
+        allowedExtensions: const ['xlsx', 'csv'],
+      );
+      if (!mounted || files == null || files.files.isEmpty) return;
+      final file = files.files.first;
+      if (file.path == null) throw const DataImportException('无法读取文件路径，请重新选择');
+      setState(() {
+        _file = file;
+        _media = null;
+        _preview = null;
+        _mapping = {};
+        _reading = true;
+        _error = null;
+        _jobId = null;
+        _progress = null;
+        _logPath = null;
+        _logTail = '';
+        _controlHint = null;
+      });
+      final preview = await ImportFileReader.preview(
+        filePath: file.path!,
         maxPreviewRows: 20,
       );
       if (!mounted) return;
       setState(() {
-        _preview = p;
-        _loadingPreview = false;
+        _preview = preview;
+        _mapping = defaultImportMapping(preview.headers);
       });
-      _initDefaultMapping();
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _loadingPreview = false;
-        _errors.add(e.toString());
-      });
-    }
-  }
-
-  Future<void> _pickMediaZip() async {
-    final result = await AppPlatform.instance.pickFiles(
-      allowedExtensions: const <String>['zip'],
-      withData: false,
-    );
-    if (!mounted) return;
-    if (result == null || result.files.isEmpty) return;
-    setState(() {
-      _mediaZip = result.files.first;
-    });
-  }
-
-  void _initDefaultMapping() {
-    final headers = _preview?.headers ?? const <String>[];
-    for (final field in _recordFields) {
-      if (headers.contains(field)) {
-        _fieldMapping[field] = field;
-      } else if (headers.contains(field.replaceAll('联系人', '关系人'))) {
-        _fieldMapping[field] = field.replaceAll('联系人', '关系人');
-      } else {
-        _fieldMapping[field] = null;
+    } catch (error) {
+      if (mounted) setState(() => _error = _message(error, '文件读取失败，请检查文件后重试'));
+    } finally {
+      if (mounted) {
+        setState(() {
+          _picking = false;
+          _reading = false;
+        });
       }
     }
-    setState(() {});
   }
 
-  Future<void> _downloadTemplate() async {
+  Future<void> _pickMedia() async {
+    if (_busy || _picking) return;
+    setState(() => _picking = true);
+    try {
+      final files = await AppPlatform.instance.pickFiles(
+        allowedExtensions: const ['zip'],
+      );
+      if (!mounted || files == null || files.files.isEmpty) return;
+      final file = files.files.first;
+      if (file.path == null || !await File(file.path!).exists()) {
+        throw const DataImportException('无法读取图片 ZIP，请重新选择');
+      }
+      if (mounted) {
+        setState(() {
+          _media = file;
+          _error = null;
+        });
+      }
+    } catch (error) {
+      if (mounted) setState(() => _error = _message(error, '图片 ZIP 读取失败，请重试'));
+    } finally {
+      if (mounted) setState(() => _picking = false);
+    }
+  }
+
+  Future<void> _editMapping() async {
+    if (_preview == null || _busy) return;
+    final draft = await AppBottomSheet.show<Map<String, String?>>(
+      context,
+      title: '字段匹配',
+      child: ImportMappingSheet(headers: _preview!.headers, mapping: _mapping),
+    );
+    if (draft != null && mounted) setState(() => _mapping = draft);
+  }
+
+  Future<void> _openPreview() async {
+    if (_preview == null) return;
+    await AppBottomSheet.show<void>(
+      context,
+      title: '数据预览',
+      child: ImportPreviewSheet(preview: _preview!),
+    );
+  }
+
+  Future<void> _template() async {
+    if (_templateBusy || _busy) return;
     final choice = await AppBottomSheet.showPicker<DataImportTemplateFormat>(
       context,
       title: '下载导入模板',
@@ -203,56 +194,331 @@ class _CanvasState extends State<_Canvas> {
         ),
       ],
     );
-    if (!mounted || choice == null) return;
-
+    if (choice == null || !mounted) return;
+    setState(() => _templateBusy = true);
     try {
-      final file = await _templateService.generateTemplate(format: choice);
+      final file = await DataImportTemplateService().generateTemplate(
+        format: choice,
+      );
       if (!mounted) return;
-      await AppPlatform.instance.shareFile(file.path, text: '礼记导入模板');
-    } catch (e) {
-      if (!mounted) return;
-      AppNotifier.error(context, '模板生成失败：$e');
+      try {
+        await AppPlatform.instance.shareFile(file.path, text: '礼记导入模板');
+      } catch (_) {
+        if (mounted) AppNotifier.info(context, '模板已生成，可重新下载后分享');
+      }
+    } catch (error) {
+      if (mounted) AppNotifier.error(context, _message(error, '模板生成失败，请重试'));
+    } finally {
+      if (mounted) setState(() => _templateBusy = false);
     }
   }
 
-  Future<void> _showHistorySheet() async {
-    final bookId = await _bookIdFuture;
+  Future<void> _begin() async {
+    if (_busy ||
+        _reading ||
+        _file?.path == null ||
+        _preview == null ||
+        _mappingProblem != null) {
+      return;
+    }
+    // Lock immediately, before the asynchronous default-book lookup and file copy.
+    setState(() {
+      _starting = true;
+      _error = null;
+    });
+    try {
+      final bookId = await _bookId;
+      if (!mounted) return;
+      final job = await _service.createJob(
+        bookId: bookId,
+        sourceFilePath: _file!.path!,
+        kind: DataImportKind.recordsAndPersons,
+        fieldMapping: Map.of(_mapping),
+        mediaZipPath: _media?.path,
+      );
+      if (!mounted) return;
+      setState(() => _jobId = job);
+      await _run(job);
+    } catch (error) {
+      if (mounted) setState(() => _error = _message(error, '无法开始导入，请重试'));
+    } finally {
+      if (mounted) setState(() => _starting = false);
+    }
+  }
+
+  Future<void> _resume() async {
+    if (!_canResume) return;
+    setState(() {
+      _starting = true;
+      _error = null;
+    });
+    try {
+      await _run(_jobId!);
+    } catch (error) {
+      if (mounted) setState(() => _error = _message(error, '无法继续导入，请重试'));
+    } finally {
+      if (mounted) setState(() => _starting = false);
+    }
+  }
+
+  Future<void> _run(String jobId) async {
+    await _subscription?.cancel();
+    final job = await _database!.dataImportJobsDao.findById(jobId);
+    if (!mounted) return;
+    setState(() {
+      _logPath = job?.errorLogPath;
+      _controlHint = null;
+    });
+    try {
+      final handle = await _service.start(
+        jobId,
+        onDuplicate: (duplicate) async {
+          if (!mounted) return false;
+          return await AppDialog.confirm(
+                context,
+                title: '疑似重复记录',
+                message:
+                    '第 ${duplicate.rowIndex} 行：${duplicate.personName}，${duplicate.direction} '
+                    '${(duplicate.amountCent / 100).toStringAsFixed(2)} 元。是否仍保留为一条新记录？',
+                confirmLabel: '保留',
+                cancelLabel: '跳过',
+              ) ==
+              true;
+        },
+      );
+      if (!mounted) {
+        await handle.pause();
+        unawaited(handle.progress.drain<void>());
+        return;
+      }
+      _settled = Completer<void>();
+      setState(() => _handle = handle);
+      _subscription = handle.progress.listen(
+        (progress) {
+          if (!mounted || _jobId != jobId) return;
+          setState(() {
+            _progress = progress;
+            if (progress.status != DataImportStatus.running &&
+                progress.status != DataImportStatus.pending) {
+              _handle = null;
+              _controlHint = null;
+            }
+          });
+          if (_handle == null && !(_settled?.isCompleted ?? true)) {
+            _settled!.complete();
+          }
+          unawaited(_refreshLog(jobId));
+        },
+        onError: (Object error) {
+          if (mounted) {
+            setState(() {
+              _handle = null;
+              _error = _message(error, '导入中断，可从历史继续');
+            });
+          }
+          if (!(_settled?.isCompleted ?? true)) _settled!.complete();
+        },
+        onDone: () {
+          if (!(_settled?.isCompleted ?? true)) _settled!.complete();
+        },
+      );
+    } catch (error) {
+      if (mounted) {
+        setState(() {
+          _handle = null;
+          _progress = DataImportProgress(
+            jobId: jobId,
+            status: DataImportStatus.failed,
+            processedRows: job?.processedRows ?? 0,
+            successRows: job?.successRows ?? 0,
+            skippedRows: job?.skippedRows ?? 0,
+            failedRows: job?.failedRows ?? 0,
+          );
+          _error = _message(error, '导入中断，请重试');
+        });
+      }
+    }
+  }
+
+  Future<void> _control({required bool cancel}) async {
+    final handle = _handle;
+    if (handle == null || _controlHint != null) return;
+    if (cancel) {
+      final confirm = await AppDialog.confirm(
+        context,
+        title: '取消本次导入？',
+        message: '已提交的数据会保留，本任务取消后无法继续。',
+        confirmLabel: '取消导入',
+        cancelLabel: '继续导入',
+      );
+      if (confirm != true || !mounted) return;
+    }
+    setState(() => _controlHint = cancel ? '正在取消…' : '正在暂停…');
+    try {
+      await (cancel ? handle.cancel() : handle.pause());
+      await _settled?.future;
+    } finally {
+      if (mounted) setState(() => _controlHint = null);
+    }
+  }
+
+  Future<void> _leave() async {
+    if (_leaving) return;
+    if (_starting) {
+      AppNotifier.info(context, '正在准备导入，请稍候');
+      return;
+    }
+    if (_busy) {
+      final confirm = await AppDialog.confirm(
+        context,
+        title: '暂停并离开？',
+        message: '已提交的数据会保留，可在导入历史中继续。',
+        confirmLabel: '暂停并离开',
+        cancelLabel: '留在此页',
+      );
+      if (confirm != true || !mounted) return;
+      await _control(cancel: false);
+    }
+    if (mounted) {
+      _leaving = true;
+      Navigator.of(context).pop();
+    }
+  }
+
+  Future<void> _refreshLog(String jobId) async {
+    final version = ++_logRequest;
+    try {
+      final job = await _database!.dataImportJobsDao.findById(jobId);
+      if (!mounted || _jobId != jobId || version != _logRequest) return;
+      final path = job?.errorLogPath;
+      final file = path == null ? null : File(path);
+      final lines = file != null && await file.exists()
+          ? await file.readAsLines()
+          : <String>[];
+      if (mounted && _jobId == jobId && version == _logRequest) {
+        setState(() {
+          _logPath = path;
+          _logTail = lines
+              .skip(lines.length > 60 ? lines.length - 60 : 0)
+              .join('\n');
+        });
+      }
+    } catch (_) {
+      /* The persisted job counters remain available if log reading fails. */
+    }
+  }
+
+  Future<void> _details() async {
+    if (_jobId == null) return;
+    await _refreshLog(_jobId!);
     if (!mounted) return;
     await AppBottomSheet.show<void>(
+      context,
+      title: '处理详情',
+      child: SizedBox(
+        height: MediaQuery.sizeOf(context).height * 0.65,
+        child: Column(
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: SelectableText(
+                  _logTail.isEmpty ? '暂无错误或跳过详情。' : _logTail,
+                  style: AppTypography.base(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w400,
+                    color: context.appColors.textSecondary,
+                  ),
+                ),
+              ),
+            ),
+            if (_logPath != null)
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: AppSecondaryButton(
+                  label: '分享处理日志',
+                  onTap: () async {
+                    try {
+                      await AppPlatform.instance.shareFile(
+                        _logPath!,
+                        text: '礼记导入处理日志',
+                      );
+                    } catch (_) {
+                      if (mounted) AppNotifier.error(context, '日志分享失败，请重试');
+                    }
+                  },
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _history() async {
+    if (_busy) return;
+    final job = await AppBottomSheet.show<DataImportJob>(
       context,
       title: '导入历史',
       child: SizedBox(
         height: MediaQuery.sizeOf(context).height * 0.7,
         child: StreamBuilder<List<DataImportJob>>(
-          stream: _db.dataImportJobsDao.watchRecentInBook(bookId, limit: 50),
+          stream: _database!.dataImportJobsDao.watchRecent(
+            bookId: widget.initialBookId,
+          ),
           builder: (context, snapshot) {
-            final list = snapshot.data ?? const <DataImportJob>[];
-            if (list.isEmpty) {
-              return const Center(child: Text('暂无导入历史'));
+            if (snapshot.hasError) {
+              return const Center(child: Text('历史读取失败，请重新打开'));
             }
-            return ListView.separated(
-              itemCount: list.length,
-              separatorBuilder: (context, index) => const Divider(height: 1),
-              itemBuilder: (context, i) {
-                final job = list[i];
-                return FTile(
-                  title: Text(job.fileName),
-                  subtitle: Text(
-                    '状态：${job.status}  成功：${job.successRows}  跳过：${job.skippedRows}  失败：${job.failedRows}',
+            if (!snapshot.hasData) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            final jobs = snapshot.data!;
+            if (jobs.isEmpty) return const Center(child: Text('暂无导入历史'));
+            return ListView.builder(
+              itemCount: jobs.length,
+              itemBuilder: (context, index) {
+                final job = jobs[index];
+                final status = _savedStatus(job);
+                return AppPressableRow(
+                  onTap: () => Navigator.of(context).pop(job),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            transferText(
+                              context,
+                              job.fileName,
+                              14,
+                              weight: FontWeight.w600,
+                              maxLines: 2,
+                            ),
+                            const SizedBox(height: 5),
+                            transferText(
+                              context,
+                              '${importStatusLabel(status)} · 成功 ${job.successRows} · 跳过 ${job.skippedRows} · 失败 ${job.failedRows}',
+                              11,
+                              color: context.appColors.textTertiary,
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      transferText(
+                        context,
+                        [
+                              DataImportStatus.paused,
+                              DataImportStatus.failed,
+                              DataImportStatus.pending,
+                            ].contains(status)
+                            ? '继续'
+                            : '查看',
+                        12,
+                      ),
+                    ],
                   ),
-                  suffix:
-                      (job.status == DataImportStatus.paused.name ||
-                          job.status == DataImportStatus.failed.name)
-                      ? FButton(
-                          variant: .ghost,
-                          size: .sm,
-                          onPress: () async {
-                            Navigator.of(context).pop();
-                            await _startJob(job.jobId);
-                          },
-                          child: const Text('继续'),
-                        )
-                      : null,
                 );
               },
             );
@@ -260,600 +526,202 @@ class _CanvasState extends State<_Canvas> {
         ),
       ),
     );
-  }
-
-  Future<void> _startNewJob() async {
-    if (_isImportBusy) return;
-    if (_picked?.path == null) return;
-    final bookId = await _bookIdFuture;
-    if (!mounted) return;
-    setState(() => _startingImport = true);
-    try {
-      final jobId = await _importService.createJob(
-        bookId: bookId,
-        sourceFilePath: _picked!.path!,
-        kind: DataImportKind.recordsAndPersons,
-        fieldMapping: _fieldMapping,
-        mediaZipPath: _mediaZip?.path,
-      );
-      await _startJob(jobId);
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _errors.add(e.toString()));
-    } finally {
-      if (mounted) {
-        setState(() => _startingImport = false);
-      }
-    }
-  }
-
-  Future<void> _startJob(String jobId) async {
-    await _progressSub?.cancel();
-    _progressSub = null;
-
+    if (job == null || !mounted) return;
+    final status = _savedStatus(job);
     setState(() {
-      _jobId = jobId;
-      _progress = null;
-      _logTail = null;
-      _errors.clear();
+      _file = AppPickedFile(
+        name: job.fileName,
+        path: job.filePath,
+        size: job.fileSize,
+      );
+      _jobId = job.jobId;
+      _preview = null;
+      _error = null;
+      _media = null;
+      _logTail = '';
+      _logPath = job.errorLogPath;
+      _progress = DataImportProgress(
+        jobId: job.jobId,
+        status: status,
+        processedRows: job.processedRows,
+        successRows: job.successRows,
+        skippedRows: job.skippedRows,
+        failedRows: job.failedRows,
+      );
     });
-
-    try {
-      final handle = await _importService.start(
-        jobId,
-        onDuplicate: (duplicate) async {
-          if (!mounted) throw const DataImportException('页面已退出，导入停止');
-          return await AppDialog.confirm(
-                context,
-                title: '疑似重复记录',
-                message:
-                    '第 ${duplicate.rowIndex} 行：${duplicate.personName}，${duplicate.direction} ${(duplicate.amountCent / 100).toStringAsFixed(2)} 元。是否仍保留为一条新记录？',
-                confirmLabel: '保留',
-                cancelLabel: '跳过',
-              ) ==
-              true;
-        },
-      );
-      if (!mounted) return;
-      setState(() => _runHandle = handle);
-      _progressSub = handle.progress.listen(
-        (p) async {
-          if (!mounted) return;
-          setState(() {
-            _progress = p;
-            if (_isTerminalStatus(p.status)) {
-              _runHandle = null;
-            }
-          });
-          if (p.status == DataImportStatus.completed) {
-            await _bookIdFuture;
-          }
-          await _refreshLogTail();
-        },
-        onError: (e) {
-          if (!mounted) return;
-          setState(() {
-            _runHandle = null;
-            _errors.add(e.toString());
-          });
-        },
-      );
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _errors.add(e.toString()));
-    }
+    unawaited(_refreshLog(job.jobId));
+    if (_canResume) await _resume();
   }
 
-  Future<void> _refreshLogTail() async {
-    final jobId = _jobId;
-    if (jobId == null) return;
-    final job = await _db.dataImportJobsDao.findById(jobId);
-    final path = job?.errorLogPath;
-    if (path == null) return;
-    try {
-      final f = File(path);
-      if (!await f.exists()) return;
-      final lines = await f.readAsLines();
-      final tail = lines.length <= 60
-          ? lines
-          : lines.sublist(lines.length - 60);
-      if (!mounted) return;
-      setState(() => _logTail = tail.join('\n'));
-    } catch (_) {}
+  DataImportStatus _savedStatus(DataImportJob job) {
+    final status =
+        DataImportStatus.values
+            .where((s) => s.name == job.status)
+            .firstOrNull ??
+        DataImportStatus.failed;
+    return status == DataImportStatus.running &&
+            !DataImportService.isRunning(_database!)
+        ? DataImportStatus.paused
+        : status;
   }
 
-  bool get _isImportRunning => _progress?.status == DataImportStatus.running;
+  String _message(Object error, String fallback) => error is DataImportException
+      ? error.message
+      : error is FormatException
+      ? error.message.toString()
+      : fallback;
 
-  bool get _isImportBusy =>
-      _startingImport || _runHandle != null || _isImportRunning;
-
-  bool _isTerminalStatus(DataImportStatus status) {
-    return status == DataImportStatus.completed ||
-        status == DataImportStatus.failed ||
-        status == DataImportStatus.paused ||
-        status == DataImportStatus.canceled;
-  }
-
-  double? _progressIndicatorValue(DataImportStatus status) {
-    return status == DataImportStatus.running ||
-            status == DataImportStatus.pending
+  @override
+  Widget build(BuildContext context) {
+    final canPick = !_busy && !_reading && !_picking;
+    final hasJob = _jobId != null;
+    final label = _busy
+        ? (_controlHint ?? (_starting ? '准备导入…' : '导入中…'))
+        : _canResume
+        ? '继续导入'
+        : hasJob
+        ? '选择其他文件'
+        : '开始导入';
+    final VoidCallback? action = _busy || _reading || _picking
         ? null
-        : 1;
-  }
-
-  Color _progressIndicatorColor(BuildContext context, DataImportStatus status) {
-    final colors = context.appColors;
-    return switch (status) {
-      DataImportStatus.completed => colors.stateSuccess,
-      DataImportStatus.failed ||
-      DataImportStatus.canceled => colors.stateDanger,
-      DataImportStatus.paused => colors.stateWarning,
-      DataImportStatus.pending ||
-      DataImportStatus.running => colors.brandSecondary,
-    };
-  }
-
-  String _statusLabel(DataImportStatus status) {
-    switch (status) {
-      case DataImportStatus.pending:
-        return '等待中';
-      case DataImportStatus.running:
-        return '导入中';
-      case DataImportStatus.paused:
-        return '已暂停';
-      case DataImportStatus.completed:
-        return '已完成';
-      case DataImportStatus.failed:
-        return '失败';
-      case DataImportStatus.canceled:
-        return '已取消';
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        AppTopBar(
-          title: '导入数据',
-          left: AppIconButton(
-            icon: const Icon(AppIcons.arrowLeft, size: 18),
-            backgroundColor: Colors.transparent,
-            foregroundColor: AppColors.textPrimary,
-            onPressed: () => AppNav.pop(context),
-          ),
-        ),
-        Expanded(
-          child: ListView(
-            padding: AppLayout.tabContentPadding,
-            children: [
-              AppCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('文件上传', style: AppTypography.h3()),
-                    const SizedBox(height: 10),
-                    _UploadArea(
-                      fileName: _picked?.name,
-                      loading: _loadingPreview,
-                      emptyLabel: '点击选择 Excel 或 CSV 文件',
-                      helperText: '支持 Excel (.xlsx) 或 CSV (.csv) 格式。',
-                      onTap: _loadingPreview ? null : _pickFile,
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: AppSecondaryButton(
-                            label: '下载模板',
-                            onTap: _downloadTemplate,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: AppSecondaryButton(
-                            label: '导入历史',
-                            onTap: _showHistorySheet,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
+        : _canResume
+        ? () => unawaited(_resume())
+        : hasJob
+        ? () => unawaited(_pickFile())
+        : _preview != null && _mappingProblem == null
+        ? () => unawaited(_begin())
+        : null;
+    return PopScope<Object?>(
+      canPop: _leaving || !_busy,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) unawaited(_leave());
+      },
+      child: AppScaffold(
+        body: Column(
+          children: [
+            AppTopBar(
+              title: '数据导入',
+              left: AppIconButton(
+                size: 44,
+                backgroundColor: Colors.transparent,
+                icon: const Icon(AppIcons.arrowLeft, size: 18),
+                onPressed: () => unawaited(_leave()),
               ),
-              const SizedBox(height: 16),
-              AppCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('字段映射', style: AppTypography.h3()),
-                    const SizedBox(height: 8),
-                    if (_preview == null)
-                      Text(
-                        '请选择文件后配置字段映射。',
-                        style: AppTypography.base(
-                          fontSize: AppTypography.fs14,
-                          fontWeight: AppTypography.regular,
-                          color: AppColors.textSecondary,
-                        ),
-                      )
-                    else
-                      _MappingPanel(
-                        fields: _recordFields,
-                        headers: _preview!.headers,
-                        mapping: _fieldMapping,
-                        onChanged: (field, header) {
-                          setState(() => _fieldMapping[field] = header);
-                        },
-                      ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-              AppCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('数据预览', style: AppTypography.h3()),
-                    const SizedBox(height: 8),
-                    if (_preview == null)
-                      Text(
-                        '请选择文件后查看数据预览。',
-                        style: AppTypography.base(
-                          fontSize: AppTypography.fs14,
-                          fontWeight: AppTypography.regular,
-                          color: AppColors.textSecondary,
-                        ),
-                      )
-                    else
-                      _PreviewTable(
-                        headers: _preview!.headers,
-                        rows: _preview!.rows,
-                      ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-              AppCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('导入进度', style: AppTypography.h3()),
-                    const SizedBox(height: 8),
-                    if (_progress == null)
-                      Text(
-                        '请选择文件并开始导入。',
-                        style: AppTypography.base(
-                          fontSize: AppTypography.fs14,
-                          fontWeight: AppTypography.regular,
-                          color: AppColors.textSecondary,
-                        ),
-                      )
-                    else
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '状态：${_statusLabel(_progress!.status)}',
-                            style: AppTypography.base(
-                              fontSize: AppTypography.fs14,
-                              fontWeight: AppTypography.medium,
-                              color: AppColors.textPrimary,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          LinearProgressIndicator(
-                            value: _progressIndicatorValue(_progress!.status),
-                            minHeight: 6,
-                            backgroundColor: context.appColors.surfaceSubtle,
-                            color: _progressIndicatorColor(
-                              context,
-                              _progress!.status,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            '已处理：${_progress!.processedRows}  成功：${_progress!.successRows}  跳过：${_progress!.skippedRows}  失败：${_progress!.failedRows}',
-                            style: AppTypography.base(
-                              fontSize: AppTypography.fs12,
-                              fontWeight: AppTypography.regular,
-                              color: AppColors.textSecondary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: AppPrimaryButton(
-                            label: _progress?.status == DataImportStatus.paused
-                                ? '已暂停'
-                                : (_isImportBusy ? '导入中...' : '开始导入'),
-                            icon: AppIcons.play,
-                            onTap:
-                                (_preview == null ||
-                                    _picked?.path == null ||
-                                    _isImportBusy)
-                                ? null
-                                : _startNewJob,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: AppSecondaryButton(
-                            label: _progress?.status == DataImportStatus.running
-                                ? '暂停'
-                                : '取消',
-                            onTap: _runHandle == null
-                                ? null
-                                : () async {
-                                    if (_progress?.status ==
-                                        DataImportStatus.running) {
-                                      await _runHandle!.pause();
-                                      return;
-                                    }
-                                    await _runHandle!.cancel();
-                                  },
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    _UploadArea(
-                      fileName: _mediaZip?.name,
-                      loading: false,
-                      emptyLabel: '选择媒体 ZIP 文件（可选）',
-                      helperText: '用于恢复头像和附件，支持 ZIP (.zip) 格式。',
-                      onTap: _pickMediaZip,
-                    ),
-                  ],
-                ),
-              ),
-              if ((_logTail ?? '').trim().isNotEmpty) ...[
-                const SizedBox(height: 16),
-                AppCard(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('错误日志', style: AppTypography.h3()),
-                      const SizedBox(height: 8),
-                      Text(
-                        _logTail!,
-                        style: AppTypography.base(
-                          fontSize: AppTypography.fs12,
-                          fontWeight: AppTypography.regular,
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-              if (_errors.isNotEmpty) ...[
-                const SizedBox(height: 16),
-                AppCard(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('错误日志', style: AppTypography.h3()),
-                      const SizedBox(height: 8),
-                      for (final e in _errors)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 6),
-                          child: Text(
-                            e,
-                            style: AppTypography.base(
-                              fontSize: AppTypography.fs14,
-                              fontWeight: AppTypography.regular,
-                              color: AppColors.red600,
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _UploadArea extends StatelessWidget {
-  const _UploadArea({
-    required this.fileName,
-    required this.loading,
-    required this.emptyLabel,
-    required this.helperText,
-    required this.onTap,
-  });
-
-  final String? fileName;
-  final bool loading;
-  final String emptyLabel;
-  final String helperText;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return PressableScale(
-      onTap: onTap,
-      child: DottedBorder(
-        options: RoundedRectDottedBorderOptions(
-          radius: Radius.circular(16),
-          color: context.appColors.borderDefault,
-          strokeWidth: 1.5,
-          dashPattern: <double>[6, 4],
-          padding: EdgeInsets.zero,
-        ),
-        child: Container(
-          width: double.infinity,
-          padding: AppLayout.pagePadding,
-          decoration: BoxDecoration(
-            color: context.appColors.surfaceSubtle,
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 44,
+              right: SizedBox(
                 height: 44,
-                decoration: BoxDecoration(
-                  color: context.appColors.brandSoft,
-                  shape: BoxShape.circle,
-                ),
-                alignment: Alignment.center,
-                child: loading
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : Icon(
-                        AppIcons.fileUp,
-                        size: 18,
-                        color: context.appColors.brandOnSoft,
-                      ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      fileName == null ? emptyLabel : fileName!,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppTypography.base(
-                        fontSize: 14,
-                        fontWeight: AppTypography.semibold,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      helperText,
-                      style: AppTypography.base(
-                        fontSize: AppTypography.fs12,
-                        fontWeight: AppTypography.regular,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              const Icon(
-                AppIcons.chevronRight,
-                size: 14,
-                color: AppColors.textTertiary,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _MappingPanel extends StatelessWidget {
-  const _MappingPanel({
-    required this.fields,
-    required this.headers,
-    required this.mapping,
-    required this.onChanged,
-  });
-
-  final List<String> fields;
-  final List<String> headers;
-  final Map<String, String?> mapping;
-  final void Function(String field, String? header) onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final items = <String, String>{'不导入': '', for (final h in headers) h: h};
-
-    return Column(
-      children: [
-        for (final f in fields)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 10),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    f,
-                    style: AppTypography.base(
-                      fontSize: AppTypography.fs14,
-                      fontWeight: AppTypography.medium,
-                      color: AppColors.textPrimary,
+                child: FButton.raw(
+                  variant: .ghost,
+                  semanticsLabel: '导入历史',
+                  onPress: _busy ? null : () => unawaited(_history()),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(AppIcons.history, size: 14),
+                        const SizedBox(width: 5),
+                        transferText(context, '历史', 12),
+                      ],
                     ),
                   ),
                 ),
-                const SizedBox(width: 12),
-                SizedBox(
-                  width: 180,
-                  child: FSelect<String>(
-                    items: items,
-                    control: FSelectControl.lifted(
-                      value: mapping[f] ?? '',
-                      onChange: (value) => onChanged(
-                        f,
-                        value == null || value.isEmpty ? null : value,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+              ),
             ),
-          ),
-      ],
-    );
-  }
-}
-
-class _PreviewTable extends StatelessWidget {
-  const _PreviewTable({required this.headers, required this.rows});
-
-  final List<String> headers;
-  final List<List<String>> rows;
-
-  @override
-  Widget build(BuildContext context) {
-    final showHeaders = headers.take(8).toList();
-    final showRows = rows.take(20).toList();
-
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: DataTable(
-        headingTextStyle: AppTypography.base(
-          fontSize: 12,
-          fontWeight: AppTypography.semibold,
-          color: AppColors.textPrimary,
-        ),
-        dataTextStyle: AppTypography.base(
-          fontSize: 12,
-          fontWeight: AppTypography.regular,
-          color: AppColors.textSecondary,
-        ),
-        columns: [for (final h in showHeaders) DataColumn(label: Text(h))],
-        rows: [
-          for (final r in showRows)
-            DataRow(
-              cells: [
-                for (var i = 0; i < showHeaders.length; i++)
-                  DataCell(
-                    Text(
-                      i < r.length ? r[i] : '',
-                      overflow: TextOverflow.ellipsis,
-                    ),
+            Expanded(
+              child: Align(
+                alignment: Alignment.topCenter,
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 560),
+                  child: ListView(
+                    padding: const EdgeInsets.all(16),
+                    children: [
+                      ImportFileCard(
+                        file: _file,
+                        loading: _reading,
+                        templateBusy: _templateBusy,
+                        onPick: canPick ? () => unawaited(_pickFile()) : null,
+                        onTemplate: _busy || _templateBusy
+                            ? null
+                            : () => unawaited(_template()),
+                      ),
+                      if (_error != null) ...[
+                        const SizedBox(height: 16),
+                        TransferMessage(message: _error!, error: true),
+                      ],
+                      if (hasJob) ...[
+                        const SizedBox(height: 16),
+                        ImportResultCard(
+                          progress: _progress,
+                          controlHint: _controlHint,
+                          onDetails: () => unawaited(_details()),
+                        ),
+                      ] else if (_preview != null) ...[
+                        const SizedBox(height: 16),
+                        ImportMappingCard(
+                          preview: _preview!,
+                          mapping: _mapping,
+                          onEdit: () => unawaited(_editMapping()),
+                        ),
+                        const SizedBox(height: 16),
+                        ImportPreviewCard(
+                          preview: _preview!,
+                          mapping: _mapping,
+                          onOpen: () => unawaited(_openPreview()),
+                        ),
+                        const SizedBox(height: 16),
+                        ImportMediaCard(
+                          file: _media,
+                          onPick: canPick
+                              ? () => unawaited(_pickMedia())
+                              : null,
+                          onRemove: canPick
+                              ? () => setState(() => _media = null)
+                              : null,
+                        ),
+                      ] else if (!_reading) ...[
+                        const SizedBox(height: 20),
+                        transferText(
+                          context,
+                          '选择文件后，可核对字段并预览前 20 行。\n首次导入可先下载模板填写。',
+                          12,
+                          color: context.appColors.textSecondary,
+                        ),
+                      ],
+                    ],
                   ),
-              ],
+                ),
+              ),
             ),
-        ],
+            TransferFooter(
+              label: label,
+              onPressed: action,
+              hint: _canResume ? '从原任务断点继续，已提交的数据保留' : '遇到疑似重复记录时，将逐条确认',
+              secondary: _handle == null
+                  ? null
+                  : Row(
+                      children: [
+                        Expanded(
+                          child: AppSecondaryButton(
+                            label: '暂停',
+                            onTap: _controlHint == null
+                                ? () => unawaited(_control(cancel: false))
+                                : null,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: AppSecondaryButton(
+                            label: '取消导入',
+                            onTap: _controlHint == null
+                                ? () => unawaited(_control(cancel: true))
+                                : null,
+                          ),
+                        ),
+                      ],
+                    ),
+            ),
+          ],
+        ),
       ),
     );
   }

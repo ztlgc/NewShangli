@@ -1,169 +1,163 @@
-# 礼记 NewShangli
+<div align="center">
 
-当前版本：[礼记 1.2.2](https://github.com/ztlgc/NewShangli/releases/tag/1.2.2)。Android ARM64 安装包及 SHA-256 校验文件见发布页面；变更与验证记录见 [1.2.2 发布说明](docs/releases/1.2.2.md)。
+<img src="assets/images/logo.svg" width="88" alt="礼记应用图标" />
 
-礼记是一款基于 Flutter 开发的礼账与人情往来管理应用，适用于婚礼、满月、乔迁、生日、商务往来等需要长期维护收礼、送礼、关系人和回礼状态的场景。
+# 礼记
 
-项目当前以 Android 端为主要运行目标，采用本地优先的数据方案，默认将核心数据保存在 SQLite 数据库中，同时提供导入导出、统计分析、备份恢复和 WebDAV 备份能力。
+**把每一笔往来记清楚。**
 
-## 项目简介
+一款本地优先的 Android 礼账应用，记录收礼、送礼和联系人往来。
 
-如果你希望把礼尚往来从零散的纸笔记录、聊天记录或表格中整理出来，礼记可以提供一套更完整的管理方式：
+[下载 1.2.3](https://github.com/ztlgc/NewShangli/releases/tag/1.2.3) · [更新说明](docs/releases/1.2.3.md) · [功能与截图](#界面预览) · [开发指南](#本地开发)
 
-- 以账簿为核心，按婚礼、乔迁、生日、商务等场景独立管理礼账数据。
-- 以关系人为中心，持续追踪联系人资料、往来明细、回礼状态和历史记录。
-- 以本地优先为基础，兼顾数据导入导出、备份恢复与 WebDAV 备份能力。
-- 以统计分析为补充，帮助快速查看时间趋势、金额占比、排行和往来结构。
+</div>
 
-## 核心能力概览
+## 用礼记记录什么
 
-- 本地优先：基于 Drift + SQLite 保存核心业务数据，适合个人长期稳定使用。
-- 礼账管理：支持独立账簿、默认账簿、自定义场景和多类型往来记录。
-- 关系追踪：围绕联系人、关系类型、事由和往来历史构建完整的人情记录链路。
-- 数据流转：支持 CSV、Excel 导入，以及 Excel、ZIP 导出和本地媒体文件打包。
-- 安全备份：支持本地备份恢复、WebDAV 远程备份。
-- 图表分析：支持趋势、占比、排行等统计视图，便于复盘礼账结构和往来情况。
+婚礼的礼金、乔迁时的祝福、朋友生日的随礼，或者日常与亲友之间的往来，都可以放进独立的礼账里。打开联系人详情，就能看到与这个人的收礼、送礼、差额和历史记录。
 
-## 功能特性
+核心数据保存在本机 SQLite 数据库中，无需注册账号。支持本地完整备份，也可以配置自己的 WebDAV 保存整包备份。
 
-- 礼账管理：按婚礼、生日、乔迁、商务等场景创建独立账簿，支持默认账簿和自定义账簿。
-- 收支记录：记录收礼、送礼、金额、日期、事由、备注和附件。账簿详情支持弹窗新增，沿用并锁定当前账簿、事由和日期。
-- 关系人管理：维护联系人资料、关系类型、头像、电话和备注，支持拼音索引与快速检索。
-- 往来明细：在联系人、账簿和记录维度查看历史往来，辅助判断回礼和关系维护。
-- 统计分析：按时间范围、账簿、联系人和事由查看金额趋势、占比和排行。
-- 数据导入：支持 CSV、Excel 导入，可按字段映射、任务进度和错误日志处理批量数据。
-- 数据导出：支持 Excel 和 ZIP 导出，可携带头像、附件等本地媒体文件。
-- 账簿 PDF：进入账簿详情，点击右上角菜单中的“导出 PDF”，生成后会打开系统分享，也可从同一菜单再次分享。采用 A4 竖向四列（序号、名字、金额、备注），首页展示事由、账簿日期、记录数量和金额合计；支出以负数表示，长备注自动换行，多页重复表头。导出全部有效收支记录，默认账簿沿用详情页的汇总范围；文件保存在应用文档目录的 `exports/pdf/`。
-  PDF 导出使用设备系统字体渲染中文，离线可用，不内置或下载 PDF 字体。文字以 216 DPI 图片写入 PDF，不能直接选中复制。
-- 备份恢复：支持本地备份、恢复和 WebDAV 远程备份配置。
-- 回收站：核心数据使用软删除机制，降低误删风险。
-- 日期支持：提供农历日期选择能力，适配传统礼俗记录习惯。
+## 界面预览
 
-## 技术栈
+以下图片使用 **9 位虚构联系人、33 条示例记录**，由当前 Flutter 应用页面直接渲染，不包含用户数据。点击图片可查看原图。
 
-| 类别 | 技术 |
+<table>
+  <tr><th>收送礼记录</th><th>金额与记录编辑</th><th>联系人往来</th></tr>
+  <tr>
+    <td><a href="docs/screenshots/records.png"><img src="docs/screenshots/records.png" width="260" alt="礼记记录首页：按月份查看收礼与送礼" /></a></td>
+    <td><a href="docs/screenshots/record-edit.png"><img src="docs/screenshots/record-edit.png" width="260" alt="记录编辑：快捷金额、账簿、联系人和农历日期" /></a></td>
+    <td><a href="docs/screenshots/contact-detail.png"><img src="docs/screenshots/contact-detail.png" width="260" alt="联系人详情：收礼、送礼、差额和往来记录" /></a></td>
+  </tr>
+  <tr><th>收支统计</th><th>表格导入</th><th>数据导出</th></tr>
+  <tr>
+    <td><a href="docs/screenshots/statistics.png"><img src="docs/screenshots/statistics.png" width="260" alt="统计页：月度收支概览、趋势和送礼事由" /></a></td>
+    <td><a href="docs/screenshots/data-import.png"><img src="docs/screenshots/data-import.png" width="260" alt="导入页：文件、字段匹配、数据预览和图片 ZIP" /></a></td>
+    <td><a href="docs/screenshots/data-export.png"><img src="docs/screenshots/data-export.png" width="260" alt="导出页：账簿与日期范围、Excel 和 ZIP 格式" /></a></td>
+  </tr>
+</table>
+
+<details>
+<summary>查看更多：账簿、联系人列表与深色模式</summary>
+
+<table>
+  <tr><th>独立账簿</th><th>联系人列表</th><th>深色模式</th></tr>
+  <tr>
+    <td><a href="docs/screenshots/account-books.png"><img src="docs/screenshots/account-books.png" width="260" alt="日常礼账和乔迁礼账" /></a></td>
+    <td><a href="docs/screenshots/contacts.png"><img src="docs/screenshots/contacts.png" width="260" alt="联系人拼音索引与关系分类" /></a></td>
+    <td><a href="docs/screenshots/statistics-dark.png"><img src="docs/screenshots/statistics-dark.png" width="260" alt="跟随系统的深色统计页面" /></a></td>
+  </tr>
+</table>
+
+</details>
+
+## 主要功能
+
+| 功能 | 可以做什么 |
 | --- | --- |
-| 应用框架 | Flutter / Forui / Material |
-| 语言 | Dart 3.10+ |
-| 本地数据库 | Drift + SQLite |
-| 状态与依赖注入 | Provider / InheritedWidget |
-| 图表 | fl_chart |
-| 导入导出 | excel / csv / archive |
-| 文件与分享 | file_picker / path_provider / share_plus |
-| 日期 | lunar |
-| 拼音索引 | lpinyin / azlistview |
-| 备份 | WebDAV |
+| 收礼与送礼 | 记录金额、联系人、事由、日期、备注和图片；使用快捷金额快速填写。新增联系人后，自动返回原表单并选中。 |
+| 多账簿 | 按婚礼、乔迁、生日等场景分别建账，查看账簿明细；从账簿新增时自动沿用该账簿的事由和日期。 |
+| 联系人 | 按姓名、关系搜索，使用拼音索引定位；在详情中查看双方往来、金额合计及差额。联系人全局共享。 |
+| 统计分析 | 按月、年或自定义时段汇总全部账簿，查看收支概览、同期对比、双柱趋势、送礼事由及往来排行。 |
+| 农历日期 | 日期格同时显示公历与农历，包含节日和节气；日历高度随月份实际行数调整。 |
+| 常用事由 | 新建数据库预置 12 项常用事由；可以新增、编辑、停用或删除。 |
+| 导入与导出 | 导入 Excel / CSV，核对字段并预览前 20 行；支持疑似重复记录确认、任务暂停和断点继续。导出可选账簿、日期范围及 Excel / ZIP。 |
+| 账簿 PDF | 在账簿详情导出 A4 礼账明细，包含序号、名字、金额、备注，支持多页及系统分享。 |
+| 备份与恢复 | 本地完整备份与恢复、自定义 WebDAV 整包备份；备份包含数据库及媒体文件。 |
+| 编辑保护与回收站 | 使用本地密码保护敏感修改；核心数据软删除后可在回收站恢复。 |
 
-## 项目结构
+默认事由：结婚礼金、生日礼金、寿宴礼金、满月礼金、百日礼金、周岁礼金、乔迁礼金、升学礼金、开业礼金、节日礼金、探病慰问、丧事慰问。
 
-```text
-lib/
-  main.dart                       # 应用入口
-  ui/                             # 页面、主题、组件和导航
-    pages/                        # 业务页面
-    widgets/                      # 可复用 UI 组件
-    stats/                        # 统计页视图模型
-  data/local/drift/               # Drift 表定义、DAO、数据库初始化
-  stats/                          # 统计模型、仓库和计算逻辑
-  import/                         # CSV / Excel 导入服务
-  export/                         # Excel / ZIP / 账簿 PDF 导出服务
-  backup/                         # 本地备份恢复与 WebDAV 备份
-  platform/                       # 文件选择、系统分享与目录的平台接口
-  media/                          # 头像和附件存储
-  utils/                          # 通用工具
+## 下载与使用
 
-test/                             # 单元测试与 Widget 测试
-integration_test/                 # 集成测试
-supabase/migrations/              # 停用的历史云迁移脚本
-assets/images/                    # 应用资源
+1. 在 [GitHub Releases](https://github.com/ztlgc/NewShangli/releases/tag/1.2.3) 下载 `Liji_1.2.3_arm64.apk`。
+2. 在 Android 手机上允许当前下载来源安装应用，然后完成安装。
+3. 打开礼记，添加联系人和收送礼记录；也可在「设置 → 账簿管理」创建独立账簿。
+4. 定期在「设置 → 数据备份」保存完整备份。
+
+当前安装包支持 **Android 7.0 及以上、ARM64**。版本对应的签名、校验值和验证结果见 [1.2.3 更新说明](docs/releases/1.2.3.md)。发布附件提供 `SHA256SUMS.txt`，Windows 上可以核对下载文件：
+
+```powershell
+Get-FileHash .\Liji_1.2.3_arm64.apk -Algorithm SHA256
 ```
+
+### 数据使用说明
+
+- Excel 导出适合查看、整理；ZIP 导出可携带可读取的本地头像和附件。完整恢复请使用「数据备份」生成的备份包。
+- 默认账簿沿用日常往来汇总口径，包含其他账簿的送礼记录；导出页面会说明所选范围。
+- WebDAV 保存完整备份包，不执行多设备双向同步。自动备份后台调度尚未实现。
+- 当前数据库结构为 schema 15，仅支持当前结构，不提供历史数据库结构升级。备份恢复也只接受兼容的当前结构。
+- APK 沿用项目现有调试证书签署 Release 包；尚未完成 Android 真机安装验收。当前以 Android 为主要目标，未提供已验证的鸿蒙版本。
 
 ## 本地开发
 
-### 环境要求
+### 环境
 
-- Flutter SDK：需包含 Dart 3.13.0 或更高版本
-- Android Studio 或可用的 Android SDK
-- 一台 Android 设备或模拟器
-
-### 安装依赖
+- Flutter stable，Dart **3.13.0 或以上**。本版使用 Flutter 3.47.5 / Dart 3.13.4 构建。
+- Android SDK、JDK 和可用的 Android 设备或模拟器。
+- 核心技术：Flutter、Forui、Drift / SQLite；图表使用 fl_chart，日期使用 lunar。
 
 ```bash
 flutter pub get
+flutter run
 ```
 
-### 生成 Drift 代码
+项目不需要配置账号或云服务即可启动。历史 `supabase/` 目录已停用，不参与应用运行和打包。
 
-仓库中已包含生成后的 `app_database.g.dart`。如果修改了 Drift 表、DAO 或数据库定义，重新生成代码：
+### 检查与构建
+
+```bash
+flutter test --no-pub
+flutter analyze --no-pub --no-fatal-infos
+flutter build apk --split-per-abi --target-platform android-arm64 --release
+```
+
+Android 构建产物：`build/app/outputs/flutter-apk/app-arm64-v8a-release.apk`。当前 Gradle Release 配置沿用调试证书；如需更换分发证书，请在自己的构建环境中配置，勿提交密钥或密码。
+
+修改 Drift 表或 DAO 定义后，重新生成代码：
 
 ```bash
 dart run build_runner build --delete-conflicting-outputs
 ```
 
-### 运行应用
+### 重新渲染文档截图
 
-```bash
-flutter run
+渲染脚本只创建内存数据库和临时示例文件，不打开正式账簿。Windows 示例：
+
+```powershell
+$env:UPDATE_FORUI_PREVIEWS = 'true'
+$env:FORUI_PREVIEW_FONT = 'C:\Windows\Fonts\msyh.ttc'
+$env:README_SCREENSHOTS_DIR = Join-Path (Get-Location) 'docs/screenshots'
+flutter test --no-pub test/documentation/readme_screenshots_test.dart
 ```
 
-### 运行测试
+中文字体仅用于本地截图，不打包进应用。示例统计数据使用 2026 年 10 月；跨月重新渲染时请同步调整脚本中的日期和统计预览数据。截图用于展示实际页面，不代表真机安装、系统选文件或分享流程已经验收。
 
-```bash
-flutter test
-```
-
-如需运行集成测试，请先连接设备或启动模拟器：
-
-```bash
-flutter test integration_test
-```
-
-### 构建 Android 安装包
-
-```bash
-flutter build apk --split-per-abi --target-platform android-arm64 --release
-```
-
-构建产物位于：
+### 目录
 
 ```text
-build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
+lib/
+  data/local/drift/   数据表、DAO 与数据库初始化
+  ui/                页面、Forui 主题与共享组件
+  stats/             统计计算与查询
+  import/            Excel / CSV 导入、字段映射与任务
+  export/            Excel / ZIP / 账簿 PDF 导出
+  backup/            本地与 WebDAV 备份恢复
+  platform/          文件选择、系统分享和应用目录适配
+  media/             头像与附件存储
+test/                单元测试、页面测试、文档截图工具和示例数据
+tool/                应用图标工具
+docs/                设计规范、功能说明、截图与版本记录
 ```
 
-## 备份与恢复
+## 进一步了解
 
-应用无需账号即可使用。通过设置中的数据备份页面保存或恢复完整本地备份，也可配置自己的 WebDAV 地址进行整包备份。WebDAV 不执行双向数据同步；恢复前须确认覆盖操作。自动备份后台调度尚未实现，入口保持禁用。
-
-当前设计规范见 `DESIGN_SPEC.md`，本轮验证记录见 `docs/LOCAL_ONLY_UI_VERIFICATION.md`，鸿蒙迁移准备和验证清单见 `docs/HARMONYOS_MIGRATION_READINESS.md`。历史 Supabase SQL 和本地配置未参与运行与打包，不再作为功能入口；无需配置云服务即可启动。
-
-## 数据与隐私
-
-- 主要业务数据保存在应用本地 SQLite 数据库中。
-- 用户主动导出时会生成 Excel 或 ZIP 文件。
-- 用户启用 WebDAV 备份后，相关数据才会上传到对应远程服务。
-- 头像、附件等媒体文件可能被打包进导出 ZIP 或备份文件，请在分享前确认内容。
-
-## 开源前检查清单
-
-- 确认根目录 `LICENSE` 文件、README 说明与仓库实际授权协议保持一致。
-- 检查仓库中是否包含真实用户数据、备份文件、截图或私有配置。
-- 运行 `flutter test`，确认核心测试通过。
-- 如需发布安装包，使用正式签名并避免提交 keystore 与签名密码。
-
-## 贡献
-
-欢迎通过 Issue 和 Pull Request 参与改进。提交代码前建议先执行：
-
-```bash
-dart format lib test integration_test
-flutter analyze
-flutter test
-```
-
-当前数据库结构版本为 15，仅支持新建数据库，不提供历史版本数据升级或偏好设置迁移。旧版安装需清除应用数据后重新使用；备份恢复仅支持当前数据库结构。涉及结构变更时，请同步更新新库初始化、相关测试和备份恢复校验。
+- [统一设计与交互规范](DESIGN_SPEC.md)
+- [统计页说明与验证](docs/STATS_PAGE_REDESIGN.md)
+- [导入导出说明与验证](docs/DATA_TRANSFER_UI.md)
+- [版本记录](docs/releases/)
+- [反馈问题](https://github.com/ztlgc/NewShangli/issues)
 
 ## 许可证
 
-本项目当前采用 `MIT License`，许可证全文见根目录 [LICENSE](file:///e:/NewShangli/LICENSE)。
-
-MIT 是宽松型开源许可证，允许个人和组织自由使用、复制、修改、分发以及商用，但需保留原始版权声明和许可证文本。
+本项目采用 [MIT License](LICENSE)。使用、修改或分发时请保留原许可证及版权声明。

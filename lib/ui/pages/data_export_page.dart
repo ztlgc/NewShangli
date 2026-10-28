@@ -1,314 +1,203 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:math' as math;
 
-import 'package:drift/drift.dart' show OrderingTerm, Variable;
 import 'package:flutter/material.dart';
+import 'package:forui/forui.dart';
 import 'package:path/path.dart' as p;
 
 import '../../data/local/drift/app_database.dart';
 import '../../export/data_export_service.dart';
+import '../../platform/app_platform.dart';
 import '../app_bottom_sheet.dart';
-import '../app_notifier.dart';
-import '../app_tokens.dart';
 import '../app_database_scope.dart';
+import '../app_icons.dart';
 import '../app_scaffold.dart';
+import '../app_tokens.dart';
 import '../components.dart';
+import '../data_transfer/transfer_widgets.dart';
 import '../lunar_date_picker.dart';
 import '../navigation.dart';
 import '../ui_kit.dart';
-import '../../utils/date_util.dart';
 
-import '../app_icons.dart';
-
-import '../../platform/app_platform.dart';
-
-/// 页面：系统设置 - 导出数据
-/// 对照原型：prototype/index.html -> "导出数据"
-class DataExportPage extends StatelessWidget {
-  const DataExportPage({super.key});
-
+class DataExportPage extends StatefulWidget {
+  const DataExportPage({super.key, this.service, this.now});
+  final DataExportService? service;
+  final DateTime Function()? now;
   @override
-  Widget build(BuildContext context) {
-    return AppScaffold(backgroundColor: AppColors.surfaceApp, body: _Canvas());
-  }
+  State<DataExportPage> createState() => _DataExportPageState();
 }
 
-class _Canvas extends StatefulWidget {
-  const _Canvas();
-
-  @override
-  State<_Canvas> createState() => _CanvasState();
-}
-
-class _CanvasState extends State<_Canvas> {
-  final DataExportService _service = DataExportService();
-
-  DataExportFormat _format = DataExportFormat.excel;
+class _DataExportPageState extends State<DataExportPage> {
+  late final DataExportService _service = widget.service ?? DataExportService();
+  AppDatabase? _database;
+  final _subscriptions = <StreamSubscription<dynamic>>[];
+  List<AccountBook> _books = [];
+  String? _bookId;
+  bool _allTime = true;
   late DateTime _start;
   late DateTime _end;
-  bool _allTime = true;
-  bool _allTimeRangeInitialized = false;
-  String? _selectedBookId;
+  DataExportFormat _format = DataExportFormat.excel;
+  DataExportSummary? _summary;
+  DataExportSummary? _exportedSummary;
+  bool _loading = true;
   bool _exporting = false;
-  double _progress = 0;
-  Timer? _progressTimer;
-  File? _lastExportFile;
-  String _exportDirPath = '';
-  bool _exportPathVisible = false;
+  bool _sharing = false;
+  bool _scopeDirty = false;
+  int _scopeVersion = 0;
+  File? _file;
+  int? _fileBytes;
+  String? _error;
+  String? _scopeError;
+  String _phase = '正在准备导出…';
+  bool get _busy => _exporting || _sharing;
+  DateTime get _now => (widget.now ?? DateTime.now)();
 
   @override
   void initState() {
     super.initState();
-    final now = DateTime.now();
+    final now = _now;
     _start = DateTime(now.year, 1, 1);
     _end = DateTime(now.year, now.month, now.day);
-    _loadExportDir();
   }
 
   @override
-  Widget build(BuildContext context) {
-    final showExportPath =
-        _exportPathVisible || _exporting || _lastExportFile != null;
+  void didChangeDependencies() {
+    super.didChangeDependencies();
     final db = AppDatabaseScope.of(context);
-    _ensureAllTimeRangeInitialized(db);
-    return Column(
-      children: [
-        AppTopBar(
-          title: '数据导出',
-          left: AppIconButton(
-            icon: const Icon(AppIcons.arrowLeft, size: 18),
-            backgroundColor: Colors.transparent,
-            foregroundColor: AppColors.textPrimary,
-            onPressed: () => AppNav.pop(context),
-          ),
-        ),
-        Expanded(
-          child: Align(
-            alignment: Alignment.topCenter,
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 420),
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-                children: [
-                  FutureBuilder<List<AccountBook>>(
-                    future: (db.select(
-                      db.accountBooks,
-                    )..orderBy([(t) => OrderingTerm.asc(t.createdAt)])).get(),
-                    builder: (context, bookSnapshot) {
-                      final books = bookSnapshot.data ?? const <AccountBook>[];
-                      final bookLabel = _resolveBookLabel(books);
-                      return Column(
-                        children: [
-                          _Card(
-                            children: [
-                              _SettingRow(
-                                label: '日期范围',
-                                value: _allTime
-                                    ? '所有时间'
-                                    : '${_formatDate(_start)}\n${_formatDate(_end)}',
-                                onTap: _exporting
-                                    ? null
-                                    : () => _pickDateRange(db),
-                              ),
-                              _SettingRow(
-                                label: '账簿',
-                                value: bookLabel,
-                                onTap: _exporting
-                                    ? null
-                                    : () => _pickBook(db, books),
-                              ),
-                              _SettingRow(
-                                label: '文件格式',
-                                value: _formatLabel(_format),
-                                onTap: _exporting ? null : _pickFormat,
-                                borderBottom: showExportPath,
-                              ),
-                              if (showExportPath)
-                                _SettingRow(
-                                  label: '导出路径',
-                                  subtitle: _exportDirPath.isEmpty
-                                      ? '加载中...'
-                                      : _exportDirPath,
-                                  value: '分享至',
-                                  onTap: _exporting
-                                      ? null
-                                      : (_lastExportFile == null
-                                            ? null
-                                            : _shareLastFile),
-                                  borderBottom: false,
-                                ),
-                            ],
-                          ),
-                          const SizedBox(height: 16),
-                          _HintArea(allTime: _allTime),
-                          const SizedBox(height: 18),
-                          FutureBuilder<int>(
-                            future: _countBillsDb(db),
-                            builder: (context, countSnapshot) {
-                              final billCount = countSnapshot.data ?? 0;
-                              return Text(
-                                '共$billCount条记录',
-                                style: AppTypography.base(
-                                  fontSize: 14,
-                                  fontWeight: AppTypography.regular,
-                                  color: AppColors.textMuted,
-                                ),
-                              );
-                            },
-                          ),
-                        ],
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 180),
-                    switchInCurve: Curves.easeOutCubic,
-                    switchOutCurve: Curves.easeInCubic,
-                    child: _exporting
-                        ? _ExportProgress(progress: _progress)
-                        : const SizedBox.shrink(),
-                  ),
-                  const SizedBox(height: 18),
-                  _PrimaryButton(
-                    enabled: !_exporting,
-                    label: _exporting
-                        ? '导出中 ${(math.min(_progress, 0.999) * 100).round()}%'
-                        : (_lastExportFile == null ? '开始导出' : '分享文件'),
-                    onTap: _exporting
-                        ? null
-                        : (_lastExportFile == null
-                              ? () => _export(db: db)
-                              : _shareLastFile),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ],
+    if (identical(db, _database)) return;
+    for (final subscription in _subscriptions) {
+      unawaited(subscription.cancel());
+    }
+    _subscriptions.clear();
+    _database = db;
+    _subscriptions.add(
+      (db.select(
+        db.accountBooks,
+      )..where((t) => t.deletedAt.isNull())).watch().listen((books) {
+        if (!mounted) return;
+        setState(() {
+          _books = books;
+          if (_bookId != null && !books.any((book) => book.bookId == _bookId)) {
+            _bookId = null;
+            _file = null;
+            _exportedSummary = null;
+          }
+        });
+        unawaited(_refreshScope());
+      }, onError: _watchError),
+    );
+    _subscriptions.add(
+      db
+          .select(db.giftRecords)
+          .watch()
+          .listen((_) => unawaited(_refreshScope()), onError: _watchError),
+    );
+    _subscriptions.add(
+      db
+          .select(db.persons)
+          .watch()
+          .listen((_) => unawaited(_refreshScope()), onError: _watchError),
     );
   }
 
   @override
   void dispose() {
-    _progressTimer?.cancel();
+    _scopeVersion++;
+    for (final subscription in _subscriptions) {
+      unawaited(subscription.cancel());
+    }
     super.dispose();
   }
 
-  Future<void> _loadExportDir() async {
-    final dir = await AppPlatform.documentsDirectory();
-    final exportDir = Directory(p.join(dir.path, 'exports'));
-    await exportDir.create(recursive: true);
+  void _watchError(Object _) {
+    if (mounted) {
+      setState(() {
+        _loading = false;
+        _scopeError = '导出范围读取失败，请重试';
+      });
+    }
+  }
+
+  Future<void> _refreshScope() async {
     if (!mounted) return;
-    setState(() => _exportDirPath = exportDir.path);
-  }
-
-  Future<int> _countBillsDb(AppDatabase db) async {
-    final start = DateTime(
-      _start.year,
-      _start.month,
-      _start.day,
-    ).millisecondsSinceEpoch;
-    final endExclusive = DateTime(
-      _end.year,
-      _end.month,
-      _end.day,
-    ).add(const Duration(days: 1)).millisecondsSinceEpoch;
-    final sql = _selectedBookId == null
-        ? 'SELECT COUNT(1) AS c FROM gift_record WHERE deleted_at IS NULL AND occurred_at >= ? AND occurred_at < ?;'
-        : 'SELECT COUNT(1) AS c FROM gift_record WHERE deleted_at IS NULL AND occurred_at >= ? AND occurred_at < ? AND book_id = ?;';
-    final vars = <Variable<Object>>[
-      Variable<int>(start),
-      Variable<int>(endExclusive),
-      if (_selectedBookId != null) Variable<String>(_selectedBookId!),
-    ];
-    final rows = await db.customSelect(sql, variables: vars).get();
-    return (rows.first.data['c'] as int?) ?? 0;
-  }
-
-  String _resolveBookLabel(List<AccountBook> books) {
-    if (_selectedBookId == null) return '所有账簿';
-    for (final b in books) {
-      if (b.bookId == _selectedBookId) return b.name;
+    if (_busy) {
+      _scopeDirty = true;
+      return;
     }
-    return '所有账簿';
-  }
-
-  String _formatDate(DateTime d) {
-    return DateUtil.format(d);
-  }
-
-  String _formatLabel(DataExportFormat f) {
-    switch (f) {
-      case DataExportFormat.excel:
-        return 'Excel 文件';
-      case DataExportFormat.zip:
-        return 'ZIP 文件';
+    final version = ++_scopeVersion;
+    final db = _database!;
+    final allTime = _allTime;
+    final bookId = _bookId;
+    final start = _start;
+    final end = _end;
+    setState(() {
+      _loading = true;
+      _scopeError = null;
+    });
+    try {
+      final summary = await _service.inspectScope(
+        db: db,
+        bookId: bookId,
+        start: allTime ? null : start,
+        end: allTime ? null : end,
+      );
+      if (!mounted || version != _scopeVersion) return;
+      setState(() {
+        _summary = summary;
+        _loading = false;
+        if (allTime) {
+          final now = _now;
+          _start = summary.firstDate ?? DateTime(now.year, now.month, now.day);
+          _end = summary.lastDate ?? _start;
+        }
+      });
+    } catch (_) {
+      if (mounted && version == _scopeVersion) {
+        setState(() {
+          _loading = false;
+          _summary = null;
+          _scopeError = '导出范围读取失败，请重试';
+        });
+      }
     }
   }
 
-  Future<void> _pickBook(AppDatabase db, List<AccountBook> books) async {
-    const allKey = '__all__';
+  void _clearResult() {
+    _file = null;
+    _fileBytes = null;
+    _exportedSummary = null;
+    _error = null;
+  }
+
+  Future<void> _pickBook() async {
+    if (_busy) return;
+    const all = '__all_books__';
     final picked = await AppBottomSheet.showPicker<String>(
       context,
       title: '选择账簿',
       options: [
-        AppSheetOption(
-          label: '所有账簿',
-          value: allKey,
-          selected: _selectedBookId == null,
-        ),
-        for (final b in books)
+        AppSheetOption(label: '全部账簿', value: all, selected: _bookId == null),
+        for (final book in _books)
           AppSheetOption(
-            label: b.name,
-            value: b.bookId,
-            selected: _selectedBookId == b.bookId,
+            label: book.name,
+            value: book.bookId,
+            selected: _bookId == book.bookId,
+            subtitle: book.isDefault == 1 ? '含其他账簿的送礼记录' : null,
           ),
       ],
     );
-    if (picked == null) return;
-    final nextBookId = picked == allKey ? null : picked;
-    final minMax = _allTime
-        ? await _minMaxRecordDate(db, bookId: nextBookId)
-        : null;
-    if (!mounted) return;
+    if (picked == null || !mounted) return;
+    final next = picked == all ? null : picked;
+    if (next == _bookId) return;
     setState(() {
-      _selectedBookId = nextBookId;
-      _lastExportFile = null;
-      if (minMax != null) {
-        _start = minMax.$1;
-        _end = minMax.$2;
-      }
+      _bookId = next;
+      _clearResult();
     });
+    await _refreshScope();
   }
 
-  Future<void> _pickFormat() async {
-    final picked = await AppBottomSheet.showPicker<DataExportFormat>(
-      context,
-      title: '选择文件格式',
-      options: [
-        AppSheetOption(
-          label: 'Excel 文件',
-          value: DataExportFormat.excel,
-          selected: _format == DataExportFormat.excel,
-        ),
-        AppSheetOption(
-          label: 'ZIP 文件',
-          value: DataExportFormat.zip,
-          selected: _format == DataExportFormat.zip,
-        ),
-      ],
-    );
-    if (picked == null) return;
-    setState(() {
-      _format = picked;
-      _lastExportFile = null;
-    });
-  }
-
-  Future<void> _pickDateRange(AppDatabase db) async {
+  Future<void> _pickDates() async {
+    if (_busy) return;
     final picked = await AppBottomSheet.showPicker<String>(
       context,
       title: '日期范围',
@@ -317,466 +206,449 @@ class _CanvasState extends State<_Canvas> {
         AppSheetOption(label: '自定义时间', value: 'custom', selected: !_allTime),
       ],
     );
-    if (picked == null) return;
-    if (!mounted) return;
-
+    if (picked == null || !mounted) return;
     if (picked == 'all') {
-      final minMax = await _minMaxRecordDate(db, bookId: _selectedBookId);
+      if (_allTime) return;
       setState(() {
         _allTime = true;
-        _start = minMax.$1;
-        _end = minMax.$2;
+        _clearResult();
       });
+      await _refreshScope();
       return;
     }
-
     final start = await showLunarDatePicker(
       context: context,
       initialDate: _start,
-      firstDate: DateTime(2000, 1, 1),
+      firstDate: DateTime(1900),
       lastDate: DateTime(2100, 12, 31),
     );
-    if (start == null) return;
-    if (!mounted) return;
+    if (start == null || !mounted) return;
     final end = await showLunarDatePicker(
       context: context,
       initialDate: _end.isBefore(start) ? start : _end,
       firstDate: start,
       lastDate: DateTime(2100, 12, 31),
     );
-    if (end == null) return;
-    if (!mounted) return;
+    if (end == null || !mounted) return;
     setState(() {
       _allTime = false;
       _start = start;
       _end = end;
+      _clearResult();
     });
+    await _refreshScope();
   }
 
-  Future<(DateTime, DateTime)> _minMaxRecordDate(
-    AppDatabase db, {
-    String? bookId,
-  }) async {
-    final query = db.select(db.giftRecords)..where((t) => t.deletedAt.isNull());
-    if (bookId != null) {
-      query.where((t) => t.bookId.equals(bookId));
-    }
-    final rows = await (query..orderBy([(t) => OrderingTerm.asc(t.occurredAt)]))
-        .get();
-    if (rows.isEmpty) {
-      final now = DateTime.now();
-      final d = DateTime(now.year, now.month, now.day);
-      return (d, d);
-    }
-    var min = DateTime.fromMillisecondsSinceEpoch(rows.first.occurredAt);
-    var max = min;
-    for (final r in rows) {
-      final dt = DateTime.fromMillisecondsSinceEpoch(r.occurredAt);
-      if (dt.isBefore(min)) min = dt;
-      if (max.isBefore(dt)) max = dt;
-    }
-    final s = DateTime(min.year, min.month, min.day);
-    final e = DateTime(max.year, max.month, max.day);
-    return (s, e);
-  }
-
-  void _ensureAllTimeRangeInitialized(AppDatabase db) {
-    if (!_allTime) return;
-    if (_allTimeRangeInitialized) return;
-    _allTimeRangeInitialized = true;
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      if (!mounted) return;
-      final minMax = await _minMaxRecordDate(db, bookId: _selectedBookId);
-      setState(() {
-        _start = minMax.$1;
-        _end = minMax.$2;
-      });
-    });
-  }
-
-  Future<void> _export({required AppDatabase db}) async {
-    if (_exporting) return;
-    _progressTimer?.cancel();
+  void _selectFormat(DataExportFormat format) {
+    if (_busy || format == _format) return;
     setState(() {
-      _exportPathVisible = true;
+      _format = format;
+      _clearResult();
+    });
+  }
+
+  Future<void> _export() async {
+    if (_busy || _loading || _summary == null || _summary!.isEmpty) return;
+    setState(() {
       _exporting = true;
-      _progress = 0;
+      _clearResult();
+      _phase = '正在准备导出…';
     });
-    _progressTimer = Timer.periodic(const Duration(milliseconds: 120), (t) {
-      if (!_exporting) {
-        t.cancel();
-        return;
-      }
-      setState(() => _progress = math.min(0.9, _progress + 0.02));
-    });
+    DataExportSummary? prepared;
+    final request = DataExportRequest(
+      format: _format,
+      start: _start,
+      end: _end,
+      bookId: _bookId,
+      includeRecords: true,
+      includePersons: true,
+      includeImages: _format == DataExportFormat.zip,
+    );
     try {
       final file = await _service.exportFromDrift(
-        db: db,
-        request: DataExportRequest(
-          format: _format,
-          start: _start,
-          end: _end,
-          bookId: _selectedBookId,
-          includeRecords: true,
-          includePersons: true,
-          includeImages: _format == DataExportFormat.zip,
-        ),
+        db: _database!,
+        request: request,
+        onPrepared: (summary) {
+          prepared = summary;
+          if (mounted) {
+            setState(
+              () => _phase = request.format == DataExportFormat.zip
+                  ? '正在生成 ZIP…'
+                  : '正在生成 Excel…',
+            );
+          }
+        },
       );
-      _progressTimer?.cancel();
+      final bytes = await file.length();
+      if (!mounted) return;
+      setState(() {
+        _file = file;
+        _fileBytes = bytes;
+        _exportedSummary = prepared ?? _summary;
+      });
+    } catch (error) {
       if (mounted) {
-        setState(() {
-          _progress = 1;
-          _lastExportFile = file;
-        });
+        setState(
+          () => _error = error is DataExportException
+              ? error.message
+              : '导出失败，请重试',
+        );
       }
-      try {
-        await AppPlatform.instance.shareFile(file.path, text: '礼记数据导出');
-      } catch (_) {
-        if (!mounted) return;
-        AppNotifier.success(context, '已导出到：${file.path}');
-      }
-    } on DataExportException catch (e) {
-      if (!mounted) return;
-      AppNotifier.error(context, e.message);
-    } catch (e) {
-      if (!mounted) return;
-      AppNotifier.error(context, '导出失败：$e');
     } finally {
-      _progressTimer?.cancel();
       if (mounted) {
         setState(() => _exporting = false);
+        if (_scopeDirty) {
+          _scopeDirty = false;
+          unawaited(_refreshScope());
+        }
       }
     }
   }
 
-  Future<void> _shareLastFile() async {
-    final file = _lastExportFile;
-    if (file == null) {
-      if (!mounted) return;
-      AppNotifier.warning(context, '请先导出文件');
-      return;
-    }
-    if (!await file.exists()) {
-      if (!mounted) return;
-      AppNotifier.warning(context, '导出文件不存在，请重新导出');
-      return;
-    }
+  Future<void> _share() async {
+    final file = _file;
+    if (_busy || file == null) return;
+    setState(() {
+      _sharing = true;
+      _error = null;
+    });
     try {
+      if (!await file.exists()) {
+        if (mounted) {
+          setState(() {
+            _clearResult();
+            _error = '文件已不存在，请重新导出';
+          });
+        }
+        return;
+      }
       await AppPlatform.instance.shareFile(file.path, text: '礼记数据导出');
     } catch (_) {
-      if (!mounted) return;
-      AppNotifier.info(context, '文件路径：${file.path}');
+      if (mounted) setState(() => _error = '文件已生成，分享未完成，可重试分享');
+    } finally {
+      if (mounted) {
+        setState(() => _sharing = false);
+        if (_scopeDirty) {
+          _scopeDirty = false;
+          unawaited(_refreshScope());
+        }
+      }
     }
   }
-}
-
-class _Card extends StatelessWidget {
-  const _Card({required this.children});
-
-  final List<Widget> children;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: context.appColors.surfaceCard,
-        borderRadius: AppRadii.br2xl,
-        boxShadow: AppShadows.sm,
-      ),
-      child: Column(children: children),
-    );
-  }
-}
-
-class _SettingRow extends StatelessWidget {
-  const _SettingRow({
-    required this.label,
-    required this.value,
-    required this.onTap,
-    this.subtitle,
-    this.borderBottom = true,
-  });
-
-  final String label;
-  final String value;
-  final String? subtitle;
-  final VoidCallback? onTap;
-  final bool borderBottom;
-
-  @override
-  Widget build(BuildContext context) {
-    return _HoverableRow(
-      onTap: onTap,
-      borderBottom: borderBottom,
-      child: Row(
-        crossAxisAlignment: subtitle == null
-            ? CrossAxisAlignment.center
-            : CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 18),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    label,
-                    style: AppTypography.base(
-                      fontSize: 16,
-                      fontWeight: AppTypography.medium,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                  if (subtitle != null) ...[
-                    const SizedBox(height: 6),
-                    Text(
-                      subtitle!,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppTypography.base(
-                        fontSize: 12,
-                        fontWeight: AppTypography.regular,
-                        color: AppColors.textMuted,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.only(left: 12, top: 18, bottom: 18),
-            child: Row(
-              children: [
-                Text(
-                  value,
-                  style: AppTypography.base(
-                    fontSize: 16,
-                    fontWeight: AppTypography.regular,
-                    color: onTap == null
-                        ? AppColors.gray300
-                        : AppColors.textSecondary,
-                  ),
-                ),
-                const SizedBox(width: 6),
-                Icon(
-                  AppIcons.chevronRight,
-                  size: 20,
-                  color: onTap == null ? AppColors.gray300 : AppColors.gray400,
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _HoverableRow extends StatefulWidget {
-  const _HoverableRow({
-    required this.child,
-    required this.onTap,
-    required this.borderBottom,
-  });
-
-  final Widget child;
-  final VoidCallback? onTap;
-  final bool borderBottom;
-
-  @override
-  State<_HoverableRow> createState() => _HoverableRowState();
-}
-
-class _HoverableRowState extends State<_HoverableRow> {
-  bool _hover = false;
 
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
-    final enabled = widget.onTap != null;
-    return MouseRegion(
-      onEnter: enabled ? (_) => setState(() => _hover = true) : null,
-      onExit: enabled ? (_) => setState(() => _hover = false) : null,
-      cursor: enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
-      child: AppPressableRow(
-        onTap: widget.onTap,
-        pressedColor: AppColors.gray50,
-        borderBottom: widget.borderBottom,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 160),
-          curve: Curves.easeInOut,
-          color: _hover ? colors.surfacePressed : Colors.transparent,
-          child: widget.child,
-        ),
+    final label = _exporting
+        ? '正在导出…'
+        : _sharing
+        ? '正在打开分享…'
+        : _file != null
+        ? '分享文件'
+        : _error != null
+        ? '重试导出'
+        : '开始导出';
+    final enabled =
+        !_busy && !_loading && _summary != null && !_summary!.isEmpty;
+    final book = _books.where((book) => book.bookId == _bookId).firstOrNull;
+    return AppScaffold(
+      body: Column(
+        children: [
+          AppTopBar(
+            title: '数据导出',
+            left: AppIconButton(
+              size: 44,
+              icon: const Icon(AppIcons.arrowLeft, size: 18),
+              backgroundColor: Colors.transparent,
+              onPressed: () => AppNav.pop(context),
+            ),
+          ),
+          Expanded(
+            child: Align(
+              alignment: Alignment.topCenter,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 560),
+                child: ListView(
+                  padding: const EdgeInsets.all(16),
+                  children: [
+                    AppCard(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const TransferHeading(title: '导出范围'),
+                          const SizedBox(height: 8),
+                          TransferSelectionRow(
+                            icon: AppIcons.bookOpen,
+                            label: '账簿',
+                            value: book?.name ?? '全部账簿',
+                            subtitle: book?.isDefault == 1
+                                ? '含其他账簿的送礼记录'
+                                : null,
+                            onTap: _busy ? null : () => unawaited(_pickBook()),
+                          ),
+                          Divider(height: 1, color: colors.borderSubtle),
+                          TransferSelectionRow(
+                            icon: AppIcons.calendarDays,
+                            label: '日期范围',
+                            value: _allTime ? '所有时间' : '自定义时间',
+                            subtitle:
+                                '${transferDate(_start)} — ${transferDate(_end)}',
+                            onTap: _busy ? null : () => unawaited(_pickDates()),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    AppCard(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const TransferHeading(title: '文件格式'),
+                          const SizedBox(height: 12),
+                          _formatOption(
+                            DataExportFormat.excel,
+                            'Excel 表格',
+                            '.xlsx',
+                            '记录与联系人，图片仅保留路径',
+                          ),
+                          const SizedBox(height: 8),
+                          _formatOption(
+                            DataExportFormat.zip,
+                            'ZIP 压缩包',
+                            '.zip',
+                            'Excel 表格与可读取的本地图片',
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    if (_scopeError != null)
+                      TransferMessage(
+                        message: _scopeError!,
+                        error: true,
+                        action: AppSecondaryButton(
+                          label: '重试读取',
+                          onTap: () => unawaited(_refreshScope()),
+                        ),
+                      )
+                    else
+                      AppCard(
+                        child: Row(
+                          children: [
+                            const TransferIconWell(icon: AppIcons.fileOutput),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  transferText(
+                                    context,
+                                    _loading
+                                        ? '正在统计记录…'
+                                        : '共 ${_summary?.recordCount ?? 0} 条记录',
+                                    18,
+                                    weight: FontWeight.w600,
+                                  ),
+                                  const SizedBox(height: 5),
+                                  transferText(
+                                    context,
+                                    _loading
+                                        ? '按账簿和日期范围计算'
+                                        : '另含 ${_summary?.personCount ?? 0} 位联系人资料${_format == DataExportFormat.zip ? '与可读取的本地图片' : ''}',
+                                    11,
+                                    color: colors.textTertiary,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    if (_exporting) ...[
+                      const SizedBox(height: 16),
+                      AppCard(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            transferText(
+                              context,
+                              _phase,
+                              14,
+                              weight: FontWeight.w600,
+                            ),
+                            const SizedBox(height: 12),
+                            const LinearProgressIndicator(minHeight: 4),
+                            const SizedBox(height: 8),
+                            transferText(
+                              context,
+                              '完成后可通过系统分享保存或发送',
+                              12,
+                              color: colors.textSecondary,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                    if (_file != null) ...[
+                      const SizedBox(height: 16),
+                      AppCard(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            TransferHeading(
+                              title: '导出完成',
+                              detail:
+                                  '已导出 ${_exportedSummary?.recordCount ?? 0} 条记录',
+                              detailColor: colors.stateSuccess,
+                            ),
+                            const SizedBox(height: 12),
+                            Tooltip(
+                              message: p.basename(_file!.path),
+                              child: transferText(
+                                context,
+                                p.basename(_file!.path),
+                                13,
+                                weight: FontWeight.w600,
+                                maxLines: 2,
+                              ),
+                            ),
+                            const SizedBox(height: 5),
+                            transferText(
+                              context,
+                              '${_fileBytes == null ? '已生成' : transferFileSize(_fileBytes!)} · '
+                              '${_exportedSummary?.personCount ?? 0} 位联系人',
+                              11,
+                              color: colors.textTertiary,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 16),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 4,
+                        vertical: 8,
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(
+                            AppIcons.info,
+                            size: 15,
+                            color: colors.textTertiary,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: transferText(
+                              context,
+                              '表格导出用于查看与整理。\n完整备份请使用「数据备份」。',
+                              12,
+                              color: colors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          TransferFooter(
+            label: label,
+            hint: _error ?? '完成后可通过系统分享保存或发送',
+            hintColor: _error == null ? null : colors.stateDangerStrong,
+            onPressed: _file != null && !_busy
+                ? () => unawaited(_share())
+                : enabled
+                ? () => unawaited(_export())
+                : null,
+            secondary: _file == null
+                ? null
+                : AppSecondaryButton(
+                    label: '重新导出',
+                    onTap: enabled ? () => unawaited(_export()) : null,
+                  ),
+          ),
+        ],
       ),
     );
   }
-}
 
-class _HintArea extends StatelessWidget {
-  const _HintArea({required this.allTime});
-
-  final bool allTime;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          '提示：',
-          style: AppTypography.base(
-            fontSize: 14,
-            fontWeight: AppTypography.medium,
-            color: AppColors.stateDangerStrong,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          '备份或转移完整数据，请使用数据备份中的本地或 WebDAV 备份；业务导出不能代替完整备份',
-          style: AppTypography.base(
-            fontSize: 14,
-            fontWeight: AppTypography.regular,
-            color: AppColors.stateDangerStrong,
-            height: 1.35,
-          ),
-        ),
-        if (allTime) ...[
-          const SizedBox(height: 6),
-          Text(
-            '当前为所有时间导出，数据量可能较大，请耐心等待',
-            style: AppTypography.base(
-              fontSize: 14,
-              fontWeight: AppTypography.regular,
-              color: AppColors.stateDangerStrong,
-              height: 1.35,
-            ),
-          ),
-        ],
-        const SizedBox(height: 12),
-        Text(
-          'Excel 文件导出记录明细；图片字段仅输出本地路径',
-          style: AppTypography.base(
-            fontSize: 14,
-            fontWeight: AppTypography.regular,
-            color: AppColors.textMuted,
-            height: 1.35,
-          ),
-        ),
-        const SizedBox(height: 6),
-        Text(
-          'ZIP 文件导出记录并打包本地图片文件',
-          style: AppTypography.base(
-            fontSize: 14,
-            fontWeight: AppTypography.regular,
-            color: AppColors.textMuted,
-            height: 1.35,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _ExportProgress extends StatelessWidget {
-  const _ExportProgress({required this.progress});
-
-  final double progress;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            const SizedBox(
-              width: 16,
-              height: 16,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                color: AppColors.brandSecondary,
-              ),
-            ),
-            const SizedBox(width: 10),
-            Text(
-              '正在导出...',
-              style: AppTypography.base(
-                fontSize: 14,
-                fontWeight: AppTypography.medium,
-                color: AppColors.textSecondary,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 10),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(999),
-          child: LinearProgressIndicator(
-            minHeight: 6,
-            value: progress <= 0 ? null : progress,
-            backgroundColor: context.appColors.surfaceDisabled,
-            valueColor: const AlwaysStoppedAnimation<Color>(
-              AppColors.brandSecondary,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _PrimaryButton extends StatefulWidget {
-  const _PrimaryButton({
-    required this.enabled,
-    required this.label,
-    required this.onTap,
-  });
-
-  final bool enabled;
-  final String label;
-  final VoidCallback? onTap;
-
-  @override
-  State<_PrimaryButton> createState() => _PrimaryButtonState();
-}
-
-class _PrimaryButtonState extends State<_PrimaryButton> {
-  bool _hover = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final enabled = widget.enabled && widget.onTap != null;
-    final bg = enabled
-        ? (_hover ? AppColors.indigo800 : AppColors.brandPrimary)
-        : AppColors.gray300;
-    return MouseRegion(
-      onEnter: enabled ? (_) => setState(() => _hover = true) : null,
-      onExit: enabled ? (_) => setState(() => _hover = false) : null,
-      cursor: enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
-      child: PressableScale(
-        onTap: enabled ? widget.onTap : null,
-        pressedScale: 0.98,
-        duration: const Duration(milliseconds: 120),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 160),
-          curve: Curves.easeInOut,
-          height: 54,
+  Widget _formatOption(
+    DataExportFormat format,
+    String title,
+    String extension,
+    String subtitle,
+  ) {
+    final colors = context.appColors;
+    final selected = _format == format;
+    return Semantics(
+      selected: selected,
+      child: FButton.raw(
+        variant: .ghost,
+        onPress: _busy ? null : () => _selectFormat(format),
+        child: Container(
+          padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: bg,
+            color: selected ? colors.surfaceApp : colors.surfaceCard,
             borderRadius: AppRadii.brXl,
-            boxShadow: enabled ? AppShadows.brandSoft : null,
-          ),
-          alignment: Alignment.center,
-          child: Text(
-            widget.label,
-            style: AppTypography.base(
-              fontSize: 18,
-              fontWeight: AppTypography.medium,
-              color: AppColors.white,
+            border: Border.all(
+              color: selected ? colors.textPrimary : colors.borderDefault,
             ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 19,
+                height: 19,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: selected ? colors.textPrimary : colors.surfaceCard,
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: selected ? colors.textPrimary : colors.borderDefault,
+                  ),
+                ),
+                child: selected
+                    ? Icon(AppIcons.check, size: 12, color: colors.surfaceCard)
+                    : null,
+              ),
+              const SizedBox(width: 11),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Wrap(
+                      spacing: 8,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        transferText(
+                          context,
+                          title,
+                          14,
+                          weight: FontWeight.w600,
+                        ),
+                        transferText(
+                          context,
+                          extension,
+                          11,
+                          color: colors.textTertiary,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    transferText(
+                      context,
+                      subtitle,
+                      11,
+                      color: colors.textTertiary,
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
       ),

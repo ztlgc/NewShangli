@@ -106,11 +106,18 @@ class SettingsHomePage extends StatelessWidget {
                 iconFg: AppColors.textTertiary,
                 icon: AppIcons.info,
                 title: '关于礼记',
-                trailingText: 'v1.2.2',
+                trailingText: 'v1.2.3',
                 onTap: () => AppDialog.showAlert(
                   context,
                   title: '关于礼记',
-                  message: '版本 v1.2.2',
+                  message:
+                      '版本 v1.2.3\n\n'
+                      '礼记是一款专注于礼金记录与人情往来管理的应用，'
+                      '帮助你记录婚礼、生日、乔迁等场景中的收礼与送礼。'
+                      '支持多账簿管理、联系人往来查询、收支统计和农历日期，'
+                      '提供数据导入导出、账簿 PDF 导出以及本地和 WebDAV 备份恢复。'
+                      '无需注册账号，数据默认保存在本机，'
+                      '让每一笔往来清楚可查，每一份情谊妥善留存。',
                   closeLabel: '确定',
                 ),
               ),

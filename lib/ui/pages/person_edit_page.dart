@@ -255,7 +255,7 @@ class _PersonEditPageState extends State<PersonEditPage> {
         await db.personsDao.updateOne(updated);
       }
       if (!mounted) return;
-      Navigator.of(context).pop(true);
+      Navigator.of(context).pop(targetId);
       _toast(context, '已保存');
     } catch (e) {
       if (!mounted) return;

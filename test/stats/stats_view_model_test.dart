@@ -1,4 +1,6 @@
-import 'package:drift/drift.dart';
+import 'dart:async';
+
+import 'package:drift/drift.dart' hide isNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:newshangli/data/local/drift/app_database.dart';
@@ -48,7 +50,114 @@ class _FakeStatsRepository implements IStatsRepository {
   }
 }
 
+class _DelayedYearRepository extends _FakeStatsRepository {
+  final requested = Completer<void>();
+  final response = Completer<StatsSnapshot>();
+  bool _delayed = false;
+
+  @override
+  Future<StatsSnapshot> load(
+    StatsTimePreset preset, {
+    required List<StatsSourceRecord> records,
+    String? bookId,
+    DateTime? now,
+    StatsDateRange? customRange,
+  }) {
+    if (preset == StatsTimePreset.thisYear && !_delayed) {
+      _delayed = true;
+      requested.complete();
+      return response.future;
+    }
+    return super.load(
+      preset,
+      records: records,
+      bookId: bookId,
+      now: now,
+      customRange: customRange,
+    );
+  }
+}
+
 void main() {
+  test(
+    'a superseded period response is never published under the newer period',
+    () async {
+      final db = AppDatabase.forTesting(NativeDatabase.memory());
+      final repo = _DelayedYearRepository();
+      final vm = StatsViewModel(
+        repository: repo,
+        db: db,
+        now: () => DateTime(2026, 10, 26),
+      );
+      addTearDown(() async {
+        vm.dispose();
+        await db.close();
+      });
+      await vm.init();
+      var publishedYear = false;
+      vm.addListener(() {
+        if (vm.dataRange?.start == DateTime(2026) &&
+            vm.dataRange?.endExclusive == DateTime(2027)) {
+          publishedYear = true;
+        }
+      });
+      final yearLoad = vm.setPreset(StatsTimePreset.thisYear);
+      await repo.requested.future;
+      await vm.setCustomRange(
+        StatsDateRange(
+          start: DateTime(2026, 9),
+          endExclusive: DateTime(2026, 10),
+        ),
+      );
+      repo.response.complete(
+        const StatsSnapshot(
+          incomeTotalCent: 99900,
+          expenseTotalCent: 0,
+          buckets: [],
+          expenseCategories: [],
+          ranking: [],
+        ),
+      );
+      await yearLoad;
+      expect(vm.dataRange?.start, DateTime(2026, 9));
+      expect(vm.dataRange?.endExclusive, DateTime(2026, 10));
+      expect(vm.data?.incomeTotalCent, 0);
+      expect(publishedYear, isFalse);
+      expect(vm.loading, isFalse);
+    },
+  );
+
+  test(
+    'failed period load preserves the last snapshot range and can be retried',
+    () async {
+      final db = AppDatabase.forTesting(NativeDatabase.memory());
+      final repo = _DelayedYearRepository();
+      final vm = StatsViewModel(
+        repository: repo,
+        db: db,
+        now: () => DateTime(2026, 10, 26),
+      );
+      addTearDown(() async {
+        vm.dispose();
+        await db.close();
+      });
+      await vm.init();
+      // Let the database's initial watch emission finish before injecting a
+      // request failure; it is a separate refresh from the explicit retry.
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      final yearLoad = vm.setPreset(StatsTimePreset.thisYear);
+      await repo.requested.future;
+      repo.response.completeError(StateError('sample load failed'));
+      await yearLoad;
+      expect(vm.error, contains('sample load failed'));
+      expect(vm.dataRange?.start, DateTime(2026, 10));
+      await vm.refresh();
+      expect(vm.error, isNull);
+      expect(vm.dataRange?.start, DateTime(2026));
+      expect(vm.dataRange?.endExclusive, DateTime(2027));
+    },
+  );
+
   test('StatsViewModel 会实时纳入全账簿范围内的新记录', () async {
     final db = AppDatabase.forTesting(NativeDatabase.memory());
     addTearDown(() async => db.close());

@@ -3,7 +3,7 @@ import 'dart:io';
 
 import 'package:archive/archive.dart';
 import 'package:excel/excel.dart';
-import 'package:drift/drift.dart' show BooleanExpressionOperators;
+import 'package:drift/drift.dart';
 import 'package:path/path.dart' as p;
 
 import '../data/local/drift/app_database.dart';
@@ -37,11 +37,125 @@ class DataExportRequest {
   final bool includeImages;
 }
 
+class DataExportSummary {
+  const DataExportSummary({
+    required this.recordCount,
+    required this.personCount,
+    this.firstDate,
+    this.lastDate,
+  });
+  final int recordCount;
+  final int personCount;
+  final DateTime? firstDate;
+  final DateTime? lastDate;
+  bool get isEmpty => recordCount == 0 && personCount == 0;
+}
+
+class _DriftExportScope {
+  const _DriftExportScope(
+    this.books,
+    this.persons,
+    this.records,
+    this.scopedPersons,
+  );
+  final Map<String, AccountBook> books;
+  final Map<String, Person> persons;
+  final List<GiftRecord> records;
+  final List<Person> scopedPersons;
+
+  DataExportSummary get summary {
+    DateTime? first;
+    DateTime? last;
+    for (final record in records) {
+      final date = DateTime.fromMillisecondsSinceEpoch(record.occurredAt);
+      if (first == null || date.isBefore(first)) first = date;
+      if (last == null || date.isAfter(last)) last = date;
+    }
+    return DataExportSummary(
+      recordCount: records.length,
+      personCount: scopedPersons.length,
+      firstDate: first,
+      lastDate: last,
+    );
+  }
+}
+
 class DataExportService {
+  Future<DataExportSummary> inspectScope({
+    required AppDatabase db,
+    String? bookId,
+    DateTime? start,
+    DateTime? end,
+  }) async => (await _loadDriftScope(
+    db,
+    bookId: bookId,
+    start: start,
+    end: end,
+  )).summary;
+
+  // The preview count and actual file use one scope contract, including the
+  // app's default-book rule that also includes outgoing gifts in other books.
+  Future<_DriftExportScope> _loadDriftScope(
+    AppDatabase db, {
+    String? bookId,
+    DateTime? start,
+    DateTime? end,
+  }) => db.transaction(() async {
+    final allPersons = await (db.select(
+      db.persons,
+    )..where((t) => t.deletedAt.isNull())).get();
+    final personById = {
+      for (final person in allPersons) person.personId: person,
+    };
+    final allBooks = await (db.select(
+      db.accountBooks,
+    )..where((t) => t.deletedAt.isNull())).get();
+    final bookById = {for (final book in allBooks) book.bookId: book};
+    final selected = bookId == null ? null : bookById[bookId];
+    if (bookId != null && selected == null) {
+      throw const DataExportException('账簿不存在或已删除');
+    }
+    final query = db.select(db.giftRecords)..where((t) => t.deletedAt.isNull());
+    if (bookId != null) {
+      query.where(
+        (t) => selected!.isDefault == 1
+            ? t.bookId.equals(bookId) | t.direction.equals('支出')
+            : t.bookId.equals(bookId),
+      );
+    }
+    if (start != null) {
+      query.where(
+        (t) => t.occurredAt.isBiggerOrEqualValue(
+          _startOfDay(start).millisecondsSinceEpoch,
+        ),
+      );
+    }
+    if (end != null) {
+      query.where(
+        (t) => t.occurredAt.isSmallerThanValue(
+          DateTime(end.year, end.month, end.day + 1).millisecondsSinceEpoch,
+        ),
+      );
+    }
+    final records = (await query.get())
+        .where(
+          (r) =>
+              bookById.containsKey(r.bookId) &&
+              personById.containsKey(r.personId),
+        )
+        .toList();
+    final related = records.map((r) => r.personId).toSet();
+    final scopedPersons = bookId == null
+        ? allPersons
+        : allPersons.where((p) => related.contains(p.personId)).toList();
+    return _DriftExportScope(bookById, personById, records, scopedPersons);
+  });
+
   Future<File> exportFromDrift({
     required AppDatabase db,
     required DataExportRequest request,
     Directory? outputDir,
+    void Function(DataExportSummary summary)? onPrepared,
   }) async {
     if (!request.includeRecords && !request.includePersons) {
       throw const DataExportException('请至少选择一种导出内容');
@@ -52,45 +166,25 @@ class DataExportService {
       throw const DataExportException('时间范围不合法');
     }
 
-    final allPersons = await (db.select(
-      db.persons,
-    )..where((t) => t.deletedAt.isNull())).get();
-    final personById = <String, Person>{
-      for (final person in allPersons) person.personId: person,
-    };
-
-    final allBooks = await (db.select(
-      db.accountBooks,
-    )..where((t) => t.deletedAt.isNull())).get();
-    final bookById = <String, AccountBook>{
-      for (final b in allBooks) b.bookId: b,
-    };
-
-    final recordQuery = db.select(db.giftRecords)
-      ..where((t) => t.deletedAt.isNull());
-    if (request.bookId != null) {
-      final selected = bookById[request.bookId];
-      recordQuery.where(
-        (t) => selected?.isDefault == 1
-            ? t.bookId.equals(request.bookId!) | t.direction.equals('支出')
-            : t.bookId.equals(request.bookId!),
-      );
-    }
-    final allRecords = await recordQuery.get();
-    final records = allRecords
-        .where(
-          (r) =>
-              r.occurredAt >= start.millisecondsSinceEpoch &&
-              r.occurredAt < endExclusive.millisecondsSinceEpoch,
-        )
-        .toList();
-
-    final relatedIds = records.map((record) => record.personId).toSet();
-    final scopedPersons = request.bookId == null
-        ? allPersons
-        : allPersons
-              .where((person) => relatedIds.contains(person.personId))
-              .toList();
+    final scope = await _loadDriftScope(
+      db,
+      bookId: request.bookId,
+      start: start,
+      end: request.end,
+    );
+    final personById = scope.persons;
+    final bookById = scope.books;
+    final records = scope.records;
+    final scopedPersons = scope.scopedPersons;
+    final summary = scope.summary;
+    onPrepared?.call(
+      DataExportSummary(
+        recordCount: request.includeRecords ? summary.recordCount : 0,
+        personCount: request.includePersons ? summary.personCount : 0,
+        firstDate: summary.firstDate,
+        lastDate: summary.lastDate,
+      ),
+    );
     final recordRows = <List<String>>[];
     final personRows = <List<String>>[];
     final links = <String, String>{};
@@ -151,7 +245,10 @@ class DataExportService {
         final refs =
             mediaBundle.recordAttachmentRefs[r.recordId] ?? const <_MediaRef>[];
         for (var i = 0; i < maxAttachmentCount; i++) {
-          if (i < refs.length) {
+          if (request.format == DataExportFormat.excel &&
+              i < (r.attachments?.length ?? 0)) {
+            row.add(r.attachments![i]);
+          } else if (i < refs.length) {
             final ref = refs[i];
             row.add(
               _displayCellText(
@@ -196,7 +293,9 @@ class DataExportService {
           ),
           person.note ?? '',
           _displayCellText(
-            fileName: request.includeImages
+            fileName: request.format == DataExportFormat.excel
+                ? (person.avatarUri ?? '')
+                : request.includeImages
                 ? (avatarRef?.displayName ?? _extractFileName(person.avatarUri))
                 : '',
             archivePath: request.format == DataExportFormat.zip

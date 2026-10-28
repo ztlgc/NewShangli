@@ -85,7 +85,22 @@ class AppDatabase extends _$AppDatabase {
   );
 
   Future<void> _createDefaults() async {
-    await reasonsDao.create(name: '结婚礼金');
+    for (final name in const [
+      '结婚礼金',
+      '生日礼金',
+      '寿宴礼金',
+      '满月礼金',
+      '百日礼金',
+      '周岁礼金',
+      '乔迁礼金',
+      '升学礼金',
+      '开业礼金',
+      '节日礼金',
+      '探病慰问',
+      '丧事慰问',
+    ]) {
+      await reasonsDao.create(name: name);
+    }
     for (final name in const ['家人', '亲戚', '同事', '朋友', '同学', '邻居']) {
       await relationTypesDao.create(name: name);
     }

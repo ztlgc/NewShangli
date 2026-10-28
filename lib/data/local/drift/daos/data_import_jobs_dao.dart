@@ -5,7 +5,18 @@ class DataImportJobsDao extends DatabaseAccessor<AppDatabase>
     with _$DataImportJobsDaoMixin {
   DataImportJobsDao(super.db);
 
-  Stream<List<DataImportJob>> watchRecentInBook(String bookId, {int limit = 50}) {
+  Stream<List<DataImportJob>> watchRecent({String? bookId, int limit = 50}) {
+    final query = select(dataImportJobs)
+      ..orderBy([(t) => OrderingTerm.desc(t.startedAt)])
+      ..limit(limit);
+    if (bookId != null) query.where((t) => t.bookId.equals(bookId));
+    return query.watch();
+  }
+
+  Stream<List<DataImportJob>> watchRecentInBook(
+    String bookId, {
+    int limit = 50,
+  }) {
     return (select(dataImportJobs)
           ..where((t) => t.bookId.equals(bookId))
           ..orderBy([(t) => OrderingTerm.desc(t.startedAt)])
@@ -14,8 +25,9 @@ class DataImportJobsDao extends DatabaseAccessor<AppDatabase>
   }
 
   Future<DataImportJob?> findById(String jobId) {
-    return (select(dataImportJobs)..where((t) => t.jobId.equals(jobId)))
-        .getSingleOrNull();
+    return (select(
+      dataImportJobs,
+    )..where((t) => t.jobId.equals(jobId))).getSingleOrNull();
   }
 
   Future<String> insertOne(DataImportJobsCompanion companion) async {
@@ -36,4 +48,3 @@ class DataImportJobsDao extends DatabaseAccessor<AppDatabase>
     return update(dataImportJobs).replace(updated);
   }
 }
-

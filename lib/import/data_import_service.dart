@@ -124,8 +124,7 @@ class DataImportService {
     final now = DateTime.now().millisecondsSinceEpoch;
     final normalizedMapping = <String, String>{
       for (final entry in (fieldMapping ?? const <String, String?>{}).entries)
-        if ((entry.value ?? '').trim().isNotEmpty)
-          entry.key.trim(): entry.value!.trim(),
+        if (entry.value != null) entry.key.trim(): entry.value!.trim(),
     };
     if ((mediaZipPath ?? '').trim().isNotEmpty) {
       final zip = File(mediaZipPath!.trim());
@@ -277,13 +276,19 @@ class DataImportService {
           ),
         );
       } catch (e) {
-        await _appendLog(job.errorLogPath, '导入中断，已提交批次保留，可从断点继续：$e');
+        final terminal = canceled
+            ? DataImportStatus.canceled
+            : DataImportStatus.failed;
+        await _appendLog(
+          job.errorLogPath,
+          canceled ? '导入已取消，已提交批次保留。' : '导入中断，已提交批次保留，可从断点继续：$e',
+        );
         final now = DateTime.now().millisecondsSinceEpoch;
         await (_db.update(
           _db.dataImportJobs,
         )..where((t) => t.jobId.equals(jobId))).write(
           DataImportJobsCompanion(
-            status: Value(DataImportStatus.failed.name),
+            status: Value(terminal.name),
             finishedAt: Value(now),
             updatedAt: Value(now),
           ),
@@ -292,11 +297,13 @@ class DataImportService {
         controller.add(
           DataImportProgress(
             jobId: jobId,
-            status: DataImportStatus.failed,
+            status: terminal,
             processedRows: finalJob?.processedRows ?? job.processedRows,
             successRows: finalJob?.successRows ?? job.successRows,
             skippedRows: finalJob?.skippedRows ?? job.skippedRows,
-            failedRows: finalJob?.failedRows ?? (job.failedRows + 1),
+            failedRows:
+                finalJob?.failedRows ??
+                (canceled ? job.failedRows : job.failedRows + 1),
           ),
         );
         running.remove(jobId);
@@ -407,6 +414,7 @@ class _ImportRunner {
   int _skippedRows;
   int _failedRows;
   int _lastRowIndex;
+  int _pendingSuccessRows = 0;
   final Map<String, String> _fieldMapping;
   late final MediaStorageService _mediaStorageService;
   Map<String, List<_IndexedMediaEntry>>? _mediaEntriesByBaseName;
@@ -671,6 +679,7 @@ class _ImportRunner {
           final person = await _parsePersonRowV2(rowIndex: i + 1, row: row);
           if (person != null) {
             chunkPersons.add(person);
+            _pendingSuccessRows++;
           }
           if (chunkPersons.length + chunkRecords.length >= 2000) {
             await _flush(
@@ -721,6 +730,7 @@ class _ImportRunner {
           );
           if (record != null) {
             chunkRecords.add(record);
+            _pendingSuccessRows++;
           }
           if (chunkPersons.length + chunkRecords.length >= 2000) {
             await _flush(
@@ -770,13 +780,21 @@ class _ImportRunner {
     required List<GiftRecordsCompanion> records,
   }) async {
     final type = _read(row, _kType).trim();
-    if (type.isEmpty) return;
+    if (type.isEmpty) {
+      if (row.values.any((value) => value.trim().isNotEmpty)) {
+        _processedRows++;
+        _failedRows++;
+        await _onLog('第$rowIndex行：数据类型为空，已跳过');
+      }
+      return;
+    }
     if (type == '联系人列表' || type == '关系人列表') {
       if (_kind == DataImportKind.recordsOnly) return;
       _processedRows += 1;
       final person = _parsePersonRow(rowIndex: rowIndex, row: row);
       if (person == null) return;
       persons.add(person);
+      _pendingSuccessRows++;
       return;
     }
     if (type == '礼金收支记录') {
@@ -789,8 +807,12 @@ class _ImportRunner {
       );
       if (record == null) return;
       records.add(record);
+      _pendingSuccessRows++;
       return;
     }
+    _processedRows++;
+    _failedRows++;
+    await _onLog('第$rowIndex行：数据类型不合法，已跳过：$type');
   }
 
   PersonsCompanion? _parsePersonRow({
@@ -857,10 +879,22 @@ class _ImportRunner {
         (normalized['关系'] ?? '').trim().isNotEmpty) {
       normalized[_kRelationship] = normalized['关系']!.trim();
     }
+    if (!normalized.containsKey(_kAvatarFile) && normalized.containsKey('头像')) {
+      normalized[_kAvatarFile] = normalized['头像']!;
+    }
+    // A workbook can have different headers in its record and person sheets.
+    // Reuse canonical values when a mapping belongs to the other sheet; an
+    // explicit empty mapping still means the user chose not to import a field.
+    for (final entry in _fieldMapping.entries) {
+      if (entry.value.isNotEmpty &&
+          !normalized.containsKey(entry.value) &&
+          normalized.containsKey(entry.key)) {
+        normalized[entry.value] = normalized[entry.key]!;
+      }
+    }
     final base = _parsePersonRow(rowIndex: rowIndex, row: normalized);
     if (base == null) return null;
-    final avatarName = (normalized[_kAvatarFile] ?? normalized['头像'] ?? '')
-        .trim();
+    final avatarName = _read(normalized, _kAvatarFile).trim();
     if (avatarName.isEmpty) {
       return base;
     }
@@ -890,7 +924,11 @@ class _ImportRunner {
     required Map<String, String> row,
     required List<PersonsCompanion> persons,
   }) async {
-    final direction = _read(row, _kDirection).trim();
+    final direction = switch (_read(row, _kDirection).trim()) {
+      '收礼' => '收入',
+      '送礼' => '支出',
+      final value => value,
+    };
     if (direction != '收入' && direction != '支出') {
       _failedRows += 1;
       unawaited(_onLog('第$rowIndex行：收支方向不合法（$direction），已跳过'));
@@ -1152,7 +1190,7 @@ class _ImportRunner {
         for (final record in records) {
           await _db.into(_db.giftRecords).insert(record);
         }
-        _successRows += persons.length + records.length;
+        _successRows += _pendingSuccessRows;
         await _persistCheckpoint(rowIndex);
       });
     } catch (_) {
@@ -1160,6 +1198,7 @@ class _ImportRunner {
       rethrow;
     }
     _pendingBooks.clear();
+    _pendingSuccessRows = 0;
 
     _lastRowIndex = rowIndex;
 
@@ -1317,7 +1356,7 @@ class _ImportRunner {
       decoded.forEach((key, value) {
         final k = key.toString().trim();
         final v = value?.toString().trim() ?? '';
-        if (k.isNotEmpty && v.isNotEmpty) {
+        if (k.isNotEmpty && value != null) {
           map[k] = v;
         }
       });

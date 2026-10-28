@@ -1,13 +1,23 @@
 import 'dart:io';
+
 import 'package:excel/excel.dart';
 import 'package:path/path.dart' as p;
+
 import 'csv_document.dart';
 import '../backup/restore_safety.dart';
 
 class ImportPreview {
-  const ImportPreview({required this.headers, required this.rows});
+  const ImportPreview({
+    required this.headers,
+    required this.rows,
+    this.hasRecordSheet = false,
+    this.hasPersonSheet = false,
+  });
   final List<String> headers;
   final List<List<String>> rows;
+  final bool hasRecordSheet;
+  final bool hasPersonSheet;
+  bool get usesSeparateSheets => hasRecordSheet || hasPersonSheet;
 }
 
 class ImportFileReader {
@@ -32,16 +42,17 @@ class ImportFileReader {
     RestoreSafety.decodeZip(bytes);
     final excel = Excel.decodeBytes(bytes);
     if (excel.sheets.isEmpty) throw const FormatException('Excel 内容为空');
-    final sheet =
-        excel.sheets['礼金记录'] ??
-        excel.sheets['收支记录'] ??
-        excel.sheets.values.first;
+    final recordSheet = excel.sheets['礼金记录'] ?? excel.sheets['收支记录'];
+    final personSheet = excel.sheets['联系人'] ?? excel.sheets['关系人'];
+    final sheet = recordSheet ?? personSheet ?? excel.sheets.values.first;
     if (sheet.rows.isEmpty) throw const FormatException('Excel 表格为空');
     final headers = sheet.rows.first
         .map((c) => (c?.value?.toString() ?? '').trim())
         .toList();
     CsvDocument.validateHeaders(headers);
     return ImportPreview(
+      hasRecordSheet: recordSheet != null,
+      hasPersonSheet: personSheet != null,
       headers: headers,
       rows: sheet.rows
           .skip(1)

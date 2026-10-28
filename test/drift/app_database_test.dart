@@ -24,7 +24,25 @@ void main() {
       columns.map((row) => row.data['name']),
       isNot(contains('payment_method')),
     );
-    expect((await db.reasonsDao.listAll()).single.name, '结婚礼金');
+    final reasons = await db.reasonsDao.listAll();
+    expect(
+      reasons.map((reason) => reason.name),
+      unorderedEquals([
+        '结婚礼金',
+        '生日礼金',
+        '寿宴礼金',
+        '满月礼金',
+        '百日礼金',
+        '周岁礼金',
+        '乔迁礼金',
+        '升学礼金',
+        '开业礼金',
+        '节日礼金',
+        '探病慰问',
+        '丧事慰问',
+      ]),
+    );
+    expect(reasons.every((reason) => reason.enabled), isTrue);
     expect(
       (await db.relationTypesDao.listAll()).map((type) => type.name),
       unorderedEquals(['家人', '亲戚', '同事', '朋友', '同学', '邻居']),
