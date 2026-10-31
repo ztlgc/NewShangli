@@ -30,6 +30,7 @@ class AppDialog {
     bool danger = false,
     AppNotificationTone tone = AppNotificationTone.warning,
     IconData? icon,
+    Widget? content,
   }) async {
     final result = await _showAdaptive<bool>(
       context,
@@ -37,7 +38,7 @@ class AppDialog {
       icon: icon,
       title: title,
       message: message,
-      content: null,
+      content: content,
       actions: _DialogActionSpec.buttons(
         confirm: confirmLabel,
         cancel: cancelLabel,
@@ -477,41 +478,53 @@ class _DialogActionRow extends StatelessWidget {
       );
     }
 
-    return Row(
-      children: [
-        Expanded(
-          child: _DialogButton(
-            label: actions.cancelLabel!,
-            background: colors.surfaceSubtle,
-            foreground: colors.textSecondary,
-            onTap: () {
-              if (actions.onCancel case final onCancel?) {
-                onCancel(context);
-              } else {
-                Navigator.of(context).pop<bool>(false);
-              }
-            },
-          ),
-        ),
-        const SizedBox(width: AppNotificationTokens.dialogButtonSpacing),
-        Expanded(
-          child: _DialogButton(
-            label: actions.confirmLabel!,
-            background: actions.danger
-                ? colors.stateDanger
-                : colors.brandPrimary,
-            foreground: colors.textInverse,
-            autofocus: true,
-            onTap: () {
-              if (actions.onConfirm case final onConfirm?) {
-                onConfirm(context);
-              } else {
-                Navigator.of(context).pop<bool>(true);
-              }
-            },
-          ),
-        ),
-      ],
+    final cancel = _DialogButton(
+      label: actions.cancelLabel!,
+      background: colors.surfaceSubtle,
+      foreground: colors.textSecondary,
+      onTap: () {
+        if (actions.onCancel case final onCancel?) {
+          onCancel(context);
+        } else {
+          Navigator.of(context).pop<bool>(false);
+        }
+      },
+    );
+    final confirm = _DialogButton(
+      label: actions.confirmLabel!,
+      background: actions.danger ? colors.stateDanger : colors.brandPrimary,
+      foreground: colors.textInverse,
+      autofocus: true,
+      onTap: () {
+        if (actions.onConfirm case final onConfirm?) {
+          onConfirm(context);
+        } else {
+          Navigator.of(context).pop<bool>(true);
+        }
+      },
+    );
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth < 260 ||
+            MediaQuery.textScalerOf(context).scale(14) > 18) {
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              cancel,
+              const SizedBox(height: AppNotificationTokens.dialogButtonSpacing),
+              confirm,
+            ],
+          );
+        }
+        return Row(
+          children: [
+            Expanded(child: cancel),
+            const SizedBox(width: AppNotificationTokens.dialogButtonSpacing),
+            Expanded(child: confirm),
+          ],
+        );
+      },
     );
   }
 }
