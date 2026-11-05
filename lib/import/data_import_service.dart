@@ -420,6 +420,9 @@ class _ImportRunner {
   Map<String, List<_IndexedMediaEntry>>? _mediaEntriesByBaseName;
   Map<String, _IndexedMediaEntry>? _mediaEntriesByArchivePath;
   final Map<String, String> _materializedMediaPathCache = <String, String>{};
+  final List<String> _pendingMediaPaths = [];
+  bool get _hasMediaZip =>
+      (_fieldMapping[_kMediaZipPathField] ?? '').trim().isNotEmpty;
 
   final Map<String, String> _personIdByKey = <String, String>{};
   final Set<String> _existingPersonIds = <String>{};
@@ -443,13 +446,24 @@ class _ImportRunner {
   static const _kBookName = '所属账簿名称';
 
   Future<DataImportStatus> run() async {
-    await _loadExistingPersons();
-    await _ensureMediaIndexLoaded();
-    switch (_format) {
-      case DataImportFormat.csv:
-        return _runCsv();
-      case DataImportFormat.xlsx:
-        return _runXlsx();
+    try {
+      await _loadExistingPersons();
+      await _ensureMediaIndexLoaded();
+      switch (_format) {
+        case DataImportFormat.csv:
+          return await _runCsv();
+        case DataImportFormat.xlsx:
+          return await _runXlsx();
+      }
+    } finally {
+      for (final path in _pendingMediaPaths) {
+        try {
+          await _mediaStorageService.deleteStoredPath(path);
+        } catch (e) {
+          await _onLog('清理未提交媒体失败（$path）：$e');
+        }
+      }
+      _pendingMediaPaths.clear();
     }
   }
 
@@ -671,12 +685,10 @@ class _ImportRunner {
           }
           rowIndex++;
           if (rowIndex <= _lastRowIndex) continue;
-          final cells = rows[i]
-              .map((c) => (c?.value?.toString() ?? '').trim())
-              .toList();
+          final cells = rows[i].map((c) => c?.value?.toString() ?? '').toList();
           final row = _rowMap(headers, cells);
           _processedRows += 1;
-          final person = await _parsePersonRowV2(rowIndex: i + 1, row: row);
+          final person = await _parsePersonWithMedia(rowIndex: i + 1, row: row);
           if (person != null) {
             chunkPersons.add(person);
             _pendingSuccessRows++;
@@ -718,9 +730,7 @@ class _ImportRunner {
           }
           rowIndex++;
           if (rowIndex <= _lastRowIndex) continue;
-          final cells = rows[i]
-              .map((c) => (c?.value?.toString() ?? '').trim())
-              .toList();
+          final cells = rows[i].map((c) => c?.value?.toString() ?? '').toList();
           final row = _rowMap(headers, cells);
           _processedRows += 1;
           final record = await _parseRecordRow(
@@ -791,7 +801,7 @@ class _ImportRunner {
     if (type == '联系人列表' || type == '关系人列表') {
       if (_kind == DataImportKind.recordsOnly) return;
       _processedRows += 1;
-      final person = _parsePersonRow(rowIndex: rowIndex, row: row);
+      final person = await _parsePersonWithMedia(rowIndex: rowIndex, row: row);
       if (person == null) return;
       persons.add(person);
       _pendingSuccessRows++;
@@ -815,14 +825,14 @@ class _ImportRunner {
     await _onLog('第$rowIndex行：数据类型不合法，已跳过：$type');
   }
 
-  PersonsCompanion? _parsePersonRow({
+  Future<PersonsCompanion?> _parsePersonRow({
     required int rowIndex,
     required Map<String, String> row,
-  }) {
+  }) async {
     final name = _read(row, _kPersonName).trim();
     if (name.isEmpty) {
       _failedRows += 1;
-      _onLog('第$rowIndex行：联系人姓名为空，已跳过');
+      await _onLog('第$rowIndex行：联系人姓名为空，已跳过');
       return null;
     }
     final phone = _read(row, _kPhone).trim();
@@ -831,7 +841,7 @@ class _ImportRunner {
     final personId = _read(row, _kPersonId).trim();
     if (personId.isEmpty && _ambiguousPersonKeys.contains(key)) {
       _failedRows++;
-      unawaited(_onLog('第$rowIndex行：存在同名联系人，请填写联系人ID'));
+      await _onLog('第$rowIndex行：存在同名联系人，请填写联系人ID');
       return null;
     }
     if (personId.isEmpty && _personIdByKey.containsKey(key)) {
@@ -866,7 +876,7 @@ class _ImportRunner {
     );
   }
 
-  Future<PersonsCompanion?> _parsePersonRowV2({
+  Future<PersonsCompanion?> _parsePersonWithMedia({
     required int rowIndex,
     required Map<String, String> row,
   }) async {
@@ -892,7 +902,7 @@ class _ImportRunner {
         normalized[entry.value] = normalized[entry.key]!;
       }
     }
-    final base = _parsePersonRow(rowIndex: rowIndex, row: normalized);
+    final base = await _parsePersonRow(rowIndex: rowIndex, row: normalized);
     if (base == null) return null;
     final avatarName = _read(normalized, _kAvatarFile).trim();
     if (avatarName.isEmpty) {
@@ -903,20 +913,15 @@ class _ImportRunner {
       preferredFolders: const <String>['media/avatars', 'avatars'],
     );
     if (mediaPath == null) {
-      _skippedRows += 1;
-      await _onLog('第$rowIndex行：头像文件未在ZIP中找到（$avatarName）');
+      if (_hasMediaZip) {
+        throw DataImportException('头像未在媒体 ZIP 中找到：$avatarName');
+      }
+      await _onLog('第$rowIndex行：未提供媒体 ZIP，联系人已导入但未设置头像（$avatarName）');
       return base;
     }
-    try {
-      final avatarUri = await _mediaStorageService.saveAvatarFromPath(
-        mediaPath,
-      );
-      return base.copyWith(avatarUri: Value(avatarUri));
-    } catch (e) {
-      _failedRows += 1;
-      await _onLog('第$rowIndex行：头像落盘失败（$avatarName）：$e');
-      return base;
-    }
+    final avatarUri = await _mediaStorageService.saveAvatarFromPath(mediaPath);
+    _pendingMediaPaths.add(avatarUri);
+    return base.copyWith(avatarUri: Value(avatarUri));
   }
 
   Future<GiftRecordsCompanion?> _parseRecordRow({
@@ -931,21 +936,21 @@ class _ImportRunner {
     };
     if (direction != '收入' && direction != '支出') {
       _failedRows += 1;
-      unawaited(_onLog('第$rowIndex行：收支方向不合法（$direction），已跳过'));
+      await _onLog('第$rowIndex行：收支方向不合法（$direction），已跳过');
       return null;
     }
 
     final amountCent = _parseAmountCent(row);
     if (amountCent == null || amountCent <= 0) {
       _failedRows += 1;
-      unawaited(_onLog('第$rowIndex行：金额不合法，已跳过'));
+      await _onLog('第$rowIndex行：金额不合法，已跳过');
       return null;
     }
 
     final occurredAt = _parseOccurredAt(_read(row, _kOccurred));
     if (occurredAt == null) {
       _failedRows += 1;
-      unawaited(_onLog('第$rowIndex行：发生时间不合法，已跳过'));
+      await _onLog('第$rowIndex行：发生时间不合法，已跳过');
       return null;
     }
 
@@ -1007,7 +1012,7 @@ class _ImportRunner {
     final personName = _read(row, _kPersonName).trim();
     if (personIdRaw.isEmpty && personName.isEmpty) {
       _failedRows += 1;
-      unawaited(_onLog('第$rowIndex行：联系人姓名/ID 为空，已跳过'));
+      await _onLog('第$rowIndex行：联系人姓名/ID 为空，已跳过');
       return null;
     }
 
@@ -1033,7 +1038,7 @@ class _ImportRunner {
     if (!_existingPersonIds.contains(personId)) {
       if (personName.isEmpty) {
         _failedRows += 1;
-        unawaited(_onLog('第$rowIndex行：联系人姓名为空，无法创建联系人，已跳过'));
+        await _onLog('第$rowIndex行：联系人姓名为空，无法创建联系人，已跳过');
         return null;
       }
       final now = DateTime.now().millisecondsSinceEpoch;
@@ -1059,10 +1064,16 @@ class _ImportRunner {
               ? _read(row, _kEvent).trim()
               : book.reasonType)
         : _read(row, _kEvent).trim();
+    final pendingBook = _pendingBooks[effectiveBookId];
+    final pendingDefault =
+        pendingBook != null &&
+        pendingBook.isDefault.present &&
+        pendingBook.isDefault.value == 1;
     final effectiveOccurredAt = (book != null && book.isDefault != 1)
         ? book.bookTime
-        : (_pendingBooks[effectiveBookId]?.bookTime.value ??
-              occurredAt.millisecondsSinceEpoch);
+        : pendingBook != null && !pendingDefault
+        ? pendingBook.bookTime.value
+        : occurredAt.millisecondsSinceEpoch;
     final recordKey = _recordKey(
       effectiveBookId,
       personId,
@@ -1093,7 +1104,7 @@ class _ImportRunner {
     _seenRecordKeys.add(recordKey);
     _existingRecordIds.add(id);
 
-    final note = _read(row, _kNote).trim();
+    final note = _read(row, _kNote);
     final attachments = await _resolveAttachmentsFromRow(row);
     final now = DateTime.now().millisecondsSinceEpoch;
     return GiftRecordsCompanion.insert(
@@ -1119,7 +1130,7 @@ class _ImportRunner {
   ) async {
     final out = <String>[];
     final indexes =
-        row.keys
+        {...row.keys, ..._fieldMapping.keys}
             .map((key) => RegExp(r'^附件(\d+)名称$').firstMatch(key))
             .whereType<RegExpMatch>()
             .map((match) => int.parse(match[1]!))
@@ -1129,12 +1140,17 @@ class _ImportRunner {
     for (final i in indexes) {
       final fileName = _read(row, '附件$i名称').trim();
       if (fileName.isEmpty) continue;
+      if (!_hasMediaZip) {
+        await _onLog('未提供媒体 ZIP，业务数据将保留，但未导入附件：$fileName');
+        continue;
+      }
       final path = await _resolveMediaPathByName(
         fileName,
         preferredFolders: const <String>['media/attachments', 'attachments'],
       );
       if (path == null) throw DataImportException('附件未在媒体 ZIP 中找到：$fileName');
       final stored = await _mediaStorageService.saveAttachmentFromPath(path);
+      _pendingMediaPaths.add(stored);
       out.add(stored);
     }
     return out;
@@ -1198,6 +1214,7 @@ class _ImportRunner {
       rethrow;
     }
     _pendingBooks.clear();
+    _pendingMediaPaths.clear();
     _pendingSuccessRows = 0;
 
     _lastRowIndex = rowIndex;
@@ -1288,17 +1305,26 @@ class _ImportRunner {
     final candidates = _mediaEntriesByBaseName?[baseName];
     if (candidates == null || candidates.isEmpty) return null;
 
+    Future<String> resolveUnique(List<_IndexedMediaEntry> matches) {
+      if (matches.length != 1) {
+        throw DataImportException('媒体文件名存在歧义，请填写 ZIP 内完整路径：$name');
+      }
+      return _materializeMediaEntry(matches.single);
+    }
+
     for (final folder in preferredFolders) {
       final normalizedFolder = _normalizeZipEntryName(folder);
       if (normalizedFolder == null) continue;
-      for (final entry in candidates) {
-        if (_isArchivePathInsideFolder(entry.archivePath, normalizedFolder)) {
-          return _materializeMediaEntry(entry);
-        }
-      }
+      final matches = candidates
+          .where(
+            (entry) =>
+                _isArchivePathInsideFolder(entry.archivePath, normalizedFolder),
+          )
+          .toList();
+      if (matches.isNotEmpty) return resolveUnique(matches);
     }
 
-    return _materializeMediaEntry(candidates.first);
+    return resolveUnique(candidates);
   }
 
   String? _normalizeZipEntryName(String rawName) {

@@ -6,6 +6,7 @@ import 'package:path/path.dart' as p;
 import 'package:sqlite3/sqlite3.dart' as sqlite;
 
 import 'backup_config.dart';
+import 'restore_safety.dart';
 import '../data/local/drift/app_database.dart';
 
 import 'package:crypto/crypto.dart';
@@ -193,64 +194,83 @@ class DataBackupService {
       sourceDbPath: sourceDb.path,
       ts: ts,
     );
-    final included = <String>[snapshot.archivePath];
+    var completed = false;
     try {
-      final bytes = await snapshot.file.readAsBytes();
-      archive.addFile(ArchiveFile(snapshot.archivePath, bytes.length, bytes));
-    } finally {
-      if (await snapshot.file.exists()) {
-        await snapshot.file.delete();
-      }
-    }
-
-    _MediaArchiveSummary mediaSummary = const _MediaArchiveSummary(
-      fileCount: 0,
-      totalBytes: 0,
-    );
-    if (includeMedia) {
-      mediaSummary = await _addMediaToArchive(
-        archive: archive,
-        docsDir: dir,
-        included: included,
+      // 先基于 stat 预检，禁止为明显无法恢复的备份读取巨型媒体。
+      RestoreSafety.validatePayloadSize(files: 2, bytes: snapshot.sizeBytes);
+      final media = includeMedia
+          ? await _inspectMedia(docsDir: dir, dbBytes: snapshot.sizeBytes)
+          : <_BackupMediaFile>[];
+      final included = [
+        snapshot.archivePath,
+        ...media.map((f) => f.archivePath),
+      ];
+      final mediaBytes = media.fold<int>(
+        0,
+        (sum, file) => sum + file.sizeBytes,
       );
+      List<int> manifestBytes(String dbHash) => utf8.encode(
+        const JsonEncoder.withIndent('  ').convert(<String, Object?>{
+          'createdAt': ts.toIso8601String(),
+          'backupMode': 'snapshot_vacuum_into',
+          'dbFile': snapshot.archivePath,
+          'dbSizeBytes': snapshot.sizeBytes,
+          'mediaIncluded': includeMedia,
+          'mediaFilesCount': media.length,
+          'mediaBytes': mediaBytes,
+          'formatVersion': 1,
+          'schemaVersion': AppDatabase.currentSchemaVersion,
+          'dbSha256': dbHash,
+          'files': included,
+        }),
+      );
+      // SHA256 的十六进制固定为64个ASCII字符，故占位 manifest 大小准确。
+      final manifestSize = manifestBytes('0' * 64).length;
+      RestoreSafety.validatePayloadSize(
+        files: media.length + 2,
+        bytes: snapshot.sizeBytes + mediaBytes + manifestSize,
+      );
+      if (await snapshot.file.length() != snapshot.sizeBytes) {
+        throw const BackupException('备份期间数据库快照发生变化，请重试');
+      }
+      final dbBytes = await snapshot.file.readAsBytes();
+      if (dbBytes.length != snapshot.sizeBytes) {
+        throw const BackupException('备份期间数据库快照发生变化，请重试');
+      }
+      archive.addFile(
+        ArchiveFile(snapshot.archivePath, dbBytes.length, dbBytes),
+      );
+      for (final file in media) {
+        if (await file.file.length() != file.sizeBytes) {
+          throw const BackupException('备份期间媒体文件发生变化，请重试');
+        }
+        final bytes = await file.file.readAsBytes();
+        if (bytes.length != file.sizeBytes) {
+          throw const BackupException('备份期间媒体文件发生变化，请重试');
+        }
+        archive.addFile(ArchiveFile(file.archivePath, bytes.length, bytes));
+      }
+      final manifest = manifestBytes(sha256.convert(dbBytes).toString());
+      archive.addFile(ArchiveFile('manifest.json', manifest.length, manifest));
+      RestoreSafety.validateArchive(archive);
+      onProgress(
+        const BackupProgress(
+          stage: BackupStage.packaging,
+          message: '正在生成 ZIP…',
+        ),
+      );
+      final zipped = ZipEncoder().encode(archive);
+      if (zipped == null) throw const BackupException('ZIP 打包失败');
+      RestoreSafety.validateZipSize(zipped.length);
+      await outFile.writeAsBytes(zipped, flush: true);
+      completed = true;
+      return outFile;
+    } on FormatException catch (e) {
+      throw BackupException(e.message);
+    } finally {
+      if (await snapshot.file.exists()) await snapshot.file.delete();
+      if (!completed && await outFile.exists()) await outFile.delete();
     }
-
-    final manifest = <String, Object?>{
-      'createdAt': ts.toIso8601String(),
-      'backupMode': 'snapshot_vacuum_into',
-      'dbFile': snapshot.archivePath,
-      'dbSizeBytes': snapshot.sizeBytes,
-      'mediaIncluded': includeMedia,
-      'mediaFilesCount': mediaSummary.fileCount,
-      'mediaBytes': mediaSummary.totalBytes,
-      'formatVersion': 1,
-      'schemaVersion': AppDatabase.currentSchemaVersion,
-      'dbSha256': sha256
-          .convert(
-            archive.files
-                    .firstWhere((f) => f.name == snapshot.archivePath)
-                    .content
-                as List<int>,
-          )
-          .toString(),
-      'files': included,
-    };
-    final manifestBytes = utf8.encode(
-      const JsonEncoder.withIndent('  ').convert(manifest),
-    );
-    archive.addFile(
-      ArchiveFile('manifest.json', manifestBytes.length, manifestBytes),
-    );
-
-    onProgress(
-      const BackupProgress(stage: BackupStage.packaging, message: '正在生成 ZIP…'),
-    );
-    final zipped = ZipEncoder().encode(archive);
-    if (zipped == null) {
-      throw const BackupException('ZIP 打包失败');
-    }
-    await outFile.writeAsBytes(zipped, flush: true);
-    return outFile;
   }
 
   Future<_BackupSnapshotResult> _createSnapshotDbFile({
@@ -294,17 +314,14 @@ class DataBackupService {
     );
   }
 
-  Future<_MediaArchiveSummary> _addMediaToArchive({
-    required Archive archive,
+  Future<List<_BackupMediaFile>> _inspectMedia({
     required Directory docsDir,
-    required List<String> included,
+    required int dbBytes,
   }) async {
     final mediaDir = Directory(p.join(docsDir.path, 'media'));
-    if (!await mediaDir.exists()) {
-      return const _MediaArchiveSummary(fileCount: 0, totalBytes: 0);
-    }
-    var fileCount = 0;
-    var totalBytes = 0;
+    final files = <_BackupMediaFile>[];
+    if (!await mediaDir.exists()) return files;
+    var totalBytes = dbBytes;
     await for (final entity in mediaDir.list(
       recursive: true,
       followLinks: false,
@@ -312,13 +329,15 @@ class DataBackupService {
       if (entity is! File) continue;
       final relative = p.relative(entity.path, from: docsDir.path);
       final archivePath = p.posix.normalize(relative.replaceAll('\\', '/'));
-      final bytes = await entity.readAsBytes();
-      archive.addFile(ArchiveFile(archivePath, bytes.length, bytes));
-      included.add(archivePath);
-      fileCount += 1;
-      totalBytes += bytes.length;
+      final size = await entity.length();
+      totalBytes += size;
+      files.add(_BackupMediaFile(entity, archivePath, size));
+      RestoreSafety.validatePayloadSize(
+        files: files.length + 2,
+        bytes: totalBytes,
+      );
     }
-    return _MediaArchiveSummary(fileCount: fileCount, totalBytes: totalBytes);
+    return files;
   }
 
   String _buildFileNameBase(DateTime ts) {
@@ -457,12 +476,10 @@ class _BackupSnapshotResult {
   final int sizeBytes;
 }
 
-class _MediaArchiveSummary {
-  const _MediaArchiveSummary({
-    required this.fileCount,
-    required this.totalBytes,
-  });
+class _BackupMediaFile {
+  const _BackupMediaFile(this.file, this.archivePath, this.sizeBytes);
 
-  final int fileCount;
-  final int totalBytes;
+  final File file;
+  final String archivePath;
+  final int sizeBytes;
 }

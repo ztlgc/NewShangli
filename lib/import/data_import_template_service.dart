@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:excel/excel.dart';
 import 'package:path/path.dart' as p;
+import 'package:uuid/uuid.dart';
 
 import '../platform/app_platform.dart';
 
@@ -12,6 +13,7 @@ class DataImportTemplateService {
     required DataImportTemplateFormat format,
     Directory? outputDir,
   }) async {
+    final personId = const Uuid().v4();
     final rows = <List<String>>[
       <String>[
         '数据类型',
@@ -34,7 +36,7 @@ class DataImportTemplateService {
         '',
         '',
         '',
-        '',
+        personId,
         '张三',
         '朋友',
         '13800000000',
@@ -48,10 +50,10 @@ class DataImportTemplateService {
         '100.00',
         '婚礼随礼',
         '默认账簿',
-        '',
+        personId,
         '张三',
         '',
-        '',
+        '13800000000',
         '2026-01-01 10:00',
         '示例备注',
       ],
