@@ -45,6 +45,12 @@ void main() {
     await tester.tap(find.text('关系类型'));
     await tester.pumpAndSettle();
     expect(find.text('选择关系类型'), findsOneWidget);
+    final typePanel = tester.getRect(
+      find
+          .ancestor(of: find.text('选择关系类型'), matching: find.byType(Material))
+          .first,
+    );
+    expect(typePanel.center, const Offset(400, 300));
     await tester.tap(find.text('同事').last);
     await tester.pumpAndSettle();
     expect(find.text('同事'), findsOneWidget);

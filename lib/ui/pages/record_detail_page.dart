@@ -573,9 +573,7 @@ class _BottomActions extends StatelessWidget {
   final VoidCallback onEditFinished;
 
   Future<void> _editRecord(BuildContext context) async {
-    final ok = await requireEditProtectionPassword(context, title: '编辑记录');
-    if (!ok) return;
-    if (!context.mounted) return;
+    // 授权由 RecordAddPage 进入时统一校验，此处不再重复弹密码。
     await AppNav.push(context, RecordAddPage(recordId: recordId));
     if (!context.mounted) return;
     onEditFinished();

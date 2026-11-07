@@ -13,7 +13,7 @@ import 'app_icons.dart';
 /// - 与 DESIGN_SPEC.md 第 3.5.3 章节规范一致
 /// - 统一带图标头 + 标题 + 内容 + 双按钮的弹窗样式
 /// - 三个工厂方法：confirm（确认）、showInput（表单）、showAlert（告警）
-/// - 横屏时自动切换为 BottomSheet 形态
+/// - 横竖屏均在可用区域居中，内容过长时滚动
 /// - 可访问性：标题/按钮语义化，主按钮默认聚焦
 class AppDialog {
   AppDialog._();
@@ -102,7 +102,7 @@ class AppDialog {
   }
 
   // ---------------------------------------------------------------------------
-  // 内部：根据方向选择 Dialog 或 BottomSheet
+  // 内部：横竖屏均使用居中 Dialog
   // ---------------------------------------------------------------------------
 
   static Future<T?> _showAdaptive<T>(
@@ -114,18 +114,6 @@ class AppDialog {
     required Widget? content,
     required _DialogActionSpec actions,
   }) {
-    final orientation = MediaQuery.orientationOf(context);
-    if (orientation == Orientation.landscape) {
-      return _showAsBottomSheet<T>(
-        context,
-        tone: tone,
-        icon: icon,
-        title: title,
-        message: message,
-        content: content,
-        actions: actions,
-      );
-    }
     return _showAsDialog<T>(
       context,
       tone: tone,
@@ -157,55 +145,6 @@ class AppDialog {
           message: message,
           content: content,
           actions: actions,
-        );
-      },
-    );
-  }
-
-  static Future<T?> _showAsBottomSheet<T>(
-    BuildContext context, {
-    required AppNotificationTone tone,
-    required IconData? icon,
-    required String title,
-    String? message,
-    required Widget? content,
-    required _DialogActionSpec actions,
-  }) {
-    // 横屏时退化到底部弹窗，避免过窄
-    return showModalBottomSheet<T>(
-      context: context,
-      isDismissible: actions.dismissible,
-      isScrollControlled: true,
-      useSafeArea: true,
-      backgroundColor: Colors.transparent,
-      builder: (sheetContext) {
-        return AppForuiBoundary(
-          child: Padding(
-            padding: EdgeInsets.only(
-              bottom: MediaQuery.viewInsetsOf(sheetContext).bottom,
-            ),
-            child: SafeArea(
-              child: Container(
-                margin: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Theme.of(sheetContext).cardColor,
-                  borderRadius: BorderRadius.circular(
-                    AppNotificationTokens.dialogRadius,
-                  ),
-                  boxShadow: AppShadows.lg,
-                ),
-                child: _AppDialogShell(
-                  tone: tone,
-                  icon: icon ?? _defaultIconFor(tone),
-                  title: title,
-                  message: message,
-                  content: content,
-                  actions: actions,
-                  skipOuterDialog: true,
-                ),
-              ),
-            ),
-          ),
         );
       },
     );
@@ -319,7 +258,6 @@ class _AppDialogShell extends StatelessWidget {
     required this.message,
     required this.content,
     required this.actions,
-    this.skipOuterDialog = false,
   });
 
   final AppNotificationTone tone;
@@ -328,7 +266,6 @@ class _AppDialogShell extends StatelessWidget {
   final String? message;
   final Widget? content;
   final _DialogActionSpec actions;
-  final bool skipOuterDialog;
 
   @override
   Widget build(BuildContext context) {
@@ -376,18 +313,6 @@ class _AppDialogShell extends StatelessWidget {
       ),
     );
 
-    if (skipOuterDialog) {
-      return DecoratedBox(
-        decoration: BoxDecoration(
-          color: colors.surfaceCard,
-          borderRadius: BorderRadius.circular(
-            AppNotificationTokens.dialogRadius,
-          ),
-          border: Border.all(color: colors.borderSubtle),
-        ),
-        child: SingleChildScrollView(child: body),
-      );
-    }
     return AppForuiBoundary(
       child: FDialog(
         semanticsLabel: title,

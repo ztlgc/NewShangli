@@ -13,6 +13,109 @@ import '../support/preview_fonts.dart';
 
 void main() {
   setUpAll(loadForuiPreviewFonts);
+  for (final bookId in ['book_default', 'default_custom_id']) {
+    testWidgets('默认账簿详情新增：$bookId 的事由日期可编辑并按选择保存', (tester) async {
+      tester.view.physicalSize = const Size(360, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final semantics = tester.ensureSemantics();
+      final db = AppDatabase.forTesting(NativeDatabase.memory());
+      try {
+        await db.accountBooksDao.insertOne(
+          AccountBooksCompanion.insert(
+            bookId: Value(bookId),
+            name: '默认账簿',
+            reasonType: const Value(''),
+            isDefault: const Value(1),
+            bookTime: Value(DateTime(2020, 3, 8).millisecondsSinceEpoch),
+            createdAt: 1,
+            updatedAt: 1,
+          ),
+        );
+        await db.personsDao.insertOne(
+          PersonsCompanion.insert(
+            personId: const Value('p1'),
+            bookId: bookId,
+            name: '李四',
+            createdAt: 1,
+            updatedAt: 1,
+          ),
+        );
+        await tester.pumpWidget(
+          AppDatabaseScope(
+            db: db,
+            child: MaterialApp(home: AccountBookDetailPage(bookId: bookId)),
+          ),
+        );
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('新增记录'));
+        await tester.pumpAndSettle();
+        expect(find.byType(RecordAddPage), findsOneWidget);
+        expect(find.bySemanticsLabel(RegExp('账簿，已锁定')), findsOneWidget);
+        for (final label in ['事由', '日期']) {
+          expect(find.bySemanticsLabel(RegExp('$label，已锁定')), findsNothing);
+        }
+        expect(find.text('请选择'), findsNWidgets(2));
+        expect(find.text('未设置'), findsNothing);
+        await tester.tap(find.text('账簿'));
+        await tester.pumpAndSettle();
+        expect(find.text('选择所属账簿'), findsNothing);
+
+        await tester.tap(find.text('联系人'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('李四'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('200'));
+        await tester.pump();
+        await tester.tap(find.text('保存'));
+        await tester.pumpAndSettle();
+        expect(find.byType(RecordAddPage), findsOneWidget);
+        expect(await db.select(db.giftRecords).get(), isEmpty);
+        expect(find.text('请选择事由'), findsOneWidget);
+
+        await db.reasonsDao.create(name: '自选事由');
+        await tester.tap(find.text('事由'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('自选事由'));
+        await tester.pumpAndSettle();
+        final now = DateTime.now();
+        final chosenDate = DateTime(
+          now.year,
+          now.month,
+          now.day == 15 ? 16 : 15,
+        );
+        await tester.tap(find.text('日期'));
+        await tester.pumpAndSettle();
+        expect(find.byType(PageView), findsOneWidget);
+        await tester.tap(find.text('${chosenDate.day}'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('确定'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('保存'));
+        await tester.pumpAndSettle();
+
+        expect(find.byType(RecordAddPage), findsNothing);
+        final saved = await db.select(db.giftRecords).getSingle();
+        expect(saved.bookId, bookId);
+        expect(saved.eventName, '自选事由');
+        final savedDate = DateTime.fromMillisecondsSinceEpoch(saved.occurredAt);
+        expect(
+          DateTime(savedDate.year, savedDate.month, savedDate.day),
+          chosenDate,
+        );
+        expect(saved.personId, 'p1');
+        expect(saved.amountCent, 20000);
+        expect(tester.takeException(), isNull);
+      } finally {
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pump(const Duration(milliseconds: 100));
+        await db.close();
+        semantics.dispose();
+      }
+    });
+  }
+
   for (final selected in ['default', 'other', 'empty', 'book_default']) {
     testWidgets('账簿详情新增：$selected 的账簿事由日期锁定并正确保存', (tester) async {
       tester.view.physicalSize = const Size(360, 800);
@@ -24,6 +127,15 @@ void main() {
       final db = AppDatabase.forTesting(NativeDatabase.memory());
       final bookDate = DateTime(2020, 3, 8, 9, 30).millisecondsSinceEpoch;
       try {
+        // 首个账簿会自动成为默认账簿，以下锁定用例均使用后续的普通账簿。
+        await db.accountBooksDao.insertOne(
+          AccountBooksCompanion.insert(
+            bookId: const Value('actual_default'),
+            name: '默认账簿',
+            createdAt: 1,
+            updatedAt: 1,
+          ),
+        );
         for (final id in ['default', 'other', 'empty', 'book_default']) {
           await db.accountBooksDao.insertOne(
             AccountBooksCompanion.insert(

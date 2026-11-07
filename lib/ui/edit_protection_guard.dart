@@ -20,6 +20,12 @@ Future<bool> requireEditProtectionPassword(
   final config = await EditProtectionConfig.load();
   if (!config.enabled) return true;
   if (!context.mounted) return false;
+  // 开启但缺少密码凭据属于损坏状态：任何输入都无法通过验证，直接拒绝并提示，
+  // 避免弹出永远无法通过的密码框。恢复入口在设置页（关闭保护）。
+  if (!config.hasPassword) {
+    AppNotifier.error(context, '编辑保护配置异常，请到设置页处理');
+    return false;
+  }
 
   final result = await AppDialog.showInput(
     context,

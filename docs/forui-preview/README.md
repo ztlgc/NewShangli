@@ -4,16 +4,16 @@
 
 ## 四个一级页面
 
-| 记录 | 关系人 | 统计 | 设置 |
+| 记录 | 联系人 | 统计 | 设置 |
 | --- | --- | --- | --- |
-| ![记录](record.png) | ![关系人](people.png) | ![统计](stats.png) | ![设置](settings.png) |
+| ![记录](record.png) | ![联系人](people.png) | ![统计](stats.png) | ![设置](settings.png) |
 
-深色模式：[记录](dark/record.png)、[关系人](dark/people.png)、[统计](dark/stats.png)、[设置](dark/settings.png)。
+深色模式：[记录](dark/record.png)、[联系人](dark/people.png)、[统计](dark/stats.png)、[设置](dark/settings.png)。
 
-## 记录、关系人与账簿
+## 记录、联系人与账簿
 
 - [新增记录](record-add.png)、[记录详情缺失态](record-detail-missing.png)
-- [新增关系人](person-edit.png)、[关系人详情](person-detail.png)、[联系人关系编辑](contact-relation-edit.png)
+- [新增联系人](person-edit.png)、[联系人详情](person-detail.png)、[联系人关系编辑](contact-relation-edit.png)
 - [账簿管理](account-books.png)、[账簿编辑](account-book-edit.png)、[账簿详情](account-book-detail.png)、[账簿记录](account-book-records.png)、[账簿数据导入](account-book-data-import.png)
 
 ## 设置与数据

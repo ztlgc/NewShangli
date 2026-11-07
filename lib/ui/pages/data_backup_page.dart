@@ -19,6 +19,7 @@ import '../app_tokens.dart';
 import '../app_scaffold.dart';
 import '../app_session.dart';
 import '../components.dart';
+import '../edit_protection_guard.dart';
 import '../navigation.dart';
 import '../ui_kit.dart';
 import '../../utils/date_util.dart';
@@ -485,10 +486,11 @@ class _CanvasState extends State<_Canvas> {
     return '${p.message} $percent%';
   }
 
-  Future<void> _pickBackupFrequency() async {
+  Future<void> _pickBackupFrequency(BuildContext anchorContext) async {
     if (_saving) return;
     final picked = await AppBottomSheet.showPicker<BackupFrequency>(
       context,
+      anchorContext: anchorContext,
       title: '备份频率',
       options: [
         for (final frequency in BackupFrequency.values)
@@ -499,7 +501,7 @@ class _CanvasState extends State<_Canvas> {
           ),
       ],
     );
-    if (picked == null) return;
+    if (picked == null || !mounted) return;
     final previous = _config;
     final next = _config.copyWith(backupFrequency: picked);
     setState(() => _config = next);
@@ -516,6 +518,11 @@ class _CanvasState extends State<_Canvas> {
       AppNotifier.error(context, '请先完善 WebDAV 配置');
       return;
     }
+    final authorized = await requireEditProtectionPassword(
+      context,
+      title: '恢复备份',
+    );
+    if (!authorized || !mounted) return;
     final confirmed = await AppDialog.confirm(
       context,
       title: '确认恢复备份',
@@ -584,38 +591,32 @@ class _CanvasState extends State<_Canvas> {
 
   Future<void> _openWebDavConfigDialog() async {
     if (_busy) return;
-    await showDialog<void>(
-      context: context,
-      barrierColor: AppColors.scrimBlack30,
+    await AppBottomSheet.showCustom<void>(
+      context,
       builder: (dialogContext) {
-        return SafeArea(
-          child: Align(
-            alignment: Alignment.topCenter,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 72, 16, 24),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 360),
-                child: _WebDavConfigDialog(
-                  config: _config,
-                  saving: _busy,
-                  onChangedBaseUrl: (v) =>
-                      _setConfig(_config.copyWith(webDavBaseUrl: v)),
-                  onChangedUsername: (v) =>
-                      _setConfig(_config.copyWith(webDavUsername: v)),
-                  onChangedPassword: (v) =>
-                      _setConfig(_config.copyWith(webDavPassword: v)),
-                  onChangedRemoteDir: (v) =>
-                      _setConfig(_config.copyWith(webDavRemoteDir: v)),
-                  onTest: _busy ? null : _testWebDav,
-                  onSave: _busy
-                      ? null
-                      : () async {
-                          final ok = await _persistConfig();
-                          if (!dialogContext.mounted || !ok) return;
-                          Navigator.of(dialogContext).pop();
-                        },
-                ),
-              ),
+        return Center(
+          heightFactor: 1,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 360),
+            child: _WebDavConfigDialog(
+              config: _config,
+              saving: _busy,
+              onChangedBaseUrl: (v) =>
+                  _setConfig(_config.copyWith(webDavBaseUrl: v)),
+              onChangedUsername: (v) =>
+                  _setConfig(_config.copyWith(webDavUsername: v)),
+              onChangedPassword: (v) =>
+                  _setConfig(_config.copyWith(webDavPassword: v)),
+              onChangedRemoteDir: (v) =>
+                  _setConfig(_config.copyWith(webDavRemoteDir: v)),
+              onTest: _busy ? null : _testWebDav,
+              onSave: _busy
+                  ? null
+                  : () async {
+                      final ok = await _persistConfig();
+                      if (!dialogContext.mounted || !ok) return;
+                      Navigator.of(dialogContext).pop();
+                    },
             ),
           ),
         );
@@ -776,6 +777,11 @@ class _CanvasState extends State<_Canvas> {
     required String displayName,
   }) async {
     if (_localRestoring) return;
+    final authorized = await requireEditProtectionPassword(
+      context,
+      title: '恢复备份',
+    );
+    if (!authorized || !mounted) return;
     final confirmed = await AppDialog.confirm(
       context,
       title: '确认导入恢复',
@@ -877,7 +883,7 @@ class _DriveExtraConfigCard extends StatelessWidget {
   final bool saving;
   final VoidCallback? onBackup;
   final ValueChanged<bool>? onToggleAutoBackup;
-  final VoidCallback? onPickFrequency;
+  final ValueChanged<BuildContext>? onPickFrequency;
   final bool webDavConfigured;
   final VoidCallback? onOpenWebDavConfig;
 
@@ -1393,84 +1399,86 @@ class _WebDavConfigDialogState extends State<_WebDavConfigDialog> {
           boxShadow: AppShadows.lg,
         ),
         clipBehavior: Clip.antiAlias,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _InputRow(
-              title: '服务器地址',
-              hintText: '例如：https://example.com/remote.php/dav/files/user/',
-              controller: _baseUrlCtrl,
-              enabled: !saving,
-              onChanged: widget.onChangedBaseUrl,
-            ),
-            const AppDivider(color: AppColors.borderDivider),
-            _InputRow(
-              title: '用户名',
-              hintText: '请输入用户名',
-              controller: _usernameCtrl,
-              enabled: !saving,
-              onChanged: widget.onChangedUsername,
-            ),
-            const AppDivider(color: AppColors.borderDivider),
-            _InputRow(
-              title: '密码',
-              hintText: '请输入密码',
-              controller: _passwordCtrl,
-              enabled: !saving,
-              obscureText: _obscurePassword,
-              onToggleObscure: () {
-                if (saving) return;
-                setState(() => _obscurePassword = !_obscurePassword);
-              },
-              onChanged: widget.onChangedPassword,
-            ),
-            const AppDivider(color: AppColors.borderDivider),
-            _InputRow(
-              title: '远程目录',
-              hintText: '（可选）例如：backup/newshangli',
-              controller: _remoteDirCtrl,
-              enabled: !saving,
-              onChanged: widget.onChangedRemoteDir,
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
-                    child: Text(
-                      '提示：启用后需至少填写地址、用户名、密码',
-                      style: AppTypography.base(
-                        fontSize: 12,
-                        fontWeight: AppTypography.regular,
-                        color: AppColors.textMuted,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _InputRow(
+                title: '服务器地址',
+                hintText: '例如：https://example.com/remote.php/dav/files/user/',
+                controller: _baseUrlCtrl,
+                enabled: !saving,
+                onChanged: widget.onChangedBaseUrl,
+              ),
+              const AppDivider(color: AppColors.borderDivider),
+              _InputRow(
+                title: '用户名',
+                hintText: '请输入用户名',
+                controller: _usernameCtrl,
+                enabled: !saving,
+                onChanged: widget.onChangedUsername,
+              ),
+              const AppDivider(color: AppColors.borderDivider),
+              _InputRow(
+                title: '密码',
+                hintText: '请输入密码',
+                controller: _passwordCtrl,
+                enabled: !saving,
+                obscureText: _obscurePassword,
+                onToggleObscure: () {
+                  if (saving) return;
+                  setState(() => _obscurePassword = !_obscurePassword);
+                },
+                onChanged: widget.onChangedPassword,
+              ),
+              const AppDivider(color: AppColors.borderDivider),
+              _InputRow(
+                title: '远程目录',
+                hintText: '（可选）例如：backup/newshangli',
+                controller: _remoteDirCtrl,
+                enabled: !saving,
+                onChanged: widget.onChangedRemoteDir,
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: Text(
+                        '提示：启用后需至少填写地址、用户名、密码',
+                        style: AppTypography.base(
+                          fontSize: 12,
+                          fontWeight: AppTypography.regular,
+                          color: AppColors.textMuted,
+                        ),
                       ),
                     ),
-                  ),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: AppSecondaryButton(
-                          label: saving ? '测试中' : '测试连接',
-                          onTap: widget.onTest,
-                          semanticLabel: '测试 WebDAV 连接',
+                    Row(
+                      children: [
+                        Expanded(
+                          child: AppSecondaryButton(
+                            label: saving ? '测试中' : '测试连接',
+                            onTap: widget.onTest,
+                            semanticLabel: '测试 WebDAV 连接',
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: AppPrimaryButton(
-                          label: saving ? '保存中' : '保存配置',
-                          onTap: widget.onSave,
-                          semanticLabel: '保存 WebDAV 配置',
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: AppPrimaryButton(
+                            label: saving ? '保存中' : '保存配置',
+                            onTap: widget.onSave,
+                            semanticLabel: '保存 WebDAV 配置',
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                ],
+                      ],
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

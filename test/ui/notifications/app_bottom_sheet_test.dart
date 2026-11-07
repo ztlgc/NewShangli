@@ -200,7 +200,7 @@ void main() {
       expect(find.text('custom-content'), findsOneWidget);
       expect(
         ModalRoute.of(tester.element(find.text('custom-content'))),
-        isA<ModalBottomSheetRoute<void>>(),
+        isA<PopupRoute<void>>(),
       );
     });
   });

@@ -196,10 +196,11 @@ class _DataExportPageState extends State<DataExportPage> {
     await _refreshScope();
   }
 
-  Future<void> _pickDates() async {
+  Future<void> _pickDates(BuildContext anchorContext) async {
     if (_busy) return;
     final picked = await AppBottomSheet.showPicker<String>(
       context,
+      anchorContext: anchorContext,
       title: '日期范围',
       options: [
         AppSheetOption(label: '所有时间', value: 'all', selected: _allTime),
@@ -387,13 +388,17 @@ class _DataExportPageState extends State<DataExportPage> {
                             onTap: _busy ? null : () => unawaited(_pickBook()),
                           ),
                           Divider(height: 1, color: colors.borderSubtle),
-                          TransferSelectionRow(
-                            icon: AppIcons.calendarDays,
-                            label: '日期范围',
-                            value: _allTime ? '所有时间' : '自定义时间',
-                            subtitle:
-                                '${transferDate(_start)} — ${transferDate(_end)}',
-                            onTap: _busy ? null : () => unawaited(_pickDates()),
+                          Builder(
+                            builder: (anchorContext) => TransferSelectionRow(
+                              icon: AppIcons.calendarDays,
+                              label: '日期范围',
+                              value: _allTime ? '所有时间' : '自定义时间',
+                              subtitle:
+                                  '${transferDate(_start)} — ${transferDate(_end)}',
+                              onTap: _busy
+                                  ? null
+                                  : () => unawaited(_pickDates(anchorContext)),
+                            ),
                           ),
                         ],
                       ),

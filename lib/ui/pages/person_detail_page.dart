@@ -183,9 +183,7 @@ class _CanvasState extends State<_Canvas> {
   }
 
   Future<void> _editPerson(String personId) async {
-    final ok = await requireEditProtectionPassword(context, title: '编辑联系人');
-    if (!ok) return;
-    if (!mounted) return;
+    // 授权由 PersonEditPage 进入时统一校验，此处不再重复弹密码。
     await AppNav.push(context, PersonEditPage(personId: personId));
     if (!mounted) return;
     _reload();

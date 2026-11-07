@@ -26,7 +26,7 @@ class ImportFileCard extends StatelessWidget {
   final bool loading;
   final bool templateBusy;
   final VoidCallback? onPick;
-  final VoidCallback? onTemplate;
+  final ValueChanged<BuildContext>? onTemplate;
   @override
   Widget build(BuildContext context) => AppCard(
     child: Column(
@@ -96,18 +96,22 @@ class ImportFileCard extends StatelessWidget {
                 color: context.appColors.textTertiary,
               ),
             ),
-            ConstrainedBox(
-              constraints: const BoxConstraints(minHeight: 44),
-              child: FButton.raw(
-                variant: .ghost,
-                onPress: onTemplate,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(AppIcons.arrowDown, size: 13),
-                    const SizedBox(width: 4),
-                    transferText(context, templateBusy ? '生成中…' : '下载模板', 12),
-                  ],
+            Builder(
+              builder: (anchorContext) => ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: 44),
+                child: FButton.raw(
+                  variant: .ghost,
+                  onPress: onTemplate == null
+                      ? null
+                      : () => onTemplate!(anchorContext),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(AppIcons.arrowDown, size: 13),
+                      const SizedBox(width: 4),
+                      transferText(context, templateBusy ? '生成中…' : '下载模板', 12),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -398,6 +402,7 @@ class _ImportMappingSheetState extends State<ImportMappingSheet> {
                   final picked = await AppBottomSheet.showPicker<String>(
                     context,
                     title: field,
+                    anchorContext: context,
                     options: [
                       AppSheetOption(
                         label: '不导入',

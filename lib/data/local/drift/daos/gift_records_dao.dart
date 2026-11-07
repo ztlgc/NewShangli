@@ -402,7 +402,8 @@ class GiftRecordsDao extends DatabaseAccessor<AppDatabase>
     return row == null ? 0 : (row.read(sumExp) ?? 0);
   }
 
-  /// 批量更新账簿下所有记录的事由（当账簿事由发生变更时同步）
+  /// 批量更新账簿下所有记录（含回收站）的事由，与账簿事由保持同步。
+  /// 回收站记录同步更新，保证恢复后与账簿一致。
   Future<int> updateEventNameByBookId(String bookId, String newEventName) {
     final now = DateTime.now().millisecondsSinceEpoch;
     return (update(giftRecords)..where((t) => t.bookId.equals(bookId))).write(
@@ -413,6 +414,7 @@ class GiftRecordsDao extends DatabaseAccessor<AppDatabase>
     );
   }
 
+  /// 批量更新账簿下所有记录（含回收站）的发生时间，与账簿日期保持同步。
   Future<int> updateOccurredAtByBookId(String bookId, int occurredAt) {
     final now = DateTime.now().millisecondsSinceEpoch;
     return (update(giftRecords)..where((t) => t.bookId.equals(bookId))).write(
@@ -421,5 +423,23 @@ class GiftRecordsDao extends DatabaseAccessor<AppDatabase>
         updatedAt: Value(now),
       ),
     );
+  }
+
+  /// 统计账簿下将被同步改写的记录数（含回收站），用于修改账簿日期/事由前的提示。
+  Future<int> countByBookIdForSync(String bookId) async {
+    final countExp = giftRecords.recordId.count();
+    final query = selectOnly(giftRecords)
+      ..addColumns([countExp])
+      ..where(giftRecords.bookId.equals(bookId));
+    final row = await query.getSingle();
+    return row.read(countExp) ?? 0;
+  }
+
+  /// 收集账簿下所有记录（含回收站）的附件路径，供级联删除后清理磁盘文件。
+  Future<List<String>> attachmentPathsByBookId(String bookId) async {
+    final rows = await (select(
+      giftRecords,
+    )..where((t) => t.bookId.equals(bookId))).get();
+    return [for (final r in rows) ...?r.attachments];
   }
 }

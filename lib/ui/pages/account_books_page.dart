@@ -7,7 +7,6 @@ import '../app_database_scope.dart';
 import '../app_tokens.dart';
 import '../app_scaffold.dart';
 import '../components.dart';
-import '../edit_protection_guard.dart';
 import '../navigation.dart';
 import '../ui_kit.dart';
 import 'account_book_detail_page.dart';
@@ -108,12 +107,7 @@ class _CanvasState extends State<_Canvas> {
                         book: b,
                         onOpen: () => _openBook(b),
                         onEdit: () async {
-                          final ok = await requireEditProtectionPassword(
-                            context,
-                            title: '编辑账簿',
-                          );
-                          if (!ok) return;
-                          if (!context.mounted) return;
+                          // 授权由 AccountBookEditPage 保存时统一校验。
                           await AppNav.push<bool>(
                             context,
                             AccountBookEditPage(bookId: b.bookId),

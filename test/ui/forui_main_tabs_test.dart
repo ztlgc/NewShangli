@@ -195,6 +195,19 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('服务器地址'), findsOneWidget);
     expect(find.text('保存配置'), findsOneWidget);
+    final dialog = find
+        .ancestor(
+          of: find.text('服务器地址'),
+          matching: find.byType(SingleChildScrollView),
+        )
+        .first;
+    expect(tester.getRect(dialog).center, const Offset(196.5, 426));
+    addTearDown(tester.view.resetViewInsets);
+    tester.view.viewInsets = const FakeViewPadding(bottom: 340);
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('保存配置'));
+    await tester.pumpAndSettle();
+    expect(tester.getBottomLeft(find.text('保存配置')).dy, lessThan(852 - 340));
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump(const Duration(milliseconds: 100));

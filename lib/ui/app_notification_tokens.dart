@@ -54,8 +54,20 @@ class AppNotificationTokens {
   /// Dialog 最大宽度。
   static const double dialogMaxWidth = 360;
 
-  /// BottomSheet 最大高度占屏比。
+  /// 弹出面板最大高度占可用区域的比例。
   static const double sheetMaxHeightRatio = 0.9;
+
+  /// 弹窗与安全区、键盘边界的间距。
+  static const double popupScreenPadding = 16;
+
+  /// 小菜单与触发控件的间距。
+  static const double popupAnchorGap = 8;
+
+  /// 就近显示的小菜单最大宽度。
+  static const double popupMenuMaxWidth = 320;
+
+  /// 居中内容面板最大宽度。
+  static const double popupPanelMaxWidth = 560;
 
   // 图标尺寸 -------------------------------------------------------------------
 

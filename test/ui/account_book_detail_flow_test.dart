@@ -37,8 +37,16 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('总收入'), findsOneWidget);
 
+    final trigger = tester.getRect(find.bySemanticsLabel('账簿导入导出'));
     await tester.tap(find.bySemanticsLabel('账簿导入导出'));
     await tester.pumpAndSettle();
+    final menu = tester.getRect(
+      find
+          .ancestor(of: find.text('导入导出'), matching: find.byType(Material))
+          .first,
+    );
+    expect(menu.top, closeTo(trigger.bottom + 8, 0.1));
+    expect(menu.right, lessThanOrEqualTo(tester.view.physicalSize.width - 16));
     await tester.tap(find.text('导入账簿数据'));
     await tester.pumpAndSettle();
     expect(find.text('账簿数据导入'), findsOneWidget);

@@ -6,9 +6,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:newshangli/data/local/drift/app_database.dart';
 import 'package:newshangli/ui/app_database_scope.dart';
 import 'package:newshangli/ui/pages/relation_type_manage_page.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   testWidgets('编辑关系类型保存后正常关闭，不触发框架断言', (tester) async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
     final db = AppDatabase.forTesting(NativeDatabase.memory());
     await db.relationTypesDao.create(name: '朋友');
     await db.accountBooksDao.insertOne(

@@ -12,7 +12,7 @@ import 'app_layout.dart';
 
 /// 主界面外壳。
 ///
-/// 负责承载四个一级页面（记录 / 关系 / 统计 / 设置），并在最上层悬浮常驻
+/// 负责承载四个一级页面（记录 / 联系人 / 统计 / 设置），并在最上层悬浮常驻
 /// 底部导航栏。点击导航栏时只切换 [IndexedStack] 的当前页，导航栏本身保持
 /// 挂载，不会像原先 `replaceRoot` 那样整页重建刷新；页面状态也能保留。
 class MainTabShell extends StatefulWidget {
@@ -90,7 +90,7 @@ class _MainTabShellState extends State<MainTabShell> {
                         ),
                         FBottomNavigationBarItem(
                           icon: Icon(AppIcons.users),
-                          label: Text('关系'),
+                          label: Text('联系人'),
                         ),
                         FBottomNavigationBarItem(
                           icon: Icon(AppIcons.chartNoAxesCombined),
@@ -115,7 +115,7 @@ class _MainTabShellState extends State<MainTabShell> {
 
 /// 供一级页面向外壳报告“是否需要隐藏悬浮导航栏”。
 ///
-/// 例如记录页 / 关系页进入多选模式时会显示页内操作栏，此时需要隐藏悬浮栏，
+/// 例如记录页 / 联系人页进入多选模式时会显示页内操作栏，此时需要隐藏悬浮栏，
 /// 避免底部出现两层栏。页面独立运行（如测试）时该作用域不存在，调用为空操作。
 class TabShellScope extends InheritedWidget {
   const TabShellScope({

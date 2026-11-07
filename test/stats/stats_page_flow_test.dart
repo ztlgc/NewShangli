@@ -102,7 +102,7 @@ Future<void> _pump(
                       ),
                       FBottomNavigationBarItem(
                         icon: Icon(AppIcons.users),
-                        label: Text('关系'),
+                        label: Text('联系人'),
                       ),
                       FBottomNavigationBarItem(
                         icon: Icon(AppIcons.chartNoAxesCombined),

@@ -389,6 +389,10 @@ void main() {
     await tester.tap(find.text('账簿'));
     await tester.pumpAndSettle();
     expect(find.text('选择所属账簿'), findsOneWidget);
+    final bookPanel = find
+        .ancestor(of: find.text('选择所属账簿'), matching: find.byType(Material))
+        .first;
+    expect(tester.getRect(bookPanel).center, const Offset(215, 450));
     Navigator.of(tester.element(find.text('选择所属账簿'))).pop();
     await tester.pumpAndSettle();
 

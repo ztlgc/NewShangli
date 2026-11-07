@@ -144,6 +144,47 @@ void main() {
       expect(find.byType(EditableText), findsNothing);
     });
   }
+  testWidgets('保护关闭时修改密码，保护保持关闭', (tester) async {
+    tester.view.physicalSize = const Size(393, 852);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await EditProtectionService().setPassword(newPassword: '1234');
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder: (context) => Scaffold(
+            body: TextButton(
+              child: const Text('settings'),
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const EditProtectionPage(),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('settings'));
+    await settle(tester);
+
+    await tester.tap(find.byType(FSwitch));
+    await settle(tester);
+    await password(tester, '1234');
+    expect((await EditProtectionService().load()).enabled, isFalse);
+
+    await tester.tap(find.text('修改密码'));
+    await settle(tester);
+    await password(tester, '1234');
+    await password(tester, '5678', '5678');
+
+    final config = await EditProtectionService().load();
+    expect(config.enabled, isFalse);
+    expect(config.hasPassword, isTrue);
+    expect(await EditProtectionService().verifyPassword('5678'), isTrue);
+  });
+
   testWidgets('关闭编辑保护直接放行', (tester) async {
     var allowed = false;
     await tester.pumpWidget(

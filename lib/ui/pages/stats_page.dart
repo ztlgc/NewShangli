@@ -224,7 +224,8 @@ class _StatsPageBodyState extends State<_StatsPageBody> {
                     isMonth: _tab == _StatsTab.month,
                     onPrevious: _canMove(vm, -1) ? () => _move(vm, -1) : null,
                     onNext: _canMove(vm, 1) ? () => _move(vm, 1) : null,
-                    onPick: () => unawaited(_pickPeriod(vm)),
+                    onPick: (anchorContext) =>
+                        unawaited(_pickPeriod(vm, anchorContext)),
                   ),
               ],
             ),
@@ -361,7 +362,10 @@ class _StatsPageBodyState extends State<_StatsPageBody> {
     );
   }
 
-  Future<void> _pickPeriod(StatsViewModel vm) async {
+  Future<void> _pickPeriod(
+    StatsViewModel vm,
+    BuildContext anchorContext,
+  ) async {
     if (_tab == _StatsTab.month) {
       final picked = await AppBottomSheet.show<DateTime>(
         context,
@@ -377,6 +381,7 @@ class _StatsPageBodyState extends State<_StatsPageBody> {
       final now = widget.now();
       final picked = await AppBottomSheet.showPicker<int>(
         context,
+        anchorContext: anchorContext,
         title: '选择年份',
         options: [
           AppSheetOption(label: '全部年份', value: 0, selected: _year == null),
@@ -430,7 +435,7 @@ class _PeriodSelector extends StatelessWidget {
   final bool isMonth;
   final VoidCallback? onPrevious;
   final VoidCallback? onNext;
-  final VoidCallback onPick;
+  final ValueChanged<BuildContext> onPick;
   @override
   Widget build(BuildContext context) => Row(
     children: [
@@ -448,23 +453,25 @@ class _PeriodSelector extends StatelessWidget {
       Expanded(
         child: ConstrainedBox(
           constraints: const BoxConstraints(minHeight: 44),
-          child: FButton.raw(
-            variant: .ghost,
-            semanticsLabel: isMonth ? '选择月份' : '选择年份',
-            onPress: onPick,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Flexible(
-                  child: _text(context, label, 15, weight: FontWeight.w600),
-                ),
-                const SizedBox(width: 6),
-                Icon(
-                  AppIcons.chevronDown,
-                  size: 14,
-                  color: context.appColors.textSecondary,
-                ),
-              ],
+          child: Builder(
+            builder: (anchorContext) => FButton.raw(
+              variant: .ghost,
+              semanticsLabel: isMonth ? '选择月份' : '选择年份',
+              onPress: () => onPick(anchorContext),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Flexible(
+                    child: _text(context, label, 15, weight: FontWeight.w600),
+                  ),
+                  const SizedBox(width: 6),
+                  Icon(
+                    AppIcons.chevronDown,
+                    size: 14,
+                    color: context.appColors.textSecondary,
+                  ),
+                ],
+              ),
             ),
           ),
         ),

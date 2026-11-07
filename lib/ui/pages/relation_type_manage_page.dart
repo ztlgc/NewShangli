@@ -12,6 +12,7 @@ import '../app_scaffold.dart';
 import '../app_tokens.dart';
 import '../components.dart';
 import '../navigation.dart';
+import '../edit_protection_guard.dart';
 import '../ui_kit.dart';
 import 'relation_type_detail_page.dart';
 
@@ -225,6 +226,15 @@ class _RelationTypeEditorSheetState extends State<_RelationTypeEditorSheet> {
       AppNotifier.warning(context, '类型名称不能为空');
       return;
     }
+    final current = widget.type;
+    if (current != null &&
+        current.name.trim().toLowerCase() != text.toLowerCase()) {
+      final authorized = await requireEditProtectionPassword(
+        context,
+        title: '修改关系类型',
+      );
+      if (!authorized || !mounted) return;
+    }
     setState(() => _saving = true);
     try {
       if (widget.type == null) {
@@ -246,17 +256,15 @@ class _RelationTypeEditorSheetState extends State<_RelationTypeEditorSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
     final type = widget.type;
-    return Padding(
-      padding: EdgeInsets.fromLTRB(12, 0, 12, 12 + bottomInset),
-      child: Container(
-        decoration: BoxDecoration(
-          color: context.appColors.surfaceCard,
-          borderRadius: AppRadii.br2xl,
-          boxShadow: AppShadows.lg,
-        ),
-        clipBehavior: Clip.antiAlias,
+    return Container(
+      decoration: BoxDecoration(
+        color: context.appColors.surfaceCard,
+        borderRadius: AppRadii.br2xl,
+        boxShadow: AppShadows.lg,
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [

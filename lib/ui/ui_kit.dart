@@ -229,7 +229,7 @@ class AppBottomNav extends StatelessWidget {
         _NavItem(
           activeIndex: activeIndex,
           index: 1,
-          label: '关系',
+          label: '联系人',
           icon: const Icon(AppIcons.usersRound),
           onTap: onTap,
         ),

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:forui/forui.dart';
 
 import '../../data/local/drift/app_database.dart';
+import '../../media/media_storage_service.dart';
 import '../../utils/date_util.dart';
 import '../app_database_scope.dart';
 import '../app_bottom_sheet.dart';
@@ -151,12 +152,21 @@ class _CanvasState extends State<_Canvas> {
 
   Future<void> _save() async {
     if (_saving) return;
+    setState(() => _saving = true);
+    try {
+      await _saveGuarded();
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  Future<void> _saveGuarded() async {
     if (_book != null) {
       final okAuth = await requireEditProtectionPassword(
         context,
         title: '编辑账簿',
       );
-      if (!okAuth) return;
+      if (!okAuth || !mounted) return;
     }
     if (_book?.isDefault == 1) {
       _toast('默认账簿不可更改');
@@ -168,12 +178,38 @@ class _CanvasState extends State<_Canvas> {
       return;
     }
     final reason = await _db.reasonsDao.findByName(_reasonType);
+    if (!mounted) return;
     if (reason == null || !reason.enabled) {
       _toast('事由类型无效，请从列表中选择已启用的事由');
       return;
     }
     final note = _noteCtrl.text.trim();
-    setState(() => _saving = true);
+    if (_book != null) {
+      final dateChanged = _book!.bookTime != _bookTime.millisecondsSinceEpoch;
+      final reasonChanged = _book!.reasonType != _reasonType;
+      if (dateChanged || reasonChanged) {
+        final affected = await _db.giftRecordsDao.countByBookIdForSync(
+          _book!.bookId,
+        );
+        if (!mounted) return;
+        if (affected > 0) {
+          final parts = <String>[
+            if (dateChanged) '记录日期',
+            if (reasonChanged) '事由',
+          ];
+          final ok = await AppDialog.confirm(
+            context,
+            title: '确认修改账簿',
+            message:
+                '修改账簿的${parts.join('和')}将同步更新该账簿下的 $affected 条记录（含回收站中的记录）。',
+            confirmLabel: '确认保存',
+            cancelLabel: '取消',
+            tone: AppNotificationTone.warning,
+          );
+          if (!mounted || ok != true) return;
+        }
+      }
+    }
     try {
       if (_book == null) {
         await _db.accountBooksDao.insertOne(
@@ -202,8 +238,6 @@ class _CanvasState extends State<_Canvas> {
     } catch (e) {
       if (!mounted) return;
       _toast('保存失败：$e');
-    } finally {
-      if (mounted) setState(() => _saving = false);
     }
   }
 
@@ -215,7 +249,7 @@ class _CanvasState extends State<_Canvas> {
     final ok = await AppDialog.confirm(
       context,
       title: '确认删除账簿',
-      message: '删除账簿将同时删除其中的所有记录，且无法恢复。',
+      message: '删除账簿将同时永久删除其中的所有记录（包括回收站中的记录）及其附件，且无法恢复。',
       confirmLabel: '确认删除',
       cancelLabel: '取消',
       danger: true,
@@ -224,7 +258,17 @@ class _CanvasState extends State<_Canvas> {
     if (!mounted || ok != true) return;
     setState(() => _deleting = true);
     try {
-      await _db.accountBooksDao.deleteById(_book!.bookId);
+      final bookId = _book!.bookId;
+      // 删除前收集所有需要清理的附件路径（含回收站记录），删除后再清理磁盘文件。
+      final attachmentPaths = <String>[
+        ...?_book!.attachments,
+        ...await _db.giftRecordsDao.attachmentPathsByBookId(bookId),
+      ];
+      await _db.accountBooksDao.deleteById(bookId);
+      final media = MediaStorageService();
+      for (final path in attachmentPaths) {
+        await media.deleteStoredPath(path);
+      }
       if (!mounted) return;
       Navigator.of(context).pop(true);
     } catch (e) {
@@ -601,121 +645,103 @@ class _ReasonTypePickerSheetState extends State<_ReasonTypePickerSheet> {
       if (key.isEmpty) return true;
       return reason.name.toLowerCase().contains(key);
     }).toList();
-    return Padding(
-      padding: EdgeInsets.only(
-        left: 12,
-        right: 12,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 12,
+    return Container(
+      constraints: const BoxConstraints(maxHeight: 620),
+      decoration: BoxDecoration(
+        color: context.appColors.surfaceCard,
+        borderRadius: AppRadii.br2xl,
+        boxShadow: AppShadows.lg,
       ),
-      child: SafeArea(
-        top: false,
-        child: Container(
-          constraints: const BoxConstraints(maxHeight: 620),
-          decoration: BoxDecoration(
-            color: context.appColors.surfaceCard,
-            borderRadius: AppRadii.br2xl,
-            boxShadow: AppShadows.lg,
-          ),
-          clipBehavior: Clip.antiAlias,
-          child: Column(
-            children: [
-              Container(
-                width: 48,
-                height: 5,
-                margin: const EdgeInsets.only(top: 10, bottom: 6),
-                decoration: BoxDecoration(
-                  color: context.appColors.surfaceDisabled,
-                  borderRadius: BorderRadius.circular(999),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        children: [
+          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    '选择事由',
+                    style: AppTypography.base(
+                      fontSize: 18,
+                      fontWeight: AppTypography.bold,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
                 ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        '选择事由',
-                        style: AppTypography.base(
-                          fontSize: 18,
-                          fontWeight: AppTypography.bold,
-                          color: AppColors.textPrimary,
-                        ),
+                AppIconButton(
+                  icon: const Icon(AppIcons.x, size: 14),
+                  backgroundColor: context.appColors.surfaceSubtle,
+                  foregroundColor: AppColors.textSecondary,
+                  onPressed: () => Navigator.of(context).pop(),
+                  radius: 12,
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+            child: AppSearchField(
+              controller: _searchController,
+              hintText: '搜索事由',
+              onChanged: (v) => setState(() => _keyword = v),
+            ),
+          ),
+          Expanded(
+            child: filtered.isEmpty
+                ? Center(
+                    child: Text(
+                      widget.reasons.isEmpty ? '暂无可选事由' : '没有匹配结果',
+                      style: AppTypography.base(
+                        fontSize: 13,
+                        fontWeight: AppTypography.regular,
+                        color: AppColors.textMuted,
                       ),
                     ),
-                    AppIconButton(
-                      icon: const Icon(AppIcons.x, size: 14),
-                      backgroundColor: context.appColors.surfaceSubtle,
-                      foregroundColor: AppColors.textSecondary,
-                      onPressed: () => Navigator.of(context).pop(),
-                      radius: 12,
-                    ),
-                  ],
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-                child: AppSearchField(
-                  controller: _searchController,
-                  hintText: '搜索事由',
-                  onChanged: (v) => setState(() => _keyword = v),
-                ),
-              ),
-              Expanded(
-                child: filtered.isEmpty
-                    ? Center(
-                        child: Text(
-                          widget.reasons.isEmpty ? '暂无可选事由' : '没有匹配结果',
-                          style: AppTypography.base(
-                            fontSize: 13,
-                            fontWeight: AppTypography.regular,
-                            color: AppColors.textMuted,
-                          ),
-                        ),
-                      )
-                    : ListView.builder(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        itemCount: filtered.length,
-                        itemBuilder: (context, index) {
-                          final reason = filtered[index];
-                          return AppPressableRow(
-                            borderBottom: index != filtered.length - 1,
-                            onTap: () => Navigator.of(context).pop(reason.name),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    reason.name,
-                                    style: AppTypography.base(
-                                      fontSize: 14,
-                                      fontWeight: AppTypography.medium,
-                                      color: AppColors.textPrimary,
-                                    ),
-                                  ),
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    itemCount: filtered.length,
+                    itemBuilder: (context, index) {
+                      final reason = filtered[index];
+                      return AppPressableRow(
+                        borderBottom: index != filtered.length - 1,
+                        onTap: () => Navigator.of(context).pop(reason.name),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                reason.name,
+                                style: AppTypography.base(
+                                  fontSize: 14,
+                                  fontWeight: AppTypography.medium,
+                                  color: AppColors.textPrimary,
                                 ),
-                                if (reason.name == widget.selectedReasonType)
-                                  const Icon(
-                                    AppIcons.check,
-                                    size: 14,
-                                    color: AppColors.indigo600,
-                                  ),
-                              ],
+                              ),
                             ),
-                          );
-                        },
-                      ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                child: AppSecondaryButton(
-                  label: '管理事由',
-                  onTap: () =>
-                      Navigator.of(context)
-                          .pop(_ReasonTypePickerSheet.manageAction),
-                ),
-              ),
-            ],
+                            if (reason.name == widget.selectedReasonType)
+                              const Icon(
+                                AppIcons.check,
+                                size: 14,
+                                color: AppColors.indigo600,
+                              ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
           ),
-        ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+            child: AppSecondaryButton(
+              label: '管理事由',
+              onTap: () =>
+                  Navigator.of(context)
+                      .pop(_ReasonTypePickerSheet.manageAction),
+            ),
+          ),
+        ],
       ),
     );
   }

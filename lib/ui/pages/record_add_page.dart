@@ -46,7 +46,7 @@ class RecordAddPage extends StatefulWidget {
   final String? recordId;
   final String? initialPersonId;
 
-  /// 账簿详情入口：账簿、事由、日期均由该账簿决定。
+  /// 账簿详情入口：固定所属账簿；仅非默认账簿锁定事由和日期。
   final String? lockedBookId;
 
   @override
@@ -178,7 +178,8 @@ class _RecordAddPageState extends State<RecordAddPage> {
       return;
     }
     final eventName = _eventName.trim();
-    if (eventName.isEmpty && !_bookContextLocked) {
+    if (eventName.isEmpty &&
+        !(_bookContextLocked && _occurredAtLockedByBookTime)) {
       AppNotifier.warning(context, '请选择事由');
       return;
     }
@@ -197,12 +198,12 @@ class _RecordAddPageState extends State<RecordAddPage> {
         if (book == null || book.deletedAt != null) {
           throw StateError('账簿已删除，请重新选择');
         }
-        final savedEventName = _bookContextLocked
+        final savedEventName = _bookContextLocked && book.isDefault != 1
             ? book.reasonType
             : book.isDefault != 1
             ? (book.reasonType.isEmpty ? eventName : book.reasonType)
             : eventName;
-        final occurredAtMs = (_bookContextLocked || book.isDefault != 1)
+        final occurredAtMs = book.isDefault != 1
             ? book.bookTime
             : _occurredAt.millisecondsSinceEpoch;
         final now = DateTime.now().millisecondsSinceEpoch;
@@ -592,7 +593,7 @@ class _RecordAddPageState extends State<RecordAddPage> {
                           bookName: _resolveBookName(books),
                           personName: displayPersonName,
                           eventName: _eventName.trim().isEmpty
-                              ? (_bookContextLocked ? '未设置' : '请选择')
+                              ? (_occurredAtLockedByBookTime ? '未设置' : '请选择')
                               : _eventName,
                           dateLabel: _formatDate(_occurredAt),
                           bookLocked: _bookContextLocked,
@@ -728,7 +729,7 @@ class _RecordAddPageState extends State<RecordAddPage> {
       return;
     }
     if (book != null) {
-      if (book.isDefault == 1 && !_bookContextLocked) {
+      if (book.isDefault == 1) {
         _occurredAtLockedByBookTime = false;
       } else {
         _occurredAt = DateTime.fromMillisecondsSinceEpoch(book.bookTime);
@@ -740,7 +741,7 @@ class _RecordAddPageState extends State<RecordAddPage> {
         .where((reason) => reason.enabled)
         .toList();
     if (!mounted) return;
-    if (!_bookContextLocked &&
+    if (!_occurredAtLockedByBookTime &&
         _eventName.trim().isEmpty &&
         reasons.isNotEmpty) {
       _eventName = reasons.first.name;
@@ -1393,160 +1394,139 @@ class _ReasonPickerSheetState extends State<_ReasonPickerSheet> {
       return reason.name.toLowerCase().contains(key);
     }).toList();
 
-    return Padding(
-      padding: EdgeInsets.only(
-        left: 12,
-        right: 12,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 12,
+    return Container(
+      constraints: const BoxConstraints(maxHeight: 620),
+      decoration: BoxDecoration(
+        color: colors.surfaceCard,
+        borderRadius: AppRadii.br2xl,
+        boxShadow: AppShadows.lg,
       ),
-      child: SafeArea(
-        top: false,
-        child: Container(
-          constraints: const BoxConstraints(maxHeight: 620),
-          decoration: BoxDecoration(
-            color: colors.surfaceCard,
-            borderRadius: AppRadii.br2xl,
-            boxShadow: AppShadows.lg,
-          ),
-          clipBehavior: Clip.antiAlias,
-          child: Column(
-            children: [
-              Container(
-                width: 48,
-                height: 5,
-                margin: const EdgeInsets.only(top: 10, bottom: 6),
-                decoration: BoxDecoration(
-                  color: colors.borderDefault,
-                  borderRadius: BorderRadius.circular(999),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        children: [
+          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    '选择事由',
+                    style: AppTypography.base(
+                      fontSize: 18,
+                      fontWeight: AppTypography.bold,
+                      color: colors.textPrimary,
+                    ),
+                  ),
                 ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        '选择事由',
-                        style: AppTypography.base(
-                          fontSize: 18,
-                          fontWeight: AppTypography.bold,
-                          color: colors.textPrimary,
-                        ),
+                AppIconButton(
+                  icon: const Icon(AppIcons.x, size: 14),
+                  backgroundColor: context.appColors.surfaceSubtle,
+                  foregroundColor: AppColors.textSecondary,
+                  onPressed: () => Navigator.of(context).pop(),
+                  radius: 12,
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+            child: AppSearchField(
+              controller: _searchController,
+              hintText: '搜索事由',
+              onChanged: (v) => setState(() => _keyword = v),
+            ),
+          ),
+          Expanded(
+            child: filtered.isEmpty
+                ? Center(
+                    child: Text(
+                      widget.reasons.isEmpty ? '暂无可选事由' : '没有匹配结果',
+                      style: AppTypography.base(
+                        fontSize: 13,
+                        fontWeight: AppTypography.regular,
+                        color: colors.textMuted,
                       ),
                     ),
-                    AppIconButton(
-                      icon: const Icon(AppIcons.x, size: 14),
-                      backgroundColor: context.appColors.surfaceSubtle,
-                      foregroundColor: AppColors.textSecondary,
-                      onPressed: () => Navigator.of(context).pop(),
-                      radius: 12,
-                    ),
-                  ],
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-                child: AppSearchField(
-                  controller: _searchController,
-                  hintText: '搜索事由',
-                  onChanged: (v) => setState(() => _keyword = v),
-                ),
-              ),
-              Expanded(
-                child: filtered.isEmpty
-                    ? Center(
-                        child: Text(
-                          widget.reasons.isEmpty ? '暂无可选事由' : '没有匹配结果',
-                          style: AppTypography.base(
-                            fontSize: 13,
-                            fontWeight: AppTypography.regular,
-                            color: colors.textMuted,
-                          ),
+                  )
+                : GridView.builder(
+                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          mainAxisSpacing: 12,
+                          crossAxisSpacing: 12,
+                          childAspectRatio: 2.6,
                         ),
-                      )
-                    : GridView.builder(
-                        padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
-                        gridDelegate:
-                            const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 2,
-                              mainAxisSpacing: 12,
-                              crossAxisSpacing: 12,
-                              childAspectRatio: 2.6,
-                            ),
-                        itemCount: filtered.length,
-                        itemBuilder: (context, index) {
-                          final r = filtered[index];
-                          final selected = widget.selectedReasonName == r.name;
-                          return Material(
-                            color: colors.surfaceSubtle,
-                            borderRadius: BorderRadius.circular(16),
-                            child: InkWell(
+                    itemCount: filtered.length,
+                    itemBuilder: (context, index) {
+                      final r = filtered[index];
+                      final selected = widget.selectedReasonName == r.name;
+                      return Material(
+                        color: colors.surfaceSubtle,
+                        borderRadius: BorderRadius.circular(16),
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(16),
+                          onTap: () => Navigator.of(context).pop(r.name),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10),
+                            decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(16),
-                              onTap: () => Navigator.of(context).pop(r.name),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                ),
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(16),
-                                  border: Border.all(
-                                    color: selected
-                                        ? colors.borderFocus
-                                        : colors.borderSubtle,
-                                    width: selected ? 1.4 : 1,
-                                  ),
-                                ),
-                                child: Row(
-                                  children: [
-                                    Container(
-                                      width: 34,
-                                      height: 34,
-                                      decoration: BoxDecoration(
-                                        color: colors.softFor(
-                                          widget.reasonIconBgColor(r.name),
-                                        ),
-                                        borderRadius: BorderRadius.circular(17),
-                                      ),
-                                      child: Icon(
-                                        widget.reasonIcon(r.name),
-                                        size: 20,
-                                        color: colors.foregroundFor(
-                                          widget.reasonIconColor(r.name),
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 10),
-                                    Expanded(
-                                      child: Text(
-                                        r.name,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: AppTypography.body().copyWith(
-                                          fontWeight: FontWeight.w600,
-                                          color: colors.textPrimary,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
+                              border: Border.all(
+                                color: selected
+                                    ? colors.borderFocus
+                                    : colors.borderSubtle,
+                                width: selected ? 1.4 : 1,
                               ),
                             ),
-                          );
-                        },
-                      ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                child: AppSecondaryButton(
-                  label: '管理事由',
-                  onTap: () =>
-                      Navigator.of(context)
-                          .pop(_ReasonPickerSheet.manageAction),
-                ),
-              ),
-            ],
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 34,
+                                  height: 34,
+                                  decoration: BoxDecoration(
+                                    color: colors.softFor(
+                                      widget.reasonIconBgColor(r.name),
+                                    ),
+                                    borderRadius: BorderRadius.circular(17),
+                                  ),
+                                  child: Icon(
+                                    widget.reasonIcon(r.name),
+                                    size: 20,
+                                    color: colors.foregroundFor(
+                                      widget.reasonIconColor(r.name),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    r.name,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: AppTypography.body().copyWith(
+                                      fontWeight: FontWeight.w600,
+                                      color: colors.textPrimary,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
           ),
-        ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+            child: AppSecondaryButton(
+              label: '管理事由',
+              onTap: () =>
+                  Navigator.of(context).pop(_ReasonPickerSheet.manageAction),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1584,131 +1564,111 @@ class _PersonPickerSheetState extends State<_PersonPickerSheet> {
       return person.name.toLowerCase().contains(key) ||
           person.relationshipType.toLowerCase().contains(key);
     }).toList();
-    return Padding(
-      padding: EdgeInsets.only(
-        left: 12,
-        right: 12,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 12,
+    return Container(
+      constraints: const BoxConstraints(maxHeight: 620),
+      decoration: BoxDecoration(
+        color: colors.surfaceCard,
+        borderRadius: AppRadii.br2xl,
+        boxShadow: AppShadows.lg,
       ),
-      child: SafeArea(
-        top: false,
-        child: Container(
-          constraints: const BoxConstraints(maxHeight: 620),
-          decoration: BoxDecoration(
-            color: colors.surfaceCard,
-            borderRadius: AppRadii.br2xl,
-            boxShadow: AppShadows.lg,
-          ),
-          clipBehavior: Clip.antiAlias,
-          child: Column(
-            children: [
-              Container(
-                width: 48,
-                height: 5,
-                margin: const EdgeInsets.only(top: 10, bottom: 6),
-                decoration: BoxDecoration(
-                  color: colors.borderDefault,
-                  borderRadius: BorderRadius.circular(999),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        children: [
+          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    '选择联系人',
+                    style: AppTypography.base(
+                      fontSize: 18,
+                      fontWeight: AppTypography.bold,
+                      color: colors.textPrimary,
+                    ),
+                  ),
                 ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        '选择联系人',
-                        style: AppTypography.base(
-                          fontSize: 18,
-                          fontWeight: AppTypography.bold,
-                          color: colors.textPrimary,
-                        ),
+                AppIconButton(
+                  icon: const Icon(AppIcons.x, size: 14),
+                  backgroundColor: context.appColors.surfaceSubtle,
+                  foregroundColor: AppColors.textSecondary,
+                  onPressed: () => Navigator.of(context).pop(),
+                  radius: 12,
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+            child: AppSearchField(
+              controller: _searchController,
+              hintText: '搜索姓名、关系',
+              onChanged: (v) => setState(() => _keyword = v),
+            ),
+          ),
+          Expanded(
+            child: filtered.isEmpty
+                ? Center(
+                    child: Text(
+                      widget.persons.isEmpty ? '暂无联系人' : '没有匹配结果',
+                      style: AppTypography.base(
+                        fontSize: 13,
+                        fontWeight: AppTypography.regular,
+                        color: colors.textMuted,
                       ),
                     ),
-                    AppIconButton(
-                      icon: const Icon(AppIcons.x, size: 14),
-                      backgroundColor: context.appColors.surfaceSubtle,
-                      foregroundColor: AppColors.textSecondary,
-                      onPressed: () => Navigator.of(context).pop(),
-                      radius: 12,
-                    ),
-                  ],
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-                child: AppSearchField(
-                  controller: _searchController,
-                  hintText: '搜索姓名、关系',
-                  onChanged: (v) => setState(() => _keyword = v),
-                ),
-              ),
-              Expanded(
-                child: filtered.isEmpty
-                    ? Center(
-                        child: Text(
-                          widget.persons.isEmpty ? '暂无联系人' : '没有匹配结果',
-                          style: AppTypography.base(
-                            fontSize: 13,
-                            fontWeight: AppTypography.regular,
-                            color: colors.textMuted,
-                          ),
-                        ),
-                      )
-                    : ListView.builder(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        itemCount: filtered.length,
-                        itemBuilder: (context, index) {
-                          final person = filtered[index];
-                          return AppPressableRow(
-                            borderBottom: index != filtered.length - 1,
-                            onTap: () => Navigator.of(context)
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    itemCount: filtered.length,
+                    itemBuilder: (context, index) {
+                      final person = filtered[index];
+                      return AppPressableRow(
+                        borderBottom: index != filtered.length - 1,
+                        onTap: () =>
+                            Navigator.of(context)
                                 .pop(_PersonPickerResult.pick(person.personId)),
-                            child: PersonDisplayRow(
-                              name: person.name,
-                              subtitle: person.relationshipType,
-                              avatarUrl: person.avatarUri,
-                              trailing:
-                                  widget.selectedPersonId == person.personId
-                                  ? Icon(
-                                      AppIcons.check,
-                                      size: 14,
-                                      color: colors.brandSecondary,
-                                    )
-                                  : null,
-                            ),
-                          );
-                        },
-                      ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: AppSecondaryButton(
-                        label: '管理联系人',
-                        onTap: () =>
-                            Navigator.of(context)
-                                .pop(_PersonPickerResult.manage()),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: AppPrimaryButton(
-                        label: '添加联系人',
-                        icon: AppIcons.userRoundPlus,
-                        onTap: () =>
-                            Navigator.of(context)
-                                .pop(_PersonPickerResult.add()),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+                        child: PersonDisplayRow(
+                          name: person.name,
+                          subtitle: person.relationshipType,
+                          avatarUrl: person.avatarUri,
+                          trailing: widget.selectedPersonId == person.personId
+                              ? Icon(
+                                  AppIcons.check,
+                                  size: 14,
+                                  color: colors.brandSecondary,
+                                )
+                              : null,
+                        ),
+                      );
+                    },
+                  ),
           ),
-        ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+            child: Row(
+              children: [
+                Expanded(
+                  child: AppSecondaryButton(
+                    label: '管理联系人',
+                    onTap: () =>
+                        Navigator.of(context).pop(_PersonPickerResult.manage()),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: AppPrimaryButton(
+                    label: '添加联系人',
+                    icon: AppIcons.userRoundPlus,
+                    onTap: () =>
+                        Navigator.of(context).pop(_PersonPickerResult.add()),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

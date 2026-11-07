@@ -492,55 +492,51 @@ class _Sheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
-    return Padding(
-      padding: EdgeInsets.fromLTRB(12, 0, 12, 12 + bottomInset),
-      child: Container(
-        decoration: BoxDecoration(
-          color: context.appColors.surfaceCard,
-          borderRadius: AppRadii.br2xl,
-          boxShadow: AppShadows.lg,
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: BoxDecoration(
-                color: context.appColors.surfaceCard,
-                border: Border(
-                  bottom: BorderSide(
-                    color: context.appColors.surfaceSubtle,
-                    width: 1,
-                  ),
+    return Container(
+      decoration: BoxDecoration(
+        color: context.appColors.surfaceCard,
+        borderRadius: AppRadii.br2xl,
+        boxShadow: AppShadows.lg,
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: context.appColors.surfaceCard,
+              border: Border(
+                bottom: BorderSide(
+                  color: context.appColors.surfaceSubtle,
+                  width: 1,
                 ),
               ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      title,
-                      style: AppTypography.base(
-                        fontSize: 14,
-                        fontWeight: AppTypography.bold,
-                        color: AppColors.textPrimary,
-                      ),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    title,
+                    style: AppTypography.base(
+                      fontSize: 14,
+                      fontWeight: AppTypography.bold,
+                      color: AppColors.textPrimary,
                     ),
                   ),
-                  AppIconButton(
-                    icon: const Icon(AppIcons.x, size: 14),
-                    backgroundColor: context.appColors.surfaceSubtle,
-                    foregroundColor: AppColors.textSecondary,
-                    onPressed: () => Navigator.of(context).pop(),
-                    radius: 12,
-                  ),
-                ],
-              ),
+                ),
+                AppIconButton(
+                  icon: const Icon(AppIcons.x, size: 14),
+                  backgroundColor: context.appColors.surfaceSubtle,
+                  foregroundColor: AppColors.textSecondary,
+                  onPressed: () => Navigator.of(context).pop(),
+                  radius: 12,
+                ),
+              ],
             ),
-            Flexible(child: child),
-          ],
-        ),
+          ),
+          Flexible(child: child),
+        ],
       ),
     );
   }

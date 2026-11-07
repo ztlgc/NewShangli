@@ -67,13 +67,9 @@ class _CanvasState extends State<_Canvas> {
       await AppBottomSheet.showCustom<void>(
         context,
         isDismissible: false,
-        enableDrag: false,
-        builder: (_) => FractionallySizedBox(
-          heightFactor: 0.95,
-          child: ClipRRect(
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-            child: RecordAddPage(lockedBookId: bookId),
-          ),
+        builder: (_) => ClipRRect(
+          borderRadius: AppRadii.br2xl,
+          child: RecordAddPage(lockedBookId: bookId),
         ),
       );
     } finally {
@@ -81,11 +77,15 @@ class _CanvasState extends State<_Canvas> {
     }
   }
 
-  Future<void> _showActions(AccountBook book) async {
+  Future<void> _showActions(
+    AccountBook book,
+    BuildContext anchorContext,
+  ) async {
     if (_exporting || _sharing) return;
     final action = await AppBottomSheet.showPicker<String>(
       context,
       title: '导入导出',
+      anchorContext: anchorContext,
       options: [
         const AppSheetOption(
           label: '导入账簿数据',
@@ -244,20 +244,22 @@ class _CanvasState extends State<_Canvas> {
                 onPressed: () => AppNav.pop(context),
                 semanticLabel: '返回上一页',
               ),
-              right: AppIconButton(
-                icon: _exporting || _sharing
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(AppIcons.ellipsis, size: 16),
-                backgroundColor: AppColors.indigo50,
-                foregroundColor: AppColors.indigo700,
-                onPressed: _exporting || _sharing
-                    ? null
-                    : () => _showActions(book),
-                semanticLabel: _exporting ? '正在导出 PDF' : '账簿导入导出',
+              right: Builder(
+                builder: (anchorContext) => AppIconButton(
+                  icon: _exporting || _sharing
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(AppIcons.ellipsis, size: 16),
+                  backgroundColor: AppColors.indigo50,
+                  foregroundColor: AppColors.indigo700,
+                  onPressed: _exporting || _sharing
+                      ? null
+                      : () => _showActions(book, anchorContext),
+                  semanticLabel: _exporting ? '正在导出 PDF' : '账簿导入导出',
+                ),
               ),
             ),
             Expanded(

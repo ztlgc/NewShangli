@@ -15,45 +15,105 @@ import '../app_icons.dart';
 import '../app_layout.dart';
 
 class EditProtectionPage extends StatelessWidget {
-  const EditProtectionPage({super.key});
+  const EditProtectionPage({super.key, this.service});
+
+  /// 可选的服务注入点，便于测试模拟加载失败。
+  final EditProtectionService? service;
 
   @override
   Widget build(BuildContext context) {
-    return const AppScaffold(
+    return AppScaffold(
       backgroundColor: AppColors.surfaceApp,
-      body: _Canvas(),
+      body: _Canvas(service: service),
     );
   }
 }
 
 class _Canvas extends StatefulWidget {
-  const _Canvas();
+  const _Canvas({this.service});
+
+  final EditProtectionService? service;
 
   @override
   State<_Canvas> createState() => _CanvasState();
 }
 
 class _CanvasState extends State<_Canvas> {
-  final EditProtectionService _service = EditProtectionService();
+  late final EditProtectionService _service;
   EditProtectionConfig _config = const EditProtectionConfig(
     enabled: false,
     passwordSalt: '',
     passwordHash: '',
   );
   bool _loading = true;
+  bool _loadFailed = false;
   bool _busy = false;
 
   @override
   void initState() {
     super.initState();
-    Future<void>(() async {
+    _service = widget.service ?? EditProtectionService();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
       final c = await _service.load();
       if (!mounted) return;
       setState(() {
         _config = c;
         _loading = false;
+        _loadFailed = false;
       });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _loadFailed = true;
+      });
+    }
+  }
+
+  void _retry() {
+    setState(() {
+      _loading = true;
+      _loadFailed = false;
     });
+    _load();
+  }
+
+  Widget _buildLoadFailed() {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            '编辑保护设置加载失败',
+            style: AppTypography.base(
+              fontSize: 14,
+              fontWeight: AppTypography.medium,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 8),
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: _retry,
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Text(
+                '重试',
+                style: AppTypography.base(
+                  fontSize: 14,
+                  fontWeight: AppTypography.medium,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _toggleEnabled(bool value) async {
@@ -81,6 +141,8 @@ class _CanvasState extends State<_Canvas> {
       if (mounted) {
         AppNotifier.success(context, value ? '编辑保护已开启' : '编辑保护已关闭');
       }
+    } catch (_) {
+      if (mounted) AppNotifier.error(context, '保存失败，请重试');
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -94,12 +156,16 @@ class _CanvasState extends State<_Canvas> {
         final verified = await _verifyPasswordDialog(title: '修改密码');
         if (!mounted || !verified) return;
       }
-      final ok = await _setNewPasswordDialog();
+      final ok = await _setNewPasswordDialog(
+        enabled: _config.hasPassword ? _config.enabled : true,
+      );
       if (!mounted || !ok) return;
       final c = await _service.load();
       if (!mounted) return;
       setState(() => _config = c);
       AppNotifier.success(context, '密码已更新');
+    } catch (_) {
+      if (mounted) AppNotifier.error(context, '保存失败，请重试');
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -129,7 +195,7 @@ class _CanvasState extends State<_Canvas> {
     return ok;
   }
 
-  Future<bool> _setNewPasswordDialog() async {
+  Future<bool> _setNewPasswordDialog({bool enabled = true}) async {
     final result = await AppDialog.showInput(
       context,
       title: '设置编辑密码',
@@ -165,7 +231,7 @@ class _CanvasState extends State<_Canvas> {
       }
       return false;
     }
-    await _service.setPassword(newPassword: s1, enabled: true);
+    await _service.setPassword(newPassword: s1, enabled: enabled);
     return true;
   }
 
@@ -185,6 +251,8 @@ class _CanvasState extends State<_Canvas> {
         Expanded(
           child: _loading
               ? const Center(child: CircularProgressIndicator())
+              : _loadFailed
+              ? _buildLoadFailed()
               : ListView(
                   padding: AppLayout.pagePadding,
                   children: [
@@ -267,7 +335,7 @@ class _CanvasState extends State<_Canvas> {
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 4),
                       child: Text(
-                        '开启后，已保存的账簿/联系人/记录修改与删除需要输入密码；新增备注与新增附件、首次设置头像不需要密码。',
+                        '开启后，已保存的账簿/联系人/记录修改与删除需要输入密码；新增账簿/联系人/记录、新增附件与首次设置头像不需要密码。修改已保存内容的备注仍需密码。',
                         style: AppTypography.base(
                           fontSize: 12,
                           fontWeight: AppTypography.regular,

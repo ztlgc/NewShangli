@@ -176,10 +176,11 @@ class _DataImportPageState extends State<DataImportPage> {
     );
   }
 
-  Future<void> _template() async {
+  Future<void> _template(BuildContext anchorContext) async {
     if (_templateBusy || _busy) return;
     final choice = await AppBottomSheet.showPicker<DataImportTemplateFormat>(
       context,
+      anchorContext: anchorContext,
       title: '下载导入模板',
       options: const [
         AppSheetOption(
@@ -642,7 +643,8 @@ class _DataImportPageState extends State<DataImportPage> {
                         onPick: canPick ? () => unawaited(_pickFile()) : null,
                         onTemplate: _busy || _templateBusy
                             ? null
-                            : () => unawaited(_template()),
+                            : (anchorContext) =>
+                                  unawaited(_template(anchorContext)),
                       ),
                       if (_error != null) ...[
                         const SizedBox(height: 16),

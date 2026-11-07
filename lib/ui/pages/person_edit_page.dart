@@ -30,9 +30,12 @@ import '../app_layout.dart';
 /// 页面：联系人管理 - 编辑/新增
 /// 对照原型：prototype/index.html -> "编辑/新增"
 class PersonEditPage extends StatefulWidget {
-  const PersonEditPage({super.key, this.personId});
+  const PersonEditPage({super.key, this.personId, this.personLoader});
 
   final String? personId;
+
+  /// 可选的人员读取注入点，便于测试模拟读取失败；为空时直接读数据库。
+  final Future<Person?> Function(AppDatabase db, String personId)? personLoader;
 
   @override
   State<PersonEditPage> createState() => _PersonEditPageState();
@@ -51,6 +54,7 @@ class _PersonEditPageState extends State<PersonEditPage> {
   bool _saving = false;
   bool _authorized = false;
   bool _authChecked = false;
+  bool _personLoadError = false;
   String _relationship = '';
   static const String _defaultBookSelectionId = 'book_default';
   String _personBookId = _defaultBookSelectionId;
@@ -196,11 +200,11 @@ class _PersonEditPageState extends State<PersonEditPage> {
   }
 
   Future<void> _onSave() async {
-    if (widget.personId != null) {
-      final ok = await requireEditProtectionPassword(context, title: '编辑联系人');
-      if (!ok) return;
-      if (!mounted) return;
+    if (widget.personId != null && _personLoadError) {
+      _toast(context, '联系人加载失败，无法保存，请返回重试');
+      return;
     }
+    // 进入编辑页时已统一校验密码，保存不再重复校验。
     FocusManager.instance.primaryFocus?.unfocus();
     setState(() {
       _nameEditing = false;
@@ -392,6 +396,12 @@ class _PersonEditPageState extends State<PersonEditPage> {
 
   Future<void> _saveInlineField(_InlineEditField field) async {
     if (widget.personId == null) return;
+    // 行内写入与保存同受进入编辑页时的密码校验约束。
+    if (!_authorized) return;
+    if (_personLoadError) {
+      _toast(context, '联系人加载失败，无法保存，请返回重试');
+      return;
+    }
     final db = AppDatabaseScope.of(context);
 
     final name = (field == _InlineEditField.name ? _nameCtrl.text : _savedName)
@@ -465,9 +475,17 @@ class _PersonEditPageState extends State<PersonEditPage> {
   Future<void> _loadPersonFromDrift(String personId) async {
     try {
       final db = AppDatabaseScope.of(context);
-      final person = await db.personsDao.findById(personId);
-      if (person == null || !mounted) return;
+      final loader = widget.personLoader;
+      final person = loader != null
+          ? await loader(db, personId)
+          : await db.personsDao.findById(personId);
+      if (!mounted) return;
+      if (person == null) {
+        setState(() => _personLoadError = true);
+        return;
+      }
       setState(() {
+        _personLoadError = false;
         _nameCtrl.text = person.name;
         _noteCtrl.text = person.note ?? '';
         _savedName = _nameCtrl.text.trim();
@@ -476,7 +494,9 @@ class _PersonEditPageState extends State<PersonEditPage> {
         _avatarUrl = person.avatarUri;
         _personBookId = person.bookId;
       });
-    } catch (_) {}
+    } catch (_) {
+      if (mounted) setState(() => _personLoadError = true);
+    }
   }
 
   Future<String> _resolveDbBookId(AppDatabase db, String selectedBookId) async {
@@ -484,7 +504,7 @@ class _PersonEditPageState extends State<PersonEditPage> {
     return _defaultBookService.ensureDefaultBookId(db);
   }
 
-  Future<void> _pickRelationship() async {
+  Future<void> _pickRelationship(BuildContext anchorContext) async {
     final db = AppDatabaseScope.of(context);
     late final List<RelationType> types;
     try {
@@ -493,9 +513,10 @@ class _PersonEditPageState extends State<PersonEditPage> {
       if (mounted) AppNotifier.error(context, '关系类型加载失败，请重试');
       return;
     }
-    if (!mounted) return;
+    if (!mounted || !anchorContext.mounted) return;
     final picked = await AppBottomSheet.showPicker<String>(
       context,
+      anchorContext: anchorContext,
       title: '选择关系类型',
       options: [
         for (final type in types)
@@ -632,7 +653,7 @@ class _BasicInfoCard extends StatelessWidget {
   final VoidCallback? onNameSubmitted;
   final ValueChanged<bool>? onNameFocusChange;
   final String relationship;
-  final VoidCallback? onPickRelationship;
+  final ValueChanged<BuildContext>? onPickRelationship;
 
   @override
   Widget build(BuildContext context) {
@@ -866,13 +887,13 @@ class _EditableRow extends StatelessWidget {
   final String label;
   final bool requiredMark;
   final String value;
-  final VoidCallback? onTap;
+  final ValueChanged<BuildContext>? onTap;
   final bool borderBottom;
 
   @override
   Widget build(BuildContext context) {
     return AppPressableRow(
-      onTap: onTap,
+      onTap: onTap == null ? null : () => onTap!(context),
       borderBottom: borderBottom,
       child: Row(
         children: [

@@ -15,7 +15,8 @@ class EditProtectionConfig {
   final String passwordSalt;
   final String passwordHash;
 
-  bool get hasPassword => passwordSalt.trim().isNotEmpty && passwordHash.trim().isNotEmpty;
+  bool get hasPassword =>
+      passwordSalt.trim().isNotEmpty && passwordHash.trim().isNotEmpty;
 
   EditProtectionConfig copyWith({
     bool? enabled,
@@ -42,11 +43,19 @@ class EditProtectionConfig {
     );
   }
 
+  /// 先写入凭据（盐、哈希），最后写入开关：中途失败时不会出现“保护已开启但凭据不匹配”。
+  /// 任一步返回 false 或抛出异常都会向上抛出，调用方不得提示成功。
   static Future<void> save(EditProtectionConfig config) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_kEnabledKey, config.enabled);
-    await prefs.setString(_kSaltKey, config.passwordSalt.trim());
-    await prefs.setString(_kHashKey, config.passwordHash.trim());
+    final okSalt = await prefs.setString(_kSaltKey, config.passwordSalt.trim());
+    final okHash = await prefs.setString(_kHashKey, config.passwordHash.trim());
+    if (!okSalt || !okHash) {
+      throw StateError('编辑保护凭据保存失败');
+    }
+    final okEnabled = await prefs.setBool(_kEnabledKey, config.enabled);
+    if (!okEnabled) {
+      throw StateError('编辑保护开关保存失败');
+    }
   }
 }
 
@@ -60,14 +69,21 @@ class EditProtectionService {
     final salt = _randomSalt();
     final hash = _hashPassword(salt: salt, password: newPassword);
     await EditProtectionConfig.save(
-      EditProtectionConfig(enabled: enabled, passwordSalt: salt, passwordHash: hash),
+      EditProtectionConfig(
+        enabled: enabled,
+        passwordSalt: salt,
+        passwordHash: hash,
+      ),
     );
   }
 
   Future<bool> verifyPassword(String password) async {
     final config = await EditProtectionConfig.load();
     if (!config.hasPassword) return false;
-    final computed = _hashPassword(salt: config.passwordSalt, password: password);
+    final computed = _hashPassword(
+      salt: config.passwordSalt,
+      password: password,
+    );
     return _constantTimeEquals(computed, config.passwordHash);
   }
 
@@ -97,4 +113,3 @@ class EditProtectionService {
     return diff == 0;
   }
 }
-
