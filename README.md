@@ -8,7 +8,7 @@
 
 一款本地优先的 Android 礼账应用，记录收礼、送礼和联系人往来。
 
-[下载 1.2.5](https://github.com/ztlgc/NewShangli/releases/tag/1.2.5) · [更新说明](docs/releases/1.2.5.md) · [功能与截图](#界面预览) · [开发指南](#本地开发)
+[下载 1.2.5+2009](https://github.com/ztlgc/NewShangli/releases/tag/1.2.5%2B2009) · [更新说明](docs/releases/1.2.5+2009.md) · [功能与截图](#界面预览) · [开发指南](#本地开发)
 
 </div>
 
@@ -64,28 +64,29 @@
 | 导入与导出 | 导入 Excel / CSV，核对字段并预览前 20 行；支持疑似重复记录确认、任务暂停和断点继续。导出可选账簿、日期范围及 Excel / ZIP。 |
 | 账簿 PDF | 在账簿详情导出 A4 礼账明细，包含序号、名字、金额、备注，支持多页及系统分享。 |
 | 备份与恢复 | 本地完整备份与恢复、自定义 WebDAV 整包备份；备份包含数据库及媒体文件。 |
+| 检查更新 | 启动后检查 GitHub 最新正式版，设置页支持手动检查；完整构建号参与比较，可忽略指定版本或前往下载。 |
 | 编辑保护与回收站 | 使用本地密码保护敏感修改；回收站支持搜索与分组查看，左滑恢复或删除单条内容，也可批量管理。 |
 
 默认事由：结婚礼金、生日礼金、寿宴礼金、满月礼金、百日礼金、周岁礼金、乔迁礼金、升学礼金、开业礼金、节日礼金、探病慰问、丧事慰问。
 
 ## 下载与使用
 
-1. 在 [GitHub Releases](https://github.com/ztlgc/NewShangli/releases/tag/1.2.5) 下载 `Liji_1.2.5_arm64.apk`。
+1. 在 [GitHub Releases](https://github.com/ztlgc/NewShangli/releases/tag/1.2.5%2B2009) 下载 `Liji_1.2.5+2009_arm64.apk`。
 2. 在 Android 手机上允许当前下载来源安装应用，然后完成安装。
 3. 打开礼记，添加联系人和收送礼记录；也可在「设置 → 账簿管理」创建独立账簿。
 4. 定期在「设置 → 数据备份」保存完整备份。
 
-当前安装包支持 **Android 7.0 及以上、ARM64**。版本对应的签名、校验值和验证结果见 [1.2.5 更新说明](docs/releases/1.2.5.md)。发布附件提供 `SHA256SUMS.txt`，Windows 上可以核对下载文件：
+当前安装包支持 **Android 7.0 及以上、ARM64**。版本对应的签名、校验值和验证结果见 [1.2.5+2009 更新说明](docs/releases/1.2.5+2009.md)。发布附件提供 `SHA256SUMS.txt`，Windows 上可以核对下载文件：
 
 ```powershell
-Get-FileHash .\Liji_1.2.5_arm64.apk -Algorithm SHA256
+Get-FileHash .\Liji_1.2.5+2009_arm64.apk -Algorithm SHA256
 ```
 
 ### 检查更新
 
 接入更新功能的 Android 安装包会在启动后检查 [GitHub 最新正式版](https://github.com/ztlgc/NewShangli/releases/latest)，每 24 小时最多自动请求一次（失败也计入间隔）。无更新或网络失败时不打扰记账；也可以在「设置 → 检查更新」立即重试。发现新版本后，可前往 Release 页面下载 APK、稍后处理或忽略该版本；手动检查不受忽略设置影响。
 
-应用内显示完整版本，例如 `1.2.5+2008`。同一主版本下，`1.2.5+2009` 会被识别为更新；带 `v` 前缀和旧的 `1.2.5` 标签也可识别。下载和安装由浏览器及 Android 系统完成。发布标签、构建号及 Latest 设置见 [检查更新接入说明](docs/GITHUB_UPDATES.md)。
+应用内显示完整版本，当前为 `1.2.5+2009`。同一主版本下，后续 `1.2.5+2010` 会被识别为更新；带 `v` 前缀和旧的 `1.2.5` 标签也可识别。下载和安装由浏览器及 Android 系统完成。发布标签、构建号及 Latest 设置见 [检查更新接入说明](docs/GITHUB_UPDATES.md)。
 
 ### 数据使用说明
 
