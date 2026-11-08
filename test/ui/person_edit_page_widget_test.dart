@@ -87,6 +87,9 @@ void main() {
       tester.getBottomLeft(find.byType(FCard).last).dy,
       lessThanOrEqualTo(360),
     );
+    // 选项按更新时间排序，窄屏弹层中需要先滚动到目标项。
+    await tester.ensureVisible(find.text('同事').last);
+    await tester.pumpAndSettle();
     await tester.tap(find.text('同事').last);
     await tester.pumpAndSettle();
     expect(find.text('同事'), findsOneWidget);

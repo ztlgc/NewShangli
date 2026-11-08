@@ -306,6 +306,11 @@ void main() {
         80,
         scrollable: _verticalScroll,
       );
+      await Scrollable.ensureVisible(
+        tester.element(find.text('送 800').last),
+        alignment: 0.5,
+      );
+      await tester.pumpAndSettle();
       expect(
         tester.getBottomLeft(find.text('送 800').last).dy,
         lessThan(tester.getTopLeft(find.byType(FBottomNavigationBar)).dy),

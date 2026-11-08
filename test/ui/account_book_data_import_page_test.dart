@@ -11,6 +11,7 @@ import 'package:newshangli/data/local/drift/app_database.dart';
 import 'package:newshangli/ui/app_database_scope.dart';
 import 'package:newshangli/ui/app_session.dart';
 import 'package:newshangli/ui/pages/account_book_data_import_page.dart';
+import 'package:newshangli/ui/pages/reason_manage_page.dart';
 
 class _TestPaths extends PathProviderPlatform {
   _TestPaths(this.path);
@@ -127,6 +128,13 @@ void main() {
       () => Future<void>.delayed(const Duration(milliseconds: 100)),
     );
     await tester.pumpAndSettle();
+    await tester.pumpWidget(
+      AppDatabaseScope(
+        db: db,
+        child: const MaterialApp(home: ReasonManagePage()),
+      ),
+    );
+    await waitForText(tester, '测试');
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pumpAndSettle();
   });

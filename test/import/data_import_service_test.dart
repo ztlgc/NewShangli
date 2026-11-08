@@ -72,6 +72,7 @@ void main() {
       expect(records.length, 1);
       expect(records.first.amountCent, 10000);
       expect(records.first.direction, '收入');
+      expect((await db.reasonsDao.findByName('婚礼随礼'))?.enabled, isTrue);
 
       final job = await db.dataImportJobsDao.findById(jobId);
       expect(job, isNotNull);
@@ -311,6 +312,7 @@ void main() {
       expect((persons.first.avatarUri ?? '').isNotEmpty, true);
       expect(records.length, 1);
       expect((records.first.attachments ?? const <String>[]).isNotEmpty, true);
+      expect((await db.reasonsDao.findByName('测试'))?.enabled, isTrue);
     });
 
     test('Excel加ZIP导入正确区分头像与附件同名文件', () async {

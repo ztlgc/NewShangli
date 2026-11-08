@@ -1206,6 +1206,12 @@ class _ImportRunner {
         for (final record in records) {
           await _db.into(_db.giftRecords).insert(record);
         }
+        await _db.reasonsDao.ensureNames([
+          for (final book in _pendingBooks.values)
+            if (book.reasonType.present) book.reasonType.value,
+          for (final record in records)
+            if (record.eventName.present) record.eventName.value,
+        ]);
         _successRows += _pendingSuccessRows;
         await _persistCheckpoint(rowIndex);
       });

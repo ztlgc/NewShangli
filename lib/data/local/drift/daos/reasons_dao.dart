@@ -51,6 +51,36 @@ class ReasonsDao extends DatabaseAccessor<AppDatabase> with _$ReasonsDaoMixin {
     return id;
   }
 
+  /// 为导入和历史数据补齐缺失名称，已有事由的开关和描述保持不变。
+  Future<void> ensureNames(Iterable<String?> names) async {
+    final uniqueNames = <String, String>{};
+    for (final raw in names) {
+      final name = raw?.trim() ?? '';
+      final normalized = _normalizeName(name);
+      // 历史记录的事由文本没有长度限制；无法登记的名称仍保留在原记录中。
+      if (name.isEmpty || name.length > 64 || normalized.length > 64) continue;
+      uniqueNames.putIfAbsent(normalized, () => name);
+    }
+    if (uniqueNames.isEmpty) return;
+
+    final now = DateTime.now().millisecondsSinceEpoch;
+    await batch((batch) {
+      for (final entry in uniqueNames.entries) {
+        batch.insert(
+          reasons,
+          ReasonsCompanion.insert(
+            reasonId: db.newId(),
+            name: entry.value,
+            normalizedName: entry.key,
+            createdAt: now,
+            updatedAt: now,
+          ),
+          onConflict: DoNothing(target: [reasons.normalizedName]),
+        );
+      }
+    });
+  }
+
   Future<void> updateReason({
     required String id,
     required String name,

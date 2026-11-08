@@ -23,6 +23,7 @@ const _dbName = 'newshangli_drift.sqlite';
 const _dbEntry = 'db/newshangli_drift.snapshot.sqlite';
 const _tables = <String>[
   'account_book',
+  'app_data_repair',
   'contact_relation',
   'data_import_job',
   'entity_remark',

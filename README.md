@@ -8,7 +8,7 @@
 
 一款本地优先的 Android 礼账应用，记录收礼、送礼和联系人往来。
 
-[下载 1.2.4](https://github.com/ztlgc/NewShangli/releases/tag/1.2.4) · [更新说明](docs/releases/1.2.4.md) · [功能与截图](#界面预览) · [开发指南](#本地开发)
+[下载 1.2.5](https://github.com/ztlgc/NewShangli/releases/tag/1.2.5) · [更新说明](docs/releases/1.2.5.md) · [功能与截图](#界面预览) · [开发指南](#本地开发)
 
 </div>
 
@@ -70,15 +70,15 @@
 
 ## 下载与使用
 
-1. 在 [GitHub Releases](https://github.com/ztlgc/NewShangli/releases/tag/1.2.4) 下载 `Liji_1.2.4_arm64.apk`。
+1. 在 [GitHub Releases](https://github.com/ztlgc/NewShangli/releases/tag/1.2.5) 下载 `Liji_1.2.5_arm64.apk`。
 2. 在 Android 手机上允许当前下载来源安装应用，然后完成安装。
 3. 打开礼记，添加联系人和收送礼记录；也可在「设置 → 账簿管理」创建独立账簿。
 4. 定期在「设置 → 数据备份」保存完整备份。
 
-当前安装包支持 **Android 7.0 及以上、ARM64**。版本对应的签名、校验值和验证结果见 [1.2.4 更新说明](docs/releases/1.2.4.md)。发布附件提供 `SHA256SUMS.txt`，Windows 上可以核对下载文件：
+当前安装包支持 **Android 7.0 及以上、ARM64**。版本对应的签名、校验值和验证结果见 [1.2.5 更新说明](docs/releases/1.2.5.md)。发布附件提供 `SHA256SUMS.txt`，Windows 上可以核对下载文件：
 
 ```powershell
-Get-FileHash .\Liji_1.2.4_arm64.apk -Algorithm SHA256
+Get-FileHash .\Liji_1.2.5_arm64.apk -Algorithm SHA256
 ```
 
 ### 数据使用说明

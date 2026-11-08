@@ -530,9 +530,11 @@ class StatsCategoryCard extends StatelessWidget {
               : AppColors.gray400
         : palette[index % palette.length];
     final empty = totalExpenseCent <= 0 || slices.isEmpty;
+    const ringSize = 128.0;
+    const ringCenterSpace = 48.0;
     final ring = SizedBox(
-      width: 112,
-      height: 112,
+      width: ringSize,
+      height: ringSize,
       child: Stack(
         alignment: Alignment.center,
         children: [
@@ -540,7 +542,7 @@ class StatsCategoryCard extends StatelessWidget {
             child: PieChart(
               duration: Duration.zero,
               PieChartData(
-                centerSpaceRadius: 39,
+                centerSpaceRadius: ringCenterSpace,
                 sectionsSpace: 3,
                 startDegreeOffset: -90,
                 pieTouchData: PieTouchData(enabled: false),
@@ -556,8 +558,9 @@ class StatsCategoryCard extends StatelessWidget {
               ),
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 13),
+          // 只占内圈宽度，避免金额文字压到环形色带上。
+          SizedBox(
+            width: (ringCenterSpace - 8) * 2,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [

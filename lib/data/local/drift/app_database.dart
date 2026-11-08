@@ -60,7 +60,7 @@ class AppDatabase extends _$AppDatabase {
 
   /// 初始化当前结构，不提供历史版本升级。
   /// - onCreate：创建所有表与索引
-  /// - beforeOpen：开启外键约束
+  /// - beforeOpen：开启外键约束并执行一次性数据补全
   @override
   MigrationStrategy get migration => MigrationStrategy(
     onCreate: (m) async {
@@ -81,8 +81,43 @@ class AppDatabase extends _$AppDatabase {
       await customStatement('PRAGMA foreign_keys = ON;');
       await customStatement('PRAGMA journal_mode = WAL;');
       await customStatement('PRAGMA synchronous = NORMAL;');
+      await _repairImportedReasons();
     },
   );
+
+  Future<void> _repairImportedReasons() async {
+    // 数据补全不改变 schema 版本，保持现有备份兼容；标记随数据库一起备份。
+    await transaction(() async {
+      await customStatement('''
+        CREATE TABLE IF NOT EXISTS app_data_repair (
+          repair_key TEXT NOT NULL PRIMARY KEY
+        );
+      ''');
+      const repairName = 'imported-reasons-v1';
+      final completed = await customSelect(
+        'SELECT 1 FROM app_data_repair WHERE repair_key = ?',
+        variables: [const Variable<String>(repairName)],
+      ).get();
+      if (completed.isNotEmpty) return;
+
+      final names = await customSelect('''
+        SELECT reason_type AS name FROM account_book WHERE deleted_at IS NULL
+        UNION
+        SELECT r.event_name AS name FROM gift_record r
+        INNER JOIN account_book b ON b.book_id = r.book_id
+        INNER JOIN person p ON p.person_id = r.person_id
+        WHERE r.deleted_at IS NULL AND b.deleted_at IS NULL
+          AND p.deleted_at IS NULL AND r.event_name IS NOT NULL
+      ''').get();
+      await reasonsDao.ensureNames(
+        names.map((row) => row.read<String>('name')),
+      );
+      await customStatement(
+        'INSERT INTO app_data_repair (repair_key) VALUES (?)',
+        [repairName],
+      );
+    });
+  }
 
   Future<void> _createDefaults() async {
     for (final name in const [
