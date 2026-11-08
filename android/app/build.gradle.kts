@@ -9,6 +9,10 @@ extensions.configure<com.android.build.api.dsl.ApplicationExtension> {
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
+    buildFeatures {
+        resValues = true
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
@@ -23,6 +27,10 @@ extensions.configure<com.android.build.api.dsl.ApplicationExtension> {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        // Preserve the canonical build number before Flutter adds ABI offsets
+        // to APK versionCode (for example, 2008 becomes 4008 for ARM64).
+        resValue("string", "liji_version_name", flutter.versionName)
+        resValue("string", "liji_build_number", flutter.versionCode.toString())
     }
 
     buildTypes {

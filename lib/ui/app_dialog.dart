@@ -101,6 +101,29 @@ class AppDialog {
     );
   }
 
+  /// 显示多个明确选项；关闭对话框时返回 null。
+  static Future<T?> choose<T>(
+    BuildContext context, {
+    required String title,
+    String? message,
+    required List<AppDialogChoice<T>> choices,
+  }) => _showAdaptive<T>(
+    context,
+    tone: AppNotificationTone.info,
+    icon: null,
+    title: title,
+    message: message,
+    content: null,
+    actions: _DialogActionSpec.options([
+      for (final choice in choices)
+        _DialogOption(
+          label: choice.label,
+          primary: choice.primary,
+          onSelect: (context) => Navigator.of(context).pop<T>(choice.value),
+        ),
+    ]),
+  );
+
   // ---------------------------------------------------------------------------
   // 内部：横竖屏均使用居中 Dialog
   // ---------------------------------------------------------------------------
@@ -204,6 +227,30 @@ class AppDialogField {
   final TextInputAction textInputAction;
 }
 
+class AppDialogChoice<T> {
+  const AppDialogChoice({
+    required this.label,
+    required this.value,
+    this.primary = false,
+  });
+
+  final String label;
+  final T value;
+  final bool primary;
+}
+
+class _DialogOption {
+  const _DialogOption({
+    required this.label,
+    required this.primary,
+    required this.onSelect,
+  });
+
+  final String label;
+  final bool primary;
+  final void Function(BuildContext) onSelect;
+}
+
 /// Dialog 按钮配置
 class _DialogActionSpec {
   const _DialogActionSpec._({
@@ -214,7 +261,11 @@ class _DialogActionSpec {
     this.dismissible = true,
     this.onConfirm,
     this.onCancel,
+    this.options,
   });
+
+  factory _DialogActionSpec.options(List<_DialogOption> options) =>
+      _DialogActionSpec._(options: options);
 
   factory _DialogActionSpec.buttons({
     required String confirm,
@@ -247,6 +298,7 @@ class _DialogActionSpec {
   final bool dismissible;
   final void Function(BuildContext)? onConfirm;
   final void Function(BuildContext)? onCancel;
+  final List<_DialogOption>? options;
 }
 
 /// Dialog 实际渲染的容器
@@ -392,6 +444,30 @@ class _DialogActionRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
+
+    if (actions.options case final options?) {
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (var i = 0; i < options.length; i++) ...[
+            if (i > 0)
+              const SizedBox(height: AppNotificationTokens.dialogButtonSpacing),
+            _DialogButton(
+              label: options[i].label,
+              background: options[i].primary
+                  ? colors.brandPrimary
+                  : colors.surfaceSubtle,
+              foreground: options[i].primary
+                  ? colors.textInverse
+                  : colors.textSecondary,
+              autofocus: options[i].primary,
+              onTap: () => options[i].onSelect(context),
+            ),
+          ],
+        ],
+      );
+    }
 
     if (actions.single) {
       return _DialogButton(

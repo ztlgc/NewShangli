@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:forui/forui.dart';
 
 import '../data/local/drift/app_database.dart';
+import '../update/app_update_service.dart';
+import 'app_update_host.dart';
 import 'app_data.dart';
 import 'app_database_scope.dart';
 import 'app_forui_theme.dart';
@@ -16,10 +18,12 @@ class NewShangliApp extends StatefulWidget {
     super.key,
     this.databaseFactory,
     this.initialTabIndex = 0,
+    this.updateService,
   });
 
   final AppDatabase Function()? databaseFactory;
   final int initialTabIndex;
+  final AppUpdateService? updateService;
 
   /// 全局 ScaffoldMessengerKey
   ///
@@ -81,7 +85,10 @@ class _NewShangliAppState extends State<NewShangliApp> {
                 ),
               );
             },
-            home: MainTabShell(initialIndex: widget.initialTabIndex),
+            home: AppUpdateHost(
+              service: widget.updateService,
+              child: MainTabShell(initialIndex: widget.initialTabIndex),
+            ),
           ),
         ),
       ),

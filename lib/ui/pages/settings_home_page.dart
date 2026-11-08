@@ -4,6 +4,8 @@ import 'package:forui/forui.dart';
 import '../app_tokens.dart';
 import '../app_dialog.dart';
 import '../app_scaffold.dart';
+import '../app_update_host.dart';
+import '../app_notifier.dart';
 import '../components.dart';
 import '../navigation.dart';
 import 'account_books_page.dart';
@@ -22,111 +24,131 @@ import '../app_layout.dart';
 class SettingsHomePage extends StatelessWidget {
   const SettingsHomePage({super.key});
   @override
-  Widget build(BuildContext context) => AppScaffold(
-    body: Column(
-      children: [
-        const FHeader(title: Text('设置')),
-        Expanded(
-          child: ListView(
-            padding: AppLayout.tabContentPadding,
-            children: [
-              _GroupCard(
-                rows: [
-                  _SettingRow(
-                    iconBg: AppColors.indigo50,
-                    iconFg: AppColors.indigo700,
-                    icon: AppIcons.tags,
-                    title: '事由管理',
-                    onTap: () => AppNav.push(context, const ReasonManagePage()),
-                  ),
-                  _SettingRow(
-                    iconBg: AppColors.blue50,
-                    iconFg: AppColors.blue600,
-                    icon: AppIcons.network,
-                    title: '关系类型管理',
-                    borderBottom: false,
-                    onTap: () =>
-                        AppNav.push(context, const RelationTypeManagePage()),
-                  ),
-                ],
-              ),
-              const SizedBox(height: AppLayout.sectionGap),
-              _SingleRowCard(
-                iconBg: AppColors.indigo100,
-                iconFg: AppColors.indigo600,
-                icon: AppIcons.bookOpen,
-                title: '账簿管理',
-                onTap: () => AppNav.push(context, const AccountBooksPage()),
-              ),
-              const SizedBox(height: AppLayout.sectionGap),
-              _GroupCard(
-                rows: [
-                  _SettingRow(
-                    iconBg: AppColors.orange50,
-                    iconFg: AppColors.orange500,
-                    icon: AppIcons.cloudUpload,
-                    title: '数据备份',
-                    onTap: () => AppNav.push(context, const DataBackupPage()),
-                  ),
-                  _SettingRow(
-                    iconBg: AppColors.gray100,
-                    iconFg: AppColors.textSecondary,
-                    icon: AppIcons.lock,
-                    title: '编辑保护',
-                    onTap: () =>
-                        AppNav.push(context, const EditProtectionPage()),
-                  ),
-                  _SettingRow(
-                    iconBg: AppColors.purple50,
-                    iconFg: AppColors.purple500,
-                    icon: AppIcons.fileOutput,
-                    title: '导出数据',
-                    onTap: () => AppNav.push(context, const DataExportPage()),
-                  ),
-                  _SettingRow(
-                    iconBg: AppColors.indigo50,
-                    iconFg: AppColors.indigo700,
-                    icon: AppIcons.fileInput,
-                    title: '导入数据',
-                    onTap: () => AppNav.push(context, const DataImportPage()),
-                  ),
-                  _SettingRow(
-                    iconBg: AppColors.red100,
-                    iconFg: AppColors.red600,
-                    icon: AppIcons.trash2,
-                    title: '回收站',
-                    borderBottom: false,
-                    onTap: () => AppNav.push(context, const RecycleBinPage()),
-                  ),
-                ],
-              ),
-              const SizedBox(height: AppLayout.sectionGap),
-              _SingleRowCard(
-                iconBg: AppColors.gray100,
-                iconFg: AppColors.textTertiary,
-                icon: AppIcons.info,
-                title: '关于礼记',
-                trailingText: 'v1.2.5',
-                onTap: () => AppDialog.showAlert(
-                  context,
-                  title: '关于礼记',
-                  message:
-                      '版本 v1.2.5\n\n'
-                      '礼记是一款专注于礼金记录与人情往来管理的应用，'
-                      '帮助你记录婚礼、生日、乔迁等场景中的收礼与送礼。'
-                      '支持多账簿管理、联系人往来查询、收支统计和农历日期，'
-                      '提供数据导入导出、账簿 PDF 导出以及本地和 WebDAV 备份恢复。'
-                      '无需注册账号，数据默认保存在本机，'
-                      '让每一笔往来清楚可查，每一份情谊妥善留存。',
-                  closeLabel: '确定',
+  Widget build(BuildContext context) {
+    final updates = AppUpdateScope.maybeOf(context);
+    final versionLabel = updates?.versionLabel ?? '版本信息不可用';
+    return AppScaffold(
+      body: Column(
+        children: [
+          const FHeader(title: Text('设置')),
+          Expanded(
+            child: ListView(
+              padding: AppLayout.tabContentPadding,
+              children: [
+                _GroupCard(
+                  rows: [
+                    _SettingRow(
+                      iconBg: AppColors.indigo50,
+                      iconFg: AppColors.indigo700,
+                      icon: AppIcons.tags,
+                      title: '事由管理',
+                      onTap: () =>
+                          AppNav.push(context, const ReasonManagePage()),
+                    ),
+                    _SettingRow(
+                      iconBg: AppColors.blue50,
+                      iconFg: AppColors.blue600,
+                      icon: AppIcons.network,
+                      title: '关系类型管理',
+                      borderBottom: false,
+                      onTap: () =>
+                          AppNav.push(context, const RelationTypeManagePage()),
+                    ),
+                  ],
                 ),
-              ),
-            ],
+                const SizedBox(height: AppLayout.sectionGap),
+                _SingleRowCard(
+                  iconBg: AppColors.indigo100,
+                  iconFg: AppColors.indigo600,
+                  icon: AppIcons.bookOpen,
+                  title: '账簿管理',
+                  onTap: () => AppNav.push(context, const AccountBooksPage()),
+                ),
+                const SizedBox(height: AppLayout.sectionGap),
+                _GroupCard(
+                  rows: [
+                    _SettingRow(
+                      iconBg: AppColors.orange50,
+                      iconFg: AppColors.orange500,
+                      icon: AppIcons.cloudUpload,
+                      title: '数据备份',
+                      onTap: () => AppNav.push(context, const DataBackupPage()),
+                    ),
+                    _SettingRow(
+                      iconBg: AppColors.gray100,
+                      iconFg: AppColors.textSecondary,
+                      icon: AppIcons.lock,
+                      title: '编辑保护',
+                      onTap: () =>
+                          AppNav.push(context, const EditProtectionPage()),
+                    ),
+                    _SettingRow(
+                      iconBg: AppColors.purple50,
+                      iconFg: AppColors.purple500,
+                      icon: AppIcons.fileOutput,
+                      title: '导出数据',
+                      onTap: () => AppNav.push(context, const DataExportPage()),
+                    ),
+                    _SettingRow(
+                      iconBg: AppColors.indigo50,
+                      iconFg: AppColors.indigo700,
+                      icon: AppIcons.fileInput,
+                      title: '导入数据',
+                      onTap: () => AppNav.push(context, const DataImportPage()),
+                    ),
+                    _SettingRow(
+                      iconBg: AppColors.red100,
+                      iconFg: AppColors.red600,
+                      icon: AppIcons.trash2,
+                      title: '回收站',
+                      borderBottom: false,
+                      onTap: () => AppNav.push(context, const RecycleBinPage()),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppLayout.sectionGap),
+                _SingleRowCard(
+                  iconBg: AppColors.blue50,
+                  iconFg: AppColors.blue600,
+                  icon: AppIcons.arrowDown,
+                  title: updates?.checking == true ? '正在检查更新…' : '检查更新',
+                  onTap: () {
+                    if (updates?.checking == true) return;
+                    if (updates != null) {
+                      updates.checkForUpdates();
+                    } else {
+                      AppNotifier.info(context, '当前环境不支持检查更新');
+                    }
+                  },
+                ),
+                const SizedBox(height: AppLayout.sectionGap),
+                _SingleRowCard(
+                  iconBg: AppColors.gray100,
+                  iconFg: AppColors.textTertiary,
+                  icon: AppIcons.info,
+                  title: '关于礼记',
+                  trailingText: versionLabel,
+                  onTap: () => AppDialog.showAlert(
+                    context,
+                    title: '关于礼记',
+                    message:
+                        '版本 $versionLabel\n\n'
+                        '礼记是一款专注于礼金记录与人情往来管理的应用，'
+                        '帮助你记录婚礼、生日、乔迁等场景中的收礼与送礼。'
+                        '支持多账簿管理、联系人往来查询、收支统计和农历日期，'
+                        '提供数据导入导出、账簿 PDF 导出以及本地和 WebDAV 备份恢复。'
+                        '无需注册账号，数据默认保存在本机，'
+                        '让每一笔往来清楚可查，每一份情谊妥善留存。',
+                    closeLabel: '确定',
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
-      ],
-    ),
-  );
+        ],
+      ),
+    );
+  }
 }
 
 class _SingleRowCard extends StatelessWidget {
